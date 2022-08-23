@@ -8,7 +8,7 @@ delegate, err := ocr2keepers.NewDelegate(delegateConfig)
 ## Unit Testing
 Unit testing is used extensively and the primary goal is to keep test coverage above 70%.
 
-Test coverage should be rerun with every commit either by running a git hook or `make coverage`.
+Test coverage should be rerun with every commit either by running a git hook or `make coverage` to help maintain a high level of test coverage.
 
 It is recommended that you install the git hooks so that the automated tooling is part of your workflow. Simply run:
 
