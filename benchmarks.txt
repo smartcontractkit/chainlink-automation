@@ -1,0 +1,15 @@
+go mod download
+gofmt -w .
+goos: darwin
+goarch: amd64
+pkg: github.com/smartcontractkit/ocr2keepers/internal/keepers
+cpu: VirtualApple @ 2.50GHz
+BenchmarkQuery-10                           	1000000000	         0.3284 ns/op	       0 B/op	       0 allocs/op
+BenchmarkObservation-10                     	1000000000	         0.3297 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReport-10                          	1000000000	         0.3361 ns/op	       0 B/op	       0 allocs/op
+BenchmarkShouldAcceptFinalizedReport-10     	1000000000	         0.3315 ns/op	       0 B/op	       0 allocs/op
+BenchmarkShouldTransmitAcceptedReport-10    	1000000000	         0.3338 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	2.180s
+PASS
+ok  	github.com/smartcontractkit/ocr2keepers/ocr2keepers	0.433s

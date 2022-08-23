@@ -7,7 +7,7 @@ import (
 )
 
 func NewReportingPluginFactory() types.ReportingPluginFactory {
-	return nil
+	return &keepersReportingFactory{}
 }
 
 type keepersReportingFactory struct{}
