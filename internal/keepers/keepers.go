@@ -1,3 +1,5 @@
 package keepers
 
-type keepers struct{}
+type keepers struct {
+	service UpkeepService
+}

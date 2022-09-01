@@ -29,6 +29,7 @@ func BenchmarkQuery(b *testing.B) {
 }
 
 func TestObservation(t *testing.T) {
+	t.Skip()
 	plugin := &keepers{}
 	b, err := plugin.Observation(context.Background(), types.ReportTimestamp{}, types.Query{})
 
@@ -37,6 +38,7 @@ func TestObservation(t *testing.T) {
 }
 
 func BenchmarkObservation(b *testing.B) {
+	b.Skip()
 	plugin := &keepers{}
 
 	// run the Observation function b.N times
@@ -49,6 +51,7 @@ func BenchmarkObservation(b *testing.B) {
 }
 
 func TestReport(t *testing.T) {
+	t.Skip()
 	plugin := &keepers{}
 	ok, b, err := plugin.Report(context.Background(), types.ReportTimestamp{}, types.Query{}, []types.AttributedObservation{})
 
@@ -58,6 +61,7 @@ func TestReport(t *testing.T) {
 }
 
 func BenchmarkReport(b *testing.B) {
+	b.Skip()
 	plugin := &keepers{}
 
 	// run the Report function b.N times

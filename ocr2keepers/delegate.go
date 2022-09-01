@@ -14,7 +14,7 @@ type Delegate struct {
 	keeper *offchainreporting.Oracle
 }
 
-func NewDelegate(_ DelegateConfig) (*Delegate, error) {
+func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	// TODO: handle errors here
 	// TODO: define proper OracleArgs
 	keeper, err := offchainreporting.NewOracle(offchainreporting.OracleArgs{
@@ -35,7 +35,7 @@ func NewDelegate(_ DelegateConfig) (*Delegate, error) {
 		//OffchainConfigDigester:       a.DKGOffchainConfigDigester,
 		//OffchainKeyring:              a.OffchainKeyring,
 		//OnchainKeyring:               a.OnchainKeyring,
-		ReportingPluginFactory: keepers.NewReportingPluginFactory(),
+		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.registry),
 	})
 
 	if err != nil {

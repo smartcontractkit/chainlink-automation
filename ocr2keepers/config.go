@@ -1,3 +1,7 @@
 package ocr2keepers
 
-type DelegateConfig struct{}
+import "github.com/smartcontractkit/ocr2keepers/ocr2keepers/types"
+
+type DelegateConfig struct {
+	registry types.Registry
+}
