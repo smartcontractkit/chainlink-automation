@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	k_types "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query, error) {
@@ -29,7 +29,7 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 
 func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Query, _ []types.AttributedObservation) (bool, types.Report, error) {
 	// TODO: implement Report using provided service
-	_, err := k.service.CheckUpkeep(ctx, ktypes.UpkeepKey{})
+	_, err := k.service.CheckUpkeep(ctx, k_types.UpkeepKey{})
 	return false, types.Report{}, err
 }
 
