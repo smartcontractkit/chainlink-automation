@@ -3,7 +3,7 @@ package keepers
 import (
 	"context"
 
-	"github.com/smartcontractkit/ocr2keepers/ocr2keepers/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type SampleRatio float32

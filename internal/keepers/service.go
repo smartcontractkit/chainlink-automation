@@ -4,9 +4,8 @@ import (
 	"context"
 	"math/rand"
 	"sync"
-	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/ocr2keepers/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type simpleUpkeepService struct {
@@ -39,8 +38,8 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]types.Upkeep
 	}
 
 	// - select x upkeeps at random from set
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(keys), func(i, j int) {
+	rnd := rand.New(newCryptoRandSource())
+	rnd.Shuffle(len(keys), func(i, j int) {
 		keys[i], keys[j] = keys[j], keys[i]
 	})
 	size := s.ratio.OfInt(len(keys))

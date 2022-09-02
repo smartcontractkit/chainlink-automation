@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	ktypes "github.com/smartcontractkit/ocr2keepers/ocr2keepers/types"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func NewReportingPluginFactory(registry ktypes.Registry) types.ReportingPluginFactory {

@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/ocr2keepers/gethwrappers/keeper_registry_v1_2"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
-	"github.com/smartcontractkit/ocr2keepers/ocr2keepers/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 const ActiveUpkeepIDBatchSize int64 = 10000

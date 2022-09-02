@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	ktypes "github.com/smartcontractkit/ocr2keepers/ocr2keepers/types"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query, error) {

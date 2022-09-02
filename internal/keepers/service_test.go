@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/smartcontractkit/ocr2keepers/ocr2keepers/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
