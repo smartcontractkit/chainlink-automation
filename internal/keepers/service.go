@@ -2,7 +2,6 @@ package keepers
 
 import (
 	"context"
-	"math/rand"
 	"sync"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -11,6 +10,7 @@ import (
 type simpleUpkeepService struct {
 	ratio    SampleRatio
 	registry types.Registry
+	shuffler Shuffler[types.UpkeepKey]
 	mu       sync.Mutex
 	state    map[string]types.UpkeepState
 }
@@ -23,13 +23,14 @@ func NewSimpleUpkeepService(ratio SampleRatio, registry types.Registry) *simpleU
 	return &simpleUpkeepService{
 		ratio:    ratio,
 		registry: registry,
+		shuffler: new(cryptoShuffler[types.UpkeepKey]),
 		state:    make(map[string]types.UpkeepState),
 	}
 }
 
 var _ UpkeepService = (*simpleUpkeepService)(nil)
 
-func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]types.UpkeepResult, error) {
+func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.UpkeepResult, error) {
 	// - get all upkeeps from contract
 	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
 	if err != nil {
@@ -38,19 +39,17 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]types.Upkeep
 	}
 
 	// - select x upkeeps at random from set
-	rnd := rand.New(newCryptoRandSource())
-	rnd.Shuffle(len(keys), func(i, j int) {
-		keys[i], keys[j] = keys[j], keys[i]
-	})
+	keys = s.shuffler.Shuffle(keys)
 	size := s.ratio.OfInt(len(keys))
 
 	// - check upkeeps selected
-	result := []types.UpkeepResult{}
+	result := []*types.UpkeepResult{}
 	for i := 0; i < size; i++ {
 		// skip if reported
 		s.mu.Lock()
-		state, reported := s.state[string(keys[i])]
-		if reported && state == Reported {
+		state, stateSaved := s.state[string(keys[i])]
+		if stateSaved && state == Reported {
+			s.mu.Unlock()
 			continue
 		}
 		s.mu.Unlock()
@@ -58,7 +57,7 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]types.Upkeep
 		// TODO: handle errors correctly
 		ok, u, _ := s.registry.CheckUpkeep(ctx, types.Address([]byte{}), keys[i])
 		if ok {
-			result = append(result, types.UpkeepResult{Key: keys[i], State: Perform, PerformData: u.PerformData})
+			result = append(result, &types.UpkeepResult{Key: keys[i], State: Perform, PerformData: u.PerformData})
 		}
 	}
 
@@ -69,6 +68,7 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]types.Upkeep
 func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
 	// check upkeep at block number in key
 	// return result including performData
+	// TODO: which address should be passed to this function?
 	ok, u, err := s.registry.CheckUpkeep(ctx, types.Address([]byte{}), key)
 	if err != nil {
 		// TODO: do better error bubbling

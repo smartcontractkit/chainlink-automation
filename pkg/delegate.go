@@ -1,7 +1,6 @@
 package ocr2keepers
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -15,14 +14,12 @@ type Delegate struct {
 }
 
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
-	// TODO: handle errors here
-	// TODO: define proper OracleArgs
 	keeper, err := offchainreporting.NewOracle(offchainreporting.OracleArgs{
-		//BinaryNetworkEndpointFactory: a.BinaryNetworkEndpointFactory,
-		//V2Bootstrappers:              a.V2Bootstrappers,
-		//ContractConfigTracker:        a.DKGContractConfigTracker,
-		//ContractTransmitter:          a.DKGContractTransmitter,
-		//Database:                     a.DKGDatabase,
+		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
+		V2Bootstrappers:              c.V2Bootstrappers,
+		ContractConfigTracker:        c.ContractConfigTracker,
+		ContractTransmitter:          c.ContractTransmitter,
+		Database:                     c.KeepersDatabase,
 		LocalConfig: types.LocalConfig{
 			BlockchainTimeout:                  1 * time.Second,        // TODO: choose sane configs
 			ContractConfigTrackerPollInterval:  15 * time.Second,       // TODO: choose sane configs
@@ -30,14 +27,15 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			DatabaseTimeout:                    100 * time.Millisecond, // TODO: choose sane configs
 			ContractConfigConfirmations:        1,                      // TODO: choose sane configs
 		},
-		//Logger:                       a.DKGLogger,
-		//MonitoringEndpoint:           a.DKGMonitoringEndpoint,
-		//OffchainConfigDigester:       a.DKGOffchainConfigDigester,
-		//OffchainKeyring:              a.OffchainKeyring,
-		//OnchainKeyring:               a.OnchainKeyring,
-		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.registry),
+		Logger:                 c.Logger,
+		MonitoringEndpoint:     c.MonitoringEndpoint,
+		OffchainConfigDigester: c.OffchainConfigDigester,
+		OffchainKeyring:        c.OffchainKeyring,
+		OnchainKeyring:         c.OnchainKeyring,
+		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.Registry),
 	})
 
+	// TODO: handle errors better
 	if err != nil {
 		return nil, err
 	}
@@ -46,13 +44,10 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 }
 
 func (d *Delegate) Start() error {
-	/*
-		TODO: starting oracle throws an error without complete config
-		if err := d.keeper.Start(); err != nil {
-			return fmt.Errorf("%w: starting keeper oracle", err)
-		}
-	*/
-	return errors.New("unimplemented")
+	if err := d.keeper.Start(); err != nil {
+		return fmt.Errorf("%w: starting keeper oracle", err)
+	}
+	return nil
 }
 
 func (d *Delegate) Close() error {
