@@ -7,7 +7,7 @@ import (
 	"fmt"
 	rnd "math/rand"
 
-	k_types "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 var (
@@ -28,8 +28,8 @@ func (_ cryptoRandSource) Int63() int64 {
 
 func (_ cryptoRandSource) Seed(_ int64) {}
 
-func filterUpkeeps(upkeeps []*k_types.UpkeepResult, filter k_types.UpkeepState) []*k_types.UpkeepResult {
-	ret := make([]*k_types.UpkeepResult, 0, len(upkeeps))
+func filterUpkeeps(upkeeps []*ktypes.UpkeepResult, filter ktypes.UpkeepState) []*ktypes.UpkeepResult {
+	ret := make([]*ktypes.UpkeepResult, 0, len(upkeeps))
 
 	for _, up := range upkeeps {
 		if up.State == filter {
@@ -40,8 +40,8 @@ func filterUpkeeps(upkeeps []*k_types.UpkeepResult, filter k_types.UpkeepState) 
 	return ret
 }
 
-func keyList(upkeeps []*k_types.UpkeepResult) []k_types.UpkeepKey {
-	ret := make([]k_types.UpkeepKey, len(upkeeps))
+func keyList(upkeeps []*ktypes.UpkeepResult) []ktypes.UpkeepKey {
+	ret := make([]ktypes.UpkeepKey, len(upkeeps))
 
 	for i, up := range upkeeps {
 		ret[i] = up.Key
@@ -50,7 +50,7 @@ func keyList(upkeeps []*k_types.UpkeepResult) []k_types.UpkeepKey {
 	return ret
 }
 
-func encodeUpkeepKeys(keys []k_types.UpkeepKey) ([]byte, error) {
+func encodeUpkeepKeys(keys []ktypes.UpkeepKey) ([]byte, error) {
 	b, err := json.Marshal(keys)
 	if err != nil {
 		return b, fmt.Errorf("%w: %s", ErrEncoding, err)

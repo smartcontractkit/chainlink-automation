@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	k_types "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestQuery(t *testing.T) {
@@ -36,7 +37,7 @@ func TestObservation(t *testing.T) {
 	tests := []struct {
 		Name                string
 		Ctx                 func() (context.Context, func())
-		SampleSet           []*k_types.UpkeepResult
+		SampleSet           []*ktypes.UpkeepResult
 		SampleErr           error
 		ExpectedObservation types.Observation
 		ExpectedErr         error
@@ -44,19 +45,19 @@ func TestObservation(t *testing.T) {
 		{
 			Name:                "Empty Set",
 			Ctx:                 func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet:           []*k_types.UpkeepResult{},
-			ExpectedObservation: types.Observation(mustEncodeKeys([]k_types.UpkeepKey{})),
+			SampleSet:           []*ktypes.UpkeepResult{},
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
 		{
 			Name:                "Timer Context",
 			Ctx:                 func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
-			SampleSet:           []*k_types.UpkeepResult{},
-			ExpectedObservation: types.Observation(mustEncodeKeys([]k_types.UpkeepKey{})),
+			SampleSet:           []*ktypes.UpkeepResult{},
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
 		{
 			Name:                "Upkeep Service Error",
 			Ctx:                 func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet:           []*k_types.UpkeepResult{},
+			SampleSet:           []*ktypes.UpkeepResult{},
 			SampleErr:           fmt.Errorf("test error"),
 			ExpectedObservation: types.Observation{},
 			ExpectedErr:         fmt.Errorf("test error"),
@@ -64,20 +65,20 @@ func TestObservation(t *testing.T) {
 		{
 			Name: "Filter to Empty Set",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet: []*k_types.UpkeepResult{
-				{Key: k_types.UpkeepKey([]byte("1|1")), State: Skip},
-				{Key: k_types.UpkeepKey([]byte("1|2")), State: Skip},
+			SampleSet: []*ktypes.UpkeepResult{
+				{Key: ktypes.UpkeepKey([]byte("1|1")), State: Skip},
+				{Key: ktypes.UpkeepKey([]byte("1|2")), State: Skip},
 			},
-			ExpectedObservation: types.Observation(mustEncodeKeys([]k_types.UpkeepKey{})),
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
 		{
 			Name: "Filter to Non-empty Set",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet: []*k_types.UpkeepResult{
-				{Key: k_types.UpkeepKey([]byte("1|1")), State: Skip},
-				{Key: k_types.UpkeepKey([]byte("1|2")), State: Perform},
+			SampleSet: []*ktypes.UpkeepResult{
+				{Key: ktypes.UpkeepKey([]byte("1|1")), State: Skip},
+				{Key: ktypes.UpkeepKey([]byte("1|2")), State: Perform},
 			},
-			ExpectedObservation: types.Observation(mustEncodeKeys([]k_types.UpkeepKey{[]byte("1|2")})),
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{[]byte("1|2")})),
 		},
 	}
 
@@ -110,12 +111,12 @@ func BenchmarkObservation(b *testing.B) {
 	ms := new(MockedUpkeepService)
 	plugin := &keepers{service: ms}
 
-	set := make([]*k_types.UpkeepResult, 2, 100)
-	set[0] = &k_types.UpkeepResult{Key: k_types.UpkeepKey([]byte("1|1")), State: Perform}
-	set[1] = &k_types.UpkeepResult{Key: k_types.UpkeepKey([]byte("1|2")), State: Perform}
+	set := make([]*ktypes.UpkeepResult, 2, 100)
+	set[0] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|1")), State: Perform}
+	set[1] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|2")), State: Perform}
 
 	for i := 2; i < 100; i++ {
-		set = append(set, &k_types.UpkeepResult{Key: k_types.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1))), State: Skip})
+		set = append(set, &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1))), State: Skip})
 	}
 
 	b.ResetTimer()
@@ -201,41 +202,41 @@ type MockedUpkeepService struct {
 	mock.Mock
 }
 
-func (_m *MockedUpkeepService) SampleUpkeeps(ctx context.Context) ([]*k_types.UpkeepResult, error) {
+func (_m *MockedUpkeepService) SampleUpkeeps(ctx context.Context) ([]*ktypes.UpkeepResult, error) {
 	ret := _m.Mock.Called(ctx)
 
-	var r0 []*k_types.UpkeepResult
-	if rf, ok := ret.Get(0).(func() []*k_types.UpkeepResult); ok {
+	var r0 []*ktypes.UpkeepResult
+	if rf, ok := ret.Get(0).(func() []*ktypes.UpkeepResult); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*k_types.UpkeepResult)
+			r0 = ret.Get(0).([]*ktypes.UpkeepResult)
 		}
 	}
 
 	return r0, ret.Error(1)
 }
 
-func (_m *MockedUpkeepService) CheckUpkeep(ctx context.Context, key k_types.UpkeepKey) (k_types.UpkeepResult, error) {
+func (_m *MockedUpkeepService) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey) (ktypes.UpkeepResult, error) {
 	ret := _m.Mock.Called(ctx, key)
 
-	var r0 k_types.UpkeepResult
-	if rf, ok := ret.Get(0).(func() k_types.UpkeepResult); ok {
+	var r0 ktypes.UpkeepResult
+	if rf, ok := ret.Get(0).(func() ktypes.UpkeepResult); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(k_types.UpkeepResult)
+			r0 = ret.Get(0).(ktypes.UpkeepResult)
 		}
 	}
 
 	return r0, ret.Error(1)
 }
 
-func (_m *MockedUpkeepService) SetUpkeepState(ctx context.Context, key k_types.UpkeepKey, state k_types.UpkeepState) error {
+func (_m *MockedUpkeepService) SetUpkeepState(ctx context.Context, key ktypes.UpkeepKey, state ktypes.UpkeepState) error {
 	return _m.Mock.Called(ctx, key, state).Error(0)
 }
 
-func mustEncodeKeys(keys []k_types.UpkeepKey) []byte {
+func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
 	b, _ := encodeUpkeepKeys(keys)
 	return b
 }

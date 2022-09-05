@@ -3,7 +3,7 @@ package ocr2keepers
 import (
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	k_types "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type DelegateConfig struct {
@@ -18,5 +18,5 @@ type DelegateConfig struct {
 	OffchainKeyring              types.OffchainKeyring
 	OnchainKeyring               types.OnchainKeyring
 
-	Registry k_types.Registry
+	Registry ktypes.Registry
 }
