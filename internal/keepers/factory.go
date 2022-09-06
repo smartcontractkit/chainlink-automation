@@ -7,12 +7,13 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-func NewReportingPluginFactory(registry ktypes.Registry) types.ReportingPluginFactory {
-	return &keepersReportingFactory{registry: registry}
+func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder) types.ReportingPluginFactory {
+	return &keepersReportingFactory{registry: registry, encoder: encoder}
 }
 
 type keepersReportingFactory struct {
 	registry ktypes.Registry
+	encoder  ktypes.ReportEncoder
 }
 
 var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
@@ -39,5 +40,5 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 
 	service := NewSimpleUpkeepService(SampleRatio(0.3), d.registry)
 
-	return &keepers{service: service}, info, nil
+	return &keepers{service: service, encoder: d.encoder}, info, nil
 }
