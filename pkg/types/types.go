@@ -7,6 +7,10 @@ type Registry interface {
 	CheckUpkeep(context.Context, Address, UpkeepKey) (bool, UpkeepResult, error)
 }
 
+type ReportEncoder interface {
+	EncodeReport([]UpkeepResult) ([]byte, error)
+}
+
 type BlockKey string
 
 type Address []byte
