@@ -136,22 +136,261 @@ func BenchmarkObservation(b *testing.B) {
 }
 
 func TestReport(t *testing.T) {
-	t.Skip()
-	plugin := &keepers{}
-	ok, b, err := plugin.Report(context.Background(), types.ReportTimestamp{}, types.Query{}, []types.AttributedObservation{})
+	tests := []struct {
+		Name         string
+		Ctx          func() (context.Context, func())
+		Observations []types.AttributedObservation
+		Checks       []struct {
+			K ktypes.UpkeepKey
+			R ktypes.UpkeepResult
+			E error
+		}
+		Perform        []int
+		EncodeErr      error
+		ExpectedReport []byte
+		ExpectedBool   bool
+		ExpectedErr    error
+	}{
+		{
+			Name: "Single Common Upkeep",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+			},
+			Perform:        []int{0},
+			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
+			ExpectedBool:   true,
+		},
+		{
+			Name: "Forward Context",
+			Ctx:  func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{
+					K: ktypes.UpkeepKey([]byte("1|1")),
+					R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")},
+				},
+			},
+			Perform:        []int{0},
+			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
+			ExpectedBool:   true,
+		},
+		{
+			Name: "Wrap Error",
+			Ctx:  func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{}, E: ErrMockTestError},
+			},
+			ExpectedBool: false,
+			ExpectedErr:  ErrMockTestError,
+		},
+		{
+			Name: "Unsorted Observations",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2")), ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+			},
+			Perform:        []int{0},
+			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
+			ExpectedBool:   true,
+		},
+		{
+			Name: "Earliest Block",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("2|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("3|1"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+			},
+			Perform:        []int{0},
+			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
+			ExpectedBool:   true,
+		},
+		{
+			Name: "Skip Already Performed",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Reported, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+			},
+			Perform:        []int{1},
+			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
+			ExpectedBool:   true,
+		},
+		{
+			Name: "Nothing to Report",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Reported, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: Reported, PerformData: []byte("abcd")}},
+			},
+			ExpectedBool: false,
+		},
+		{
+			Name: "Empty Observations",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
+			},
+			ExpectedBool: false,
+		},
+		{
+			Name:         "No Observations",
+			Ctx:          func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{},
+			ExpectedBool: false,
+			ExpectedErr:  ErrNotEnoughInputs,
+		},
+		{
+			Name: "Encoding Error",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+			},
+			Perform:      []int{0},
+			EncodeErr:    ErrMockTestError,
+			ExpectedBool: false,
+			ExpectedErr:  ErrMockTestError,
+		},
+	}
 
-	assert.Equal(t, false, ok)
-	assert.Equal(t, types.Report{}, b)
-	assert.NoError(t, err)
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			ms := new(MockedUpkeepService)
+			me := new(MockedReportEncoder)
+
+			plugin := &keepers{service: ms, encoder: me}
+			ctx, cancel := test.Ctx()
+
+			// set up upkeep checks with the mocked service
+			for _, check := range test.Checks {
+				check.R.Key = check.K
+				ms.Mock.On("CheckUpkeep", ctx, check.K).Return(check.R, check.E)
+			}
+
+			if len(test.Perform) > 0 {
+				toPerform := make([]ktypes.UpkeepResult, len(test.Perform))
+				for i, p := range test.Perform {
+					u := test.Checks[p]
+					u.R.Key = u.K
+					toPerform[i] = u.R
+				}
+				me.Mock.On("EncodeReport", toPerform).Return(test.ExpectedReport, test.EncodeErr)
+			}
+
+			// test the Report function
+			ok, r, err := plugin.Report(ctx, types.ReportTimestamp{}, types.Query{}, test.Observations)
+			cancel()
+
+			assert.Equal(t, test.ExpectedBool, ok)
+			assert.Equal(t, types.Report(test.ExpectedReport), r)
+
+			if test.ExpectedErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorIs(t, err, test.ExpectedErr)
+			}
+
+			ms.Mock.AssertExpectations(t)
+			me.Mock.AssertExpectations(t)
+		})
+	}
 }
 
 func BenchmarkReport(b *testing.B) {
-	b.Skip()
-	plugin := &keepers{}
+	ms := new(MockedUpkeepService)
+	me := new(MockedReportEncoder)
+	plugin := &keepers{service: ms, encoder: me}
 
-	// run the Report function b.N times
+	set := ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|1")), State: Perform, PerformData: []byte("abcd")}
+	observations := []types.AttributedObservation{
+		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+	}
+
+	b.ResetTimer()
+	// run the Observation function b.N times
 	for n := 0; n < b.N; n++ {
-		_, _, err := plugin.Report(context.Background(), types.ReportTimestamp{}, types.Query{}, []types.AttributedObservation{})
+		ctx := context.Background()
+		ms.Mock.On("CheckUpkeep", ctx, set.Key).Return(set, nil)
+		me.Mock.On("EncodeReport", []ktypes.UpkeepResult{set}).Return([]byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))), nil)
+
+		b.StartTimer()
+		_, _, err := plugin.Report(context.Background(), types.ReportTimestamp{}, types.Query{}, observations)
+		b.StopTimer()
+
 		if err != nil {
 			b.Fail()
 		}
@@ -198,6 +437,10 @@ func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
 	}
 }
 
+var (
+	ErrMockTestError = fmt.Errorf("test error")
+)
+
 type MockedUpkeepService struct {
 	mock.Mock
 }
@@ -237,6 +480,25 @@ func (_m *MockedUpkeepService) SetUpkeepState(ctx context.Context, key ktypes.Up
 }
 
 func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
-	b, _ := encodeUpkeepKeys(keys)
+	b, _ := Encode(keys)
 	return b
+}
+
+type MockedReportEncoder struct {
+	mock.Mock
+}
+
+func (_m *MockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte, error) {
+	ret := _m.Mock.Called(toReport)
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func() []byte); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	return r0, ret.Error(1)
 }

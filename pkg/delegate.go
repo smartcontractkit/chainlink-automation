@@ -32,7 +32,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester: c.OffchainConfigDigester,
 		OffchainKeyring:        c.OffchainKeyring,
 		OnchainKeyring:         c.OnchainKeyring,
-		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.Registry),
+		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder),
 	})
 
 	// TODO: handle errors better

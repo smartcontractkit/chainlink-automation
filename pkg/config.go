@@ -18,5 +18,6 @@ type DelegateConfig struct {
 	OffchainKeyring              types.OffchainKeyring
 	OnchainKeyring               types.OnchainKeyring
 
-	Registry ktypes.Registry
+	Registry      ktypes.Registry
+	ReportEncoder ktypes.ReportEncoder
 }
