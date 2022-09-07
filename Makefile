@@ -1,3 +1,6 @@
+GOBASE=$(shell pwd)
+GOBIN=$(GOBASE)/bin
+
 GOPACKAGES = $(shell go list ./...)
 
 dependencies:
@@ -12,9 +15,12 @@ coverage:
 benchmark: dependencies fmt
 	@go test $(GOPACKAGES) -bench=. -benchmem -run=^#
 
+simulator: dependencies fmt
+	go build -o $(GOBIN)/simulator ./cmd/simulator/*.go || exit
+
 fmt:
 	gofmt -w .
 
 default: build
 
-.PHONY: dependencies test fmt benchmark
+.PHONY: dependencies test fmt benchmark simulate
