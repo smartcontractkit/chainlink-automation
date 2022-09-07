@@ -19,3 +19,6 @@
 
 # Editor specific
 .vscode
+
+# executable output folder
+bin/
