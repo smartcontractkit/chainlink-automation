@@ -23,6 +23,7 @@ var (
 	nodes    = flag.Int("nodes", 3, "number of nodes to simulate")
 	rounds   = flag.Int("rounds", 2, "OCR rounds to simulate; 0 for no limit")
 	rtime    = flag.Int("round-time", 5, "round time in seconds")
+	maxRun   = flag.Int("max-run-time", 0, "max run time in seconds for the simulation")
 )
 
 func main() {
@@ -49,7 +50,15 @@ func main() {
 		wrapPluginReceiver(controller, rec, makePlugin(address))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	var ctx context.Context
+	var cancel context.CancelFunc
+
+	if *maxRun > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(int64(*maxRun))*time.Second)
+	} else {
+		ctx = context.Background()
+		cancel = func() {}
+	}
 
 	c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

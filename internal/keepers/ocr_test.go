@@ -401,7 +401,7 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 	plugin := &keepers{}
 	ok, err := plugin.ShouldAcceptFinalizedReport(context.Background(), types.ReportTimestamp{}, types.Report{})
 
-	assert.Equal(t, false, ok)
+	assert.Equal(t, true, ok)
 	assert.NoError(t, err)
 }
 
@@ -421,7 +421,7 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 	plugin := &keepers{}
 	ok, err := plugin.ShouldTransmitAcceptedReport(context.Background(), types.ReportTimestamp{}, types.Report{})
 
-	assert.Equal(t, false, ok)
+	assert.Equal(t, true, ok)
 	assert.NoError(t, err)
 }
 
