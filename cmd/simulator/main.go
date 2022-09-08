@@ -56,8 +56,7 @@ func main() {
 	if *maxRun > 0 {
 		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(int64(*maxRun))*time.Second)
 	} else {
-		ctx = context.Background()
-		cancel = func() {}
+		ctx, cancel = context.WithCancel(context.Background())
 	}
 
 	c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
