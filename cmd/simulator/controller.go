@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"log"
+	"os"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -23,19 +27,26 @@ type OCRObservation []byte
 type OCRReport []byte
 
 type OCRController struct {
-	RoundTime       time.Duration
-	Queries         chan OCRQuery
-	Observations    chan OCRObservation
-	Reports         chan OCRReport
-	Stop            chan struct{}
-	Receivers       []*OCRReceiver
-	MaxRounds       int
-	mu              sync.Mutex
-	collection      []OCRObservation
-	completeReports [][]OCRReport
+	RoundTime            time.Duration
+	QueryTime            time.Duration
+	ObservationTime      time.Duration
+	ReportTime           time.Duration
+	Queries              chan OCRQuery
+	Observations         chan OCRObservation
+	Reports              chan OCRReport
+	Stop                 chan struct{}
+	Receivers            []*OCRReceiver
+	MaxRounds            int
+	MaxQueryLength       int
+	MaxObservationLength int
+	MaxReportLength      int
+	logger               *log.Logger
+	mu                   sync.Mutex
+	collection           []OCRObservation
+	completeReports      [][]OCRReport
 }
 
-func NewOCRController(round time.Duration, rnds int, rcvrs ...*OCRReceiver) *OCRController {
+func NewOCRController(round time.Duration, rnds int, logger *log.Logger, rcvrs ...*OCRReceiver) *OCRController {
 	return &OCRController{
 		RoundTime:       round,
 		Queries:         make(chan OCRQuery, 1),
@@ -44,6 +55,7 @@ func NewOCRController(round time.Duration, rnds int, rcvrs ...*OCRReceiver) *OCR
 		Stop:            make(chan struct{}, 1),
 		Receivers:       rcvrs,
 		MaxRounds:       rnds,
+		logger:          logger,
 		collection:      []OCRObservation{},
 		completeReports: [][]OCRReport{},
 	}
@@ -57,14 +69,20 @@ func (c *OCRController) sendInitCall(ctx context.Context, call OCRCallBase) {
 	// mimicks leader selection in OCR
 	wg.Add(1)
 
+	var cancel context.CancelFunc = func() {}
+	if c.QueryTime > 0 {
+		call.Context, cancel = context.WithTimeout(call.Context, c.QueryTime)
+	}
+
 	go func(r *OCRReceiver) {
 		defer wg.Done()
 
 		select {
 		case r.Init <- OCRCall[struct{}]{OCRCallBase: call, Data: struct{}{}}:
-			log.Printf("controller: init call sent to %s", r.Name)
+			c.logger.Printf("init call sent to %s", r.Name)
 			return
 		case <-ctx.Done():
+			cancel()
 			return
 		}
 	}(c.Receivers[0])
@@ -74,21 +92,31 @@ func (c *OCRController) sendInitCall(ctx context.Context, call OCRCallBase) {
 
 func (c *OCRController) sendQueries(ctx context.Context, call OCRCallBase) {
 	var wg sync.WaitGroup
+	var cancel context.CancelFunc = func() {}
 
 	select {
 	case q := <-c.Queries:
-		log.Printf("controller: received query from leader")
+		c.logger.Printf("received query from leader")
+		if len([]byte(q)) > c.MaxQueryLength {
+			c.logger.Printf("[error] max query length exceeded")
+		}
+
 		for _, rec := range c.Receivers {
 			wg.Add(1)
+
+			if c.ObservationTime > 0 {
+				call.Context, cancel = context.WithTimeout(call.Context, c.ObservationTime)
+			}
 
 			go func(r *OCRReceiver) {
 				defer wg.Done()
 
 				select {
 				case r.Query <- OCRCall[OCRQuery]{OCRCallBase: call, Data: q}:
-					log.Printf("controller: sent query to %s", r.Name)
+					c.logger.Printf("sent query to %s", r.Name)
 					return
 				case <-ctx.Done():
+					cancel()
 					return
 				}
 			}(rec)
@@ -96,6 +124,7 @@ func (c *OCRController) sendQueries(ctx context.Context, call OCRCallBase) {
 
 		wg.Wait()
 	case <-ctx.Done():
+		cancel()
 		return
 	}
 }
@@ -115,7 +144,11 @@ func (c *OCRController) collectObservations(ctx context.Context) {
 
 			select {
 			case o := <-c.Observations:
-				log.Printf("controller: received observation from %s", c.Receivers[idx].Name)
+				if len([]byte(o)) > c.MaxObservationLength {
+					c.logger.Printf("[error] max observation length exceeded from %s", c.Receivers[idx].Name)
+				}
+
+				c.logger.Printf("received observation from %s", c.Receivers[idx].Name)
 				c.mu.Lock()
 				c.collection[idx] = o
 				c.mu.Unlock()
@@ -131,6 +164,7 @@ func (c *OCRController) collectObservations(ctx context.Context) {
 
 func (c *OCRController) sendObservations(ctx context.Context, call OCRCallBase) {
 	var wg sync.WaitGroup
+	var cancel context.CancelFunc = func() {}
 
 	// send observations to all nodes
 	c.mu.Lock()
@@ -140,14 +174,19 @@ func (c *OCRController) sendObservations(ctx context.Context, call OCRCallBase) 
 	for _, rec := range c.Receivers {
 		wg.Add(1)
 
+		if c.ReportTime > 0 {
+			call.Context, cancel = context.WithTimeout(call.Context, c.ReportTime)
+		}
+
 		go func(r *OCRReceiver) {
 			defer wg.Done()
 
 			select {
 			case r.Observations <- OCRCall[[]OCRObservation]{OCRCallBase: call, Data: copy}:
-				log.Printf("controller: sent observations to %s", r.Name)
+				c.logger.Printf("sent observations to %s", r.Name)
 				return
 			case <-ctx.Done():
+				cancel()
 				return
 			}
 		}(rec)
@@ -180,7 +219,10 @@ func (c *OCRController) collectReports(ctx context.Context, call OCRCallBase) {
 		for i := 0; i < len(c.Receivers); i++ {
 			select {
 			case r := <-c.Reports:
-				log.Printf("controller: report received from %s", c.Receivers[i].Name)
+				if len([]byte(r)) > c.MaxReportLength {
+					c.logger.Printf("[error] max report length exceeded from %s", c.Receivers[i].Name)
+				}
+				c.logger.Printf("report received from %s", c.Receivers[i].Name)
 				rpts = append(rpts, r)
 			case <-ctx.Done():
 				break Outer
@@ -194,8 +236,17 @@ func (c *OCRController) collectReports(ctx context.Context, call OCRCallBase) {
 	wg.Wait()
 
 	c.mu.Lock()
-	if len(c.completeReports[len(c.completeReports)-1]) > 0 {
-		rpt := c.collapseReports(c.completeReports[len(c.completeReports)-1])
+	lastRound := len(c.completeReports) - 1
+	hasReports := len(c.completeReports[lastRound])
+	collapsed, err := c.collapseReports(c.completeReports[lastRound])
+	c.mu.Unlock()
+
+	if err != nil {
+		panic(err)
+	}
+
+	if hasReports > 0 {
+		rpt := collapsed
 
 		for _, rec := range c.Receivers {
 			wg.Add(1)
@@ -204,7 +255,7 @@ func (c *OCRController) collectReports(ctx context.Context, call OCRCallBase) {
 
 				select {
 				case r.Report <- OCRCall[OCRReport]{OCRCallBase: call, Data: rpt}:
-					log.Printf("controller: sent final report to %s", r.Name)
+					c.logger.Printf("sent final report to %s", r.Name)
 					return
 				case <-ctx.Done():
 					return
@@ -212,14 +263,17 @@ func (c *OCRController) collectReports(ctx context.Context, call OCRCallBase) {
 			}(rec)
 		}
 	}
-	c.mu.Unlock()
 
 	wg.Wait()
 }
 
-func (c *OCRController) collapseReports(reports []OCRReport) OCRReport {
-	// TODO: nieve implementation assumes are reports are the same and sends the first
-	return reports[0]
+func (c *OCRController) collapseReports(reports []OCRReport) (OCRReport, error) {
+	// TODO: nieve implementation assumes all reports are the same and sends the first
+	if len(reports) == 0 {
+		return nil, fmt.Errorf("cannot collapse reports of length 0")
+	}
+
+	return reports[0], nil
 }
 
 func (c *OCRController) stopReceivers() {
@@ -231,6 +285,12 @@ func (c *OCRController) stopReceivers() {
 }
 
 func (c *OCRController) Start(ctx context.Context) chan struct{} {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+			debug.PrintStack()
+		}
+	}()
 	done := make(chan struct{}, 1)
 
 	go func() {
@@ -238,16 +298,16 @@ func (c *OCRController) Start(ctx context.Context) chan struct{} {
 		tkr := 0 * time.Second
 		iterations := 0
 
-		log.Printf("starting OCR controller with round time of %d seconds", c.RoundTime/time.Second)
+		c.logger.Printf("starting OCR controller with round time of %d seconds", c.RoundTime/time.Second)
 
 		for {
 			t := time.NewTimer(tkr)
 
 			select {
 			case <-c.Stop:
-				log.Printf("receivers stopping")
+				c.logger.Printf("receivers stopping")
 				c.stopReceivers()
-				log.Printf("receivers stopped")
+				c.logger.Printf("receivers stopped")
 				t.Stop()
 				done <- struct{}{}
 				return
@@ -256,7 +316,7 @@ func (c *OCRController) Start(ctx context.Context) chan struct{} {
 				roundCtx, cancel := context.WithDeadline(ctx, time.Now().Add(c.RoundTime-(10*time.Millisecond)))
 				base := OCRCallBase{Context: roundCtx, Round: iterations, Epoch: 1}
 
-				log.Printf("-----> round %d begins", iterations)
+				c.logger.Printf("-----> round %d begins", iterations)
 
 				// send call to Query to begin round
 				c.sendInitCall(roundCtx, base)
@@ -272,9 +332,9 @@ func (c *OCRController) Start(ctx context.Context) chan struct{} {
 
 				c.collectReports(roundCtx, base)
 
-				log.Printf("<----- round %d ends", iterations)
+				c.logger.Printf("<----- round %d ends", iterations)
 				if c.MaxRounds > 0 && iterations == c.MaxRounds {
-					log.Printf("max rounds encountered; terminating process")
+					c.logger.Printf("max rounds encountered; terminating process")
 					c.Stop <- struct{}{}
 				}
 				tkr = c.RoundTime
@@ -287,4 +347,31 @@ func (c *OCRController) Start(ctx context.Context) chan struct{} {
 	}()
 
 	return done
+}
+
+func (c *OCRController) WriteReports(path string) {
+	c.mu.Lock()
+	for i, nodeReports := range c.completeReports {
+		for j, r := range nodeReports {
+			name := fmt.Sprintf("node_%d_round_%d", i+1, j+1)
+
+			dst := make([]byte, hex.EncodedLen(len(r)))
+			hex.Encode(dst, r)
+
+			f, err := os.OpenFile(fmt.Sprintf("%s/%s", path, name), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+			if err != nil {
+				c.logger.Println(err.Error())
+				f.Close()
+				continue
+			}
+
+			_, err = f.Write(dst)
+			if err != nil {
+				c.logger.Println(err.Error())
+			}
+
+			f.Close()
+		}
+	}
+	c.mu.Unlock()
 }

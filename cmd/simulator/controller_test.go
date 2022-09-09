@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"io"
+	"log"
 	"sync"
 	"testing"
 	"time"
@@ -14,7 +16,8 @@ func TestMockCollectObservations(t *testing.T) {
 	r2 := NewOCRReceiver("2")
 
 	duration := 100 * time.Millisecond
-	c := NewOCRController(duration, 2, r1, r2)
+	l := log.New(io.Discard, "", 0)
+	c := NewOCRController(duration, 2, l, r1, r2)
 
 	c.Observations <- OCRObservation([]byte("one"))
 	c.Observations <- OCRObservation([]byte("two"))
@@ -32,7 +35,8 @@ func TestMockSendObservations(t *testing.T) {
 	r2 := NewOCRReceiver("2")
 
 	duration := 100 * time.Millisecond
-	c := NewOCRController(duration, 2, r1, r2)
+	l := log.New(io.Discard, "", 0)
+	c := NewOCRController(duration, 2, l, r1, r2)
 
 	c.collection = []OCRObservation{OCRObservation([]byte("one")), OCRObservation([]byte("two"))}
 
@@ -77,7 +81,8 @@ func TestMockCollectReports(t *testing.T) {
 	r2 := NewOCRReceiver("2")
 
 	duration := 100 * time.Millisecond
-	c := NewOCRController(duration, 2, r1, r2)
+	l := log.New(io.Discard, "", 0)
+	c := NewOCRController(duration, 2, l, r1, r2)
 
 	c.Reports <- OCRReport([]byte("one"))
 	c.Reports <- OCRReport([]byte("two"))

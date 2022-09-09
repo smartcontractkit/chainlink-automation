@@ -2,12 +2,14 @@ package keepers
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type simpleUpkeepService struct {
+	logger   *log.Logger
 	ratio    SampleRatio
 	registry types.Registry
 	shuffler Shuffler[types.UpkeepKey]
@@ -19,8 +21,9 @@ type simpleUpkeepService struct {
 // rudamentary way. Sampling upkeeps is done on demand and completes in linear time with upkeeps.
 //
 // DO NOT USE THIS IN PRODUCTION
-func NewSimpleUpkeepService(ratio SampleRatio, registry types.Registry) *simpleUpkeepService {
+func NewSimpleUpkeepService(ratio SampleRatio, registry types.Registry, logger *log.Logger) *simpleUpkeepService {
 	return &simpleUpkeepService{
+		logger:   logger,
 		ratio:    ratio,
 		registry: registry,
 		shuffler: new(cryptoShuffler[types.UpkeepKey]),
@@ -55,9 +58,10 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upkee
 		s.mu.Unlock()
 
 		// TODO: handle errors correctly
+		s.logger.Printf("checking upkeep %s", keys[i])
 		ok, u, _ := s.registry.CheckUpkeep(ctx, types.Address([]byte{}), keys[i])
 		if ok {
-			result = append(result, &types.UpkeepResult{Key: keys[i], State: Perform, PerformData: u.PerformData})
+			result = append(result, &u)
 		}
 	}
 

@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
@@ -14,6 +15,9 @@ type Delegate struct {
 }
 
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
+	wrapper := &logWriter{l: c.Logger}
+	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
+
 	keeper, err := offchainreporting.NewOracle(offchainreporting.OracleArgs{
 		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
 		V2Bootstrappers:              c.V2Bootstrappers,
@@ -32,7 +36,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester: c.OffchainConfigDigester,
 		OffchainKeyring:        c.OffchainKeyring,
 		OnchainKeyring:         c.OnchainKeyring,
-		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder),
+		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder, l),
 	})
 
 	// TODO: handle errors better

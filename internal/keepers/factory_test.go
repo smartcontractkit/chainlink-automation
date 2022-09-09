@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewReportingPluginFactory(t *testing.T) {
-	f := NewReportingPluginFactory(nil, nil)
+	f := NewReportingPluginFactory(nil, nil, nil)
 	assert.NotNil(t, f)
 }
 

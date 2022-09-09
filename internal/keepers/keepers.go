@@ -1,6 +1,8 @@
 package keepers
 
-import "github.com/smartcontractkit/ocr2keepers/pkg/types"
+import (
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+)
 
 type keepers struct {
 	service UpkeepService
