@@ -53,6 +53,17 @@ func TestSimpleUpkeepService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(result))
 
+		var matches int
+		for _, r := range result {
+			for _, a := range actives {
+				if string(r.Key) == string(a) {
+					matches++
+				}
+			}
+		}
+
+		assert.Equal(t, 2, matches)
+
 		rg.Mock.AssertExpectations(t)
 	})
 

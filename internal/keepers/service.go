@@ -61,7 +61,7 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upkee
 		s.logger.Printf("checking upkeep %s", keys[i])
 		ok, u, _ := s.registry.CheckUpkeep(ctx, types.Address([]byte{}), keys[i])
 		if ok {
-			result = append(result, &types.UpkeepResult{Key: keys[i], State: Perform, PerformData: u.PerformData})
+			result = append(result, &u)
 		}
 	}
 
