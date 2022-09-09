@@ -54,14 +54,17 @@ To run the simulator, you can use the defaults for most inputs. The two most imp
 
 Example:
 ```
-$ ./bin/simulator -contract 0x02777053d6764996e594c3E88AF1D58D5363a2e6 -rpc https://rinkeby.infura.io/v3/[your key]
+$ ./bin/simulator --contract 0x02777053d6764996e594c3E88AF1D58D5363a2e6 --rpc-node https://rinkeby.infura.io/v3/[your key]
 ```
 
 Other options include:
-- `-nodes`: integer, default 3, the number of parallel nodes to simulate. minimum of 1
-- `-round-time`: integer, default 5, the time in seconds a round should take. this is a hard limit and the round context will be cancelled at the end of the round
-- `-rounds`: integer, default 2, defines the number of rounds the simulator should run. 0 is unlimited
-- `max-run-time`: integer, default 0, the number of seconds to run the simulation. use this in place of number of rounds to do a time based simulation instead of a round based simulation. use 0 for no limit
+- `--nodes | -n [int]`: default 3, the number of parallel nodes to simulate. minimum of 1
+- `--round-time | -t [int]`: default 5, the time in seconds a round should take. this is a hard limit and the round context will be cancelled at the end of the round
+- `--query-time | -qt [int]`: default 0, the max time in seconds to run an OCR Query operation. use this for a more fine-grained simulation to OCR
+- `--observation-time | -ot [int]`: default 0, the max time in seconds to run an OCR Observation operation. use this for a more fine-grained simulation to OCR
+- `--report-time | -rt [int]`: default 0, the max time in seconds to run an OCR Report operation. use this for a more fine-grained simulation to OCR
+- `--rounds | -r [int]`: default 2, defines the number of rounds the simulator should run. 0 is unlimited
+- `--max-run-time | -m [int]`: default 0, the number of seconds to run the simulation. use this in place of number of rounds to do a time based simulation instead of a round based simulation. use 0 for no limit
 
 The simulation will end when one of the following occurs:
 1. Defined number of rounds occurs

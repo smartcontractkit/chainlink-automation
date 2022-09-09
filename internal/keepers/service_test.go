@@ -3,6 +3,8 @@ package keepers
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -37,7 +39,9 @@ func TestSimpleUpkeepService(t *testing.T) {
 			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[1], State: state, PerformData: pData}, nil)
 		}
 
+		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
+			logger:   l,
 			ratio:    SampleRatio(0.5),
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
@@ -64,7 +68,9 @@ func TestSimpleUpkeepService(t *testing.T) {
 		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
 		rg.Mock.On("CheckUpkeep", ctx, mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: Skip}, nil)
 
+		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
+			logger:   l,
 			ratio:    SampleRatio(1.0),
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
@@ -90,7 +96,9 @@ func TestSimpleUpkeepService(t *testing.T) {
 		rg := new(MockedRegistry)
 		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
 
+		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
+			logger:   l,
 			registry: rg,
 			state:    make(map[string]ktypes.UpkeepState),
 		}
@@ -161,7 +169,9 @@ func TestSimpleUpkeepService(t *testing.T) {
 			rg := new(MockedRegistry)
 			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, test.Key).Return(test.Check, test.RegResult, test.Err)
 
+			l := log.New(io.Discard, "", 0)
 			svc := &simpleUpkeepService{
+				logger:   l,
 				state:    make(map[string]ktypes.UpkeepState),
 				registry: rg,
 			}
@@ -191,8 +201,10 @@ func TestSimpleUpkeepService(t *testing.T) {
 			{Key: []byte("test-key-2"), State: ktypes.UpkeepState(2), Err: nil},
 		}
 
+		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
-			state: make(map[string]ktypes.UpkeepState),
+			logger: l,
+			state:  make(map[string]ktypes.UpkeepState),
 		}
 
 		for _, test := range tests {

@@ -2,18 +2,20 @@ package keepers
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder) types.ReportingPluginFactory {
-	return &keepersReportingFactory{registry: registry, encoder: encoder}
+func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder, logger *log.Logger) types.ReportingPluginFactory {
+	return &keepersReportingFactory{registry: registry, encoder: encoder, logger: logger}
 }
 
 type keepersReportingFactory struct {
 	registry ktypes.Registry
 	encoder  ktypes.ReportEncoder
+	logger   *log.Logger
 }
 
 var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
@@ -38,7 +40,12 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		UniqueReports: true,
 	}
 
-	service := NewSimpleUpkeepService(SampleRatio(0.3), d.registry)
+	// set default logger to write to debug logs
+	// set up log formats
+	//log.SetOutput(d.logger.Writer())
+	//log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC)
+
+	service := NewSimpleUpkeepService(SampleRatio(0.01), d.registry, d.logger)
 
 	return &keepers{service: service, encoder: d.encoder}, info, nil
 }
