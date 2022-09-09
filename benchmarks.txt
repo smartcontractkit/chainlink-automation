@@ -1,18 +1,22 @@
 go mod download
 gofmt -w .
+PASS
+ok  	github.com/smartcontractkit/ocr2keepers/cmd/simulator	0.566s
 ?   	github.com/smartcontractkit/ocr2keepers/gethwrappers	[no test files]
 ?   	github.com/smartcontractkit/ocr2keepers/gethwrappers/keeper_registry_v1_2	[no test files]
 goos: darwin
 goarch: amd64
 pkg: github.com/smartcontractkit/ocr2keepers/internal/keepers
 cpu: VirtualApple @ 2.50GHz
-BenchmarkQuery-10                           	1000000000	         0.3744 ns/op	       0 B/op	       0 allocs/op
-BenchmarkObservation-10                     	   62445	     19034 ns/op	    6777 B/op	      68 allocs/op
+BenchmarkQuery-10                           	1000000000	         0.3746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkObservation-10                     	   56610	     20050 ns/op	    7824 B/op	      82 allocs/op
+BenchmarkReport-10                          	   13669	     86033 ns/op	   33390 B/op	     712 allocs/op
 BenchmarkShouldAcceptFinalizedReport-10     	1000000000	         0.3745 ns/op	       0 B/op	       0 allocs/op
-BenchmarkShouldTransmitAcceptedReport-10    	1000000000	         0.3746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkShouldTransmitAcceptedReport-10    	1000000000	         0.3744 ns/op	       0 B/op	       0 allocs/op
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	6.037s
+ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	9.776s
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/pkg	0.468s
-?   	github.com/smartcontractkit/ocr2keepers/pkg/chain	[no test files]
+ok  	github.com/smartcontractkit/ocr2keepers/pkg	0.491s
+PASS
+ok  	github.com/smartcontractkit/ocr2keepers/pkg/chain	0.465s
 ?   	github.com/smartcontractkit/ocr2keepers/pkg/types	[no test files]
