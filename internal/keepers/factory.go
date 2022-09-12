@@ -45,7 +45,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	//log.SetOutput(d.logger.Writer())
 	//log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC)
 
-	service := NewSimpleUpkeepService(SampleRatio(0.01), d.registry, d.logger)
+	service := NewSimpleUpkeepService(SampleRatio(0.1), d.registry, d.logger)
 
 	return &keepers{service: service, encoder: d.encoder}, info, nil
 }

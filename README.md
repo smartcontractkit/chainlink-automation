@@ -79,3 +79,20 @@ The simulation will end when one of the following occurs:
 1. Defined number of rounds occurs
 2. Defined simulation time limit is reached
 3. SIGTERM syscall is encountered
+
+### Profiling
+
+Execute profiling using `pprof` to see things like heap allocation, goroutines, and more.
+- `--pprof`: default false, add to turn on profiling
+- `--pprof-port [int]`: default 6060, the port on localhost to listen for pprof requests
+
+**Example:**
+Start the service in one terminal window and run the pprof tool in another. For more information on pprof, view some docs [here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
+
+```
+# terminal 1
+$ ./bin/simulator --pprof --contract 0x02777053d6764996e594c3E88AF1D58D5363a2e6 --rpc-node https://rinkeby.infura.io/v3/[your key]
+
+# terminal 2
+$ go tool pprof -top http://localhost:6060/debug/pprof/heap
+```
