@@ -2,13 +2,23 @@ package ocr2keepers
 
 import (
 	"testing"
+	"time"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStart(t *testing.T) {
 	t.Skip("service start throws nil pointer deference")
-	d, _ := NewDelegate(DelegateConfig{})
+	d, _ := NewDelegate(DelegateConfig{
+		LocalConfig: types.LocalConfig{
+			BlockchainTimeout:                  1 * time.Second,        // TODO: choose sane configs
+			ContractConfigTrackerPollInterval:  15 * time.Second,       // TODO: choose sane configs
+			ContractTransmitterTransmitTimeout: 1 * time.Second,        // TODO: choose sane configs
+			DatabaseTimeout:                    100 * time.Millisecond, // TODO: choose sane configs
+			ContractConfigConfirmations:        1,                      // TODO: choose sane configs
+		},
+	})
 	err := d.Start()
 	assert.Equal(t, err.Error(), "unimplemented")
 }
@@ -16,7 +26,15 @@ func TestStart(t *testing.T) {
 func TestClose(t *testing.T) {
 	var err error
 
-	d, err := NewDelegate(DelegateConfig{})
+	d, err := NewDelegate(DelegateConfig{
+		LocalConfig: types.LocalConfig{
+			BlockchainTimeout:                  1 * time.Second,        // TODO: choose sane configs
+			ContractConfigTrackerPollInterval:  15 * time.Second,       // TODO: choose sane configs
+			ContractTransmitterTransmitTimeout: 1 * time.Second,        // TODO: choose sane configs
+			DatabaseTimeout:                    100 * time.Millisecond, // TODO: choose sane configs
+			ContractConfigConfirmations:        1,                      // TODO: choose sane configs
+		},
+	})
 	assert.NoError(t, err)
 	if err != nil {
 		t.FailNow()
