@@ -3,10 +3,8 @@ package ocr2keepers
 import (
 	"fmt"
 	"log"
-	"time"
 
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 )
 
@@ -24,19 +22,13 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		ContractConfigTracker:        c.ContractConfigTracker,
 		ContractTransmitter:          c.ContractTransmitter,
 		Database:                     c.KeepersDatabase,
-		LocalConfig: types.LocalConfig{
-			BlockchainTimeout:                  1 * time.Second,        // TODO: choose sane configs
-			ContractConfigTrackerPollInterval:  15 * time.Second,       // TODO: choose sane configs
-			ContractTransmitterTransmitTimeout: 1 * time.Second,        // TODO: choose sane configs
-			DatabaseTimeout:                    100 * time.Millisecond, // TODO: choose sane configs
-			ContractConfigConfirmations:        1,                      // TODO: choose sane configs
-		},
-		Logger:                 c.Logger,
-		MonitoringEndpoint:     c.MonitoringEndpoint,
-		OffchainConfigDigester: c.OffchainConfigDigester,
-		OffchainKeyring:        c.OffchainKeyring,
-		OnchainKeyring:         c.OnchainKeyring,
-		ReportingPluginFactory: keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder, l),
+		LocalConfig:                  c.LocalConfig,
+		Logger:                       c.Logger,
+		MonitoringEndpoint:           c.MonitoringEndpoint,
+		OffchainConfigDigester:       c.OffchainConfigDigester,
+		OffchainKeyring:              c.OffchainKeyring,
+		OnchainKeyring:               c.OnchainKeyring,
+		ReportingPluginFactory:       keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder, l),
 	})
 
 	// TODO: handle errors better

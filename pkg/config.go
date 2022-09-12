@@ -17,6 +17,7 @@ type DelegateConfig struct {
 	OffchainConfigDigester       types.OffchainConfigDigester
 	OffchainKeyring              types.OffchainKeyring
 	OnchainKeyring               types.OnchainKeyring
+	LocalConfig                  types.LocalConfig
 
 	Registry      ktypes.Registry
 	ReportEncoder ktypes.ReportEncoder
