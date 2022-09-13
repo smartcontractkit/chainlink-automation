@@ -345,6 +345,9 @@ func TestReport(t *testing.T) {
 					u := test.Checks[p]
 					u.R.Key = u.K
 					toPerform[i] = u.R
+					if test.EncodeErr == nil {
+						ms.Mock.On("SetUpkeepState", ctx, u.R.Key, Reported).Return(nil)
+					}
 				}
 				me.Mock.On("EncodeReport", toPerform).Return(test.ExpectedReport, test.EncodeErr)
 			}
