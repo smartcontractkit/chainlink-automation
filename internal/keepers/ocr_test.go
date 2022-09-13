@@ -373,27 +373,56 @@ func BenchmarkReport(b *testing.B) {
 	me := new(MockedReportEncoder)
 	plugin := &keepers{service: ms, encoder: me}
 
-	set := ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|1")), State: Perform, PerformData: []byte("abcd")}
+	key1 := ktypes.UpkeepKey([]byte("1|1"))
+	key2 := ktypes.UpkeepKey([]byte("1|2"))
+	data := []byte("abcd")
+
+	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
+
+	set := []ktypes.UpkeepResult{
+		{Key: key1, State: Perform, PerformData: data},
+		{Key: key2, State: Perform, PerformData: data},
+	}
 	observations := []types.AttributedObservation{
-		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
 	}
 
-	b.ResetTimer()
-	// run the Observation function b.N times
-	for n := 0; n < b.N; n++ {
-		ctx := context.Background()
-		ms.Mock.On("CheckUpkeep", ctx, set.Key).Return(set, nil)
-		me.Mock.On("EncodeReport", []ktypes.UpkeepResult{set}).Return([]byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))), nil)
+	for i := 1; i <= 4; i++ {
+		ob := observations[0 : i*4]
 
-		b.StartTimer()
-		_, _, err := plugin.Report(context.Background(), types.ReportTimestamp{}, types.Query{}, observations)
-		b.StopTimer()
+		b.Run(fmt.Sprintf("%d Nodes", len(ob)), func(b *testing.B) {
+			b.ResetTimer()
 
-		if err != nil {
-			b.Fail()
-		}
+			// run the Observation function b.N times
+			for n := 0; n < b.N; n++ {
+				ctx := context.Background()
+				ms.Mock.On("CheckUpkeep", ctx, set[0].Key).Return(set[0], nil)
+				me.Mock.On("EncodeReport", set[0:1]).Return([]byte(fmt.Sprintf("%d+%s", 1, data)), nil)
+
+				b.StartTimer()
+				_, _, err := plugin.Report(context.Background(), types.ReportTimestamp{}, types.Query{}, ob)
+				b.StopTimer()
+
+				if err != nil {
+					b.Fail()
+				}
+			}
+		})
 	}
 }
 

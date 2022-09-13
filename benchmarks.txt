@@ -1,7 +1,7 @@
 go mod download
 gofmt -w .
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/cmd/simulator	0.566s
+ok  	github.com/smartcontractkit/ocr2keepers/cmd/simulator	0.341s
 ?   	github.com/smartcontractkit/ocr2keepers/gethwrappers	[no test files]
 ?   	github.com/smartcontractkit/ocr2keepers/gethwrappers/keeper_registry_v1_2	[no test files]
 goos: darwin
@@ -9,14 +9,17 @@ goarch: amd64
 pkg: github.com/smartcontractkit/ocr2keepers/internal/keepers
 cpu: VirtualApple @ 2.50GHz
 BenchmarkQuery-10                           	1000000000	         0.3746 ns/op	       0 B/op	       0 allocs/op
-BenchmarkObservation-10                     	   56610	     20050 ns/op	    7824 B/op	      82 allocs/op
-BenchmarkReport-10                          	   13669	     86033 ns/op	   33390 B/op	     712 allocs/op
-BenchmarkShouldAcceptFinalizedReport-10     	1000000000	         0.3745 ns/op	       0 B/op	       0 allocs/op
-BenchmarkShouldTransmitAcceptedReport-10    	1000000000	         0.3744 ns/op	       0 B/op	       0 allocs/op
+BenchmarkObservation-10                     	   57445	     20064 ns/op	    7810 B/op	      82 allocs/op
+BenchmarkReport/4_Nodes-10                  	   10000	    116247 ns/op	   43150 B/op	     964 allocs/op
+BenchmarkReport/8_Nodes-10                  	    6946	    170570 ns/op	   71721 B/op	    1712 allocs/op
+BenchmarkReport/12_Nodes-10                 	    5209	    228094 ns/op	   98716 B/op	    2460 allocs/op
+BenchmarkReport/16_Nodes-10                 	    4156	    286428 ns/op	  125016 B/op	    3208 allocs/op
+BenchmarkShouldAcceptFinalizedReport-10     	1000000000	         0.3744 ns/op	       0 B/op	       0 allocs/op
+BenchmarkShouldTransmitAcceptedReport-10    	1000000000	         0.3745 ns/op	       0 B/op	       0 allocs/op
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	9.776s
+ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	13.068s
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/pkg	0.491s
+ok  	github.com/smartcontractkit/ocr2keepers/pkg	0.490s
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/pkg/chain	0.465s
+ok  	github.com/smartcontractkit/ocr2keepers/pkg/chain	0.426s
 ?   	github.com/smartcontractkit/ocr2keepers/pkg/types	[no test files]
