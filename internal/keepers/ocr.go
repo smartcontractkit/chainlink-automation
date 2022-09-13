@@ -3,7 +3,6 @@ package keepers
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -41,28 +40,14 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Query, attributed []types.AttributedObservation) (bool, types.Report, error) {
 	var err error
 
-	// collect all observations
-	sets := make([][]ktypes.UpkeepKey, len(attributed))
-	for i, a := range attributed {
-		var values []ktypes.UpkeepKey
-		err = Decode([]byte(a.Observation), &values)
-		if err != nil {
-			// TODO: handle errors better; this currently results in a hard failure on bad encoding
-			return false, nil, err
-		}
-		sets[i] = values
-	}
-
-	// dedupe, flatten, and sort
-	allKeys, err := dedupe(sets)
+	keys, err := sortedDedupedKeyList(attributed)
 	if err != nil {
-		return false, nil, fmt.Errorf("%w: observation dedupe", err)
+		return false, nil, fmt.Errorf("%w: sorting/deduping failure", err)
 	}
-	sort.Sort(sortUpkeepKeys(allKeys))
 
 	// select, verify, and build report
 	toPerform := []ktypes.UpkeepResult{}
-	for _, key := range allKeys {
+	for _, key := range keys {
 		upkeep, err := k.service.CheckUpkeep(ctx, key)
 		if err != nil {
 			return false, nil, fmt.Errorf("%w: check upkeep failure in report", err)

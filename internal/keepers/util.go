@@ -5,7 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	rnd "math/rand"
+	"sort"
+	"sync"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -107,4 +110,47 @@ func dedupe[T any](inputs [][]T) ([]T, error) {
 	}
 
 	return output, nil
+}
+
+func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.UpkeepKey, error) {
+	var err error
+
+	collector := make(chan []ktypes.UpkeepKey, len(attributed))
+	var wg sync.WaitGroup
+
+	for _, attr := range attributed {
+
+		wg.Add(1)
+		go func(a types.AttributedObservation, c chan []ktypes.UpkeepKey) {
+			defer wg.Done()
+
+			var values []ktypes.UpkeepKey
+			err = Decode([]byte(a.Observation), &values)
+			if err != nil {
+				// TODO: handle errors better; this currently results in a soft failure on bad encoding
+				c <- []ktypes.UpkeepKey{}
+				return
+			}
+
+			sort.Sort(sortUpkeepKeys(values))
+
+			c <- values
+		}(attr, collector)
+	}
+
+	wg.Wait()
+
+	kys := make([][]ktypes.UpkeepKey, len(attributed))
+	for i := 0; i < len(attributed); i++ {
+		kys[i] = <-collector
+	}
+
+	keys, err := dedupe(kys)
+	if err != nil {
+		return nil, fmt.Errorf("%w: observation dedupe", err)
+	}
+
+	sort.Sort(sortUpkeepKeys(keys))
+
+	return keys, nil
 }

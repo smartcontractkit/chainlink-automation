@@ -1,9 +1,12 @@
 package keepers
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,4 +45,52 @@ func TestDedupe(t *testing.T) {
 			}
 		})
 	}
+}
+
+func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
+	key1 := ktypes.UpkeepKey([]byte("1|1"))
+	key2 := ktypes.UpkeepKey([]byte("1|2"))
+	key3 := ktypes.UpkeepKey([]byte("2|1"))
+
+	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
+
+	observations := []types.AttributedObservation{
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{key2, key3}))},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(encoded)},
+	}
+
+	for i := 1; i <= 4; i++ {
+		ob := observations[0 : i*4]
+
+		b.Run(fmt.Sprintf("%d Nodes", len(ob)), func(b *testing.B) {
+			b.ResetTimer()
+
+			// run the Observation function b.N times
+			for n := 0; n < b.N; n++ {
+
+				b.StartTimer()
+				_, err := sortedDedupedKeyList(ob)
+				b.StopTimer()
+
+				if err != nil {
+					b.Fail()
+				}
+			}
+		})
+	}
+
 }

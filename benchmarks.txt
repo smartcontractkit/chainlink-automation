@@ -1,25 +1,30 @@
 go mod download
 gofmt -w .
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/cmd/simulator	0.341s
+ok  	github.com/smartcontractkit/ocr2keepers/cmd/simulator	0.362s
 ?   	github.com/smartcontractkit/ocr2keepers/gethwrappers	[no test files]
 ?   	github.com/smartcontractkit/ocr2keepers/gethwrappers/keeper_registry_v1_2	[no test files]
 goos: darwin
 goarch: amd64
 pkg: github.com/smartcontractkit/ocr2keepers/internal/keepers
 cpu: VirtualApple @ 2.50GHz
-BenchmarkQuery-10                           	1000000000	         0.3746 ns/op	       0 B/op	       0 allocs/op
-BenchmarkObservation-10                     	   57445	     20064 ns/op	    7810 B/op	      82 allocs/op
-BenchmarkReport/4_Nodes-10                  	   10000	    116247 ns/op	   43150 B/op	     964 allocs/op
-BenchmarkReport/8_Nodes-10                  	    6946	    170570 ns/op	   71721 B/op	    1712 allocs/op
-BenchmarkReport/12_Nodes-10                 	    5209	    228094 ns/op	   98716 B/op	    2460 allocs/op
-BenchmarkReport/16_Nodes-10                 	    4156	    286428 ns/op	  125016 B/op	    3208 allocs/op
-BenchmarkShouldAcceptFinalizedReport-10     	1000000000	         0.3744 ns/op	       0 B/op	       0 allocs/op
-BenchmarkShouldTransmitAcceptedReport-10    	1000000000	         0.3745 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDecode-10                          	  397489	      2792 ns/op	    1160 B/op	      10 allocs/op
+BenchmarkQuery-10                           	1000000000	         0.3110 ns/op	       0 B/op	       0 allocs/op
+BenchmarkObservation-10                     	   67354	     17669 ns/op	    6998 B/op	      70 allocs/op
+BenchmarkReport/4_Nodes-10                  	   16945	     64073 ns/op	   21029 B/op	     312 allocs/op
+BenchmarkReport/8_Nodes-10                  	   15130	     78836 ns/op	   25414 B/op	     404 allocs/op
+BenchmarkReport/12_Nodes-10                 	   12448	     96520 ns/op	   31704 B/op	     496 allocs/op
+BenchmarkReport/16_Nodes-10                 	   10000	    108243 ns/op	   38222 B/op	     588 allocs/op
+BenchmarkShouldAcceptFinalizedReport-10     	1000000000	         0.3188 ns/op	       0 B/op	       0 allocs/op
+BenchmarkShouldTransmitAcceptedReport-10    	1000000000	         0.3192 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSortedDedupedKeyListFunc/4_Nodes-10         	   57950	     20618 ns/op	    5505 B/op	      99 allocs/op
+BenchmarkSortedDedupedKeyListFunc/8_Nodes-10         	   36121	     33489 ns/op	   10856 B/op	     191 allocs/op
+BenchmarkSortedDedupedKeyListFunc/12_Nodes-10        	   26694	     43644 ns/op	   16207 B/op	     283 allocs/op
+BenchmarkSortedDedupedKeyListFunc/16_Nodes-10        	   23011	     52410 ns/op	   21556 B/op	     375 allocs/op
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	13.068s
+ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	50.715s
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/pkg	0.490s
+ok  	github.com/smartcontractkit/ocr2keepers/pkg	0.478s
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/pkg/chain	0.426s
+ok  	github.com/smartcontractkit/ocr2keepers/pkg/chain	0.422s
 ?   	github.com/smartcontractkit/ocr2keepers/pkg/types	[no test files]

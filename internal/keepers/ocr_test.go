@@ -375,6 +375,7 @@ func BenchmarkReport(b *testing.B) {
 
 	key1 := ktypes.UpkeepKey([]byte("1|1"))
 	key2 := ktypes.UpkeepKey([]byte("1|2"))
+	key3 := ktypes.UpkeepKey([]byte("2|1"))
 	data := []byte("abcd")
 
 	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
@@ -387,7 +388,7 @@ func BenchmarkReport(b *testing.B) {
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
-		{Observation: types.Observation(encoded)},
+		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{key2, key3}))},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
