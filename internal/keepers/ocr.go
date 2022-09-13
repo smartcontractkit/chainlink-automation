@@ -46,7 +46,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 	}
 
 	// select, verify, and build report
-	toPerform := []ktypes.UpkeepResult{}
+	toPerform := make([]ktypes.UpkeepResult, 0, 1)
 	for _, key := range keys {
 		upkeep, err := k.service.CheckUpkeep(ctx, key)
 		if err != nil {
@@ -69,6 +69,14 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 	if err != nil {
 		// TODO: handle errors better
 		return false, nil, fmt.Errorf("%w: report encoding", err)
+	}
+
+	// update internal state of upkeeps to ensure they aren't reported or observed again
+	for i := 0; i < len(toPerform); i++ {
+		if err := k.service.SetUpkeepState(ctx, toPerform[i].Key, Reported); err != nil {
+			// TODO: handle errors better
+			return false, nil, fmt.Errorf("%w: attempted to update internal state", err)
+		}
 	}
 
 	return true, types.Report(b), err

@@ -369,8 +369,8 @@ func TestReport(t *testing.T) {
 }
 
 func BenchmarkReport(b *testing.B) {
-	ms := new(MockedUpkeepService)
-	me := new(MockedReportEncoder)
+	ms := &BenchmarkMockUpkeepService{}
+	me := &BenchmarkMockedReportEncoder{}
 	plugin := &keepers{service: ms, encoder: me}
 
 	key1 := ktypes.UpkeepKey([]byte("1|1"))
@@ -403,6 +403,8 @@ func BenchmarkReport(b *testing.B) {
 		{Observation: types.Observation(encoded)},
 	}
 
+	ms.rtnCheck = set[0]
+
 	for i := 1; i <= 4; i++ {
 		ob := observations[0 : i*4]
 
@@ -412,11 +414,10 @@ func BenchmarkReport(b *testing.B) {
 			// run the Observation function b.N times
 			for n := 0; n < b.N; n++ {
 				ctx := context.Background()
-				ms.Mock.On("CheckUpkeep", ctx, set[0].Key).Return(set[0], nil)
-				me.Mock.On("EncodeReport", set[0:1]).Return([]byte(fmt.Sprintf("%d+%s", 1, data)), nil)
+				me.rtnBytes = []byte(fmt.Sprintf("%d+%s", 1, data))
 
 				b.StartTimer()
-				_, _, err := plugin.Report(context.Background(), types.ReportTimestamp{}, types.Query{}, ob)
+				_, _, err := plugin.Report(ctx, types.ReportTimestamp{}, types.Query{}, ob)
 				b.StopTimer()
 
 				if err != nil {
@@ -509,6 +510,22 @@ func (_m *MockedUpkeepService) SetUpkeepState(ctx context.Context, key ktypes.Up
 	return _m.Mock.Called(ctx, key, state).Error(0)
 }
 
+type BenchmarkMockUpkeepService struct {
+	rtnCheck ktypes.UpkeepResult
+}
+
+func (_m *BenchmarkMockUpkeepService) SampleUpkeeps(ctx context.Context) ([]*ktypes.UpkeepResult, error) {
+	return nil, nil
+}
+
+func (_m *BenchmarkMockUpkeepService) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey) (ktypes.UpkeepResult, error) {
+	return _m.rtnCheck, nil
+}
+
+func (_m *BenchmarkMockUpkeepService) SetUpkeepState(ctx context.Context, key ktypes.UpkeepKey, state ktypes.UpkeepState) error {
+	return nil
+}
+
 func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
 	b, _ := Encode(keys)
 	return b
@@ -531,4 +548,12 @@ func (_m *MockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]b
 	}
 
 	return r0, ret.Error(1)
+}
+
+type BenchmarkMockedReportEncoder struct {
+	rtnBytes []byte
+}
+
+func (_m *BenchmarkMockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte, error) {
+	return _m.rtnBytes, nil
 }

@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"math/rand"
 	"testing"
 
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -19,4 +20,42 @@ func TestEncodeReport(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, expected, b)
+}
+
+func BenchmarkEncodeReport(b *testing.B) {
+	key1 := ktypes.UpkeepKey([]byte("1239487928374|187689279234987"))
+	key2 := ktypes.UpkeepKey([]byte("1239487928374|187689279234989"))
+	key3 := ktypes.UpkeepKey([]byte("1239487928375|187689279234987"))
+
+	noData := []byte{}
+	smallData := make([]byte, 12)
+	largeData := make([]byte, 128)
+
+	rand.Read(smallData)
+	rand.Read(largeData)
+
+	encoder := NewEVMReportEncoder()
+	tests := []struct {
+		Name string
+		Data []ktypes.UpkeepResult
+	}{
+		{Name: "No Perform Data", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: noData}}},
+		{Name: "Small Perform Data", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: smallData}}},
+		{Name: "Large Perform Data", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: largeData}}},
+		{Name: "Multiple Performs", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: smallData}, {Key: key2, PerformData: largeData}, {Key: key3, PerformData: noData}}},
+	}
+
+	for _, test := range tests {
+		b.Run(test.Name, func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				b.StartTimer()
+				_, err := encoder.EncodeReport(test.Data)
+				b.StopTimer()
+
+				if err != nil {
+					b.FailNow()
+				}
+			}
+		})
+	}
 }
