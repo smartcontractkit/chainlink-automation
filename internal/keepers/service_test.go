@@ -36,7 +36,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 				state = Perform
 				pData = []byte(fmt.Sprintf("%d", i))
 			}
-			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[1], State: state, PerformData: pData}, nil)
+			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
 		}
 
 		l := log.New(io.Discard, "", 0)
@@ -45,7 +45,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			ratio:    SampleRatio(0.5),
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
-			state:    make(map[string]ktypes.UpkeepState),
+			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
 		}
 
 		result, err := svc.SampleUpkeeps(ctx)
@@ -85,12 +85,10 @@ func TestSimpleUpkeepService(t *testing.T) {
 			ratio:    SampleRatio(1.0),
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
-			state:    make(map[string]ktypes.UpkeepState),
+			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 		}
 
-		svc.mu.Lock()
-		svc.state[string(actives[0])] = Reported
-		svc.mu.Unlock()
+		svc.cache.Set(string(actives[0]), ktypes.UpkeepResult{Key: actives[0], State: Reported}, defaultExpiration)
 
 		result, err := svc.SampleUpkeeps(ctx)
 		cancel()
@@ -111,7 +109,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 		svc := &simpleUpkeepService{
 			logger:   l,
 			registry: rg,
-			state:    make(map[string]ktypes.UpkeepState),
+			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 		}
 
 		result, err := svc.SampleUpkeeps(ctx)
@@ -183,7 +181,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			l := log.New(io.Discard, "", 0)
 			svc := &simpleUpkeepService{
 				logger:   l,
-				state:    make(map[string]ktypes.UpkeepState),
+				cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 				registry: rg,
 			}
 
@@ -203,23 +201,31 @@ func TestSimpleUpkeepService(t *testing.T) {
 	})
 
 	t.Run("SetUpkeepState", func(t *testing.T) {
+		key1 := []byte("test-key-1")
+		key2 := []byte("test-key-2")
+
 		tests := []struct {
 			Key   []byte
 			State ktypes.UpkeepState
 			Err   error
 		}{
-			{Key: []byte("test-key-1"), State: ktypes.UpkeepState(1), Err: nil},
-			{Key: []byte("test-key-2"), State: ktypes.UpkeepState(2), Err: nil},
+			{Key: key1, State: ktypes.UpkeepState(1), Err: nil},
+			{Key: key2, State: ktypes.UpkeepState(2), Err: nil},
 		}
+
+		rg := new(MockedRegistry)
 
 		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
-			logger: l,
-			state:  make(map[string]ktypes.UpkeepState),
+			logger:   l,
+			registry: rg,
+			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 		}
 
 		for _, test := range tests {
-			err := svc.SetUpkeepState(context.Background(), ktypes.UpkeepKey(test.Key), test.State)
+			ctx := context.Background()
+			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, ktypes.UpkeepKey(test.Key)).Return(true, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(key1)}, nil)
+			err := svc.SetUpkeepState(ctx, ktypes.UpkeepKey(test.Key), test.State)
 
 			if test.Err == nil {
 				assert.NoError(t, err, "should not return an error")
@@ -227,8 +233,8 @@ func TestSimpleUpkeepService(t *testing.T) {
 				assert.Error(t, err, "should return an error")
 			}
 
-			assert.Contains(t, svc.state, string(test.Key), "internal state should contain key '%s'", test.Key)
-			assert.Equal(t, svc.state[string(test.Key)], test.State, "internal state at key '%s' should be %d", test.Key, test.State)
+			assert.Contains(t, svc.cache.data, string(test.Key), "internal state should contain key '%s'", test.Key)
+			assert.Equal(t, svc.cache.data[string(test.Key)].Item.State, test.State, "internal state at key '%s' should be %d", test.Key, test.State)
 		}
 	})
 }
