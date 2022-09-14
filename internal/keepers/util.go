@@ -24,8 +24,10 @@ func newCryptoRandSource() cryptoRandSource {
 
 func (_ cryptoRandSource) Int63() int64 {
 	var b [8]byte
-	// TODO: handle error; maybe panic? the interface doesn't have an error returned
-	rand.Read(b[:])
+	_, err := rand.Read(b[:])
+	if err != nil {
+		panic(err)
+	}
 	return int64(binary.LittleEndian.Uint64(b[:]) & (1<<63 - 1))
 }
 
