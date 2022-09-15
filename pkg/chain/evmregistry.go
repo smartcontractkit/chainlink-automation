@@ -66,7 +66,7 @@ func (r *evmRegistryv1_2) GetActiveUpkeepKeys(ctx context.Context, block types.B
 
 		nextKeys := make([]types.UpkeepKey, len(nextRawKeys))
 		for i, next := range nextRawKeys {
-			nextKeys[i] = []byte(fmt.Sprintf("%s%s%s", string(opts.BlockNumber.Bytes()), separator, next))
+			nextKeys[i] = []byte(fmt.Sprintf("%s%s%s", opts.BlockNumber, separator, next))
 		}
 
 		buffer := make([]types.UpkeepKey, len(keys), len(keys)+len(nextKeys))
@@ -168,14 +168,4 @@ func blockAndIdFromKey(key types.UpkeepKey) (types.BlockKey, *big.Int, error) {
 	}
 
 	return types.BlockKey(parts[0]), id, nil
-}
-
-func updateBlockForKey(key types.UpkeepKey, block types.BlockKey) (types.UpkeepKey, error) {
-	parts := strings.Split(string(key), separator)
-	if len(parts) != 2 {
-		return key, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
-	}
-
-	parts[0] = string(block)
-	return types.UpkeepKey([]byte(strings.Join(parts, separator))), nil
 }

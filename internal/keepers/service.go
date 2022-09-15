@@ -56,15 +56,18 @@ var _ UpkeepService = (*simpleUpkeepService)(nil)
 
 func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.UpkeepResult, error) {
 	// - get all upkeeps from contract
+	s.logger.Printf("get all active upkeep keys")
 	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
 	if err != nil {
 		// TODO: do better error bubbling
 		return nil, err
 	}
 
+	s.logger.Printf("%d upkeep keys found in registry", len(keys))
 	// - select x upkeeps at random from set
 	keys = s.shuffler.Shuffle(keys)
 	size := s.ratio.OfInt(len(keys))
+	s.logger.Printf("%d keys selected by provided ratio", size)
 
 	// - check upkeeps selected
 	if s.workers == nil {
@@ -131,6 +134,7 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 	// start the channel listener
 	done := make(chan struct{})
 	go func() {
+		s.logger.Printf("starting service to read worker results")
 		for {
 			select {
 			case result := <-s.workers.results:
