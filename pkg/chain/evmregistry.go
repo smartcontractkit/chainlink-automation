@@ -69,6 +69,10 @@ func (r *evmRegistryv1_2) GetActiveUpkeepKeys(ctx context.Context, block types.B
 			nextKeys[i] = []byte(fmt.Sprintf("%s%s%s", opts.BlockNumber, separator, next))
 		}
 
+		if len(nextKeys) == 0 {
+			break
+		}
+
 		buffer := make([]types.UpkeepKey, len(keys), len(keys)+len(nextKeys))
 		copy(keys, buffer)
 
@@ -113,7 +117,7 @@ func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, from types.Address, k
 		// false on a checkUpkeep call and does not include performData in revert message
 		noUpkeepMsg := strings.Contains(strings.ToLower(err.Error()), strings.ToLower("UpkeepNotNeeded"))
 		if noUpkeepMsg {
-			return false, types.UpkeepResult{}, nil
+			return false, types.UpkeepResult{Key: key, State: keepers.Skip}, nil
 		}
 
 		return false, types.UpkeepResult{}, fmt.Errorf("%w: checkUpkeep returned result: %s", ErrRegistryCallFailure, err)

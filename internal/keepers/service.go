@@ -135,19 +135,30 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 	done := make(chan struct{})
 	go func() {
 		s.logger.Printf("starting service to read worker results")
+		var success int
+		var failure int
+
+	Outer:
 		for {
 			select {
 			case result := <-s.workers.results:
 				wg.Done()
-				if result.Err == nil && result.Data.State == Perform {
-					sample = append(sample, &result.Data)
+				if result.Err == nil {
+					success++
+					if result.Data.State == Perform {
+						sample = append(sample, &result.Data)
+					}
+				} else {
+					failure++
 				}
 			case <-done:
-				return
+				break Outer
 			case <-ctx.Done():
-				return
+				break Outer
 			}
 		}
+
+		s.logger.Printf("worker call success rate: %f; failure rate: %f", float64(success)/float64(success+failure), float64(failure)/float64(success+failure))
 	}()
 
 	// go through keys and check the cache first
@@ -183,6 +194,10 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		ok, u, err := registry.CheckUpkeep(ctx, types.Address([]byte{}), key)
 		if ok {
 			logger.Printf("upkeep ready to perform for key %s", key)
+		}
+
+		if err != nil {
+			logger.Printf("error checking upkeep '%s': %s", key, err)
 		}
 		return u, err
 	}

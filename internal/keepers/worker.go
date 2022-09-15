@@ -67,39 +67,41 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 		results:    make(chan workResult[T], queue),
 	}
 
-	go func() {
+	go func(g *workerGroup[T]) {
 		timer := time.NewTimer(time.Second)
 		ctx, cancel := context.WithCancel(context.Background())
 		for {
 			select {
-			case item := <-wg.queue:
+			case item := <-g.queue:
 				var wkr *worker[T]
-				if wg.activeWorkers < wg.maxWorkers {
+				if g.activeWorkers < g.maxWorkers {
 					// create a new worker
 					wkr = &worker[T]{
-						Name:  fmt.Sprintf("worker-%d", wg.activeWorkers+1),
-						Queue: wg.workers,
+						Name:  fmt.Sprintf("worker-%d", g.activeWorkers+1),
+						Queue: g.workers,
 					}
-					wg.activeWorkers++
+					g.activeWorkers++
 				} else {
 					// wait for a worker to be available
-					wkr = <-wg.workers
+					wkr = <-g.workers
 				}
 
 				// have worker do the work
-				go wkr.Do(ctx, wg.results, item)
+				go wkr.Do(ctx, g.results, item)
 
 				timer.Reset(time.Second)
 			case <-timer.C:
 				// close workers when not needed
-				<-wg.workers
-				wg.activeWorkers--
-			case <-wg.stop:
+				if g.activeWorkers > 0 {
+					<-g.workers
+					g.activeWorkers--
+				}
+			case <-g.stop:
 				cancel()
 				return
 			}
 		}
-	}()
+	}(wg)
 
 	runtime.SetFinalizer(wg, func(g *workerGroup[T]) { close(g.stop) })
 
