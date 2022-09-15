@@ -16,10 +16,12 @@ import (
 )
 
 const ActiveUpkeepIDBatchSize int64 = 10000
+const separator string = "|"
 
 var (
-	ErrRegistryCallFailure = fmt.Errorf("registry chain call failure")
-	ErrBlockKeyNotParsable = fmt.Errorf("block identifier not parsable")
+	ErrRegistryCallFailure  = fmt.Errorf("registry chain call failure")
+	ErrBlockKeyNotParsable  = fmt.Errorf("block identifier not parsable")
+	ErrUpkeepKeyNotParsable = fmt.Errorf("upkeep key not parsable")
 )
 
 type evmRegistryv1_2 struct {
@@ -118,6 +120,10 @@ func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, from types.Address, k
 	}
 
 	performData := *abi.ConvertType(out[0], new([]byte)).(*[]byte)
+	key, err = updateBlockForKey(key, types.BlockKey(opts.BlockNumber.Bytes()))
+	if err != nil {
+		return false, types.UpkeepResult{}, fmt.Errorf("%w: could not update block number in key", err)
+	}
 
 	// other types returned from contract call that may be needed in the future
 	// maxLinkPayment := *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
@@ -154,16 +160,26 @@ func (r *evmRegistryv1_2) buildCallOpts(ctx context.Context, block types.BlockKe
 }
 
 func blockAndIdFromKey(key types.UpkeepKey) (types.BlockKey, *big.Int, error) {
-	parts := strings.Split(string(key), "|")
+	parts := strings.Split(string(key), separator)
 	if len(parts) != 2 {
-		return types.BlockKey(""), nil, fmt.Errorf("missing data in upkeep key")
+		return types.BlockKey(""), nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
 
 	id := new(big.Int)
 	_, ok := id.SetString(parts[1], 10)
 	if !ok {
-		return types.BlockKey(""), nil, fmt.Errorf("upkeep id parse error; must be big int")
+		return types.BlockKey(""), nil, fmt.Errorf("%w: must be big int", ErrUpkeepKeyNotParsable)
 	}
 
 	return types.BlockKey(parts[0]), id, nil
+}
+
+func updateBlockForKey(key types.UpkeepKey, block types.BlockKey) (types.UpkeepKey, error) {
+	parts := strings.Split(string(key), separator)
+	if len(parts) != 2 {
+		return key, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+	}
+
+	parts[0] = string(block)
+	return types.UpkeepKey([]byte(strings.Join(parts, separator))), nil
 }

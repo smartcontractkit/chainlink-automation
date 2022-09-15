@@ -176,7 +176,10 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 	return func(ctx context.Context) (types.UpkeepResult, error) {
 		// perform check and update cache with result
 		logger.Printf("checking upkeep %s", key)
-		_, u, err := registry.CheckUpkeep(ctx, types.Address([]byte{}), key)
+		ok, u, err := registry.CheckUpkeep(ctx, types.Address([]byte{}), key)
+		if ok {
+			logger.Printf("upkeep ready to perform for key %s", key)
+		}
 		return u, err
 	}
 }
