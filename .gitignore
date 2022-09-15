@@ -12,7 +12,7 @@
 *.out
 
 # Output of any log files generated while testing
-# *.log
+*.log
 
 # Dependency directories (remove the comment below to include it)
 # vendor/

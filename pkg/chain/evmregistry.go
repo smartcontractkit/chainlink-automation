@@ -66,7 +66,7 @@ func (r *evmRegistryv1_2) GetActiveUpkeepKeys(ctx context.Context, block types.B
 
 		nextKeys := make([]types.UpkeepKey, len(nextRawKeys))
 		for i, next := range nextRawKeys {
-			nextKeys[i] = []byte(fmt.Sprintf("%s|%s", block, next))
+			nextKeys[i] = []byte(fmt.Sprintf("%s%s%s", string(opts.BlockNumber.Bytes()), separator, next))
 		}
 
 		buffer := make([]types.UpkeepKey, len(keys), len(keys)+len(nextKeys))
@@ -120,10 +120,6 @@ func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, from types.Address, k
 	}
 
 	performData := *abi.ConvertType(out[0], new([]byte)).(*[]byte)
-	key, err = updateBlockForKey(key, types.BlockKey(opts.BlockNumber.Bytes()))
-	if err != nil {
-		return false, types.UpkeepResult{}, fmt.Errorf("%w: could not update block number in key", err)
-	}
 
 	// other types returned from contract call that may be needed in the future
 	// maxLinkPayment := *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
