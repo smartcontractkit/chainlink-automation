@@ -36,7 +36,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 				state = Perform
 				pData = []byte(fmt.Sprintf("%d", i))
 			}
-			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
+			rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
 		}
 
 		l := log.New(io.Discard, "", 0)
@@ -46,6 +46,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
 		result, err := svc.SampleUpkeeps(ctx)
@@ -77,7 +78,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		rg := new(MockedRegistry)
 		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
-		rg.Mock.On("CheckUpkeep", ctx, mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: Skip}, nil)
+		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: Skip}, nil)
 
 		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
@@ -86,6 +87,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
 		svc.cache.Set(string(actives[0]), ktypes.UpkeepResult{Key: actives[0], State: Reported}, defaultExpiration)
@@ -110,6 +112,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			logger:   l,
 			registry: rg,
 			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
 		result, err := svc.SampleUpkeeps(ctx)
@@ -176,13 +179,14 @@ func TestSimpleUpkeepService(t *testing.T) {
 			ctx, cancel := test.Ctx()
 
 			rg := new(MockedRegistry)
-			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, test.Key).Return(test.Check, test.RegResult, test.Err)
+			rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, test.Key).Return(test.Check, test.RegResult, test.Err)
 
 			l := log.New(io.Discard, "", 0)
 			svc := &simpleUpkeepService{
 				logger:   l,
 				cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 				registry: rg,
+				workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 			}
 
 			result, err := svc.CheckUpkeep(ctx, test.Key)
@@ -220,11 +224,12 @@ func TestSimpleUpkeepService(t *testing.T) {
 			logger:   l,
 			registry: rg,
 			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
 		for _, test := range tests {
 			ctx := context.Background()
-			rg.Mock.On("CheckUpkeep", ctx, mock.Anything, ktypes.UpkeepKey(test.Key)).Return(true, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(key1)}, nil)
+			rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, ktypes.UpkeepKey(test.Key)).Return(true, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(key1)}, nil)
 			err := svc.SetUpkeepState(ctx, ktypes.UpkeepKey(test.Key), test.State)
 
 			if test.Err == nil {

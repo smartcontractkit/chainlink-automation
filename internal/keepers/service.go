@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -17,6 +18,7 @@ type simpleUpkeepService struct {
 	shuffler     Shuffler[types.UpkeepKey]
 	cache        *cache[types.UpkeepResult]
 	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
+	workers      *workerGroup[types.UpkeepResult]
 }
 
 // NewSimpleUpkeepService provides an object that implements the UpkeepService in a very
@@ -32,7 +34,8 @@ func NewSimpleUpkeepService(ratio SampleRatio, registry types.Registry, logger *
 		ratio:    ratio,
 		registry: registry,
 		shuffler: new(cryptoShuffler[types.UpkeepKey]),
-		cache:    newCache[types.UpkeepResult](20 * time.Minute), // TODO: default expiration should be configured based on block time
+		cache:    newCache[types.UpkeepResult](20 * time.Minute),                     // TODO: default expiration should be configured based on block time
+		workers:  newWorkerGroup[types.UpkeepResult](10*runtime.GOMAXPROCS(0), 1000), // # of workers = 10 * [# of cpus]
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -63,33 +66,11 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upkee
 	keys = s.shuffler.Shuffle(keys)
 	size := s.ratio.OfInt(len(keys))
 
-	var cacheHits int
-
 	// - check upkeeps selected
-	sample := []*types.UpkeepResult{}
-	for i := 0; i < size; i++ {
-		// skip if reported
-		result, cached := s.cache.Get(string(keys[i]))
-		if cached {
-			cacheHits++
-			if result.State == Perform {
-				sample = append(sample, &result)
-			}
-		} else {
-			// perform check and update cache with result
-			s.logger.Printf("checking upkeep %s", keys[i])
-			ok, u, _ := s.registry.CheckUpkeep(ctx, types.Address([]byte{}), keys[i])
-			if ok {
-				sample = append(sample, &u)
-			}
-			s.cache.Set(string(u.Key), u, defaultExpiration)
-		}
+	if s.workers == nil {
+		panic("cannot check upkeeps without runner")
 	}
-
-	s.logger.Printf("sampling cache hit ratio %d/%d", cacheHits, size)
-
-	// - return array of results
-	return sample, nil
+	return s.parallelCheck(ctx, keys[:size])
 }
 
 func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
@@ -139,4 +120,63 @@ func (s *simpleUpkeepService) SetUpkeepState(ctx context.Context, uk types.Upkee
 	result.State = state
 	s.cache.Set(string(uk), result, defaultExpiration)
 	return nil
+}
+
+func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
+	sample := make([]*types.UpkeepResult, 0, len(keys))
+	var cacheHits int
+
+	var wg sync.WaitGroup
+
+	// start the channel listener
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case result := <-s.workers.results:
+				wg.Done()
+				if result.Err == nil && result.Data.State == Perform {
+					sample = append(sample, &result.Data)
+				}
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// go through keys and check the cache first
+	// if an item doesn't exist on the cache, send the items to the worker threads
+	for _, key := range keys {
+		// skip if reported
+		result, cached := s.cache.Get(string(key))
+		if cached {
+			cacheHits++
+			if result.State == Perform {
+				sample = append(sample, &result)
+			}
+		} else {
+			wg.Add(1)
+			if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key)); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	wg.Wait()
+	close(done)
+
+	s.logger.Printf("sampling cache hit ratio %d/%d", cacheHits, len(keys))
+
+	return sample, nil
+}
+
+func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey) func(ctx context.Context) (types.UpkeepResult, error) {
+	return func(ctx context.Context) (types.UpkeepResult, error) {
+		// perform check and update cache with result
+		logger.Printf("checking upkeep %s", key)
+		_, u, err := registry.CheckUpkeep(ctx, types.Address([]byte{}), key)
+		return u, err
+	}
 }
