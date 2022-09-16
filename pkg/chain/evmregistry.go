@@ -82,10 +82,8 @@ func (r *evmRegistryv1_2) GetActiveUpkeepKeys(ctx context.Context, block types.B
 	return keys, nil
 }
 
-func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, from types.Address, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
+func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
 	var err error
-
-	fromAddr := common.BytesToAddress([]byte(from))
 
 	block, upkeepId, err := blockAndIdFromKey(key)
 	if err != nil {
@@ -100,30 +98,29 @@ func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, from types.Address, k
 	rawCall := &keeper_registry_wrapper2_0.KeeperRegistryCallerRaw{Contract: r.registry}
 
 	/*
-		checkUpkeep(uint256 id, address from)
+		checkUpkeep(uint256 id)
 		returns (
-			bytes memory performData,
-			uint256 maxLinkPayment,
-			uint256 gasLimit,
-			uint256 adjustedGasWei,
-			uint256 linkEth
+		      bool upkeepNeeded,
+		      bytes memory performData,
+		      uint8 upkeepFailureReason,
+		      uint256 gasUsed,
+		      uint256 fastGasWei,
+		      uint256 linkNative
 		)
 	*/
 
 	var out []interface{}
-	err = rawCall.Call(opts, &out, "checkUpkeep", upkeepId, fromAddr)
+	err = rawCall.Call(opts, &out, "checkUpkeep", upkeepId)
 	if err != nil {
-		// contract implementation reverts with error if an upkeep contract returns
-		// false on a checkUpkeep call and does not include performData in revert message
-		noUpkeepMsg := strings.Contains(strings.ToLower(err.Error()), strings.ToLower("UpkeepNotNeeded"))
-		if noUpkeepMsg {
-			return false, types.UpkeepResult{Key: key, State: keepers.Skip}, nil
-		}
-
 		return false, types.UpkeepResult{}, fmt.Errorf("%w: checkUpkeep returned result: %s", ErrRegistryCallFailure, err)
 	}
 
-	performData := *abi.ConvertType(out[0], new([]byte)).(*[]byte)
+	upkeepNeeded := *abi.ConvertType(out[0], new(bool)).(*bool)
+	if !upkeepNeeded {
+		return false, types.UpkeepResult{Key: key, State: keepers.Skip}, nil
+	}
+
+	performData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
 
 	// other types returned from contract call that may be needed in the future
 	// maxLinkPayment := *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)

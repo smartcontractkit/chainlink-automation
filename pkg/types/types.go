@@ -4,7 +4,7 @@ import "context"
 
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
-	CheckUpkeep(context.Context, Address, UpkeepKey) (bool, UpkeepResult, error)
+	CheckUpkeep(context.Context, UpkeepKey) (bool, UpkeepResult, error)
 }
 
 type ReportEncoder interface {
