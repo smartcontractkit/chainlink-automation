@@ -1,6 +1,3 @@
-// Code generated - DO NOT EDIT.
-// This file is a generated binding and any manual changes will be lost.
-
 package keeper_registry_base2_0
 
 import (
@@ -9,13 +6,13 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/smartcontractkit/chainlink/core/gethwrappers/generated"
+	"github.com/smartcontractkit/ocr2keepers/gethwrappers"
 )
 
 var (
@@ -3827,7 +3824,7 @@ func (_KeeperRegistryBase *KeeperRegistryBaseFilterer) ParseUpkeepUnpaused(log t
 	return event, nil
 }
 
-func (_KeeperRegistryBase *KeeperRegistryBase) ParseLog(log types.Log) (generated.AbigenLog, error) {
+func (_KeeperRegistryBase *KeeperRegistryBase) ParseLog(log types.Log) (gethwrappers.AbigenLog, error) {
 	switch log.Topics[0] {
 	case _KeeperRegistryBase.abi.Events["CancelledUpkeepReport"].ID:
 		return _KeeperRegistryBase.ParseCancelledUpkeepReport(log)
@@ -4178,7 +4175,7 @@ type KeeperRegistryBaseInterface interface {
 
 	ParseUpkeepUnpaused(log types.Log) (*KeeperRegistryBaseUpkeepUnpaused, error)
 
-	ParseLog(log types.Log) (generated.AbigenLog, error)
+	ParseLog(log types.Log) (gethwrappers.AbigenLog, error)
 
 	Address() common.Address
 }
