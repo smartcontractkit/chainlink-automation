@@ -5,6 +5,6 @@ import (
 )
 
 type keepers struct {
-	service UpkeepService
+	service upkeepService
 	encoder types.ReportEncoder
 }

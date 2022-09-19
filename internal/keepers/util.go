@@ -55,7 +55,7 @@ func keyList(upkeeps []*ktypes.UpkeepResult) []ktypes.UpkeepKey {
 	return ret
 }
 
-type Shuffler[T any] interface {
+type shuffler[T any] interface {
 	Shuffle([]T) []T
 }
 
@@ -122,8 +122,7 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.Up
 		var values []ktypes.UpkeepKey
 		err = Decode([]byte(attr.Observation), &values)
 		if err != nil {
-			// TODO: handle errors better; this currently results in a soft failure on bad encoding
-			continue
+			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
 		}
 
 		sort.Sort(sortUpkeepKeys(values))

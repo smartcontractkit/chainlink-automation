@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	errContextCancelled = fmt.Errorf("context cancelled")
-	errQueueFull        = fmt.Errorf("queue full")
+	ErrProcessStopped   = fmt.Errorf("worker process has stopped")
+	ErrContextCancelled = fmt.Errorf("worker context cancelled")
+	ErrQueueFull        = fmt.Errorf("worker queue full")
 )
 
 type workResult[T any] struct {
@@ -18,7 +19,9 @@ type workResult[T any] struct {
 	Err    error
 	Time   time.Duration
 }
+
 type work[T any] func(context.Context) (T, error)
+
 type worker[T any] struct {
 	Name  string
 	Queue chan *worker[T]
@@ -97,6 +100,7 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 					g.activeWorkers--
 				}
 			case <-g.stop:
+				close(g.queue)
 				cancel()
 				return
 			}
@@ -115,7 +119,9 @@ func (wg *workerGroup[T]) Do(ctx context.Context, w work[T]) error {
 	case wg.queue <- w:
 		return nil
 	case <-ctx.Done():
-		return fmt.Errorf("%w; work not added to queue", errContextCancelled)
+		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
+	case <-wg.stop:
+		return fmt.Errorf("%w; work not added to queue", ErrProcessStopped)
 	}
 }
 
@@ -129,10 +135,12 @@ func (wg *workerGroup[T]) DoCancelOnFull(ctx context.Context, w work[T]) error {
 		timer.Stop()
 		return nil
 	case <-timer.C:
-		return fmt.Errorf("%w; work not added to queue", errQueueFull)
+		return fmt.Errorf("%w; work not added to queue", ErrQueueFull)
 	case <-ctx.Done():
 		timer.Stop()
-		return fmt.Errorf("%w; work not added to queue", errContextCancelled)
+		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
+	case <-wg.stop:
+		return fmt.Errorf("%w; work not added to queue", ErrProcessStopped)
 	}
 }
 

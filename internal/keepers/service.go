@@ -15,20 +15,20 @@ type simpleUpkeepService struct {
 	logger       *log.Logger
 	ratio        SampleRatio
 	registry     types.Registry
-	shuffler     Shuffler[types.UpkeepKey]
+	shuffler     shuffler[types.UpkeepKey]
 	cache        *cache[types.UpkeepResult]
 	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
 	workers      *workerGroup[types.UpkeepResult]
 }
 
-// NewSimpleUpkeepService provides an object that implements the UpkeepService in a very
+// newSimpleUpkeepService provides an object that implements the UpkeepService in a very
 // rudamentary way. Sampling upkeeps is done on demand and completes in linear time with upkeeps.
 //
 // Cacheing is enabled such that subsequent checks/updates for the same key will not result in
 // an RPC call.
 //
 // DO NOT USE THIS IN PRODUCTION
-func NewSimpleUpkeepService(ratio SampleRatio, registry types.Registry, logger *log.Logger) *simpleUpkeepService {
+func newSimpleUpkeepService(ratio SampleRatio, registry types.Registry, logger *log.Logger) *simpleUpkeepService {
 	s := &simpleUpkeepService{
 		logger:   logger,
 		ratio:    ratio,
@@ -52,7 +52,7 @@ func NewSimpleUpkeepService(ratio SampleRatio, registry types.Registry, logger *
 	return s
 }
 
-var _ UpkeepService = (*simpleUpkeepService)(nil)
+var _ upkeepService = (*simpleUpkeepService)(nil)
 
 func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.UpkeepResult, error) {
 	// - get all upkeeps from contract
