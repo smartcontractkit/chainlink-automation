@@ -24,3 +24,10 @@ type UpkeepResult struct {
 }
 
 type UpkeepState uint
+
+const (
+	Eligible UpkeepState = iota
+	Skip
+	Perform
+	Reported
+)

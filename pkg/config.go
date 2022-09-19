@@ -6,6 +6,8 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
+// DelegateConfig provides a single configuration struct for all options
+// to be passed to the oracle, oracle factory, and underlying plugin/services.
 type DelegateConfig struct {
 	BinaryNetworkEndpointFactory types.BinaryNetworkEndpointFactory
 	V2Bootstrappers              []commontypes.BootstrapperLocator
@@ -19,6 +21,8 @@ type DelegateConfig struct {
 	OnchainKeyring               types.OnchainKeyring
 	LocalConfig                  types.LocalConfig
 
-	Registry      ktypes.Registry
+	// Registry is an abstract plugin registry; can be evm based or anything else
+	Registry ktypes.Registry
+	// ReportEncoder is an abstract encoder for encoding reports destined for trasmission; can be evm based or anything else
 	ReportEncoder ktypes.ReportEncoder
 }

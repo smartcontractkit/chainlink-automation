@@ -8,7 +8,11 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-// NewReportingPluginFactory returns an OCR ReportingPluginFactory
+// NewReportingPluginFactory returns an OCR ReportingPluginFactory. When the plugin
+// starts, a separate service is started as a separate go-routine automatically. There
+// is no start or stop function for this service so stopping this service relies on
+// releasing references to the plugin such that the Go garbage collector cleans up
+// hanging routines automatically.
 func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder, logger *log.Logger) types.ReportingPluginFactory {
 	return &keepersReportingFactory{registry: registry, encoder: encoder, logger: logger}
 }
@@ -46,7 +50,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	//log.SetOutput(d.logger.Writer())
 	//log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC)
 
-	service := newSimpleUpkeepService(SampleRatio(0.6), d.registry, d.logger)
+	service := newSimpleUpkeepService(sampleRatio(0.6), d.registry, d.logger)
 
 	return &keepers{service: service, encoder: d.encoder}, info, nil
 }

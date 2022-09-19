@@ -10,8 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/ocr2keepers/gethwrappers/keeper_registry_wrapper2_0"
-	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -117,7 +116,7 @@ func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 
 	upkeepNeeded := *abi.ConvertType(out[0], new(bool)).(*bool)
 	if !upkeepNeeded {
-		return false, types.UpkeepResult{Key: key, State: keepers.Skip}, nil
+		return false, types.UpkeepResult{Key: key, State: types.Skip}, nil
 	}
 
 	performData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
@@ -128,7 +127,7 @@ func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	// adjustedGasWei := *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 	// linkEth := *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 
-	return true, types.UpkeepResult{Key: key, State: keepers.Perform, PerformData: performData}, nil
+	return true, types.UpkeepResult{Key: key, State: types.Perform, PerformData: performData}, nil
 
 }
 

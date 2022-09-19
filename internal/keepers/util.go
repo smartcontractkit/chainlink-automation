@@ -120,7 +120,7 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.Up
 	for i, attr := range attributed {
 
 		var values []ktypes.UpkeepKey
-		err = Decode([]byte(attr.Observation), &values)
+		err = decode([]byte(attr.Observation), &values)
 		if err != nil {
 			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
 		}

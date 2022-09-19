@@ -10,9 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/smartcontractkit/ocr2keepers/gethwrappers/keeper_registry_wrapper2_0"
-	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/internal/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -73,7 +72,7 @@ func TestCheckUpkeep(t *testing.T) {
 		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
 		assert.NoError(t, err)
 		assert.Equal(t, true, ok)
-		assert.Equal(t, keepers.Perform, upkeep.State)
+		assert.Equal(t, types.Perform, upkeep.State)
 	})
 
 	t.Run("UPKEEP_NOT_NEEDED", func(t *testing.T) {
@@ -99,7 +98,7 @@ func TestCheckUpkeep(t *testing.T) {
 		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
 		assert.NoError(t, err)
 		assert.Equal(t, false, ok)
-		assert.Equal(t, keepers.Skip, upkeep.State)
+		assert.Equal(t, types.Skip, upkeep.State)
 	})
 
 }

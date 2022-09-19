@@ -8,10 +8,18 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 )
 
+// Delegate is a container struct for an Oracle plugin. This struct provides
+// the ability to start and stop underlying services associated with the
+// plugin instance.
 type Delegate struct {
 	keeper *offchainreporting.Oracle
 }
 
+// NewDelegate provides a new Delegate from a provided config. A new logger
+// is defined that wraps the configured logger with a default Go logger.
+// The plugin uses a *log.Logger by default so all log output from the
+// built-in logger are written to the provided logger as Debug logs prefaced
+// with '[keepers-plugin] ' and a short file name.
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	wrapper := &logWriter{l: c.Logger}
 	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
@@ -39,6 +47,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	return &Delegate{keeper: keeper}, nil
 }
 
+// Start starts the OCR oracle and any associated services
 func (d *Delegate) Start() error {
 	if err := d.keeper.Start(); err != nil {
 		return fmt.Errorf("%w: starting keeper oracle", err)
@@ -46,6 +55,7 @@ func (d *Delegate) Start() error {
 	return nil
 }
 
+// Close stops the OCR oracle and any associated services
 func (d *Delegate) Close() error {
 	if err := d.keeper.Close(); err != nil {
 		return fmt.Errorf("%w: stopping keeper oracle", err)

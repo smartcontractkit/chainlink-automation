@@ -66,8 +66,8 @@ func TestObservation(t *testing.T) {
 			Name: "Filter to Empty Set",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet: []*ktypes.UpkeepResult{
-				{Key: ktypes.UpkeepKey([]byte("1|1")), State: Skip},
-				{Key: ktypes.UpkeepKey([]byte("1|2")), State: Skip},
+				{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.Skip},
+				{Key: ktypes.UpkeepKey([]byte("1|2")), State: ktypes.Skip},
 			},
 			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
@@ -75,8 +75,8 @@ func TestObservation(t *testing.T) {
 			Name: "Filter to Non-empty Set",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet: []*ktypes.UpkeepResult{
-				{Key: ktypes.UpkeepKey([]byte("1|1")), State: Skip},
-				{Key: ktypes.UpkeepKey([]byte("1|2")), State: Perform},
+				{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.Skip},
+				{Key: ktypes.UpkeepKey([]byte("1|2")), State: ktypes.Perform},
 			},
 			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{[]byte("1|2")})),
 		},
@@ -112,11 +112,11 @@ func BenchmarkObservation(b *testing.B) {
 	plugin := &keepers{service: ms}
 
 	set := make([]*ktypes.UpkeepResult, 2, 100)
-	set[0] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|1")), State: Perform}
-	set[1] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|2")), State: Perform}
+	set[0] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.Perform}
+	set[1] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|2")), State: ktypes.Perform}
 
 	for i := 2; i < 100; i++ {
-		set = append(set, &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1))), State: Skip})
+		set = append(set, &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1))), State: ktypes.Skip})
 	}
 
 	b.ResetTimer()
@@ -164,7 +164,7 @@ func TestReport(t *testing.T) {
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Perform, PerformData: []byte("abcd")}},
 			},
 			Perform:        []int{0},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
@@ -185,7 +185,7 @@ func TestReport(t *testing.T) {
 			}{
 				{
 					K: ktypes.UpkeepKey([]byte("1|1")),
-					R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")},
+					R: ktypes.UpkeepResult{State: ktypes.Perform, PerformData: []byte("abcd")},
 				},
 			},
 			Perform:        []int{0},
@@ -223,7 +223,7 @@ func TestReport(t *testing.T) {
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Perform, PerformData: []byte("abcd")}},
 			},
 			Perform:        []int{0},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
@@ -242,7 +242,7 @@ func TestReport(t *testing.T) {
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Perform, PerformData: []byte("abcd")}},
 			},
 			Perform:        []int{0},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
@@ -261,8 +261,8 @@ func TestReport(t *testing.T) {
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Reported, PerformData: []byte("abcd")}},
-				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Reported, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: ktypes.Perform, PerformData: []byte("abcd")}},
 			},
 			Perform:        []int{1},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
@@ -281,8 +281,8 @@ func TestReport(t *testing.T) {
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Reported, PerformData: []byte("abcd")}},
-				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: Reported, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Reported, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: ktypes.Reported, PerformData: []byte("abcd")}},
 			},
 			ExpectedBool: false,
 		},
@@ -316,7 +316,7 @@ func TestReport(t *testing.T) {
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: Perform, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Perform, PerformData: []byte("abcd")}},
 			},
 			Perform:      []int{0},
 			EncodeErr:    ErrMockTestError,
@@ -346,7 +346,7 @@ func TestReport(t *testing.T) {
 					u.R.Key = u.K
 					toPerform[i] = u.R
 					if test.EncodeErr == nil {
-						ms.Mock.On("SetUpkeepState", ctx, u.R.Key, Reported).Return(nil)
+						ms.Mock.On("SetUpkeepState", ctx, u.R.Key, ktypes.Reported).Return(nil)
 					}
 				}
 				me.Mock.On("EncodeReport", toPerform).Return(test.ExpectedReport, test.EncodeErr)
@@ -384,8 +384,8 @@ func BenchmarkReport(b *testing.B) {
 	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
 
 	set := []ktypes.UpkeepResult{
-		{Key: key1, State: Perform, PerformData: data},
-		{Key: key2, State: Perform, PerformData: data},
+		{Key: key1, State: ktypes.Perform, PerformData: data},
+		{Key: key2, State: ktypes.Perform, PerformData: data},
 	}
 	observations := []types.AttributedObservation{
 		{Observation: types.Observation(encoded)},
@@ -530,7 +530,7 @@ func (_m *BenchmarkMockUpkeepService) SetUpkeepState(ctx context.Context, key kt
 }
 
 func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
-	b, _ := Encode(keys)
+	b, _ := encode(keys)
 	return b
 }
 

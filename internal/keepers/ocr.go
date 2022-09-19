@@ -23,9 +23,9 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 		return types.Observation{}, err
 	}
 
-	keys := keyList(filterUpkeeps(results, Perform))
+	keys := keyList(filterUpkeeps(results, ktypes.Perform))
 
-	b, err := Encode(keys)
+	b, err := encode(keys)
 	if err != nil {
 		return types.Observation{}, err
 	}
@@ -53,7 +53,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 			return false, nil, fmt.Errorf("%w: check upkeep failure in report", err)
 		}
 
-		if upkeep.State == Perform {
+		if upkeep.State == ktypes.Perform {
 			// only build a report from a single upkeep for now
 			toPerform = append(toPerform, upkeep)
 			break
@@ -73,7 +73,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 
 	// update internal state of upkeeps to ensure they aren't reported or observed again
 	for i := 0; i < len(toPerform); i++ {
-		if err := k.service.SetUpkeepState(ctx, toPerform[i].Key, Reported); err != nil {
+		if err := k.service.SetUpkeepState(ctx, toPerform[i].Key, ktypes.Reported); err != nil {
 			// TODO: handle errors better
 			return false, nil, fmt.Errorf("%w: attempted to update internal state", err)
 		}

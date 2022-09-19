@@ -7,23 +7,12 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-type SampleRatio float32
+type sampleRatio float32
 
-func (r SampleRatio) OfInt(count int) int {
+func (r sampleRatio) OfInt(count int) int {
 	// rounds the result using basic rounding op
 	return int(math.Round(float64(r) * float64(count)))
 }
-
-type Upkeep struct {
-	PerformData []byte
-}
-
-const (
-	Eligible types.UpkeepState = iota
-	Skip
-	Perform
-	Reported
-)
 
 type upkeepService interface {
 	SampleUpkeeps(context.Context) ([]*types.UpkeepResult, error)

@@ -18,7 +18,7 @@ func BenchmarkDecode(b *testing.B) {
 		var values []ktypes.UpkeepKey
 
 		b.StartTimer()
-		err := Decode(encoded, &values)
+		err := decode(encoded, &values)
 		b.StopTimer()
 
 		if err != nil {

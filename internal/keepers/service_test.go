@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -29,11 +30,11 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		for i := 0; i < 5; i++ {
 			check := false
-			state := Skip
+			state := types.Skip
 			pData := []byte{}
 			if i%3 == 0 {
 				check = true
-				state = Perform
+				state = types.Perform
 				pData = []byte(fmt.Sprintf("%d", i))
 			}
 			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
@@ -42,7 +43,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
 			logger:   l,
-			ratio:    SampleRatio(0.5),
+			ratio:    sampleRatio(0.5),
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
@@ -78,19 +79,19 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		rg := new(MockedRegistry)
 		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
-		rg.Mock.On("CheckUpkeep", mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: Skip}, nil)
+		rg.Mock.On("CheckUpkeep", mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: types.Skip}, nil)
 
 		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
 			logger:   l,
-			ratio:    SampleRatio(1.0),
+			ratio:    sampleRatio(1.0),
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
-		svc.cache.Set(string(actives[0]), ktypes.UpkeepResult{Key: actives[0], State: Reported}, defaultExpiration)
+		svc.cache.Set(string(actives[0]), ktypes.UpkeepResult{Key: actives[0], State: types.Reported}, defaultExpiration)
 
 		result, err := svc.SampleUpkeeps(ctx)
 		cancel()
@@ -145,7 +146,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 				Key:            testKey,
 				Check:          false,
 				RegResult:      ktypes.UpkeepResult{Key: testKey},
-				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: Skip},
+				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.Skip},
 			},
 			{
 				Name:           "Timer Context",
@@ -153,7 +154,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 				Key:            testKey,
 				Check:          false,
 				RegResult:      ktypes.UpkeepResult{Key: testKey},
-				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: Skip},
+				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.Skip},
 			},
 			{
 				Name:           "Registry Error",
@@ -171,7 +172,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 				Key:            testKey,
 				Check:          true,
 				RegResult:      ktypes.UpkeepResult{Key: testKey, PerformData: []byte("1")},
-				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: Perform, PerformData: []byte("1")},
+				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.Perform, PerformData: []byte("1")},
 			},
 		}
 

@@ -13,7 +13,7 @@ import (
 
 type simpleUpkeepService struct {
 	logger       *log.Logger
-	ratio        SampleRatio
+	ratio        sampleRatio
 	registry     types.Registry
 	shuffler     shuffler[types.UpkeepKey]
 	cache        *cache[types.UpkeepResult]
@@ -28,7 +28,7 @@ type simpleUpkeepService struct {
 // an RPC call.
 //
 // DO NOT USE THIS IN PRODUCTION
-func newSimpleUpkeepService(ratio SampleRatio, registry types.Registry, logger *log.Logger) *simpleUpkeepService {
+func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger) *simpleUpkeepService {
 	s := &simpleUpkeepService{
 		logger:   logger,
 		ratio:    ratio,
@@ -95,11 +95,11 @@ func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepK
 
 	result = types.UpkeepResult{
 		Key:   key,
-		State: Skip,
+		State: types.Skip,
 	}
 
 	if ok {
-		result.State = Perform
+		result.State = types.Perform
 		result.PerformData = u.PerformData
 	}
 
@@ -145,7 +145,7 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 				wg.Done()
 				if result.Err == nil {
 					success++
-					if result.Data.State == Perform {
+					if result.Data.State == types.Perform {
 						sample = append(sample, &result.Data)
 					}
 				} else {
@@ -168,7 +168,7 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 		result, cached := s.cache.Get(string(key))
 		if cached {
 			cacheHits++
-			if result.State == Perform {
+			if result.State == types.Perform {
 				sample = append(sample, &result)
 			}
 		} else {
