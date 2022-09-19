@@ -1,6 +1,7 @@
 package ocr2keepers
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestStart(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = d.Start()
+	err = d.Start(context.Background())
 	assert.Equal(t, err.Error(), "unimplemented")
 }
 

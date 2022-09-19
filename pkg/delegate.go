@@ -1,6 +1,7 @@
 package ocr2keepers
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -48,7 +49,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 }
 
 // Start starts the OCR oracle and any associated services
-func (d *Delegate) Start() error {
+func (d *Delegate) Start(_ context.Context) error {
 	if err := d.keeper.Start(); err != nil {
 		return fmt.Errorf("%w: starting keeper oracle", err)
 	}
