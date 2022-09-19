@@ -144,7 +144,7 @@ func TestValidateSimulatorConfig(t *testing.T) {
 	t.Run("Round Limit or Function Limits", func(t *testing.T) {
 		var err error
 		c := makeValidConfig()
-		tm := 0
+		tm := 1
 
 		// valid
 		c.RoundTime = &tm
