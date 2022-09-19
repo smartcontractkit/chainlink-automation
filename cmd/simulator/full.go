@@ -17,67 +17,168 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 )
 
-func runFullSimulation(contract, rpc, out string, nodes, rounds, rndTime, qTime, oTime, rTime, maxRun int) error {
-	logger := NewSimpleLogger(os.Stdout, Debug)
+var (
+	ErrInvalidConfig = fmt.Errorf("invalid simulator configuration")
+)
+
+// SimulatorConfig ...
+type SimulatorConfig struct {
+	// ContractAddress is the registry contract where the simulator checks upkeeps
+	ContractAddress *string
+	// RPC is the url where ethereum calls are sent
+	RPC *string
+	// ReportOutputPath is the file path where reports will be written to for each round
+	ReportOutputPath *string
+	// Nodes is the total number of nodes to simulate
+	Nodes *int
+	// Rounds is the total number of rounds to simulate; 0 or nil is no limit
+	Rounds *int
+	// RoundTime limits the time a round can take in milliseconds; 0 or nil is no limit
+	RoundTime *int
+	// QueryTimeLimit limits the time a query can take in milliseconds; 0 or nil is no limit
+	QueryTimeLimit *int
+	// ObservationTimeLimit limits the time an observation can take in milliseconds; 0 or nil is no limit
+	ObservationTimeLimit *int
+	// ReportTimeLimit limits the time a report can take in milliseconds; 0 or nil is no limit
+	ReportTimeLimit *int
+	// MaxRunTime limits the time a simulation runs in seconds; 0 or nil is no limit
+	MaxRunTime *int
+}
+
+func validateSimulatorConfig(config *SimulatorConfig) error {
+	if config == nil {
+		return fmt.Errorf("%w: nil config", ErrInvalidConfig)
+	}
+
+	if config.ContractAddress == nil {
+		return fmt.Errorf("%w: contract address cannot be nil", ErrInvalidConfig)
+	}
+
+	if _, err := common.NewMixedcaseAddressFromString(*config.ContractAddress); err != nil {
+		return fmt.Errorf("%w: contract address not parseable into evm address", ErrInvalidConfig)
+	}
+
+	if config.RPC == nil {
+		return fmt.Errorf("%w: RPC endpoint required", ErrInvalidConfig)
+	}
+
+	if config.ReportOutputPath != nil {
+		if _, err := os.Stat(*config.ReportOutputPath); os.IsNotExist(err) {
+			return fmt.Errorf("%w: provided report output directory does not exist", ErrInvalidConfig)
+		}
+	}
+
+	if config.Nodes == nil {
+		return fmt.Errorf("%w: number of nodes required", ErrInvalidConfig)
+	} else if *config.Nodes <= 0 {
+		return fmt.Errorf("%w: must have more than 0 nodes", ErrInvalidConfig)
+	}
+
+	if config.Rounds != nil && *config.Rounds < 0 {
+		return fmt.Errorf("%w: number of rounds must be 0 or more", ErrInvalidConfig)
+	}
+
+	if config.RoundTime != nil && *config.RoundTime < 0 {
+		return fmt.Errorf("%w: round time must be 0 or more", ErrInvalidConfig)
+	}
+
+	if config.QueryTimeLimit != nil && *config.QueryTimeLimit < 0 {
+		return fmt.Errorf("%w: query time limit must be 0 or more", ErrInvalidConfig)
+	}
+
+	if config.ObservationTimeLimit != nil && *config.ObservationTimeLimit < 0 {
+		return fmt.Errorf("%w: observation time limit must be 0 or more", ErrInvalidConfig)
+	}
+
+	if config.ReportTimeLimit != nil && *config.ReportTimeLimit < 0 {
+		return fmt.Errorf("%w: report time limit must be 0 or more", ErrInvalidConfig)
+	}
+
+	if config.MaxRunTime != nil && *config.MaxRunTime < 0 {
+		return fmt.Errorf("%w: max run time limit must be 0 or more", ErrInvalidConfig)
+	}
+
+	if config.RoundTime != nil && *config.RoundTime != 0 &&
+		((config.QueryTimeLimit != nil && *config.QueryTimeLimit != 0) ||
+			(config.ObservationTimeLimit != nil && *config.ObservationTimeLimit != 0) ||
+			(config.ReportTimeLimit != nil && *config.ReportTimeLimit != 0)) {
+		return fmt.Errorf("%w: round time in conflict with function times (query, observation, report); pick round limits or function limits, not both", ErrInvalidConfig)
+	}
+
+	return nil
+}
+
+func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
+	if err := validateSimulatorConfig(config); err != nil {
+		return err
+	}
+
+	// start the logging
+	slogger := NewSimpleLogger(logger.Writer(), Debug)
 	defer func() {
 		if err := recover(); err != nil {
-			logger.Critical(fmt.Sprint(err), nil)
+			slogger.Critical(fmt.Sprint(err), nil)
 			debug.PrintStack()
 		}
 	}()
 
-	w := &logWriter{l: logger}
-	log.SetOutput(w)
-	log.SetPrefix("[simulator] ")
-	log.SetFlags(log.Lshortfile | log.Lmsgprefix)
+	w := &logWriter{l: slogger}
+	simLogger := log.New(w, "[simulator] ", log.Lshortfile|log.Lmsgprefix)
+	lg := log.New(w, "[controller] ", log.Lshortfile|log.Lmsgprefix)
 
-	if contract == "" {
-		return fmt.Errorf("contract must be defined")
-	}
-
-	if rpc == "" {
-		return fmt.Errorf("rpc must be defined")
-	}
-
-	if nodes <= 0 {
-		return fmt.Errorf("number of nodes must be greater than 0")
-	}
-
-	if rounds < 0 {
-		return fmt.Errorf("number of rounds must be greater than or equal to 0")
-	}
-
-	if rndTime < 0 {
-		return fmt.Errorf("round time must be greater than or equal to 0")
-	}
-
-	if maxRun < 0 {
-		return fmt.Errorf("max run time must be greater than or equal to 0")
-	}
-
-	address := common.HexToAddress(contract)
-	receivers := make([]*OCRReceiver, nodes)
-	for i := 0; i < nodes; i++ {
+	// create the simulated ocr nodes before creating the controller
+	address := common.HexToAddress(*config.ContractAddress)
+	receivers := make([]*OCRReceiver, *config.Nodes)
+	for i := 0; i < *config.Nodes; i++ {
 		receivers[i] = NewOCRReceiver(fmt.Sprintf("node %d", i+1))
 	}
 
-	t := time.Duration(int64(rndTime))
-	lg := log.New(w, "[controller] ", log.Lshortfile|log.Lmsgprefix)
-	controller := NewOCRController(t*time.Second, rounds, lg, receivers...)
-	controller.QueryTime = time.Duration(int64(qTime)) * time.Second
-	controller.ObservationTime = time.Duration(int64(oTime)) * time.Second
-	controller.ReportTime = time.Duration(int64(rTime)) * time.Second
+	// apply round limits if set by config
+	roundTime := time.Duration(0)
+	if config.RoundTime != nil {
+		roundTime = time.Duration(int64(*config.RoundTime)) * time.Millisecond
+	}
 
+	rounds := 0
+	if config.Rounds != nil {
+		rounds = *config.Rounds
+	}
+
+	// create the controller
+	controller := NewOCRController(roundTime, rounds, lg, receivers...)
+
+	// apply function time limits if set by config
+	if config.QueryTimeLimit != nil {
+		controller.QueryTime = time.Duration(int64(*config.QueryTimeLimit)) * time.Millisecond
+	}
+
+	if config.ObservationTimeLimit != nil {
+		controller.ObservationTime = time.Duration(int64(*config.ObservationTimeLimit)) * time.Millisecond
+	}
+
+	if config.ReportTimeLimit != nil {
+		controller.ReportTime = time.Duration(int64(*config.ReportTimeLimit)) * time.Millisecond
+	}
+
+	// wrap each node in the node simulator
 	for i, rec := range receivers {
 		l := log.New(w, fmt.Sprintf("[node %d] ", i+1), log.Lshortfile|log.Lmsgprefix)
-		wrapPluginReceiver(controller, rec, makePlugin(address, controller, l))
+
+		// each node has its own rpc connection
+		client, err := ethclient.Dial(*config.RPC)
+		if err != nil {
+			return err
+		}
+
+		wrapPluginReceiver(simLogger, controller, rec, makePlugin(address, controller, l, client))
 	}
 
 	var ctx context.Context
 	var cancel context.CancelFunc
 
-	if maxRun > 0 {
-		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(int64(maxRun))*time.Second)
+	// apply run time limits to the context
+	if config.MaxRunTime != nil && *config.MaxRunTime > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(int64(*config.MaxRunTime))*time.Second)
 	} else {
 		ctx, cancel = context.WithCancel(context.Background())
 	}
@@ -96,20 +197,16 @@ func runFullSimulation(contract, rpc, out string, nodes, rounds, rndTime, qTime,
 		cancel()
 	}
 
-	if out != "" {
+	// write reports on exit if configured to do so
+	if config.ReportOutputPath != nil {
 		log.Print("writing reports")
-		controller.WriteReports(out)
+		controller.WriteReports(*config.ReportOutputPath)
 	}
 
 	return nil
 }
 
-func makePlugin(address common.Address, controller *OCRController, logger *log.Logger) types.ReportingPlugin {
-	client, err := ethclient.Dial(*rpc)
-	if err != nil {
-		panic(err)
-	}
-
+func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, client *ethclient.Client) types.ReportingPlugin {
 	reg, err := chain.NewEVMRegistryV1_2(address, client)
 	if err != nil {
 		panic(err)
@@ -128,12 +225,12 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 	return plugin
 }
 
-func wrapPluginReceiver(controller *OCRController, receiver *OCRReceiver, plugin types.ReportingPlugin) {
+func wrapPluginReceiver(logger *log.Logger, controller *OCRController, receiver *OCRReceiver, plugin types.ReportingPlugin) {
 	go func(c *OCRController, r *OCRReceiver, p types.ReportingPlugin) {
 		for {
 			select {
 			case call := <-receiver.Init:
-				log.Printf("%s: init call received", receiver.Name)
+				logger.Printf("%s: init call received", receiver.Name)
 				q, err := p.Query(call.Context, types.ReportTimestamp{Round: uint8(call.Round), Epoch: uint32(call.Epoch)})
 				if err != nil {
 					panic(fmt.Sprintf("fatal error in query: %s", err))
@@ -141,17 +238,17 @@ func wrapPluginReceiver(controller *OCRController, receiver *OCRReceiver, plugin
 				go func() {
 					select {
 					case c.Queries <- OCRQuery(q):
-						log.Printf("%s: sent query to controller", receiver.Name)
+						logger.Printf("%s: sent query to controller", receiver.Name)
 						return
 					case <-call.Context.Done():
 						if controller.QueryTime > 0 {
-							log.Printf("%s: context ended for query call", receiver.Name)
+							logger.Printf("%s: context ended for query call", receiver.Name)
 						}
 						return
 					}
 				}()
 			case call := <-receiver.Query:
-				log.Printf("%s: query recieved", receiver.Name)
+				logger.Printf("%s: query recieved", receiver.Name)
 				o, err := p.Observation(call.Context, types.ReportTimestamp{Round: uint8(call.Round), Epoch: uint32(call.Epoch)}, types.Query(call.Data))
 				if err != nil {
 					panic(fmt.Sprintf("fatal error in query: %s", err))
@@ -159,17 +256,17 @@ func wrapPluginReceiver(controller *OCRController, receiver *OCRReceiver, plugin
 				go func() {
 					select {
 					case c.Observations <- OCRObservation(o):
-						log.Printf("%s: sent observation to controller", receiver.Name)
+						logger.Printf("%s: sent observation to controller", receiver.Name)
 						return
 					case <-call.Context.Done():
 						if controller.ObservationTime > 0 {
-							log.Printf("%s: context ended for observation call", receiver.Name)
+							logger.Printf("%s: context ended for observation call", receiver.Name)
 						}
 						return
 					}
 				}()
 			case call := <-receiver.Observations:
-				log.Printf("%s: observations received", receiver.Name)
+				logger.Printf("%s: observations received", receiver.Name)
 				attr := make([]types.AttributedObservation, len(call.Data))
 				for i, o := range call.Data {
 					attr[i] = types.AttributedObservation{
@@ -185,28 +282,28 @@ func wrapPluginReceiver(controller *OCRController, receiver *OCRReceiver, plugin
 				go func() {
 					rv := r
 					if !b {
-						log.Printf("%s: nothing to report; sending empty report", receiver.Name)
+						logger.Printf("%s: nothing to report; sending empty report", receiver.Name)
 						rv = types.Report{}
 					}
 					select {
 					case c.Reports <- OCRReport(rv):
-						log.Printf("%s: sent report to controller", receiver.Name)
+						logger.Printf("%s: sent report to controller", receiver.Name)
 						return
 					case <-call.Context.Done():
 						if controller.ReportTime > 0 {
-							log.Printf("%s: context ended for report call", receiver.Name)
+							logger.Printf("%s: context ended for report call", receiver.Name)
 						}
 						return
 					}
 				}()
 			case call := <-receiver.Report:
-				log.Printf("%s: report received", receiver.Name)
+				logger.Printf("%s: report received", receiver.Name)
 				b, err := p.ShouldAcceptFinalizedReport(call.Context, types.ReportTimestamp{Round: uint8(call.Round), Epoch: uint32(call.Epoch)}, types.Report(call.Data))
 				if err != nil {
 					panic(fmt.Sprintf("fatal error in query: %s", err))
 				}
 
-				log.Printf("accept finalized report for round: %d; epoch: %d: %t", call.Round, call.Epoch, b)
+				logger.Printf("accept finalized report for round: %d; epoch: %d: %t", call.Round, call.Epoch, b)
 			case <-r.Stop:
 				return
 			}
