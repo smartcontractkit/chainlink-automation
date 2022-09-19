@@ -207,7 +207,7 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 }
 
 func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, client *ethclient.Client) types.ReportingPlugin {
-	reg, err := chain.NewEVMRegistryV1_2(address, client)
+	reg, err := chain.NewEVMRegistryV2_0(address, client)
 	if err != nil {
 		panic(err)
 	}

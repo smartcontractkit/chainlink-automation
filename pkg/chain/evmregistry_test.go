@@ -31,7 +31,7 @@ func TestGetActiveUpkeepKeys(t *testing.T) {
 	rec.MockResponse("getState", state)
 	rec.MockResponse("getActiveUpkeepIDs", ids)
 
-	reg, err := NewEVMRegistryV1_2(common.Address{}, mockClient)
+	reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
 	if err != nil {
 		t.FailNow()
 	}
@@ -64,7 +64,7 @@ func TestCheckUpkeep(t *testing.T) {
 		responseArgs := []interface{}{true, []byte{}, uint8(0), big.NewInt(0), big.NewInt(0), big.NewInt(0)}
 		rec.MockResponse("checkUpkeep", responseArgs...)
 
-		reg, err := NewEVMRegistryV1_2(common.Address{}, mockClient)
+		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
 		if err != nil {
 			t.FailNow()
 		}
@@ -90,7 +90,7 @@ func TestCheckUpkeep(t *testing.T) {
 		responseArgs := []interface{}{false, []byte{}, uint8(4), big.NewInt(0), big.NewInt(0), big.NewInt(0)}
 		rec.MockResponse("checkUpkeep", responseArgs...)
 
-		reg, err := NewEVMRegistryV1_2(common.Address{}, mockClient)
+		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
 		if err != nil {
 			t.FailNow()
 		}

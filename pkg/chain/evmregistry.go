@@ -23,22 +23,22 @@ var (
 	ErrUpkeepKeyNotParsable = fmt.Errorf("upkeep key not parsable")
 )
 
-type evmRegistryv1_2 struct {
+type evmRegistryv2_0 struct {
 	registry  *keeper_registry_wrapper2_0.KeeperRegistryCaller
 	evmClient bind.ContractBackend
 }
 
-func NewEVMRegistryV1_2(address common.Address, backend bind.ContractBackend) (*evmRegistryv1_2, error) {
+func NewEVMRegistryV2_0(address common.Address, backend bind.ContractBackend) (*evmRegistryv2_0, error) {
 	caller, err := keeper_registry_wrapper2_0.NewKeeperRegistryCaller(address, backend)
 	if err != nil {
 		// TODO: do better error handling here
 		return nil, err
 	}
 
-	return &evmRegistryv1_2{registry: caller, evmClient: backend}, nil
+	return &evmRegistryv2_0{registry: caller, evmClient: backend}, nil
 }
 
-func (r *evmRegistryv1_2) GetActiveUpkeepKeys(ctx context.Context, block types.BlockKey) ([]types.UpkeepKey, error) {
+func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.BlockKey) ([]types.UpkeepKey, error) {
 	opts, err := r.buildCallOpts(ctx, block)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (r *evmRegistryv1_2) GetActiveUpkeepKeys(ctx context.Context, block types.B
 	return keys, nil
 }
 
-func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
+func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
 	var err error
 
 	block, upkeepId, err := blockAndIdFromKey(key)
@@ -131,7 +131,7 @@ func (r *evmRegistryv1_2) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 
 }
 
-func (r *evmRegistryv1_2) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {
+func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {
 	b := new(big.Int)
 	_, ok := b.SetString(string(block), 10)
 
