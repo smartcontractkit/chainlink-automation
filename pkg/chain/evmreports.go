@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -26,8 +27,7 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 	for i, result := range toReport {
 		_, upkeepId, err := blockAndIdFromKey(result.Key)
 		if err != nil {
-			// TODO: maybe this should be a warning??
-			continue
+			return nil, fmt.Errorf("%w: report encoding error", err)
 		}
 
 		ids[i] = upkeepId

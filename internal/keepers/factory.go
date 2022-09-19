@@ -8,6 +8,7 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
+// NewReportingPluginFactory returns an OCR ReportingPluginFactory
 func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder, logger *log.Logger) types.ReportingPluginFactory {
 	return &keepersReportingFactory{registry: registry, encoder: encoder, logger: logger}
 }
@@ -45,7 +46,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	//log.SetOutput(d.logger.Writer())
 	//log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC)
 
-	service := NewSimpleUpkeepService(SampleRatio(0.6), d.registry, d.logger)
+	service := newSimpleUpkeepService(SampleRatio(0.6), d.registry, d.logger)
 
 	return &keepers{service: service, encoder: d.encoder}, info, nil
 }

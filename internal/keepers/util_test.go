@@ -10,6 +10,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCryptoRandSource(t *testing.T) {
+	s := newCryptoRandSource()
+	i := s.Int63()
+	assert.NotEqual(t, 0, i)
+}
+
+func TestCryptoShuffler(t *testing.T) {
+	expectected := []int{1, 2, 3, 4, 5}
+	test := make([]int, len(expectected))
+	copy(test, expectected)
+
+	sh := &cryptoShuffler[int]{}
+	sh.Shuffle(test)
+
+	assert.NotEqual(t, test, expectected)
+	for _, value := range expectected {
+		assert.Contains(t, test, value)
+	}
+}
+
 func TestDedupe(t *testing.T) {
 	tests := []struct {
 		Name           string
@@ -45,6 +65,12 @@ func TestDedupe(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSortedDedup_Error(t *testing.T) {
+	obs := []types.AttributedObservation{{Observation: types.Observation([]byte("incorrectly encoded"))}}
+	_, err := sortedDedupedKeyList(obs)
+	assert.NotNil(t, err)
 }
 
 func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
@@ -92,5 +118,4 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 			}
 		})
 	}
-
 }
