@@ -10,7 +10,8 @@ import (
 
 func TestStart(t *testing.T) {
 	t.Skip("service start throws nil pointer deference")
-	d, _ := NewDelegate(DelegateConfig{
+	d, err := NewDelegate(DelegateConfig{
+		Logger: new(MockLogger),
 		LocalConfig: types.LocalConfig{
 			BlockchainTimeout:                  1 * time.Second,        // TODO: choose sane configs
 			ContractConfigTrackerPollInterval:  15 * time.Second,       // TODO: choose sane configs
@@ -19,7 +20,9 @@ func TestStart(t *testing.T) {
 			ContractConfigConfirmations:        1,                      // TODO: choose sane configs
 		},
 	})
-	err := d.Start()
+	assert.NoError(t, err)
+
+	err = d.Start()
 	assert.Equal(t, err.Error(), "unimplemented")
 }
 
