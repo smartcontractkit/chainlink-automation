@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/mock"
@@ -16,21 +16,21 @@ import (
 // ex: 0x1234ABCD
 const funcSigLength = 10
 
-type contractMockReceiver struct {
+type ContractMockReceiver struct {
 	t       *testing.T
 	ethMock *Client
 	abi     abi.ABI
 }
 
-func NewContractMockReceiver(t *testing.T, ethMock *Client, abi abi.ABI) contractMockReceiver {
-	return contractMockReceiver{
+func NewContractMockReceiver(t *testing.T, ethMock *Client, abi abi.ABI) ContractMockReceiver {
+	return ContractMockReceiver{
 		t:       t,
 		ethMock: ethMock,
 		abi:     abi,
 	}
 }
 
-func (receiver contractMockReceiver) MockResponse(funcName string, responseArgs ...interface{}) *mock.Call {
+func (receiver ContractMockReceiver) MockResponse(funcName string, responseArgs ...interface{}) *mock.Call {
 	funcSig := hexutil.Encode(receiver.abi.Methods[funcName].ID)
 	if len(funcSig) != funcSigLength {
 		receiver.t.Fatalf("Unable to find Registry contract function with name %s", funcName)
@@ -49,7 +49,7 @@ func (receiver contractMockReceiver) MockResponse(funcName string, responseArgs 
 		Return(encoded, nil)
 }
 
-func (receiver contractMockReceiver) MockRevertResponse(funcName string, msg string) *mock.Call {
+func (receiver ContractMockReceiver) MockRevertResponse(funcName string, msg string) *mock.Call {
 	funcSig := hexutil.Encode(receiver.abi.Methods[funcName].ID)
 	if len(funcSig) != funcSigLength {
 		receiver.t.Fatalf("Unable to find Registry contract function with name %s", funcName)
@@ -66,7 +66,7 @@ func (receiver contractMockReceiver) MockRevertResponse(funcName string, msg str
 		Return(nil, fmt.Errorf("revert%s", msg))
 }
 
-func (receiver contractMockReceiver) mustEncodeResponse(funcName string, responseArgs ...interface{}) []byte {
+func (receiver ContractMockReceiver) mustEncodeResponse(funcName string, responseArgs ...interface{}) []byte {
 	if len(responseArgs) == 0 {
 		return []byte{}
 	}

@@ -87,7 +87,7 @@ func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepK
 	// check upkeep at block number in key
 	// return result including performData
 	// TODO: which address should be passed to this function?
-	ok, u, err := s.registry.CheckUpkeep(ctx, types.Address([]byte{}), key)
+	ok, u, err := s.registry.CheckUpkeep(ctx, key)
 	if err != nil {
 		// TODO: do better error bubbling
 		return types.UpkeepResult{}, err
@@ -191,7 +191,7 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 	return func(ctx context.Context) (types.UpkeepResult, error) {
 		// perform check and update cache with result
 		logger.Printf("checking upkeep %s", key)
-		ok, u, err := registry.CheckUpkeep(ctx, types.Address([]byte{}), key)
+		ok, u, err := registry.CheckUpkeep(ctx, key)
 		if ok {
 			logger.Printf("upkeep ready to perform for key %s", key)
 		}

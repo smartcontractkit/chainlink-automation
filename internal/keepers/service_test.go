@@ -36,7 +36,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 				state = Perform
 				pData = []byte(fmt.Sprintf("%d", i))
 			}
-			rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
+			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
 		}
 
 		l := log.New(io.Discard, "", 0)
@@ -78,7 +78,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		rg := new(MockedRegistry)
 		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
-		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: Skip}, nil)
+		rg.Mock.On("CheckUpkeep", mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: Skip}, nil)
 
 		l := log.New(io.Discard, "", 0)
 		svc := &simpleUpkeepService{
@@ -179,7 +179,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			ctx, cancel := test.Ctx()
 
 			rg := new(MockedRegistry)
-			rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, test.Key).Return(test.Check, test.RegResult, test.Err)
+			rg.Mock.On("CheckUpkeep", mock.Anything, test.Key).Return(test.Check, test.RegResult, test.Err)
 
 			l := log.New(io.Discard, "", 0)
 			svc := &simpleUpkeepService{
@@ -229,7 +229,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		for _, test := range tests {
 			ctx := context.Background()
-			rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, ktypes.UpkeepKey(test.Key)).Return(true, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(key1)}, nil)
+			rg.Mock.On("CheckUpkeep", mock.Anything, ktypes.UpkeepKey(test.Key)).Return(true, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(key1)}, nil)
 			err := svc.SetUpkeepState(ctx, ktypes.UpkeepKey(test.Key), test.State)
 
 			if test.Err == nil {
@@ -263,8 +263,8 @@ func (_m *MockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key ktypes.Bl
 	return r0, ret.Error(1)
 }
 
-func (_m *MockedRegistry) CheckUpkeep(ctx context.Context, addr ktypes.Address, key ktypes.UpkeepKey) (bool, ktypes.UpkeepResult, error) {
-	ret := _m.Mock.Called(ctx, addr, key)
+func (_m *MockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey) (bool, ktypes.UpkeepResult, error) {
+	ret := _m.Mock.Called(ctx, key)
 
 	var r1 ktypes.UpkeepResult
 	if rf, ok := ret.Get(1).(func() ktypes.UpkeepResult); ok {
