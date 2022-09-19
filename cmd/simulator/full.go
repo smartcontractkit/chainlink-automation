@@ -98,7 +98,10 @@ func validateSimulatorConfig(config *SimulatorConfig) error {
 		return fmt.Errorf("%w: max run time limit must be 0 or more", ErrInvalidConfig)
 	}
 
-	if config.RoundTime != nil && (config.QueryTimeLimit != nil || config.ObservationTimeLimit != nil || config.ReportTimeLimit != nil) {
+	if config.RoundTime != nil && *config.RoundTime != 0 &&
+		((config.QueryTimeLimit != nil && *config.QueryTimeLimit != 0) ||
+			(config.ObservationTimeLimit != nil && *config.ObservationTimeLimit != 0) ||
+			(config.ReportTimeLimit != nil && *config.ReportTimeLimit != 0)) {
 		return fmt.Errorf("%w: round time in conflict with function times (query, observation, report); pick round limits or function limits, not both", ErrInvalidConfig)
 	}
 

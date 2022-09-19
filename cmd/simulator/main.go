@@ -42,7 +42,6 @@ func main() {
 	config := &SimulatorConfig{
 		ContractAddress:      contract,
 		RPC:                  rpc,
-		ReportOutputPath:     out,
 		Nodes:                nodes,
 		Rounds:               rounds,
 		RoundTime:            rndTime,
@@ -50,6 +49,10 @@ func main() {
 		ObservationTimeLimit: oTime,
 		ReportTimeLimit:      rTime,
 		MaxRunTime:           maxRun,
+	}
+
+	if *out != "" {
+		config.ReportOutputPath = out
 	}
 
 	err := runFullSimulation(log.Default(), config)
