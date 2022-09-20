@@ -14,11 +14,11 @@ func TestStart(t *testing.T) {
 	d, err := NewDelegate(DelegateConfig{
 		Logger: new(MockLogger),
 		LocalConfig: types.LocalConfig{
-			BlockchainTimeout:                  1 * time.Second,        // TODO: choose sane configs
-			ContractConfigTrackerPollInterval:  15 * time.Second,       // TODO: choose sane configs
-			ContractTransmitterTransmitTimeout: 1 * time.Second,        // TODO: choose sane configs
-			DatabaseTimeout:                    100 * time.Millisecond, // TODO: choose sane configs
-			ContractConfigConfirmations:        1,                      // TODO: choose sane configs
+			BlockchainTimeout:                  1 * time.Second,
+			ContractConfigTrackerPollInterval:  15 * time.Second,
+			ContractTransmitterTransmitTimeout: 1 * time.Second,
+			DatabaseTimeout:                    100 * time.Millisecond,
+			ContractConfigConfirmations:        1,
 		},
 	})
 	assert.NoError(t, err)
@@ -32,11 +32,11 @@ func TestClose(t *testing.T) {
 
 	d, err := NewDelegate(DelegateConfig{
 		LocalConfig: types.LocalConfig{
-			BlockchainTimeout:                  1 * time.Second,        // TODO: choose sane configs
-			ContractConfigTrackerPollInterval:  15 * time.Second,       // TODO: choose sane configs
-			ContractTransmitterTransmitTimeout: 1 * time.Second,        // TODO: choose sane configs
-			DatabaseTimeout:                    100 * time.Millisecond, // TODO: choose sane configs
-			ContractConfigConfirmations:        1,                      // TODO: choose sane configs
+			BlockchainTimeout:                  1 * time.Second,
+			ContractConfigTrackerPollInterval:  15 * time.Second,
+			ContractTransmitterTransmitTimeout: 1 * time.Second,
+			DatabaseTimeout:                    100 * time.Millisecond,
+			ContractConfigConfirmations:        1,
 		},
 	})
 	assert.NoError(t, err)

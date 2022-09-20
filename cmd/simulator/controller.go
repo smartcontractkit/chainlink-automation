@@ -268,7 +268,7 @@ func (c *OCRController) collectReports(ctx context.Context, call OCRCallBase) {
 }
 
 func (c *OCRController) collapseReports(reports []OCRReport) (OCRReport, error) {
-	// TODO: nieve implementation assumes all reports are the same and sends the first
+	// TODO: naive implementation assumes all reports are the same and sends the first
 	if len(reports) == 0 {
 		return nil, fmt.Errorf("cannot collapse reports of length 0")
 	}

@@ -42,7 +42,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 
 	keys, err := sortedDedupedKeyList(attributed)
 	if err != nil {
-		return false, nil, fmt.Errorf("%w: sorting/deduping failure", err)
+		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations", err)
 	}
 
 	// select, verify, and build report
@@ -50,7 +50,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 	for _, key := range keys {
 		upkeep, err := k.service.CheckUpkeep(ctx, key)
 		if err != nil {
-			return false, nil, fmt.Errorf("%w: check upkeep failure in report", err)
+			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation", err)
 		}
 
 		if upkeep.State == ktypes.Perform {
@@ -67,15 +67,13 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 
 	b, err := k.encoder.EncodeReport(toPerform)
 	if err != nil {
-		// TODO: handle errors better
-		return false, nil, fmt.Errorf("%w: report encoding", err)
+		return false, nil, fmt.Errorf("%w: failed to encode OCR report", err)
 	}
 
 	// update internal state of upkeeps to ensure they aren't reported or observed again
 	for i := 0; i < len(toPerform); i++ {
 		if err := k.service.SetUpkeepState(ctx, toPerform[i].Key, ktypes.Reported); err != nil {
-			// TODO: handle errors better
-			return false, nil, fmt.Errorf("%w: attempted to update internal state", err)
+			return false, nil, fmt.Errorf("%w: failed to update internal state while generating report", err)
 		}
 	}
 

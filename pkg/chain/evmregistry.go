@@ -18,9 +18,10 @@ const ActiveUpkeepIDBatchSize int64 = 10000
 const separator string = "|"
 
 var (
-	ErrRegistryCallFailure  = fmt.Errorf("registry chain call failure")
-	ErrBlockKeyNotParsable  = fmt.Errorf("block identifier not parsable")
-	ErrUpkeepKeyNotParsable = fmt.Errorf("upkeep key not parsable")
+	ErrRegistryCallFailure   = fmt.Errorf("registry chain call failure")
+	ErrBlockKeyNotParsable   = fmt.Errorf("block identifier not parsable")
+	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
+	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
 )
 
 type evmRegistryv2_0 struct {
@@ -31,8 +32,7 @@ type evmRegistryv2_0 struct {
 func NewEVMRegistryV2_0(address common.Address, backend bind.ContractBackend) (*evmRegistryv2_0, error) {
 	caller, err := keeper_registry_wrapper2_0.NewKeeperRegistryCaller(address, backend)
 	if err != nil {
-		// TODO: do better error handling here
-		return nil, err
+		return nil, fmt.Errorf("%w: failed to create caller for address and backend", ErrInitializationFailure)
 	}
 
 	return &evmRegistryv2_0{registry: caller, evmClient: backend}, nil

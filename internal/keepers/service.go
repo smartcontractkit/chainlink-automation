@@ -28,18 +28,18 @@ type simpleUpkeepService struct {
 // an RPC call.
 //
 // DO NOT USE THIS IN PRODUCTION
-func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger) *simpleUpkeepService {
+func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *simpleUpkeepService {
 	s := &simpleUpkeepService{
 		logger:   logger,
 		ratio:    ratio,
 		registry: registry,
 		shuffler: new(cryptoShuffler[types.UpkeepKey]),
-		cache:    newCache[types.UpkeepResult](20 * time.Minute),                     // TODO: default expiration should be configured based on block time
-		workers:  newWorkerGroup[types.UpkeepResult](10*runtime.GOMAXPROCS(0), 1000), // # of workers = 10 * [# of cpus]
+		cache:    newCache[types.UpkeepResult](cacheExpire),
+		workers:  newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
-		Interval: 30 * time.Second, // TODO: update to sane default
+		Interval: cacheClean,
 		stop:     make(chan struct{}, 1),
 	}
 
@@ -59,8 +59,7 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upkee
 	s.logger.Printf("get all active upkeep keys")
 	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
 	if err != nil {
-		// TODO: do better error bubbling
-		return nil, err
+		return nil, fmt.Errorf("%w: failed to get upkeeps from registry for sampling", err)
 	}
 
 	s.logger.Printf("%d upkeep keys found in registry", len(keys))
@@ -71,7 +70,7 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upkee
 
 	// - check upkeeps selected
 	if s.workers == nil {
-		panic("cannot check upkeeps without runner")
+		panic("cannot sample upkeeps without runner")
 	}
 	return s.parallelCheck(ctx, keys[:size])
 }
@@ -86,11 +85,9 @@ func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepK
 
 	// check upkeep at block number in key
 	// return result including performData
-	// TODO: which address should be passed to this function?
 	ok, u, err := s.registry.CheckUpkeep(ctx, key)
 	if err != nil {
-		// TODO: do better error bubbling
-		return types.UpkeepResult{}, err
+		return types.UpkeepResult{}, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
 
 	result = types.UpkeepResult{

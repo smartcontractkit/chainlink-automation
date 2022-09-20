@@ -40,9 +40,8 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		ReportingPluginFactory:       keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder, l),
 	})
 
-	// TODO: handle errors better
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: failed to create new OCR oracle", err)
 	}
 
 	return &Delegate{keeper: keeper}, nil
@@ -51,7 +50,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 // Start starts the OCR oracle and any associated services
 func (d *Delegate) Start(_ context.Context) error {
 	if err := d.keeper.Start(); err != nil {
-		return fmt.Errorf("%w: starting keeper oracle", err)
+		return fmt.Errorf("%w: failed to start keeper oracle", err)
 	}
 	return nil
 }
@@ -59,7 +58,7 @@ func (d *Delegate) Start(_ context.Context) error {
 // Close stops the OCR oracle and any associated services
 func (d *Delegate) Close() error {
 	if err := d.keeper.Close(); err != nil {
-		return fmt.Errorf("%w: stopping keeper oracle", err)
+		return fmt.Errorf("%w: failed to close keeper oracle", err)
 	}
 	return nil
 }
