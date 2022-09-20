@@ -176,7 +176,7 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 			if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
 				if errors.Is(err, ErrContextCancelled) {
 					// if the context is cancelled before the work can be
-					// finished, stop adding work and allow existing to finish
+					// finished, stop adding work and allow existing to finish.
 					// cancelling this context will cancel all waiting worker
 					// functions and have them report immediately. this will
 					// result in a lot of errors in the results collector.
@@ -206,6 +206,12 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		// job context is cancelled (jobCtx)
 		c, cancel := context.WithCancel(context.Background())
 		done := make(chan struct{})
+
+		// close go-routine to prevent memory leaks
+		defer func() {
+			done <- struct{}{}
+		}()
+
 		go func() {
 			select {
 			case <-jobCtx.Done():
@@ -228,8 +234,6 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 			logger.Printf("error checking upkeep '%s': %s", key, err)
 		}
 
-		// close go-routine to prevent memory leaks
-		done <- struct{}{}
 		return u, err
 	}
 }
