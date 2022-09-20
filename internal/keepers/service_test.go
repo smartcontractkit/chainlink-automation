@@ -121,7 +121,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			t.FailNow()
 		}
 
-		assert.Equal(t, fmt.Errorf("contract error").Error(), err.Error())
+		assert.Equal(t, fmt.Errorf("contract error: failed to get upkeeps from registry for sampling").Error(), err.Error())
 		assert.Equal(t, 0, len(result))
 
 		rg.Mock.AssertExpectations(t)
@@ -164,7 +164,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 				RegResult:      ktypes.UpkeepResult{},
 				Err:            fmt.Errorf("contract error"),
 				ExpectedResult: ktypes.UpkeepResult{},
-				ExpectedErr:    fmt.Errorf("contract error"),
+				ExpectedErr:    fmt.Errorf("contract error: service failed to check upkeep from registry"),
 			},
 			{
 				Name:           "Result: Perform",

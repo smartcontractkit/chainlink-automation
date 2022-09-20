@@ -50,5 +50,5 @@ func TestClose(t *testing.T) {
 	}
 
 	err = d.Close()
-	assert.Equal(t, err.Error(), "can only close a started Oracle: stopping keeper oracle")
+	assert.Equal(t, err.Error(), "can only close a started Oracle: failed to close keeper oracle")
 }
