@@ -41,7 +41,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			MaxObservationLength: 1_000,
 			// a report is composed of 1 or more abi encoded perform calls
 			// with performData of arbitrary length
-			MaxReportLength: 10_000, // TODO: pick sane limit
+			MaxReportLength: 10_000, // TODO (config): pick sane limit based on expected performData size. maybe set this to block size limit?
 		},
 		// unique reports ensures that each round produces only a single report
 		UniqueReports: true,
@@ -52,27 +52,31 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	//log.SetOutput(d.logger.Writer())
 	//log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC)
 
-	// TODO: cache expiration should be configurable based on offchain
+	// TODO (config): cache expiration should be configurable based on offchain
 	// config, block time, round time, or other environmental condition
 	cacheExpire := 20 * time.Minute
 
-	// TODO: cache clean rate should be configured to not overload the
+	// TODO (config): cache clean rate should be configured to not overload the
 	// processor when it happens but not allow stale data to build up
 	cacheClean := 30 * time.Second
 
-	// TODO: number of workers should be based on total amount of resources
+	// TODO (config): number of workers should be based on total amount of resources
 	// available. the work load of checking upkeeps is memory heavy as each work
 	// item is mostly waiting on the network. many work items get staged very
 	// quickly and stay in memory until the network response comes in. from
 	// there it's just a matter of decoding the response.
 	workers := 10 * runtime.GOMAXPROCS(0) // # of workers = 10 * [# of cpus]
 
-	// TODO: the worker queue length should be large enough to accomodate the
+	// TODO (config): the worker queue length should be large enough to accomodate the
 	// total number of work items coming in (upkeeps to check per block) without
 	// overrunning memory limits.
 	workerQueueLength := 1000
 
-	service := newSimpleUpkeepService(sampleRatio(0.6), d.registry, d.logger, cacheExpire, cacheClean, workers, workerQueueLength)
+	// TODO (config): sample ratio should be able to be calculated based on number of
+	// nodes and max number of faulty nodes
+	sample := sampleRatio(0.6)
+
+	service := newSimpleUpkeepService(sample, d.registry, d.logger, cacheExpire, cacheClean, workers, workerQueueLength)
 
 	return &keepers{service: service, encoder: d.encoder}, info, nil
 }
