@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"runtime"
@@ -128,7 +129,11 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 
 	var wg sync.WaitGroup
 
-	// start the channel listener
+	// start the results listener
+	// if the context provided is cancelled, this listener shouldn't terminate
+	// until all results have been collected. each worker is also passed this
+	// function's context and will terminate when that context is cancelled
+	// resulting in multiple errors being collected by this listener.
 	done := make(chan struct{})
 	go func() {
 		s.logger.Printf("starting service to read worker results")
@@ -150,8 +155,6 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 				}
 			case <-done:
 				break Outer
-			case <-ctx.Done():
-				break Outer
 			}
 		}
 
@@ -170,8 +173,21 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 			}
 		} else {
 			wg.Add(1)
-			if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key)); err != nil {
-				return nil, err
+			if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
+				if errors.Is(err, ErrContextCancelled) {
+					// if the context is cancelled before the work can be
+					// finished, stop adding work and allow existing to finish
+					// cancelling this context will cancel all waiting worker
+					// functions and have them report immediately. this will
+					// result in a lot of errors in the results collector.
+					wg.Done()
+					break
+				} else {
+					// the worker process has probably stopped so the function
+					// should terminate with an error
+					close(done)
+					return nil, fmt.Errorf("%w: failed to add upkeep check to worker queue", err)
+				}
 			}
 		}
 	}
@@ -184,11 +200,26 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 	return sample, nil
 }
 
-func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey) func(ctx context.Context) (types.UpkeepResult, error) {
+func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey, jobCtx context.Context) func(ctx context.Context) (types.UpkeepResult, error) {
 	return func(ctx context.Context) (types.UpkeepResult, error) {
+		// cancel the job if either the worker group is stopped (ctx) or the
+		// job context is cancelled (jobCtx)
+		c, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() {
+			select {
+			case <-jobCtx.Done():
+				cancel()
+			case <-ctx.Done():
+				cancel()
+			case <-done:
+				cancel()
+			}
+		}()
+
 		// perform check and update cache with result
 		logger.Printf("checking upkeep %s", key)
-		ok, u, err := registry.CheckUpkeep(ctx, key)
+		ok, u, err := registry.CheckUpkeep(c, key)
 		if ok {
 			logger.Printf("upkeep ready to perform for key %s", key)
 		}
@@ -196,6 +227,9 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		if err != nil {
 			logger.Printf("error checking upkeep '%s': %s", key, err)
 		}
+
+		// close go-routine to prevent memory leaks
+		done <- struct{}{}
 		return u, err
 	}
 }
