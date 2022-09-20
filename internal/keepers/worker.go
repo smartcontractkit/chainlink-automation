@@ -115,6 +115,10 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 // Do adds a new work item onto the work queue. This function blocks until
 // the work queue clears up or the context is cancelled.
 func (wg *workerGroup[T]) Do(ctx context.Context, w work[T]) error {
+	if ctx.Err() != nil {
+		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
+	}
+
 	select {
 	case wg.queue <- w:
 		return nil
@@ -129,6 +133,10 @@ func (wg *workerGroup[T]) Do(ctx context.Context, w work[T]) error {
 // until the queue is available, the context is cancelled, or 50 milliseconds passes
 // in waiting.
 func (wg *workerGroup[T]) DoCancelOnFull(ctx context.Context, w work[T]) error {
+	if ctx.Err() != nil {
+		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
+	}
+
 	timer := time.NewTicker(50 * time.Millisecond)
 	select {
 	case wg.queue <- w:

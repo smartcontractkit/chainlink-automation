@@ -154,6 +154,7 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 					failure++
 				}
 			case <-done:
+				s.logger.Printf("done signal received")
 				break Outer
 			}
 		}
@@ -180,6 +181,7 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 					// cancelling this context will cancel all waiting worker
 					// functions and have them report immediately. this will
 					// result in a lot of errors in the results collector.
+					s.logger.Printf("context cancelled while attempting to add to queue")
 					wg.Done()
 					break
 				} else {
@@ -192,6 +194,7 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 		}
 	}
 
+	s.logger.Printf("waiting for results to be read")
 	wg.Wait()
 	close(done)
 
@@ -204,13 +207,12 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 	return func(ctx context.Context) (types.UpkeepResult, error) {
 		// cancel the job if either the worker group is stopped (ctx) or the
 		// job context is cancelled (jobCtx)
-		c, cancel := context.WithCancel(context.Background())
-		done := make(chan struct{})
+		if jobCtx.Err() != nil || ctx.Err() != nil {
+			return types.UpkeepResult{}, fmt.Errorf("job not completed because one of two contexts had already been cancelled")
+		}
 
-		// close go-routine to prevent memory leaks
-		defer func() {
-			done <- struct{}{}
-		}()
+		c, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{}, 1)
 
 		go func() {
 			select {
@@ -224,7 +226,6 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		}()
 
 		// perform check and update cache with result
-		logger.Printf("checking upkeep %s", key)
 		ok, u, err := registry.CheckUpkeep(c, key)
 		if ok {
 			logger.Printf("upkeep ready to perform for key %s", key)
@@ -233,6 +234,9 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		if err != nil {
 			logger.Printf("error checking upkeep '%s': %s", key, err)
 		}
+
+		// close go-routine to prevent memory leaks
+		done <- struct{}{}
 
 		return u, err
 	}

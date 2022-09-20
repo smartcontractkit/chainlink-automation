@@ -127,6 +127,66 @@ func TestSimpleUpkeepService(t *testing.T) {
 		rg.Mock.AssertExpectations(t)
 	})
 
+	t.Run("SampleUpkeeps_CancelContext", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+
+		keyCount := 100
+		actives := make([]ktypes.UpkeepKey, keyCount)
+		for i := 0; i < keyCount; i++ {
+			actives[i] = ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1)))
+		}
+
+		makeAfterFunc := func(ct context.Context) func() chan struct{} {
+			return func() chan struct{} {
+				c := make(chan struct{}, 1)
+				t := time.NewTimer(90 * time.Millisecond)
+
+				go func() {
+					select {
+					case <-ct.Done():
+						t.Stop()
+						c <- struct{}{}
+					case <-t.C:
+						c <- struct{}{}
+					}
+				}()
+
+				return c
+			}
+		}
+
+		rg := new(MockedRegistry)
+		rg.WithAfter = true
+		rg.After = makeAfterFunc(ctx)
+		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
+
+		for i := 0; i < keyCount; i++ {
+			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).
+				Return(true, ktypes.UpkeepResult{Key: actives[i], State: types.Perform, PerformData: []byte{}}, nil).
+				Maybe()
+		}
+
+		l := log.New(io.Discard, "", 0)
+		svc := &simpleUpkeepService{
+			logger:   l,
+			ratio:    sampleRatio(1.0),
+			registry: rg,
+			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:    newCache[ktypes.UpkeepResult](200 * time.Millisecond),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](10, 100),
+		}
+
+		result, err := svc.SampleUpkeeps(ctx)
+		if err != nil {
+			t.FailNow()
+		}
+
+		assert.Less(t, len(result), 20)
+		assert.Greater(t, len(result), 5)
+
+		cancel()
+	})
+
 	t.Run("CheckUpkeep", func(t *testing.T) {
 		testKey := ktypes.UpkeepKey([]byte("1|1"))
 
@@ -247,6 +307,9 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 type MockedRegistry struct {
 	mock.Mock
+	Ctx       context.Context
+	WithAfter bool
+	After     func() chan struct{}
 }
 
 func (_m *MockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key ktypes.BlockKey) ([]ktypes.UpkeepKey, error) {
@@ -268,10 +331,22 @@ func (_m *MockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey)
 	ret := _m.Mock.Called(ctx, key)
 
 	var r1 ktypes.UpkeepResult
+	if _m.WithAfter {
+		select {
+		case <-ctx.Done():
+			return false, r1, ctx.Err()
+		case <-_m.After():
+		}
+	}
+
+	if ctx.Err() != nil {
+		return false, r1, ctx.Err()
+	}
+
 	if rf, ok := ret.Get(1).(func() ktypes.UpkeepResult); ok {
 		r1 = rf()
 	} else {
-		if ret.Get(0) != nil {
+		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(ktypes.UpkeepResult)
 		}
 	}
