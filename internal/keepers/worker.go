@@ -129,29 +129,6 @@ func (wg *workerGroup[T]) Do(ctx context.Context, w work[T]) error {
 	}
 }
 
-// DoCancelOnFull adds a new work item onto the work queue. This function blocks
-// until the queue is available, the context is cancelled, or 50 milliseconds passes
-// in waiting.
-func (wg *workerGroup[T]) DoCancelOnFull(ctx context.Context, w work[T]) error {
-	if ctx.Err() != nil {
-		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
-	}
-
-	timer := time.NewTicker(50 * time.Millisecond)
-	select {
-	case wg.queue <- w:
-		timer.Stop()
-		return nil
-	case <-timer.C:
-		return fmt.Errorf("%w; work not added to queue", ErrQueueFull)
-	case <-ctx.Done():
-		timer.Stop()
-		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
-	case <-wg.stop:
-		return fmt.Errorf("%w; work not added to queue", ErrProcessStopped)
-	}
-}
-
 func (wg *workerGroup[T]) Stop() {
 	close(wg.stop)
 }

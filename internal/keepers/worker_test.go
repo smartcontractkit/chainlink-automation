@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"testing"
 	"time"
@@ -9,20 +10,90 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestWorker(t *testing.T) {
+	t.Run("Do-Not Add to Queue on Context Cancel", func(t *testing.T) {
+		w := &worker[int]{
+			Name:  "worker",
+			Queue: make(chan *worker[int]), // leave this unbuffered to not allow anything to block the queue
+		}
+
+		// channel for work results to be added
+		results := make(chan workResult[int], 1)
+
+		f := func(_ context.Context) (int, error) {
+			return 10, fmt.Errorf("error")
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go w.Do(ctx, results, f)
+
+		// wait a short period to ensure enough time for result to be returned
+		<-time.After(20 * time.Millisecond)
+		cancel()
+
+		tmr := time.NewTimer(100 * time.Millisecond)
+		select {
+		case r := <-results:
+			tmr.Stop()
+			// should have a result
+			assert.Equal(t, 10, r.Data, "data from work result should match")
+			assert.Equal(t, fmt.Errorf("error"), r.Err, "error from work result should match")
+		case <-tmr.C:
+			// fail
+			assert.Fail(t, "work result not placed on result channel")
+		}
+	})
+
+	t.Run("Do-Not Add to Results on Context Cancel", func(t *testing.T) {
+		w := &worker[int]{
+			Name:  "worker",
+			Queue: make(chan *worker[int]), // leave this unbuffered to not allow anything to block the queue
+		}
+
+		// channel for work results to be added; unbuffered to block
+		results := make(chan workResult[int])
+
+		f := func(_ context.Context) (int, error) {
+			return 10, fmt.Errorf("error")
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go w.Do(ctx, results, f)
+
+		// wait a short period to ensure enough time for result to be returned
+		<-time.After(20 * time.Millisecond)
+		cancel()
+
+		tmr := time.NewTimer(100 * time.Millisecond)
+		select {
+		case <-results:
+			assert.Fail(t, "work result was placed on result channel")
+			tmr.Stop()
+		case <-tmr.C:
+			// fail
+			break
+		}
+	})
+}
+
 func TestWorkerGroup(t *testing.T) {
 
 	t.Run("All Work Done", func(t *testing.T) {
 		wg := newWorkerGroup[bool](8, 1000)
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx := context.Background()
 
+		closed := make(chan struct{})
 		var done int
 		go func(w *workerGroup[bool], c context.Context) {
 			for {
+				tmr := time.NewTimer(50 * time.Millisecond)
 				select {
 				case <-w.results:
+					tmr.Stop()
 					done++
 					continue
-				case <-c.Done():
+				case <-tmr.C:
+					close(closed)
 					return
 				}
 			}
@@ -30,20 +101,14 @@ func TestWorkerGroup(t *testing.T) {
 
 		for n := 0; n < 10; n++ {
 			err := wg.Do(ctx, func(c context.Context) (bool, error) {
-				select {
-				case <-time.After(10 * time.Millisecond):
-					return true, nil
-				case <-c.Done():
-					return false, nil
-				}
+				return true, nil
 			})
 			if err != nil {
 				t.FailNow()
 			}
 		}
 
-		<-time.After(30 * time.Millisecond)
-		cancel()
+		<-closed
 
 		assert.Equal(t, 10, done)
 	})
@@ -53,18 +118,22 @@ func TestWorkerGroup(t *testing.T) {
 		// for longer than 1 second. this test ensures that total number of
 		// workers doesn't go below 0 causing the worker group to lock.
 		wg := newWorkerGroup[bool](8, 1000)
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx := context.Background()
 
 		<-time.After(1500 * time.Millisecond)
 
+		closed := make(chan struct{})
 		var done int
 		go func(w *workerGroup[bool], c context.Context) {
 			for {
+				tmr := time.NewTimer(50 * time.Millisecond)
 				select {
 				case <-w.results:
+					tmr.Stop()
 					done++
 					continue
-				case <-c.Done():
+				case <-tmr.C:
+					close(closed)
 					return
 				}
 			}
@@ -72,233 +141,149 @@ func TestWorkerGroup(t *testing.T) {
 
 		for n := 0; n < 10; n++ {
 			err := wg.Do(ctx, func(c context.Context) (bool, error) {
-				select {
-				case <-time.After(10 * time.Millisecond):
-					return true, nil
-				case <-c.Done():
-					return false, nil
-				}
+				return true, nil
 			})
 			if err != nil {
 				t.FailNow()
 			}
 		}
 
-		<-time.After(30 * time.Millisecond)
-		cancel()
+		<-closed
 
 		assert.Equal(t, 10, done)
 	})
 
-	t.Run("Worker Shut Down", func(t *testing.T) {
-
-		wg := newWorkerGroup[bool](8, 1000)
+	t.Run("Error on Cancel and Full Queue", func(t *testing.T) {
+		wg := &workerGroup[int]{
+			queue: make(chan work[int]), // unbuffered to block
+			stop:  make(chan struct{}),
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 
-		var done int
-		go func(w *workerGroup[bool], c context.Context) {
-			for {
-				select {
-				case <-w.results:
-					done++
-					continue
-				case <-c.Done():
-					return
-				}
-			}
-		}(wg, ctx)
-
-		for n := 0; n < 10; n++ {
-			err := wg.Do(ctx, func(c context.Context) (bool, error) {
-				select {
-				case <-time.After(20 * time.Millisecond):
-					return true, nil
-				case <-c.Done():
-					return false, nil
-				}
+		errors := make(chan error, 1)
+		go func() {
+			err := wg.Do(ctx, func(_ context.Context) (int, error) {
+				return 1, nil
 			})
-			if err != nil {
-				t.FailNow()
-			}
-		}
+			errors <- err
+		}()
 
-		// wait for all workers to start
-		<-time.After(10 * time.Millisecond)
-
-		active := wg.activeWorkers
-		assert.Greater(t, active, 0)
-
-		// wait for at least 1 worker to be removed
-		<-time.After(1200 * time.Millisecond)
-		assert.Greater(t, active, wg.activeWorkers)
+		// wait for a short period to ensure function is in select statement
+		<-time.After(20 * time.Millisecond)
 		cancel()
 
-		assert.Equal(t, 10, done)
+		// read errors to ensure errors are expected
+		tmr := time.NewTimer(20 * time.Millisecond)
+		select {
+		case err := <-errors:
+			tmr.Stop()
+			assert.ErrorIs(t, err, ErrContextCancelled)
+		case <-tmr.C:
+			assert.Fail(t, "error expected but not found")
+			break
+		}
 	})
 
-	t.Run("Cancel Request On Full Queue", func(t *testing.T) {
-
-		wg := newWorkerGroup[bool](1, 1)
-		ctx, cancel := context.WithCancel(context.Background())
-
-		var done int
-		go func(w *workerGroup[bool], c context.Context) {
-			for {
-				select {
-				case <-w.results:
-					done++
-					continue
-				case <-c.Done():
-					return
-				}
-			}
-		}(wg, ctx)
-
-		// add 2 items to the queue to set up the test
-		// one will start executing and 1 will be waiting for a worker
-		// to be available
-		for n := 0; n < 3; n++ {
-			// make the work queue wait for a bit
-			err := wg.DoCancelOnFull(ctx, func(c context.Context) (bool, error) {
-				select {
-				case <-time.After(200 * time.Millisecond):
-					return true, nil
-				case <-c.Done():
-					return false, nil
-				}
-			})
-			if err != nil {
-				t.FailNow()
-			}
+	t.Run("Error on Stop and Full Queue", func(t *testing.T) {
+		wg := &workerGroup[int]{
+			queue: make(chan work[int]), // unbuffered to block
+			stop:  make(chan struct{}),
 		}
 
-		err := wg.DoCancelOnFull(ctx, func(c context.Context) (bool, error) {
-			select {
-			case <-time.After(200 * time.Millisecond):
-				return true, nil
-			case <-c.Done():
-				return false, nil
-			}
-		})
-		assert.ErrorIs(t, err, ErrQueueFull)
+		errors := make(chan error, 1)
+		go func() {
+			err := wg.Do(context.Background(), func(_ context.Context) (int, error) {
+				return 1, nil
+			})
+			errors <- err
+		}()
 
-		cancel()
+		// wait for a short period to ensure function is in select statement
+		<-time.After(20 * time.Millisecond)
+		close(wg.stop)
+
+		// read errors to ensure errors are expected
+		tmr := time.NewTimer(20 * time.Millisecond)
+		select {
+		case err := <-errors:
+			tmr.Stop()
+			assert.ErrorIs(t, err, ErrProcessStopped)
+		case <-tmr.C:
+			assert.Fail(t, "error expected but not found")
+			break
+		}
 	})
 
-	t.Run("No Add After Cancel", func(t *testing.T) {
-
-		wg := newWorkerGroup[bool](1, 1)
+	t.Run("Error on Context Already Cancelled", func(t *testing.T) {
+		wg := &workerGroup[int]{
+			queue: make(chan work[int]), // unbuffered to block
+			stop:  make(chan struct{}),
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 
-		var done int
-		go func(w *workerGroup[bool], c context.Context) {
-			for {
-				select {
-				case <-w.results:
-					done++
-					continue
-				case <-c.Done():
-					return
-				}
-			}
-		}(wg, ctx)
+		errors := make(chan error, 1)
+		cancel()
+		go func() {
+			err := wg.Do(ctx, func(_ context.Context) (int, error) {
+				return 1, nil
+			})
+			errors <- err
+		}()
 
-		// first 2 will succeed
-		for n := 0; n < 3; n++ {
-			_ = wg.DoCancelOnFull(ctx, func(c context.Context) (bool, error) {
+		// read errors to ensure errors are expected
+		tmr := time.NewTimer(20 * time.Millisecond)
+		select {
+		case err := <-errors:
+			tmr.Stop()
+			assert.ErrorIs(t, err, ErrContextCancelled)
+		case <-tmr.C:
+			assert.Fail(t, "error expected but not found")
+			break
+		}
+	})
+
+	t.Run("Stop Closes Queue and Ends Run Context", func(t *testing.T) {
+		wg := newWorkerGroup[int](1, 1)
+
+		go func() {
+			err := wg.Do(context.Background(), func(ctx context.Context) (int, error) {
+				tmr := time.NewTimer(100 * time.Millisecond)
 				select {
-				case <-time.After(200 * time.Millisecond):
-					return true, nil
-				case <-c.Done():
-					return false, nil
+				case <-ctx.Done():
+					tmr.Stop()
+					return 0, fmt.Errorf("error")
+				case <-tmr.C:
+					return 1, nil
 				}
 			})
-		}
 
-		cancel()
+			assert.NoError(t, err, "adding work to group should not return error")
+		}()
 
+		// give some time for queue to start work
 		<-time.After(20 * time.Millisecond)
 
-		// this should fail since the context was previously cancelled
-		err := wg.Do(ctx, func(c context.Context) (bool, error) {
-			select {
-			case <-time.After(200 * time.Millisecond):
-				return true, nil
-			case <-c.Done():
-				return false, nil
-			}
-		})
-		assert.ErrorIs(t, err, ErrContextCancelled)
-
-		// this should also fail
-		err = wg.DoCancelOnFull(ctx, func(c context.Context) (bool, error) {
-			select {
-			case <-time.After(200 * time.Millisecond):
-				return true, nil
-			case <-c.Done():
-				return false, nil
-			}
-		})
-		assert.ErrorIs(t, err, ErrContextCancelled)
-	})
-
-	t.Run("No Add After Stop", func(t *testing.T) {
-
-		wg := newWorkerGroup[bool](1, 1)
-		ctx, cancel := context.WithCancel(context.Background())
-
-		var done int
-		go func(w *workerGroup[bool], c context.Context) {
-			for {
-				select {
-				case <-w.results:
-					done++
-					continue
-				case <-c.Done():
-					return
-				}
-			}
-		}(wg, ctx)
-
-		// first 2 will succeed
-		for n := 0; n < 3; n++ {
-			_ = wg.DoCancelOnFull(ctx, func(c context.Context) (bool, error) {
-				select {
-				case <-time.After(200 * time.Millisecond):
-					return true, nil
-				case <-c.Done():
-					return false, nil
-				}
-			})
-		}
-
-		<-time.After(20 * time.Millisecond)
-
+		// stop process to close the queue and cancel the run context
 		wg.Stop()
 
-		// this should fail since the context was previously cancelled
-		err := wg.Do(ctx, func(c context.Context) (bool, error) {
-			select {
-			case <-time.After(200 * time.Millisecond):
-				return true, nil
-			case <-c.Done():
-				return false, nil
-			}
-		})
-		assert.ErrorIs(t, err, ErrProcessStopped)
+		// check results to see that work item returned short due to context cancel
+		// may not have results, which is expected behavior
+		tmr := time.NewTimer(150 * time.Millisecond)
+		select {
+		case r := <-wg.results:
+			tmr.Stop()
+			// should have a result
+			assert.Equal(t, 0, r.Data, "data from work result should match")
+			assert.Equal(t, fmt.Errorf("error"), r.Err, "error from work result should match")
+		case <-tmr.C:
+			break
+		}
 
-		// this should also fail
-		err = wg.DoCancelOnFull(ctx, func(c context.Context) (bool, error) {
-			select {
-			case <-time.After(200 * time.Millisecond):
-				return true, nil
-			case <-c.Done():
-				return false, nil
-			}
-		})
-		assert.ErrorIs(t, err, ErrProcessStopped)
-
-		cancel()
+		// check that queue is closed
+		testAdd := func() {
+			wg.queue <- func(_ context.Context) (int, error) { return 0, nil }
+		}
+		assert.Panics(t, testAdd, "queue should be closed")
 	})
 }
 
