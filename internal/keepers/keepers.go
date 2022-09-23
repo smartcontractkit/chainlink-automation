@@ -9,8 +9,10 @@ type keepers struct {
 	encoder types.ReportEncoder
 }
 
+/*
 type offChainConfig struct {
 }
 
 type onChainConfig struct {
 }
+*/
