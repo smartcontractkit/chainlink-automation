@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/debug"
 	"syscall"
 	"time"
@@ -212,7 +213,14 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 		panic(err)
 	}
 
-	factory := keepers.NewReportingPluginFactory(reg, chain.NewEVMReportEncoder(), logger, 30*time.Second)
+	config := keepers.ReportingFactoryConfig{
+		CacheExpiration:       20 * time.Minute,
+		CacheEvictionInterval: 30 * time.Second,
+		MaxServiceWorkers:     10 * runtime.GOMAXPROCS(0),
+		ServiceQueueLength:    1000,
+	}
+
+	factory := keepers.NewReportingPluginFactory(reg, chain.NewEVMReportEncoder(), logger, config)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{})
 	if err != nil {
 		panic(err)
