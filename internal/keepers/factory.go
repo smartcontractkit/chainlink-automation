@@ -15,22 +15,34 @@ import (
 // is no start or stop function for this service so stopping this service relies on
 // releasing references to the plugin such that the Go garbage collector cleans up
 // hanging routines automatically.
-func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder, logger *log.Logger) types.ReportingPluginFactory {
-	return &keepersReportingFactory{registry: registry, encoder: encoder, logger: logger}
+func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder, logger *log.Logger, clearCacheInterval time.Duration) types.ReportingPluginFactory {
+	return &keepersReportingFactory{
+		registry:   registry,
+		encoder:    encoder,
+		logger:     logger,
+		clearCache: clearCacheInterval,
+	}
 }
 
 type keepersReportingFactory struct {
-	registry ktypes.Registry
-	encoder  ktypes.ReportEncoder
-	logger   *log.Logger
+	registry   ktypes.Registry
+	encoder    ktypes.ReportEncoder
+	logger     *log.Logger
+	clearCache time.Duration
 }
 
 var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
 
 // NewReportingPlugin implements the libocr/offchainreporting2/types ReportingPluginFactory interface
 func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
+	var offChainCfg offChainConfig
+	err := decode(c.OffchainConfig, &offChainCfg)
+	if err != nil {
+		return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
+	}
+
 	info := types.ReportingPluginInfo{
-		Name: fmt.Sprintf("keepers instance %v", "TODO: give instance a unique name"),
+		Name: fmt.Sprintf("Oracle %d: Keepers Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: types.ReportingPluginLimits{
 			// queries should be empty anyway with the current implementation
 			MaxQueryLength: 0,
@@ -47,18 +59,9 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		UniqueReports: true,
 	}
 
-	// set default logger to write to debug logs
-	// set up log formats
-	//log.SetOutput(d.logger.Writer())
-	//log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC)
-
 	// TODO (config): cache expiration should be configurable based on offchain
 	// config, block time, round time, or other environmental condition
 	cacheExpire := 20 * time.Minute
-
-	// TODO (config): cache clean rate should be configured to not overload the
-	// processor when it happens but not allow stale data to build up
-	cacheClean := 30 * time.Second
 
 	// TODO (config): number of workers should be based on total amount of resources
 	// available. the work load of checking upkeeps is memory heavy as each work
@@ -76,7 +79,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	// nodes and max number of faulty nodes
 	sample := sampleRatio(0.6)
 
-	service := newSimpleUpkeepService(sample, d.registry, d.logger, cacheExpire, cacheClean, workers, workerQueueLength)
+	service := newSimpleUpkeepService(sample, d.registry, d.logger, cacheExpire, d.clearCache, workers, workerQueueLength)
 
 	return &keepers{service: service, encoder: d.encoder}, info, nil
 }

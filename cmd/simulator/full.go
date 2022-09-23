@@ -212,7 +212,7 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 		panic(err)
 	}
 
-	factory := keepers.NewReportingPluginFactory(reg, chain.NewEVMReportEncoder(), logger)
+	factory := keepers.NewReportingPluginFactory(reg, chain.NewEVMReportEncoder(), logger, 30*time.Second)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{})
 	if err != nil {
 		panic(err)

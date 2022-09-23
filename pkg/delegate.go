@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
@@ -25,6 +26,12 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	wrapper := &logWriter{l: c.Logger}
 	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
 
+	// set default interval to 30 seconds and override if set in config
+	var clearCacheInterval time.Duration = DefaultCacheClearInterval
+	if c.ClearCacheInterval != 0 {
+		clearCacheInterval = c.ClearCacheInterval
+	}
+
 	keeper, err := offchainreporting.NewOracle(offchainreporting.OracleArgs{
 		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
 		V2Bootstrappers:              c.V2Bootstrappers,
@@ -37,7 +44,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester:       c.OffchainConfigDigester,
 		OffchainKeyring:              c.OffchainKeyring,
 		OnchainKeyring:               c.OnchainKeyring,
-		ReportingPluginFactory:       keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder, l),
+		ReportingPluginFactory:       keepers.NewReportingPluginFactory(c.Registry, c.ReportEncoder, l, clearCacheInterval),
 	})
 
 	if err != nil {
