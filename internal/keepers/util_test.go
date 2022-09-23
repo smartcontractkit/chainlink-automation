@@ -119,3 +119,36 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 		})
 	}
 }
+
+func TestSampleFromProbability(t *testing.T) {
+	tests := []struct {
+		Name         string
+		Rounds       int
+		Nodes        int
+		Probability  float32
+		ExpectedErr  error
+		ExpectedHigh float32
+		ExpectedLow  float32
+	}{
+		{Name: "Negative Rounds", Rounds: -1, ExpectedErr: fmt.Errorf("number of rounds must be greater than 0")},
+		{Name: "Zero Rounds", ExpectedErr: fmt.Errorf("number of rounds must be greater than 0")},
+		{Name: "Negative Nodes", Rounds: 1, Nodes: -1, ExpectedErr: fmt.Errorf("number of nodes must be greater than 0")},
+		{Name: "Zero Nodes", Rounds: 1, ExpectedErr: fmt.Errorf("number of nodes must be greater than 0")},
+		{Name: "Probability Greater Than 1", Rounds: 1, Nodes: 1, Probability: 2, ExpectedErr: fmt.Errorf("probability must be less than 1 and greater than 0")},
+		{Name: "Probability Less Than 0", Rounds: 1, Nodes: 1, Probability: -1, ExpectedErr: fmt.Errorf("probability must be less than 1 and greater than 0")},
+		{Name: "Probability Equal to 0", Rounds: 1, Nodes: 1, Probability: 0, ExpectedErr: fmt.Errorf("probability must be less than 1 and greater than 0")},
+		{Name: "Valid", Rounds: 1, Nodes: 4, Probability: 0.975, ExpectedErr: nil, ExpectedHigh: 0.61, ExpectedLow: 0.59},
+	}
+
+	for _, test := range tests {
+		v, err := sampleFromProbability(test.Rounds, test.Nodes, test.Probability)
+		assert.Equal(t, test.ExpectedErr, err)
+
+		if test.ExpectedHigh == 0.0 {
+			assert.Equal(t, float32(v), test.ExpectedHigh)
+		} else {
+			assert.Greater(t, float32(v), test.ExpectedLow)
+			assert.Less(t, float32(v), test.ExpectedHigh)
+		}
+	}
+}

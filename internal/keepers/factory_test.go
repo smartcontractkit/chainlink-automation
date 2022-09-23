@@ -2,14 +2,13 @@ package keepers
 
 import (
 	"testing"
-	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewReportingPluginFactory(t *testing.T) {
-	f := NewReportingPluginFactory(nil, nil, nil, 30*time.Second)
+	f := NewReportingPluginFactory(nil, nil, nil, ReportingFactoryConfig{})
 	assert.NotNil(t, f)
 }
 

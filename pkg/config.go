@@ -1,6 +1,7 @@
 package ocr2keepers
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/smartcontractkit/libocr/commontypes"
@@ -9,9 +10,22 @@ import (
 )
 
 const (
+	// DefaultCacheExpiration is the default amount of time a key can remain
+	// in the cache before being eligible to be cleared
+	DefaultCacheExpiration = 20 * time.Minute
 	// DefaultCacheClearInterval is the default setting for the interval at
 	// which the cache attempts to evict expired keys
 	DefaultCacheClearInterval = 30 * time.Second
+	// DefaultServiceQueueLength is the default buffer size for the RPC worker
+	// queue.
+	DefaultServiceQueueLength = 1000
+)
+
+var (
+	// DefaultMaxServiceWorkers is the max number of workers allowed to make
+	// simultaneous RPC calls. The default is based on the number of CPUs
+	// available to the current process.
+	DefaultMaxServiceWorkers = 10 * runtime.GOMAXPROCS(0)
 )
 
 // DelegateConfig provides a single configuration struct for all options
@@ -31,8 +45,27 @@ type DelegateConfig struct {
 
 	// Registry is an abstract plugin registry; can be evm based or anything else
 	Registry ktypes.Registry
-	// ReportEncoder is an abstract encoder for encoding reports destined for trasmission; can be evm based or anything else
+	// ReportEncoder is an abstract encoder for encoding reports destined for
+	// trasmission; can be evm based or anything else.
 	ReportEncoder ktypes.ReportEncoder
-	// ClearCacheInterval is a configural parameter for how often the cache attempts to evict expired keys
-	ClearCacheInterval time.Duration
+	// CacheExpiration is the duration of time a cached key is available. Use
+	// this value to balance memory usage and RPC calls. A new set of keys is
+	// generated with every block so a good setting might come from block time
+	// times number of blocks of history to support not replaying reports.
+	CacheExpiration time.Duration
+	// CacheEvictionInterval is a parameter for how often the cache attempts to
+	// evict expired keys. This value should be short enough to ensure key
+	// eviction doesn't block for too long, and long enough that it doesn't
+	// cause frequent blocking.
+	CacheEvictionInterval time.Duration
+	// MaxServiceWorkers is the total number of go-routines allowed to make RPC
+	// simultaneous calls on behalf of the sampling operation. This parameter
+	// is 10x the number of available CPUs by default. The RPC calls are memory
+	// heavy as opposed to CPU heavy as most of the work involves waiting on
+	// network responses.
+	MaxServiceWorkers int
+	// ServiceQueueLength is the buffer size for the RPC service queue. Fewer
+	// workers or slower RPC responses will cause this queue to build up.
+	// Adding new items to the queue will block if the queue becomes full.
+	ServiceQueueLength int
 }
