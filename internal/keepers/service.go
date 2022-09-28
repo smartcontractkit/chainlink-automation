@@ -12,8 +12,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-const defaultStaleWindow = 100 * 14 * time.Second // 100 blocks @ 14s per block
-
 type simpleUpkeepService struct {
 	logger       *log.Logger
 	ratio        sampleRatio
@@ -32,14 +30,14 @@ type simpleUpkeepService struct {
 // an RPC call.
 //
 // DO NOT USE THIS IN PRODUCTION
-func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *simpleUpkeepService {
+func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *simpleUpkeepService {
 	s := &simpleUpkeepService{
 		logger:     logger,
 		ratio:      ratio,
 		registry:   registry,
 		shuffler:   new(cryptoShuffler[types.UpkeepKey]),
 		cache:      newCache[types.UpkeepResult](cacheExpire),
-		stateCache: newCache[types.UpkeepState](defaultStaleWindow),
+		stateCache: newCache[types.UpkeepState](staleWindow),
 		workers:    newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
 	}
 

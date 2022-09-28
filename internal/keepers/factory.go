@@ -36,13 +36,17 @@ var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
 
 // NewReportingPlugin implements the libocr/offchainreporting2/types ReportingPluginFactory interface
 func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
-	/*
-		var offChainCfg offChainConfig
+	var offChainCfg ktypes.OffChainConfig
+	if len(c.OffchainConfig) > 0 {
 		err := decode(c.OffchainConfig, &offChainCfg)
 		if err != nil {
 			return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
 		}
-	*/
+	}
+
+	if offChainCfg.PerformLockoutWindow == 0 {
+		offChainCfg.PerformLockoutWindow = 100 * 12 * 1000
+	}
 
 	info := types.ReportingPluginInfo{
 		Name: fmt.Sprintf("Oracle %d: Keepers Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
@@ -80,6 +84,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.registry,
 		d.logger,
 		d.config.CacheExpiration,
+		time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
 		d.config.ServiceQueueLength)

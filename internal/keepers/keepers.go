@@ -11,11 +11,3 @@ type keepers struct {
 	encoder types.ReportEncoder
 	logger  *log.Logger
 }
-
-/*
-type offChainConfig struct {
-}
-
-type onChainConfig struct {
-}
-*/

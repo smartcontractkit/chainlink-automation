@@ -44,3 +44,15 @@ const (
 	Perform
 	Reported
 )
+
+type OffChainConfig struct {
+	// PerformLockoutWindow is the window in which a single upkeep cannot be
+	// performed again while waiting for a confirmation. Standard setting is
+	// 100 blocks * average block time. Units are in milliseconds
+	PerformLockoutWindow int64 `json:"performLockoutWindow"`
+}
+
+/*
+type onChainConfig struct {
+}
+*/

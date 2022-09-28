@@ -29,10 +29,11 @@ func TestNewReportingPlugin(t *testing.T) {
 	copy(digest[:], []byte(digestStr)[:32])
 
 	p, i, err := f.NewReportingPlugin(types.ReportingPluginConfig{
-		ConfigDigest: digest,
-		OracleID:     1,
-		N:            5,
-		F:            2,
+		ConfigDigest:   digest,
+		OracleID:       1,
+		N:              5,
+		F:              2,
+		OffchainConfig: []byte{},
 	})
 
 	assert.NoError(t, err)
