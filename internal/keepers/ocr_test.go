@@ -3,6 +3,8 @@ package keepers
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -14,7 +16,9 @@ import (
 )
 
 func TestQuery(t *testing.T) {
-	plugin := &keepers{}
+	plugin := &keepers{
+		logger: log.New(io.Discard, "", 0),
+	}
 	b, err := plugin.Query(context.Background(), types.ReportTimestamp{})
 
 	assert.NoError(t, err)
@@ -22,7 +26,9 @@ func TestQuery(t *testing.T) {
 }
 
 func BenchmarkQuery(b *testing.B) {
-	plugin := &keepers{}
+	plugin := &keepers{
+		logger: log.New(io.Discard, "", 0),
+	}
 
 	// run the Query function b.N times
 	for n := 0; n < b.N; n++ {
@@ -85,7 +91,10 @@ func TestObservation(t *testing.T) {
 	for i, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
-			plugin := &keepers{service: ms}
+			plugin := &keepers{
+				service: ms,
+				logger:  log.New(io.Discard, "", 0),
+			}
 
 			ctx, cancel := test.Ctx()
 			ms.Mock.On("SampleUpkeeps", ctx).Return(test.SampleSet, test.SampleErr)
@@ -109,7 +118,10 @@ func TestObservation(t *testing.T) {
 
 func BenchmarkObservation(b *testing.B) {
 	ms := new(MockedUpkeepService)
-	plugin := &keepers{service: ms}
+	plugin := &keepers{
+		service: ms,
+		logger:  log.New(io.Discard, "", 0),
+	}
 
 	set := make([]*ktypes.UpkeepResult, 2, 100)
 	set[0] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.Perform}
@@ -330,7 +342,11 @@ func TestReport(t *testing.T) {
 			ms := new(MockedUpkeepService)
 			me := new(MockedReportEncoder)
 
-			plugin := &keepers{service: ms, encoder: me}
+			plugin := &keepers{
+				service: ms,
+				encoder: me,
+				logger:  log.New(io.Discard, "", 0),
+			}
 			ctx, cancel := test.Ctx()
 
 			// set up upkeep checks with the mocked service
@@ -374,7 +390,11 @@ func TestReport(t *testing.T) {
 func BenchmarkReport(b *testing.B) {
 	ms := &BenchmarkMockUpkeepService{}
 	me := &BenchmarkMockedReportEncoder{}
-	plugin := &keepers{service: ms, encoder: me}
+	plugin := &keepers{
+		service: ms,
+		encoder: me,
+		logger:  log.New(io.Discard, "", 0),
+	}
 
 	key1 := ktypes.UpkeepKey([]byte("1|1"))
 	key2 := ktypes.UpkeepKey([]byte("1|2"))
@@ -432,7 +452,9 @@ func BenchmarkReport(b *testing.B) {
 }
 
 func TestShouldAcceptFinalizedReport(t *testing.T) {
-	plugin := &keepers{}
+	plugin := &keepers{
+		logger: log.New(io.Discard, "", 0),
+	}
 	ok, err := plugin.ShouldAcceptFinalizedReport(context.Background(), types.ReportTimestamp{}, types.Report{})
 
 	assert.Equal(t, true, ok)
@@ -440,7 +462,9 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 }
 
 func BenchmarkShouldAcceptFinalizedReport(b *testing.B) {
-	plugin := &keepers{}
+	plugin := &keepers{
+		logger: log.New(io.Discard, "", 0),
+	}
 
 	// run the ShouldAcceptFinalizedReport function b.N times
 	for n := 0; n < b.N; n++ {
@@ -460,7 +484,9 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 }
 
 func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
-	plugin := &keepers{}
+	plugin := &keepers{
+		logger: log.New(io.Discard, "", 0),
+	}
 
 	// run the ShouldTransmitAcceptedReport function b.N times
 	for n := 0; n < b.N; n++ {

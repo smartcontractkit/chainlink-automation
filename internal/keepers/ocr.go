@@ -55,6 +55,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 
 		if upkeep.State == ktypes.Perform {
 			// only build a report from a single upkeep for now
+			k.logger.Printf("reporting %s to be performed", upkeep.Key)
 			toPerform = append(toPerform, upkeep)
 			break
 		}

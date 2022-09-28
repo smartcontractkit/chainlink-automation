@@ -15,14 +15,39 @@ func NewEVMReportEncoder() *evmReportEncoder {
 	return &evmReportEncoder{}
 }
 
+var (
+	Uint256, _                = abi.NewType("uint256", "", nil)
+	Uint256Arr, _             = abi.NewType("uint256[]", "", nil)
+	PerformDataMarshalingArgs = []abi.ArgumentMarshaling{
+		{Name: "checkBlockNumber", Type: "uint32"},
+		{Name: "checkBlockhash", Type: "bytes32"},
+		{Name: "performData", Type: "bytes"},
+	}
+	PerformDataArr, _ = abi.NewType("tuple[]", "", PerformDataMarshalingArgs)
+)
+
 func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte, error) {
-	reportArgs := abi.Arguments{
-		{Type: mustType(abi.NewType("uint256[]", "", nil))},
-		{Type: mustType(abi.NewType("bytes[]", "", nil))},
+	if len(toReport) == 0 {
+		return nil, nil
 	}
 
+	type w struct {
+		CheckBlockNumber uint32   `abi:"checkBlockNumber"`
+		CheckBlockhash   [32]byte `abi:"checkBlockhash"`
+		PerformData      []byte   `abi:"performData"`
+	}
+
+	reportArgs := abi.Arguments{
+		{Name: "fastGasWei", Type: Uint256},
+		{Name: "linkNative", Type: Uint256},
+		{Name: "upkeepIds", Type: Uint256Arr},
+		{Name: "wrappedPerformDatas", Type: PerformDataArr},
+	}
+
+	fastGas := toReport[0].FastGasWei
+	link := toReport[0].LinkNative
 	ids := make([]*big.Int, len(toReport))
-	data := make([][]byte, len(toReport))
+	data := make([]w, len(toReport))
 
 	for i, result := range toReport {
 		_, upkeepId, err := blockAndIdFromKey(result.Key)
@@ -31,15 +56,12 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 		}
 
 		ids[i] = upkeepId
-		data[i] = result.PerformData
+		data[i] = w{
+			CheckBlockNumber: result.CheckBlockNumber,
+			CheckBlockhash:   result.CheckBlockHash,
+			PerformData:      result.PerformData,
+		}
 	}
 
-	return reportArgs.Pack(ids, data)
-}
-
-func mustType(tp abi.Type, err error) abi.Type {
-	if err != nil {
-		panic(err)
-	}
-	return tp
+	return reportArgs.Pack(fastGas, link, ids, data)
 }
