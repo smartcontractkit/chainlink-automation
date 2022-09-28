@@ -6,12 +6,14 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/debug"
 	"syscall"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
@@ -170,7 +172,7 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 			return err
 		}
 
-		wrapPluginReceiver(simLogger, controller, rec, makePlugin(address, controller, l, client))
+		wrapPluginReceiver(simLogger, controller, rec, makePlugin(address, controller, l, client, int8(i), *config.Nodes))
 	}
 
 	var ctx context.Context
@@ -206,14 +208,26 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 	return nil
 }
 
-func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, client *ethclient.Client) types.ReportingPlugin {
+func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, client *ethclient.Client, i int8, n int) types.ReportingPlugin {
 	reg, err := chain.NewEVMRegistryV2_0(address, client)
 	if err != nil {
 		panic(err)
 	}
 
-	factory := keepers.NewReportingPluginFactory(reg, chain.NewEVMReportEncoder(), logger)
-	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{})
+	config := keepers.ReportingFactoryConfig{
+		CacheExpiration:       20 * time.Minute,
+		CacheEvictionInterval: 30 * time.Second,
+		MaxServiceWorkers:     10 * runtime.GOMAXPROCS(0),
+		ServiceQueueLength:    1000,
+	}
+
+	factory := keepers.NewReportingPluginFactory(reg, chain.NewEVMReportEncoder(), logger, config)
+	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{
+		ConfigDigest: types.ConfigDigest([32]byte{}),
+		OracleID:     commontypes.OracleID(i),
+		N:            n,
+		F:            0,
+	})
 	if err != nil {
 		panic(err)
 	}

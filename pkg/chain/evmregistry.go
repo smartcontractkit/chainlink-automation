@@ -101,7 +101,7 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 		returns (
 		      bool upkeepNeeded,
 		      bytes memory performData,
-		      uint8 upkeepFailureReason,
+			  UpkeepFailureReason upkeepFailureReason,
 		      uint256 gasUsed,
 		      uint256 fastGasWei,
 		      uint256 linkNative
@@ -114,21 +114,58 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 		return false, types.UpkeepResult{}, fmt.Errorf("%w: checkUpkeep returned result: %s", ErrRegistryCallFailure, err)
 	}
 
-	upkeepNeeded := *abi.ConvertType(out[0], new(bool)).(*bool)
-	if !upkeepNeeded {
-		return false, types.UpkeepResult{Key: key, State: types.Skip}, nil
+	result := types.UpkeepResult{
+		Key:   key,
+		State: types.Perform,
 	}
 
-	performData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
+	upkeepNeeded := *abi.ConvertType(out[0], new(bool)).(*bool)
+	if !upkeepNeeded {
+		result.State = types.Skip
+	}
 
-	// other types returned from contract call that may be needed in the future
-	// maxLinkPayment := *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
-	// gasLimit := *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
-	// adjustedGasWei := *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
-	// linkEth := *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
+	rawPerformData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
 
-	return true, types.UpkeepResult{Key: key, State: types.Perform, PerformData: performData}, nil
+	if len(rawPerformData) > 0 {
+		type performDataStruct struct {
+			CheckBlockNumber uint32   `abi:"checkBlockNumber"`
+			CheckBlockhash   [32]byte `abi:"checkBlockhash"`
+			PerformData      []byte   `abi:"performData"`
+		}
 
+		type r struct {
+			Result performDataStruct
+		}
+
+		// the PerformDataWrapper structure isn't included in the RegistryLogic abi
+		// TODO: pull abi from official gethwrapper for keeper registry
+		pdataABI, _ := abi.JSON(strings.NewReader(`[{"name":"check","type":"function","outputs":[{"name":"ret","type":"tuple","components":[{"type":"uint32","name":"checkBlockNumber"},{"type":"bytes32","name":"checkBlockhash"},{"type":"bytes","name":"performData"}]}]}]`))
+
+		var ret0 = new(r)
+		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
+		if err != nil {
+			return false, types.UpkeepResult{}, fmt.Errorf("%w", err)
+		}
+
+		result.CheckBlockNumber = ret0.Result.CheckBlockNumber
+		result.CheckBlockHash = ret0.Result.CheckBlockhash
+		result.PerformData = ret0.Result.PerformData
+	}
+
+	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
+	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
+
+	return upkeepNeeded, result, nil
+
+}
+
+func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
+	_, id, err := blockAndIdFromKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.UpkeepIdentifier(id.Bytes()), nil
 }
 
 func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {

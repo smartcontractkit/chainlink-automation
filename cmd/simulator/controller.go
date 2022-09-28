@@ -353,7 +353,7 @@ func (c *OCRController) WriteReports(path string) {
 	c.mu.Lock()
 	for i, nodeReports := range c.completeReports {
 		for j, r := range nodeReports {
-			name := fmt.Sprintf("node_%d_round_%d", i+1, j+1)
+			name := fmt.Sprintf("node_%d_round_%d", j+1, i+1)
 
 			dst := make([]byte, hex.EncodedLen(len(r)))
 			hex.Encode(dst, r)

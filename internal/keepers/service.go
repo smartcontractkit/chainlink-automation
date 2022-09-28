@@ -18,6 +18,7 @@ type simpleUpkeepService struct {
 	registry     types.Registry
 	shuffler     shuffler[types.UpkeepKey]
 	cache        *cache[types.UpkeepResult]
+	stateCache   *cache[types.UpkeepState]
 	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
 	workers      *workerGroup[types.UpkeepResult]
 }
@@ -29,14 +30,15 @@ type simpleUpkeepService struct {
 // an RPC call.
 //
 // DO NOT USE THIS IN PRODUCTION
-func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *simpleUpkeepService {
+func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *simpleUpkeepService {
 	s := &simpleUpkeepService{
-		logger:   logger,
-		ratio:    ratio,
-		registry: registry,
-		shuffler: new(cryptoShuffler[types.UpkeepKey]),
-		cache:    newCache[types.UpkeepResult](cacheExpire),
-		workers:  newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
+		logger:     logger,
+		ratio:      ratio,
+		registry:   registry,
+		shuffler:   new(cryptoShuffler[types.UpkeepKey]),
+		cache:      newCache[types.UpkeepResult](cacheExpire),
+		stateCache: newCache[types.UpkeepState](staleWindow),
+		workers:    newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -79,14 +81,23 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upkee
 func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
 	var result types.UpkeepResult
 
+	id, err := s.registry.IdentifierFromKey(key)
+	if err != nil {
+		return result, err
+	}
+	state, stateCached := s.stateCache.Get(string(id))
+
 	result, cached := s.cache.Get(string(key))
 	if cached {
+		if stateCached {
+			result.State = state
+		}
 		return result, nil
 	}
 
 	// check upkeep at block number in key
 	// return result including performData
-	ok, u, err := s.registry.CheckUpkeep(ctx, key)
+	needsPerform, u, err := s.registry.CheckUpkeep(ctx, key)
 	if err != nil {
 		return types.UpkeepResult{}, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
@@ -96,9 +107,13 @@ func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepK
 		State: types.Skip,
 	}
 
-	if ok {
+	if needsPerform {
 		result.State = types.Perform
 		result.PerformData = u.PerformData
+	}
+
+	if stateCached {
+		result.State = state
 	}
 
 	s.cache.Set(string(key), result, defaultExpiration)
@@ -108,6 +123,15 @@ func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepK
 
 func (s *simpleUpkeepService) SetUpkeepState(ctx context.Context, uk types.UpkeepKey, state types.UpkeepState) error {
 	var err error
+
+	id, err := s.registry.IdentifierFromKey(uk)
+	if err != nil {
+		return err
+	}
+
+	// set the state cache to the default expiration using the upkeep identifer
+	// as the key
+	s.stateCache.Set(string(id), state, defaultExpiration)
 
 	result, cached := s.cache.Get(string(uk))
 	if !cached {
@@ -147,6 +171,8 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 				wg.Done()
 				if result.Err == nil {
 					success++
+					// cache results
+					s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
 					if result.Data.State == types.Perform {
 						sample = append(sample, &result.Data)
 					}
@@ -165,6 +191,17 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 	// go through keys and check the cache first
 	// if an item doesn't exist on the cache, send the items to the worker threads
 	for _, key := range keys {
+		// get reported status and continue if found
+		id, err := s.registry.IdentifierFromKey(key)
+		if err != nil {
+			return sample, err
+		}
+		state, stateCached := s.stateCache.Get(string(id))
+		if stateCached && state == types.Reported {
+			cacheHits++
+			continue
+		}
+
 		// skip if reported
 		result, cached := s.cache.Get(string(key))
 		if cached {
@@ -172,25 +209,26 @@ func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.Up
 			if result.State == types.Perform {
 				sample = append(sample, &result)
 			}
-		} else {
-			wg.Add(1)
-			if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
-				if errors.Is(err, ErrContextCancelled) {
-					// if the context is cancelled before the work can be
-					// finished, stop adding work and allow existing to finish.
-					// cancelling this context will cancel all waiting worker
-					// functions and have them report immediately. this will
-					// result in a lot of errors in the results collector.
-					s.logger.Printf("context cancelled while attempting to add to queue")
-					wg.Done()
-					break
-				} else {
-					// the worker process has probably stopped so the function
-					// should terminate with an error
-					close(done)
-					return nil, fmt.Errorf("%w: failed to add upkeep check to worker queue", err)
-				}
+			continue
+		}
+
+		wg.Add(1)
+		if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
+			if errors.Is(err, ErrContextCancelled) {
+				// if the context is cancelled before the work can be
+				// finished, stop adding work and allow existing to finish.
+				// cancelling this context will cancel all waiting worker
+				// functions and have them report immediately. this will
+				// result in a lot of errors in the results collector.
+				s.logger.Printf("context cancelled while attempting to add to queue")
+				wg.Done()
+				break
 			}
+
+			// the worker process has probably stopped so the function
+			// should terminate with an error
+			close(done)
+			return nil, fmt.Errorf("%w: failed to add upkeep check to worker queue", err)
 		}
 	}
 
