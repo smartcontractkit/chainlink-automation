@@ -36,16 +36,9 @@ var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
 
 // NewReportingPlugin implements the libocr/offchainreporting2/types ReportingPluginFactory interface
 func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
-	var offChainCfg ktypes.OffChainConfig
-	if len(c.OffchainConfig) > 0 {
-		err := decode(c.OffchainConfig, &offChainCfg)
-		if err != nil {
-			return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
-		}
-	}
-
-	if offChainCfg.PerformLockoutWindow == 0 {
-		offChainCfg.PerformLockoutWindow = 100 * 12 * 1000
+	offChainCfg, err := ktypes.DecodeOffchainConfig(c.OffchainConfig)
+	if err != nil {
+		return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
 	}
 
 	info := types.ReportingPluginInfo{

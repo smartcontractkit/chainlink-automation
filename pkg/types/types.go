@@ -2,6 +2,8 @@ package types
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math/big"
 )
 
@@ -45,11 +47,35 @@ const (
 	Reported
 )
 
-type OffChainConfig struct {
+type OffchainConfig struct {
 	// PerformLockoutWindow is the window in which a single upkeep cannot be
 	// performed again while waiting for a confirmation. Standard setting is
 	// 100 blocks * average block time. Units are in milliseconds
 	PerformLockoutWindow int64 `json:"performLockoutWindow"`
+}
+
+func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
+	var config OffchainConfig
+	var err error
+
+	if len(b) > 0 {
+		err = json.Unmarshal(b, &config)
+	}
+
+	if config.PerformLockoutWindow == 0 {
+		config.PerformLockoutWindow = 100 * 12 * 1000 // default of 100 blocks * 12 second blocks
+	}
+
+	return config, err
+}
+
+func (c OffchainConfig) Encode() []byte {
+	b, err := json.Marshal(&c)
+	if err != nil {
+		panic(fmt.Sprintf("unexpected error json encoding OffChainConfig: %s", err))
+	}
+
+	return b
 }
 
 /*
