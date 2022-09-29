@@ -23,7 +23,7 @@ var (
 		{Name: "checkBlockhash", Type: "bytes32"},
 		{Name: "performData", Type: "bytes"},
 	}
-	PerformDataArr, _ = abi.NewType("tuple[]", "", PerformDataMarshalingArgs)
+	PerformDataArr, _ = abi.NewType("tuple(uint32,bytes32,bytes)[]", "", PerformDataMarshalingArgs)
 )
 
 func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte, error) {
@@ -70,5 +70,10 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 		}
 	}
 
-	return reportArgs.Pack(fastGas, link, ids, data)
+	bts, err := reportArgs.Pack(fastGas, link, ids, data)
+	if err != nil {
+		return []byte{}, fmt.Errorf("%w: failed to pack report data", err)
+	}
+
+	return append([]byte("0x"), bts...), err
 }
