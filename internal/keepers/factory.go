@@ -21,13 +21,14 @@ type ReportingFactoryConfig struct {
 // is no start or stop function for this service so stopping this service relies on
 // releasing references to the plugin such that the Go garbage collector cleans up
 // hanging routines automatically.
-func NewReportingPluginFactory(registry ktypes.Registry, encoder ktypes.ReportEncoder, logger *log.Logger, config ReportingFactoryConfig) types.ReportingPluginFactory {
-	return &keepersReportingFactory{registry: registry, encoder: encoder, logger: logger, config: config}
+func NewReportingPluginFactory(registry ktypes.Registry, perfLogs ktypes.PerformLogProvider, encoder ktypes.ReportEncoder, logger *log.Logger, config ReportingFactoryConfig) types.ReportingPluginFactory {
+	return &keepersReportingFactory{registry: registry, perfLogs: perfLogs, encoder: encoder, logger: logger, config: config}
 }
 
 type keepersReportingFactory struct {
 	registry ktypes.Registry
 	encoder  ktypes.ReportEncoder
+	perfLogs ktypes.PerformLogProvider
 	logger   *log.Logger
 	config   ReportingFactoryConfig
 }
@@ -72,9 +73,10 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
 
-	service := newSimpleUpkeepService(
+	service := newOnDemandUpkeepService(
 		sample,
 		d.registry,
+		d.perfLogs,
 		d.logger,
 		d.config.CacheExpiration,
 		time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,

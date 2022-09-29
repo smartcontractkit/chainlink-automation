@@ -44,8 +44,15 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 		{Name: "wrappedPerformDatas", Type: PerformDataArr},
 	}
 
-	fastGas := toReport[0].FastGasWei
-	link := toReport[0].LinkNative
+	var baseValuesIdx int
+	for i, rpt := range toReport {
+		if rpt.CheckBlockNumber > uint32(baseValuesIdx) {
+			baseValuesIdx = i
+		}
+	}
+
+	fastGas := toReport[baseValuesIdx].FastGasWei
+	link := toReport[baseValuesIdx].LinkNative
 	ids := make([]*big.Int, len(toReport))
 	data := make([]w, len(toReport))
 

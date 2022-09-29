@@ -17,6 +17,15 @@ type ReportEncoder interface {
 	EncodeReport([]UpkeepResult) ([]byte, error)
 }
 
+type PerformLogProvider interface {
+	Subscribe() chan PerformLog
+	Unsubscribe()
+}
+
+type PerformLog struct {
+	Key UpkeepKey
+}
+
 type BlockKey string
 
 type Address []byte
@@ -45,6 +54,7 @@ const (
 	Skip
 	Perform
 	Reported
+	Performed
 )
 
 type OffchainConfig struct {

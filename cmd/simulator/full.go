@@ -17,6 +17,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 var (
@@ -214,6 +215,8 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 		panic(err)
 	}
 
+	pLogs := &mockPerfLogs{}
+
 	config := keepers.ReportingFactoryConfig{
 		CacheExpiration:       20 * time.Minute,
 		CacheEvictionInterval: 30 * time.Second,
@@ -221,7 +224,7 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 		ServiceQueueLength:    1000,
 	}
 
-	factory := keepers.NewReportingPluginFactory(reg, chain.NewEVMReportEncoder(), logger, config)
+	factory := keepers.NewReportingPluginFactory(reg, pLogs, chain.NewEVMReportEncoder(), logger, config)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{
 		ConfigDigest: types.ConfigDigest([32]byte{}),
 		OracleID:     commontypes.OracleID(i),
@@ -324,3 +327,11 @@ func wrapPluginReceiver(logger *log.Logger, controller *OCRController, receiver 
 		}
 	}(controller, receiver, plugin)
 }
+
+type mockPerfLogs struct{}
+
+func (m *mockPerfLogs) Subscribe() chan ktypes.PerformLog {
+	return make(chan ktypes.PerformLog)
+}
+
+func (m *mockPerfLogs) Unsubscribe() {}
