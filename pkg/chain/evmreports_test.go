@@ -30,8 +30,8 @@ func TestEncodeReport(t *testing.T) {
 			{
 				Key:              ktypes.UpkeepKey([]byte("43|23")),
 				PerformData:      []byte("long perform data that takes up more than 32 bytes to show how byte arrays are abi encoded. this should take up multiple slots."),
-				FastGasWei:       big.NewInt(16),
-				LinkNative:       big.NewInt(8),
+				FastGasWei:       big.NewInt(8),
+				LinkNative:       big.NewInt(16),
 				CheckBlockNumber: 43,
 				CheckBlockHash:   [32]byte{2},
 			},
@@ -40,9 +40,10 @@ func TestEncodeReport(t *testing.T) {
 		encoder := &evmReportEncoder{}
 		b, err := encoder.EncodeReport(input)
 
+		// fast gas and link native values should come from the result at the latest block number
 		buff := new(bytes.Buffer)
-		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000010")) // fastGasWei in hex format
-		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // linkNative in hex format
+		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGasWei in hex format
+		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000010")) // linkNative in hex format
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000080")) // offset for ids array
 		buff.Write(common.Hex2Bytes("00000000000000000000000000000000000000000000000000000000000000e0")) // offset for tuple array
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000002")) // array length of 2
@@ -66,8 +67,6 @@ func TestEncodeReport(t *testing.T) {
 		buff.Write(common.Hex2Bytes("2073686f756c642074616b65207570206d756c7469706c6520736c6f74732e00")) // tuple 2 bytes cont...
 
 		expected := buff.Bytes()
-
-		t.Log(common.Bytes2Hex(b))
 
 		assert.NoError(t, err)
 		assert.Equal(t, expected, b)

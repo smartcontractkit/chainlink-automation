@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewReportingPluginFactory(t *testing.T) {
-	f := NewReportingPluginFactory(nil, nil, nil, ReportingFactoryConfig{})
+	f := NewReportingPluginFactory(nil, nil, nil, nil, ReportingFactoryConfig{})
 	assert.NotNil(t, f)
 }
 

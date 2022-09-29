@@ -12,52 +12,55 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-type simpleUpkeepService struct {
+type onDemandUpkeepService struct {
 	logger       *log.Logger
 	ratio        sampleRatio
 	registry     types.Registry
+	perfLogs     types.PerformLogProvider
 	shuffler     shuffler[types.UpkeepKey]
 	cache        *cache[types.UpkeepResult]
 	stateCache   *cache[types.UpkeepState]
 	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
 	workers      *workerGroup[types.UpkeepResult]
+	stopProcs    chan struct{}
 }
 
-// newSimpleUpkeepService provides an object that implements the UpkeepService in a very
-// rudamentary way. Sampling upkeeps is done on demand and completes in linear time with upkeeps.
-//
-// Cacheing is enabled such that subsequent checks/updates for the same key will not result in
-// an RPC call.
-//
-// DO NOT USE THIS IN PRODUCTION
-func newSimpleUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *simpleUpkeepService {
-	s := &simpleUpkeepService{
+// newOnDemandUpkeepService provides an object that implements the UpkeepService
+// by running a worker pool that makes RPC network calls every time upkeeps
+// need to be sampled. This variant has limitations in how quickly large numbers
+// of upkeeps can be checked. Be aware that network calls are not rate limited
+// from this service.
+func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, perfLogs types.PerformLogProvider, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
+	s := &onDemandUpkeepService{
 		logger:     logger,
 		ratio:      ratio,
 		registry:   registry,
+		perfLogs:   perfLogs,
 		shuffler:   new(cryptoShuffler[types.UpkeepKey]),
 		cache:      newCache[types.UpkeepResult](cacheExpire),
 		stateCache: newCache[types.UpkeepState](staleWindow),
 		workers:    newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
+		stopProcs:  make(chan struct{}),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
 		Interval: cacheClean,
-		stop:     make(chan struct{}, 1),
+		stop:     make(chan struct{}),
 	}
 
 	s.cacheCleaner = cl
-	go cl.Run(s.cache)
 
 	// stop the cleaner go-routine once the upkeep service is no longer reachable
-	runtime.SetFinalizer(s, func(srv *simpleUpkeepService) { srv.cacheCleaner.stop <- struct{}{} })
+	runtime.SetFinalizer(s, func(srv *onDemandUpkeepService) { srv.stop() })
 
+	// start background services
+	s.start()
 	return s
 }
 
-var _ upkeepService = (*simpleUpkeepService)(nil)
+var _ upkeepService = (*onDemandUpkeepService)(nil)
 
-func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.UpkeepResult, error) {
 	// - get all upkeeps from contract
 	s.logger.Printf("get all active upkeep keys")
 	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
@@ -78,7 +81,7 @@ func (s *simpleUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upkee
 	return s.parallelCheck(ctx, keys[:size])
 }
 
-func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
 	var result types.UpkeepResult
 
 	id, err := s.registry.IdentifierFromKey(key)
@@ -121,7 +124,7 @@ func (s *simpleUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepK
 	return result, nil
 }
 
-func (s *simpleUpkeepService) SetUpkeepState(ctx context.Context, uk types.UpkeepKey, state types.UpkeepState) error {
+func (s *onDemandUpkeepService) SetUpkeepState(ctx context.Context, uk types.UpkeepKey, state types.UpkeepState) error {
 	var err error
 
 	id, err := s.registry.IdentifierFromKey(uk)
@@ -147,7 +150,43 @@ func (s *simpleUpkeepService) SetUpkeepState(ctx context.Context, uk types.Upkee
 	return nil
 }
 
-func (s *simpleUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) start() {
+
+	if s.perfLogs != nil {
+		c := s.perfLogs.Subscribe()
+
+		go func(chan types.PerformLog) {
+			for {
+				select {
+				case log := <-c:
+					// TODO: add delete method to cache; hack sets a new status and 1
+					// nanosecond expire time
+					s.stateCache.Set(string(log.Key), types.Performed, 1)
+				case <-s.stopProcs:
+					// closing the channel indicates to the sender that the channel is
+					// no longer being used. This will cause the sending service to
+					// panic if it attempts to send to the channel. This should be
+					// accounted for by the sending service.
+					close(c)
+					return
+				}
+			}
+		}(c)
+	}
+
+	go s.cacheCleaner.Run(s.cache)
+}
+
+func (s *onDemandUpkeepService) stop() {
+	if s.perfLogs != nil {
+		s.perfLogs.Unsubscribe()
+	}
+
+	close(s.stopProcs)
+	close(s.cacheCleaner.stop)
+}
+
+func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
 	sample := make([]*types.UpkeepResult, 0, len(keys))
 	var cacheHits int
 

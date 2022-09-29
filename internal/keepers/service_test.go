@@ -42,7 +42,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 		}
 
 		l := log.New(io.Discard, "", 0)
-		svc := &simpleUpkeepService{
+		svc := &onDemandUpkeepService{
 			logger:     l,
 			ratio:      sampleRatio(0.5),
 			registry:   rg,
@@ -52,6 +52,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			workers:    newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
+		// this test does not include the cache cleaner or log subscriber
 		result, err := svc.SampleUpkeeps(ctx)
 
 		assert.NoError(t, err)
@@ -85,18 +86,22 @@ func TestSimpleUpkeepService(t *testing.T) {
 		rg.Mock.On("CheckUpkeep", mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: types.Skip}, nil)
 
 		l := log.New(io.Discard, "", 0)
-		svc := &simpleUpkeepService{
+		svc := &onDemandUpkeepService{
 			logger:     l,
 			ratio:      sampleRatio(1.0),
 			registry:   rg,
 			shuffler:   new(noShuffleShuffler[ktypes.UpkeepKey]),
-			cache:      newCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			cache:      newCache[ktypes.UpkeepResult](50 * time.Millisecond),
 			stateCache: newCache[ktypes.UpkeepState](10 * time.Second),
 			workers:    newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
-		svc.cache.Set(string(actives[0]), ktypes.UpkeepResult{Key: actives[0], State: types.Reported}, defaultExpiration)
+		// set the cache to a previous block number to simulate a reported
+		// upkeep on a previous block
+		svc.stateCache.Set("1", types.Reported, defaultExpiration)
+		svc.cache.Set("0|1", ktypes.UpkeepResult{Key: ktypes.UpkeepKey("0|1"), State: types.Reported}, defaultExpiration)
 
+		// this test does not include the cache cleaner or log subscriber
 		result, err := svc.SampleUpkeeps(ctx)
 		cancel()
 
@@ -113,13 +118,14 @@ func TestSimpleUpkeepService(t *testing.T) {
 		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
 
 		l := log.New(io.Discard, "", 0)
-		svc := &simpleUpkeepService{
+		svc := &onDemandUpkeepService{
 			logger:   l,
 			registry: rg,
 			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
+		// this test does not include the cache cleaner or log subscriber
 		result, err := svc.SampleUpkeeps(ctx)
 		if err == nil {
 			t.FailNow()
@@ -172,7 +178,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 		}
 
 		l := log.New(io.Discard, "", 0)
-		svc := &simpleUpkeepService{
+		svc := &onDemandUpkeepService{
 			logger:     l,
 			ratio:      sampleRatio(1.0),
 			registry:   rg,
@@ -256,7 +262,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 			rg.Mock.On("CheckUpkeep", mock.Anything, test.Key).Return(test.Check, test.RegResult, test.Err)
 
 			l := log.New(io.Discard, "", 0)
-			svc := &simpleUpkeepService{
+			svc := &onDemandUpkeepService{
 				logger:     l,
 				cache:      newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 				stateCache: newCache[ktypes.UpkeepState](10 * time.Second),
@@ -297,7 +303,7 @@ func TestSimpleUpkeepService(t *testing.T) {
 		rg := new(MockedRegistry)
 
 		l := log.New(io.Discard, "", 0)
-		svc := &simpleUpkeepService{
+		svc := &onDemandUpkeepService{
 			logger:     l,
 			registry:   rg,
 			cache:      newCache[ktypes.UpkeepResult](20 * time.Millisecond),
@@ -386,6 +392,29 @@ func (_m *MockedRegistry) IdentifierFromKey(key ktypes.UpkeepKey) (ktypes.Upkeep
 	}
 
 	return r0, ret.Error(1)
+}
+
+type MockedPerformLogProvider struct {
+	mock.Mock
+}
+
+func (_m *MockedPerformLogProvider) Subscribe() chan ktypes.PerformLog {
+	ret := _m.Mock.Called()
+
+	var r0 chan ktypes.PerformLog
+	if rf, ok := ret.Get(0).(func() chan ktypes.PerformLog); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(chan ktypes.PerformLog)
+		}
+	}
+
+	return r0
+}
+
+func (_m *MockedPerformLogProvider) Unsubscribe() {
+	_m.Mock.Called()
 }
 
 type noShuffleShuffler[T any] struct{}

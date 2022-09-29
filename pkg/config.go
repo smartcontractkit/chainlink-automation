@@ -45,6 +45,9 @@ type DelegateConfig struct {
 
 	// Registry is an abstract plugin registry; can be evm based or anything else
 	Registry ktypes.Registry
+	// PerformLogProvider is an abstract provider of logs where upkeep performs
+	// occur. This interface provides subscribe and unsubscribe methods.
+	PerformLogProvider ktypes.PerformLogProvider
 	// ReportEncoder is an abstract encoder for encoding reports destined for
 	// trasmission; can be evm based or anything else.
 	ReportEncoder ktypes.ReportEncoder
