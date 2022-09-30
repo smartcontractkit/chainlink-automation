@@ -42,7 +42,7 @@ func TestEncodeReport(t *testing.T) {
 
 		// fast gas and link native values should come from the result at the latest block number
 		buff := new(bytes.Buffer)
-		buff.Write([]byte("0x"))                                                                         // preface to data structure
+		// buff.Write([]byte("0x"))                                                                         // preface to data structure
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGasWei in hex format
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000010")) // linkNative in hex format
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000080")) // offset for ids array

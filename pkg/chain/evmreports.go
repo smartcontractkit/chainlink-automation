@@ -75,5 +75,6 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 		return []byte{}, fmt.Errorf("%w: failed to pack report data", err)
 	}
 
-	return append([]byte("0x"), bts...), err
+	//return append([]byte("0x"), bts...), nil
+	return bts, nil
 }
