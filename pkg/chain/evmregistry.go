@@ -149,15 +149,27 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 
 		result.CheckBlockNumber = ret0.Result.CheckBlockNumber
 		result.CheckBlockHash = ret0.Result.CheckBlockhash
-		result.PerformData = ret0.Result.PerformData
+
+		// trim trailing byte values
+		data := ret0.Result.PerformData
+		length := len(data)
+		for j := len(data) - 1; j >= 0; j-- {
+			if data[j] != 0 {
+				length = j + 1
+				break
+			}
+		}
 
 		// when perform data is set to '0x', the returned byte array is of length
 		// 32 and zeroed out
 		// in this case, set the perform data to nil
-		hex := common.Bytes2Hex(result.PerformData)
-		if hex == "0000000000000000000000000000000000000000000000000000000000000000" {
+		if length > 0 {
+			result.PerformData = make([]byte, length)
+			copy(result.PerformData, data)
+		} else {
 			result.PerformData = nil
 		}
+
 	}
 
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
