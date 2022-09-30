@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime/debug"
@@ -365,9 +367,19 @@ func (c *OCRController) WriteReports(path string) {
 				continue
 			}
 
-			_, err = f.Write(dst)
-			if err != nil {
-				c.logger.Println(err.Error())
+			rdr := bytes.NewReader(dst)
+			bts := make([]byte, 64)
+			rd := 1
+			for rd != 0 {
+				rd, err = io.ReadFull(rdr, bts)
+				if err != nil {
+					break
+				}
+
+				_, err = f.Write(append(bts, []byte("\n")...))
+				if err != nil {
+					c.logger.Println(err.Error())
+				}
 			}
 
 			f.Close()

@@ -85,6 +85,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 // is the most basic possible at this point and assumes all reports should be accepted.
 func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportTimestamp, _ types.Report) (bool, error) {
 	// TODO: add some checks to verify that a report should be accepted to transmit
+	k.logger.Print("accepting finalized report")
 	return true, nil
 }
 
@@ -92,7 +93,8 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportT
 // is the most basic possible at this point and assumes all reports should be accepted.
 func (k *keepers) ShouldTransmitAcceptedReport(c context.Context, t types.ReportTimestamp, r types.Report) (bool, error) {
 	// TODO: add some checks to verify that a report should be accepted to transmit
-	return true, nil
+	k.logger.Print("accepting transmit report")
+	return len(r) != 0, nil
 }
 
 // Close implements the types.ReportingPlugin interface in OCR2.
