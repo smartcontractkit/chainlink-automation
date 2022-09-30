@@ -476,10 +476,12 @@ func BenchmarkShouldAcceptFinalizedReport(b *testing.B) {
 }
 
 func TestShouldTransmitAcceptedReport(t *testing.T) {
-	plugin := &keepers{}
+	plugin := &keepers{
+		logger: log.New(io.Discard, "", 0),
+	}
 	ok, err := plugin.ShouldTransmitAcceptedReport(context.Background(), types.ReportTimestamp{}, types.Report{})
 
-	assert.Equal(t, true, ok)
+	assert.Equal(t, false, ok)
 	assert.NoError(t, err)
 }
 
