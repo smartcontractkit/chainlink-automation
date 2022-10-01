@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -168,14 +169,15 @@ func TestReport(t *testing.T) {
 		ExpectedReport []byte
 		ExpectedBool   bool
 		ExpectedErr    error
+		Transmitter    bool
 	}{
 		{
 			Name: "Single Common Upkeep",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -192,9 +194,9 @@ func TestReport(t *testing.T) {
 			Name: "Forward Context",
 			Ctx:  func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -214,9 +216,9 @@ func TestReport(t *testing.T) {
 			Name: "Wrap Error",
 			Ctx:  func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -232,9 +234,9 @@ func TestReport(t *testing.T) {
 			Name: "Unsorted Observations",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2")), ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2")), ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -251,9 +253,9 @@ func TestReport(t *testing.T) {
 			Name: "Earliest Block",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("2|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("3|1"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("2|1"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("3|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -270,9 +272,9 @@ func TestReport(t *testing.T) {
 			Name: "Skip Already Performed",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -290,9 +292,9 @@ func TestReport(t *testing.T) {
 			Name: "Nothing to Report",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -308,9 +310,9 @@ func TestReport(t *testing.T) {
 			Name: "Empty Observations",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{}))},
 			},
 			ExpectedBool: false,
 		},
@@ -325,9 +327,9 @@ func TestReport(t *testing.T) {
 			Name: "Encoding Error",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -340,6 +342,26 @@ func TestReport(t *testing.T) {
 			EncodeErr:    ErrMockTestError,
 			ExpectedBool: false,
 			ExpectedErr:  ErrMockTestError,
+		},
+		{
+			Name: "Is Transmitter",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Observations: []types.AttributedObservation{
+				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+			},
+			Checks: []struct {
+				K ktypes.UpkeepKey
+				R ktypes.UpkeepResult
+				E error
+			}{
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Perform, PerformData: []byte("abcd")}},
+			},
+			Perform:        []int{0},
+			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
+			ExpectedBool:   true,
+			Transmitter:    true,
 		},
 	}
 
@@ -378,6 +400,7 @@ func TestReport(t *testing.T) {
 			ok, r, err := plugin.Report(ctx, types.ReportTimestamp{}, types.Query{}, test.Observations)
 			cancel()
 
+			assert.Equal(t, test.Transmitter, plugin.transmit)
 			assert.Equal(t, test.ExpectedBool, ok)
 			assert.Equal(t, types.Report(test.ExpectedReport), r)
 

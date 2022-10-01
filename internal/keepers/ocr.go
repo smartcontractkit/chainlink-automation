@@ -59,8 +59,10 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 
 	// like drawing straws, if the lowest value from all nodes was sent by this
 	// node, this node should be the next transmitter
+	isTransmitter := sent == lowest(values)
+	k.logger.Printf("node selected as transmitter: %t", isTransmitter)
 	k.mu.Lock()
-	k.transmit = sent == lowest(values)
+	k.transmit = isTransmitter
 	k.mu.Unlock()
 
 	// select, verify, and build report
@@ -103,8 +105,13 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 // from OCR2. The implementation is the most basic possible in that it only
 // checks that a report has data to send.
 func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportTimestamp, r types.Report) (bool, error) {
-	k.logger.Print("accepting finalized report")
-	return len(r) != 0, nil
+	shouldAccept := len(r) != 0
+	if shouldAccept {
+		k.logger.Print("accepting finalized report")
+	} else {
+		k.logger.Print("finalized report empty; not accepting")
+	}
+	return shouldAccept, nil
 }
 
 // ShouldTransmitAcceptedReport implements the types.ReportingPlugin interface
@@ -116,7 +123,11 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, _ types.Report
 	isTransmitter = k.transmit
 	k.mu.Unlock()
 
-	k.logger.Print("accepting transmit report")
+	if isTransmitter {
+		k.logger.Print("accepting report for transmit")
+	} else {
+		k.logger.Print("report available for transmit; not a transmitter")
+	}
 
 	return isTransmitter, nil
 }

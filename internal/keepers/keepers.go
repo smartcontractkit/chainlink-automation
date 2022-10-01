@@ -20,6 +20,6 @@ type keepers struct {
 }
 
 type observationMessageProto struct {
-	RandomValue int64 `json:"random_value"`
-	Keys        []types.UpkeepKey
+	RandomValue int64             `json:"random_value"`
+	Keys        []types.UpkeepKey `json:"keys"`
 }
