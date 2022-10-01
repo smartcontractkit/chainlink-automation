@@ -9,6 +9,7 @@ import (
 	rnd "math/rand"
 	"sort"
 
+	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -115,9 +116,15 @@ func dedupe[T any](inputs [][]T) ([]T, error) {
 	return output, nil
 }
 
-func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.UpkeepKey, error) {
+type randomValues struct {
+	Value    int64
+	Observer commontypes.OracleID
+}
+
+func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]randomValues, []ktypes.UpkeepKey, error) {
 	var err error
 
+	rdm := make([]randomValues, len(attributed))
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
 	for i, attr := range attributed {
 		b := []byte(attr.Observation)
@@ -125,24 +132,29 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.Up
 			continue
 		}
 
-		var values []ktypes.UpkeepKey
-		err = decode(b, &values)
+		var ob observationMessageProto
+		err = decode(b, &ob)
 		if err != nil {
-			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
+			return nil, nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
 		}
 
-		sort.Sort(sortUpkeepKeys(values))
-		kys[i] = values
+		rdm[i] = randomValues{
+			Value:    ob.RandomValue,
+			Observer: attr.Observer,
+		}
+
+		sort.Sort(sortUpkeepKeys(ob.Keys))
+		kys[i] = ob.Keys
 	}
 
 	keys, err := dedupe(kys)
 	if err != nil {
-		return nil, fmt.Errorf("%w: observation dedupe", err)
+		return nil, nil, fmt.Errorf("%w: observation dedupe", err)
 	}
 
 	sort.Sort(sortUpkeepKeys(keys))
 
-	return keys, nil
+	return rdm, keys, nil
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {
@@ -171,4 +183,16 @@ func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio,
 	ratio = sampleRatio(float32(rat))
 
 	return ratio, nil
+}
+
+func lowest(values []int64) int64 {
+	if len(values) == 0 {
+		return 0
+	}
+
+	sort.Slice(values, func(i, j int) bool {
+		return values[i] < values[j]
+	})
+
+	return values[0]
 }

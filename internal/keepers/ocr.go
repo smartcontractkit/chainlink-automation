@@ -23,9 +23,12 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 		return types.Observation{}, err
 	}
 
-	keys := keyList(filterUpkeeps(results, ktypes.Perform))
+	ob := observationMessageProto{
+		RandomValue: k.rSrc.Int63(),
+		Keys:        keyList(filterUpkeeps(results, ktypes.Perform)),
+	}
 
-	b, err := encode(keys)
+	b, err := encode(ob)
 	if err != nil {
 		return types.Observation{}, err
 	}
@@ -40,10 +43,25 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Query, attributed []types.AttributedObservation) (bool, types.Report, error) {
 	var err error
 
-	keys, err := sortedDedupedKeyList(attributed)
+	rdm, keys, err := sortedDedupedKeyList(attributed)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations", err)
 	}
+
+	var sent int64
+	values := make([]int64, len(rdm))
+	for i, r := range rdm {
+		values[i] = r.Value
+		if r.Observer == k.id {
+			sent = r.Value
+		}
+	}
+
+	// like drawing straws, if the lowest value from all nodes was sent by this
+	// node, this node should be the next transmitter
+	k.mu.Lock()
+	k.transmit = sent == lowest(values)
+	k.mu.Unlock()
 
 	// select, verify, and build report
 	toPerform := make([]ktypes.UpkeepResult, 0, 1)
@@ -81,20 +99,26 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 	return true, types.Report(b), err
 }
 
-// ShouldAcceptFinalizedReport implements the types.ReportingPlugin interface in OCR2. The implementation
-// is the most basic possible at this point and assumes all reports should be accepted.
-func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportTimestamp, _ types.Report) (bool, error) {
-	// TODO: add some checks to verify that a report should be accepted to transmit
+// ShouldAcceptFinalizedReport implements the types.ReportingPlugin interface
+// from OCR2. The implementation is the most basic possible in that it only
+// checks that a report has data to send.
+func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportTimestamp, r types.Report) (bool, error) {
 	k.logger.Print("accepting finalized report")
-	return true, nil
+	return len(r) != 0, nil
 }
 
-// ShouldTransmitAcceptedReport implements the types.ReportingPlugin interface in OCR2. The implementation
-// is the most basic possible at this point and assumes all reports should be accepted.
-func (k *keepers) ShouldTransmitAcceptedReport(c context.Context, t types.ReportTimestamp, r types.Report) (bool, error) {
-	// TODO: add some checks to verify that a report should be accepted to transmit
+// ShouldTransmitAcceptedReport implements the types.ReportingPlugin interface
+// from OCR2. The implementation essentially draws straws on which node should
+// be the transmitter.
+func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, _ types.ReportTimestamp, _ types.Report) (bool, error) {
+	var isTransmitter bool
+	k.mu.Lock()
+	isTransmitter = k.transmit
+	k.mu.Unlock()
+
 	k.logger.Print("accepting transmit report")
-	return len(r) != 0, nil
+
+	return isTransmitter, nil
 }
 
 // Close implements the types.ReportingPlugin interface in OCR2.

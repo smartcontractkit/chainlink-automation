@@ -69,7 +69,7 @@ func TestDedupe(t *testing.T) {
 
 func TestSortedDedup_Error(t *testing.T) {
 	obs := []types.AttributedObservation{{Observation: types.Observation([]byte("incorrectly encoded"))}}
-	_, err := sortedDedupedKeyList(obs)
+	_, _, err := sortedDedupedKeyList(obs)
 	assert.NotNil(t, err)
 }
 
@@ -78,13 +78,13 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 	key2 := ktypes.UpkeepKey([]byte("1|2"))
 	key3 := ktypes.UpkeepKey([]byte("2|1"))
 
-	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
+	encoded := mustEncodeKeys(0, []ktypes.UpkeepKey{key1, key2})
 
 	observations := []types.AttributedObservation{
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
-		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{key2, key3}))},
+		{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{key2, key3}))},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
@@ -109,7 +109,7 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 
 				b.StartTimer()
-				_, err := sortedDedupedKeyList(ob)
+				_, _, err := sortedDedupedKeyList(ob)
 				b.StopTimer()
 
 				if err != nil {
@@ -151,4 +151,14 @@ func TestSampleFromProbability(t *testing.T) {
 			assert.Less(t, float32(v), test.ExpectedHigh)
 		}
 	}
+}
+
+func TestLowest(t *testing.T) {
+
+	values := []int64{-3, -1, 0, 1, 3}
+	var expected int64 = -3
+
+	result := lowest(values)
+
+	assert.Equal(t, expected, result)
 }

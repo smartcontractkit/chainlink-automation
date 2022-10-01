@@ -84,5 +84,5 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.MaxServiceWorkers,
 		d.config.ServiceQueueLength)
 
-	return &keepers{service: service, encoder: d.encoder, logger: d.logger}, info, nil
+	return &keepers{id: c.OracleID, rSrc: newCryptoRandSource(), service: service, encoder: d.encoder, logger: d.logger}, info, nil
 }
