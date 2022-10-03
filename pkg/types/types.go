@@ -62,6 +62,8 @@ type OffchainConfig struct {
 	// performed again while waiting for a confirmation. Standard setting is
 	// 100 blocks * average block time. Units are in milliseconds
 	PerformLockoutWindow int64 `json:"performLockoutWindow"`
+	// UniqueReports sets quorum requirements for the OCR process
+	UniqueReports bool `json:"uniqueReports"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {

@@ -56,10 +56,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			// with performData of arbitrary length
 			MaxReportLength: 10_000, // TODO (config): pick sane limit based on expected performData size. maybe set this to block size limit or 2/3 block size limit?
 		},
-		// TODO: unique reports may need to be a configuration param from
-		// offChainConfig or onChainConfig
-		// unique reports ensures that each round produces only a single report
-		UniqueReports: true,
+		UniqueReports: offChainCfg.UniqueReports,
 	}
 
 	// TODO (config): sample ratio is calculated with number of rounds, number
