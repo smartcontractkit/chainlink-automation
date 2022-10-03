@@ -37,6 +37,7 @@ var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
 
 // NewReportingPlugin implements the libocr/offchainreporting2/types ReportingPluginFactory interface
 func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
+	fmt.Println("reporting plugin config", c)
 	offChainCfg, err := ktypes.DecodeOffchainConfig(c.OffchainConfig)
 	if err != nil {
 		return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
@@ -59,7 +60,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		// TODO: unique reports may need to be a configuration param from
 		// offChainConfig or onChainConfig
 		// unique reports ensures that each round produces only a single report
-		UniqueReports: true,
+		UniqueReports: false,
 	}
 
 	// TODO (config): sample ratio is calculated with number of rounds, number
