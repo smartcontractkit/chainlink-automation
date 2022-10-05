@@ -105,6 +105,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 // from OCR2. The implementation is the most basic possible in that it only
 // checks that a report has data to send.
 func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportTimestamp, r types.Report) (bool, error) {
+	// TODO: isStale check on last performed block number
 	shouldAccept := len(r) != 0
 	if shouldAccept {
 		k.logger.Print("accepting finalized report")
@@ -118,6 +119,8 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportT
 // from OCR2. The implementation essentially draws straws on which node should
 // be the transmitter.
 func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, _ types.ReportTimestamp, _ types.Report) (bool, error) {
+	// TODO: isStale check on last performed block number
+	// TODO: check that transmission has not completed
 	var isTransmitter bool
 	k.mu.Lock()
 	isTransmitter = k.transmit

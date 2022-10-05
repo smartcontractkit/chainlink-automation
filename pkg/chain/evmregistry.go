@@ -125,6 +125,8 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	}
 
 	rawPerformData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
+	result.FailureReason = *abi.ConvertType(out[2], new(int)).(*int)
+	result.GasUsed = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 
 	if len(rawPerformData) > 0 {
 		type performDataStruct struct {
@@ -154,6 +156,8 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
+
+	// TODO: add failure reason to result
 
 	return upkeepNeeded, result, nil
 }

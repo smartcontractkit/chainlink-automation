@@ -18,8 +18,8 @@ type ReportEncoder interface {
 }
 
 type PerformLogProvider interface {
-	Subscribe() chan PerformLog
-	Unsubscribe()
+	Subscribe() (string, chan PerformLog)
+	Unsubscribe(string)
 }
 
 type PerformLog struct {
@@ -40,6 +40,8 @@ type UpkeepIdentifier []byte
 type UpkeepResult struct {
 	Key              UpkeepKey
 	State            UpkeepState
+	FailureReason    int
+	GasUsed          *big.Int
 	PerformData      []byte
 	FastGasWei       *big.Int
 	LinkNative       *big.Int

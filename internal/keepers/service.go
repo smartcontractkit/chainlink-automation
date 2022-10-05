@@ -13,16 +13,17 @@ import (
 )
 
 type onDemandUpkeepService struct {
-	logger       *log.Logger
-	ratio        sampleRatio
-	registry     types.Registry
-	perfLogs     types.PerformLogProvider
-	shuffler     shuffler[types.UpkeepKey]
-	cache        *cache[types.UpkeepResult]
-	stateCache   *cache[types.UpkeepState]
-	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
-	workers      *workerGroup[types.UpkeepResult]
-	stopProcs    chan struct{}
+	logger         *log.Logger
+	ratio          sampleRatio
+	registry       types.Registry
+	perfLogs       types.PerformLogProvider
+	shuffler       shuffler[types.UpkeepKey]
+	cache          *cache[types.UpkeepResult]
+	stateCache     *cache[types.UpkeepState]
+	cacheCleaner   *intervalCacheCleaner[types.UpkeepResult]
+	workers        *workerGroup[types.UpkeepResult]
+	stopProcs      chan struct{}
+	subscriptionId string
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -153,12 +154,13 @@ func (s *onDemandUpkeepService) SetUpkeepState(ctx context.Context, uk types.Upk
 func (s *onDemandUpkeepService) start() {
 
 	if s.perfLogs != nil {
-		c := s.perfLogs.Subscribe()
+		var chPerfLogs chan types.PerformLog
+		s.subscriptionId, chPerfLogs = s.perfLogs.Subscribe()
 
-		go func(chan types.PerformLog) {
+		go func(ch chan types.PerformLog) {
 			for {
 				select {
-				case log := <-c:
+				case log := <-ch:
 					// TODO: add delete method to cache; hack sets a new status and 1
 					// nanosecond expire time
 					s.stateCache.Set(string(log.Key), types.Performed, 1)
@@ -167,11 +169,11 @@ func (s *onDemandUpkeepService) start() {
 					// no longer being used. This will cause the sending service to
 					// panic if it attempts to send to the channel. This should be
 					// accounted for by the sending service.
-					close(c)
+					close(ch)
 					return
 				}
 			}
-		}(c)
+		}(chPerfLogs)
 	}
 
 	go s.cacheCleaner.Run(s.cache)
@@ -179,7 +181,7 @@ func (s *onDemandUpkeepService) start() {
 
 func (s *onDemandUpkeepService) stop() {
 	if s.perfLogs != nil {
-		s.perfLogs.Unsubscribe()
+		s.perfLogs.Unsubscribe(s.subscriptionId)
 	}
 
 	close(s.stopProcs)
@@ -187,7 +189,8 @@ func (s *onDemandUpkeepService) stop() {
 }
 
 func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
-	sample := make([]*types.UpkeepResult, 0, len(keys))
+	samples := newSyncedArray[*types.UpkeepResult]()
+
 	var cacheHits int
 
 	var wg sync.WaitGroup
@@ -213,7 +216,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 					// cache results
 					s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
 					if result.Data.State == types.Perform {
-						sample = append(sample, &result.Data)
+						samples.Append(&result.Data)
 					}
 				} else {
 					failure++
@@ -233,7 +236,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 		// get reported status and continue if found
 		id, err := s.registry.IdentifierFromKey(key)
 		if err != nil {
-			return sample, err
+			return samples.Values(), err
 		}
 		state, stateCached := s.stateCache.Get(string(id))
 		if stateCached && state == types.Reported {
@@ -246,7 +249,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 		if cached {
 			cacheHits++
 			if result.State == types.Perform {
-				sample = append(sample, &result)
+				samples.Append(&result)
 			}
 			continue
 		}
@@ -277,7 +280,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 
 	s.logger.Printf("sampling cache hit ratio %d/%d", cacheHits, len(keys))
 
-	return sample, nil
+	return samples.Values(), nil
 }
 
 func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey, jobCtx context.Context) func(ctx context.Context) (types.UpkeepResult, error) {
@@ -294,8 +297,10 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		go func() {
 			select {
 			case <-jobCtx.Done():
+				logger.Printf("check upkeep job context cancelled for key %s", key)
 				cancel()
 			case <-ctx.Done():
+				logger.Printf("worker service context cancelled")
 				cancel()
 			case <-done:
 				cancel()
@@ -310,6 +315,10 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 
 		if err != nil {
 			logger.Printf("error checking upkeep '%s': %s", key, err)
+		}
+
+		if u.FailureReason != 0 {
+			logger.Printf("upkeep '%s' had a non-zero failure reason: %d", key, u.FailureReason)
 		}
 
 		// close go-routine to prevent memory leaks

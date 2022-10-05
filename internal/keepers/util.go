@@ -8,6 +8,7 @@ import (
 	"math/cmplx"
 	rnd "math/rand"
 	"sort"
+	"sync"
 
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
@@ -195,4 +196,29 @@ func lowest(values []int64) int64 {
 	})
 
 	return values[0]
+}
+
+type syncedArray[T any] struct {
+	data []T
+	mu   sync.RWMutex
+}
+
+func newSyncedArray[T any]() *syncedArray[T] {
+	return &syncedArray[T]{
+		data: []T{},
+	}
+}
+
+func (a *syncedArray[T]) Append(vals ...T) *syncedArray[T] {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.data = append(a.data, vals...)
+	return a
+}
+
+func (a *syncedArray[T]) Values() []T {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.data
 }
