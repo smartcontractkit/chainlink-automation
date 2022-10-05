@@ -40,7 +40,7 @@ type UpkeepIdentifier []byte
 type UpkeepResult struct {
 	Key              UpkeepKey
 	State            UpkeepState
-	FailureReason    int
+	FailureReason    uint8
 	GasUsed          *big.Int
 	PerformData      []byte
 	FastGasWei       *big.Int

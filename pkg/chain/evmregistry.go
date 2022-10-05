@@ -125,7 +125,7 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	}
 
 	rawPerformData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
-	result.FailureReason = *abi.ConvertType(out[2], new(int)).(*int)
+	result.FailureReason = *abi.ConvertType(out[2], new(uint8)).(*uint8)
 	result.GasUsed = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 
 	if len(rawPerformData) > 0 {
