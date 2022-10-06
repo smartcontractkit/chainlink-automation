@@ -57,7 +57,7 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 	data := make([]w, len(toReport))
 
 	for i, result := range toReport {
-		_, upkeepId, err := blockAndIdFromKey(result.Key)
+		_, upkeepId, err := BlockAndIdFromKey(result.Key)
 		if err != nil {
 			return nil, fmt.Errorf("%w: report encoding error", err)
 		}

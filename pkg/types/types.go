@@ -23,7 +23,9 @@ type PerformLogProvider interface {
 }
 
 type PerformLog struct {
-	Key UpkeepKey
+	Key           UpkeepKey
+	TransmitBlock BlockKey
+	Confirmations int64
 }
 
 type BlockKey string
@@ -52,10 +54,9 @@ type UpkeepResult struct {
 type UpkeepState uint
 
 const (
-	Eligible UpkeepState = iota
-	Skip
-	Perform
-	Reported
+	NotEligible UpkeepState = iota
+	Eligible
+	InFlight
 	Performed
 )
 

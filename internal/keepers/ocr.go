@@ -25,7 +25,7 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 
 	ob := observationMessageProto{
 		RandomValue: k.rSrc.Int63(),
-		Keys:        keyList(filterUpkeeps(results, ktypes.Perform)),
+		Keys:        keyList(filterUpkeeps(results, ktypes.Eligible)),
 	}
 
 	b, err := encode(ob)
@@ -73,7 +73,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation", err)
 		}
 
-		if upkeep.State == ktypes.Perform {
+		if upkeep.State == ktypes.Eligible {
 			// only build a report from a single upkeep for now
 			k.logger.Printf("reporting %s to be performed", upkeep.Key)
 			toPerform = append(toPerform, upkeep)
@@ -91,9 +91,10 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 		return false, nil, fmt.Errorf("%w: failed to encode OCR report", err)
 	}
 
+	// TODO: move this to ShouldAcceptFinalizedReport
 	// update internal state of upkeeps to ensure they aren't reported or observed again
 	for i := 0; i < len(toPerform); i++ {
-		if err := k.service.SetUpkeepState(ctx, toPerform[i].Key, ktypes.Reported); err != nil {
+		if err := k.service.SetUpkeepState(ctx, toPerform[i].Key, ktypes.InFlight); err != nil {
 			return false, nil, fmt.Errorf("%w: failed to update internal state while generating report", err)
 		}
 	}
@@ -105,6 +106,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 // from OCR2. The implementation is the most basic possible in that it only
 // checks that a report has data to send.
 func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportTimestamp, r types.Report) (bool, error) {
+	// TODO: decode report, set reported status for each upkeep
 	// TODO: isStale check on last performed block number
 	shouldAccept := len(r) != 0
 	if shouldAccept {

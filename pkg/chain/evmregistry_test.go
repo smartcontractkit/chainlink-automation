@@ -72,7 +72,7 @@ func TestCheckUpkeep(t *testing.T) {
 		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
 		assert.NoError(t, err)
 		assert.Equal(t, true, ok)
-		assert.Equal(t, types.Perform, upkeep.State)
+		assert.Equal(t, types.Eligible, upkeep.State)
 	})
 
 	t.Run("UPKEEP_NOT_NEEDED", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestCheckUpkeep(t *testing.T) {
 		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
 		assert.NoError(t, err)
 		assert.Equal(t, false, ok)
-		assert.Equal(t, types.Skip, upkeep.State)
+		assert.Equal(t, types.NotEligible, upkeep.State)
 	})
 
 }

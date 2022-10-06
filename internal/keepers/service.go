@@ -19,7 +19,7 @@ type onDemandUpkeepService struct {
 	perfLogs       types.PerformLogProvider
 	shuffler       shuffler[types.UpkeepKey]
 	cache          *cache[types.UpkeepResult]
-	stateCache     *cache[types.UpkeepState]
+	inFlightCache  *cache[types.UpkeepKey]
 	cacheCleaner   *intervalCacheCleaner[types.UpkeepResult]
 	workers        *workerGroup[types.UpkeepResult]
 	stopProcs      chan struct{}
@@ -33,15 +33,15 @@ type onDemandUpkeepService struct {
 // from this service.
 func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, perfLogs types.PerformLogProvider, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
-		logger:     logger,
-		ratio:      ratio,
-		registry:   registry,
-		perfLogs:   perfLogs,
-		shuffler:   new(cryptoShuffler[types.UpkeepKey]),
-		cache:      newCache[types.UpkeepResult](cacheExpire),
-		stateCache: newCache[types.UpkeepState](staleWindow),
-		workers:    newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
-		stopProcs:  make(chan struct{}),
+		logger:        logger,
+		ratio:         ratio,
+		registry:      registry,
+		perfLogs:      perfLogs,
+		shuffler:      new(cryptoShuffler[types.UpkeepKey]),
+		cache:         newCache[types.UpkeepResult](cacheExpire),
+		inFlightCache: newCache[types.UpkeepKey](staleWindow),
+		workers:       newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
+		stopProcs:     make(chan struct{}),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -89,12 +89,18 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.Upkee
 	if err != nil {
 		return result, err
 	}
-	state, stateCached := s.stateCache.Get(string(id))
 
+	// if an upkeep is in-flight (reported but not confirmed) all checks should
+	// return the InFlight status
+	_, isInFlight := s.inFlightCache.Get(string(id))
+
+	// the cache is a collection of keys (block & id) that map to cached
+	// results. if the same upkeep is checked at a block that has already been
+	// checked, return the cached result
 	result, cached := s.cache.Get(string(key))
 	if cached {
-		if stateCached {
-			result.State = state
+		if isInFlight {
+			result.State = types.InFlight
 		}
 		return result, nil
 	}
@@ -108,16 +114,18 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.Upkee
 
 	result = types.UpkeepResult{
 		Key:   key,
-		State: types.Skip,
+		State: types.NotEligible,
 	}
 
 	if needsPerform {
-		result.State = types.Perform
+		result.State = types.Eligible
 		result.PerformData = u.PerformData
 	}
 
-	if stateCached {
-		result.State = state
+	// the upkeep should be in the cache, but in the case it's not and it is
+	// in-flight, set the state appropriately
+	if isInFlight {
+		result.State = types.InFlight
 	}
 
 	s.cache.Set(string(key), result, defaultExpiration)
@@ -135,8 +143,9 @@ func (s *onDemandUpkeepService) SetUpkeepState(ctx context.Context, uk types.Upk
 
 	// set the state cache to the default expiration using the upkeep identifer
 	// as the key
-	s.stateCache.Set(string(id), state, defaultExpiration)
+	s.inFlightCache.Set(string(id), uk, defaultExpiration)
 
+	// if the result for this key is cached, update the state to in-flight
 	result, cached := s.cache.Get(string(uk))
 	if !cached {
 		// if the value is not in the cache, do a hard check
@@ -161,9 +170,28 @@ func (s *onDemandUpkeepService) start() {
 			for {
 				select {
 				case log := <-ch:
-					// TODO: add delete method to cache; hack sets a new status and 1
-					// nanosecond expire time
-					s.stateCache.Set(string(log.Key), types.Performed, 1)
+					// TODO: check perform log confirmations; expect the log
+					// provider to send a log again at a higher block number
+					// which will have more confirmations
+
+					// update the cache with a performed state. in the case
+					// that this key is queried again, it will not be added to
+					// a report
+					r, cached := s.cache.Get(string(log.Key))
+					if cached {
+						r.State = types.Performed
+						s.cache.Set(string(log.Key), r, defaultExpiration)
+					}
+
+					id, err := s.registry.IdentifierFromKey(log.Key)
+					if err != nil {
+						s.logger.Printf("failed to get id from upkeep key: %s", err)
+						continue
+					}
+
+					// remove the in-flight key since this id has been confirmed
+					s.inFlightCache.Delete(string(id))
+
 				case <-s.stopProcs:
 					// closing the channel indicates to the sender that the channel is
 					// no longer being used. This will cause the sending service to
@@ -192,7 +220,6 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	samples := newSyncedArray[*types.UpkeepResult]()
 
 	var cacheHits int
-
 	var wg sync.WaitGroup
 
 	// start the results listener
@@ -215,7 +242,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 					success++
 					// cache results
 					s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
-					if result.Data.State == types.Perform {
+					if result.Data.State == types.Eligible {
 						samples.Append(&result.Data)
 					}
 				} else {
@@ -238,22 +265,28 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 		if err != nil {
 			return samples.Values(), err
 		}
-		state, stateCached := s.stateCache.Get(string(id))
-		if stateCached && state == types.Reported {
+
+		// the reported state is in the state cache for the upkeep id
+		// if the upkeep id has been reported, we consider this to be 'in-flight'
+		// and should not be included in samples
+		_, isInFlight := s.inFlightCache.Get(string(id))
+		if isInFlight {
 			cacheHits++
 			continue
 		}
 
-		// skip if reported
+		// no RPC lookups need to be done if a result has already been cached
 		result, cached := s.cache.Get(string(key))
 		if cached {
 			cacheHits++
-			if result.State == types.Perform {
+			if result.State == types.Eligible {
 				samples.Append(&result)
 			}
 			continue
 		}
 
+		// for every job added to the worker queue, add to the wait group
+		// all jobs should complete before completing the function
 		wg.Add(1)
 		if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
 			if errors.Is(err, ErrContextCancelled) {
@@ -323,6 +356,9 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 
 		// close go-routine to prevent memory leaks
 		done <- struct{}{}
+
+		// err could exist if header block and check block don't match
+		// TODO: maybe this should be a soft error
 
 		return u, err
 	}

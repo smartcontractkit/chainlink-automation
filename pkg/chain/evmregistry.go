@@ -18,10 +18,11 @@ const ActiveUpkeepIDBatchSize int64 = 10000
 const separator string = "|"
 
 var (
-	ErrRegistryCallFailure   = fmt.Errorf("registry chain call failure")
-	ErrBlockKeyNotParsable   = fmt.Errorf("block identifier not parsable")
-	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
-	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
+	ErrRegistryCallFailure      = fmt.Errorf("registry chain call failure")
+	ErrBlockKeyNotParsable      = fmt.Errorf("block identifier not parsable")
+	ErrUpkeepKeyNotParsable     = fmt.Errorf("upkeep key not parsable")
+	ErrInitializationFailure    = fmt.Errorf("failed to initialize registry")
+	ErrBlockAtCheckDoesNotMatch = fmt.Errorf("header block and check block do not match")
 )
 
 type evmRegistryv2_0 struct {
@@ -65,7 +66,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 
 		nextKeys := make([]types.UpkeepKey, len(nextRawKeys))
 		for i, next := range nextRawKeys {
-			nextKeys[i] = []byte(fmt.Sprintf("%s%s%s", opts.BlockNumber, separator, next))
+			nextKeys[i] = BlockAndIdToKey(opts.BlockNumber, next)
 		}
 
 		if len(nextKeys) == 0 {
@@ -84,7 +85,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
 	var err error
 
-	block, upkeepId, err := blockAndIdFromKey(key)
+	block, upkeepId, err := BlockAndIdFromKey(key)
 	if err != nil {
 		return false, types.UpkeepResult{}, err
 	}
@@ -116,12 +117,12 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 
 	result := types.UpkeepResult{
 		Key:   key,
-		State: types.Perform,
+		State: types.Eligible,
 	}
 
 	upkeepNeeded := *abi.ConvertType(out[0], new(bool)).(*bool)
 	if !upkeepNeeded {
-		result.State = types.Skip
+		result.State = types.NotEligible
 	}
 
 	rawPerformData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
@@ -157,13 +158,19 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
-	// TODO: add failure reason to result
+	// reset key to check block number returned from contract
+	// this is the result that will be used in the cache both to reduce repeated
+	// check attempts and provide a lookup for in-flight performs
+	// the reason for this is in the case that the block the upkeep is checked
+	// at is different than what the contract returned. the contract value
+	// takes priority.
+	result.Key = BlockAndIdToKey(big.NewInt(int64(result.CheckBlockNumber)), upkeepId)
 
 	return upkeepNeeded, result, nil
 }
 
 func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
-	_, id, err := blockAndIdFromKey(key)
+	_, id, err := BlockAndIdFromKey(key)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +202,7 @@ func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKe
 	}, nil
 }
 
-func blockAndIdFromKey(key types.UpkeepKey) (types.BlockKey, *big.Int, error) {
+func BlockAndIdFromKey(key types.UpkeepKey) (types.BlockKey, *big.Int, error) {
 	parts := strings.Split(string(key), separator)
 	if len(parts) != 2 {
 		return types.BlockKey(""), nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
@@ -208,4 +215,8 @@ func blockAndIdFromKey(key types.UpkeepKey) (types.BlockKey, *big.Int, error) {
 	}
 
 	return types.BlockKey(parts[0]), id, nil
+}
+
+func BlockAndIdToKey(block *big.Int, id *big.Int) types.UpkeepKey {
+	return types.UpkeepKey([]byte(fmt.Sprintf("%s%s%s", block, separator, id)))
 }
