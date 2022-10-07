@@ -131,10 +131,6 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
-	if !upkeepNeeded {
-		result.State = types.Skip
-	}
-
 	if len(rawPerformData) > 0 {
 		type performDataStruct struct {
 			CheckBlockNumber uint32   `abi:"checkBlockNumber"`
