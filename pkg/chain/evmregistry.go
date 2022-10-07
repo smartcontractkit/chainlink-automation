@@ -128,22 +128,22 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 
 	if !upkeepNeeded {
 		result.State = types.Skip
+		return false, result, nil
 	}
 
-	if len(rawPerformData) > 0 {
-		type performDataStruct struct {
-			CheckBlockNumber uint32   `abi:"checkBlockNumber"`
-			CheckBlockhash   [32]byte `abi:"checkBlockhash"`
-			PerformData      []byte   `abi:"performData"`
-		}
+	type performDataStruct struct {
+		CheckBlockNumber uint32   `abi:"checkBlockNumber"`
+		CheckBlockhash   [32]byte `abi:"checkBlockhash"`
+		PerformData      []byte   `abi:"performData"`
+	}
 
-		type r struct {
-			Result performDataStruct
-		}
+	type res struct {
+		Result performDataStruct
+	}
 
-		// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
-		// function which returns this tuple in order to decode the bytes
-		pdataABI, _ := abi.JSON(strings.NewReader(`[{
+	// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
+	// function which returns this tuple in order to decode the bytes
+	pdataABI, _ := abi.JSON(strings.NewReader(`[{
 			"name":"check",
 			"type":"function",
 			"outputs":[{
@@ -156,20 +156,38 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 					]
 				}]
 			}]`,
-		))
+	))
 
-		var ret0 = new(r)
-		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
-		if err != nil {
-			return false, types.UpkeepResult{}, fmt.Errorf("%w", err)
-		}
-
-		result.CheckBlockNumber = ret0.Result.CheckBlockNumber
-		result.CheckBlockHash = ret0.Result.CheckBlockhash
-		result.PerformData = ret0.Result.PerformData
+	var ret0 = new(res)
+	err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
+	if err != nil {
+		return false, types.UpkeepResult{}, fmt.Errorf("%w", err)
 	}
 
-	return upkeepNeeded, result, nil
+	result.CheckBlockNumber = ret0.Result.CheckBlockNumber
+	result.CheckBlockHash = ret0.Result.CheckBlockhash
+	result.PerformData = ret0.Result.PerformData
+
+	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
+	/*
+		simulatePerformUpkeep(uint256 id, bytes calldata performData)
+		returns (
+			bool success,
+			uint256 gasUsed
+		)
+	*/
+	var out2 []interface{}
+	err = rawCall.Call(opts, &out2, "simulatePerformUpkeep", upkeepId, result.PerformData)
+	if err != nil {
+		return false, types.UpkeepResult{}, fmt.Errorf("%w: simulate perform upkeep returned result: %s", ErrRegistryCallFailure, err)
+	}
+	simulatePerformSuccess := *abi.ConvertType(out2[0], new(bool)).(*bool)
+	if !simulatePerformSuccess {
+		result.State = types.Skip
+		return false, result, nil
+	}
+
+	return true, result, nil
 }
 
 func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
