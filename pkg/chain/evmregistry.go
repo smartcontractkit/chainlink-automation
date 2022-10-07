@@ -128,6 +128,12 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	rawPerformData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
 	result.FailureReason = *abi.ConvertType(out[2], new(uint8)).(*uint8)
 	result.GasUsed = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
+	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
+	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
+
+	if !upkeepNeeded {
+		result.State = types.Skip
+	}
 
 	if len(rawPerformData) > 0 {
 		type performDataStruct struct {
@@ -140,9 +146,22 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 			Result performDataStruct
 		}
 
-		// the PerformDataWrapper structure isn't included in the RegistryLogic abi
-		// TODO: pull abi from official gethwrapper for keeper registry
-		pdataABI, _ := abi.JSON(strings.NewReader(`[{"name":"check","type":"function","outputs":[{"name":"ret","type":"tuple","components":[{"type":"uint32","name":"checkBlockNumber"},{"type":"bytes32","name":"checkBlockhash"},{"type":"bytes","name":"performData"}]}]}]`))
+		// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
+		// function which returns this tuple in order to decode the bytes
+		pdataABI, _ := abi.JSON(strings.NewReader(`[{
+			"name":"check",
+			"type":"function",
+			"outputs":[{
+				"name":"ret",
+				"type":"tuple",
+				"components":[
+					{"type":"uint32","name":"checkBlockNumber"},
+					{"type":"bytes32","name":"checkBlockhash"},
+					{"type":"bytes","name":"performData"}
+					]
+				}]
+			}]`,
+		))
 
 		var ret0 = new(r)
 		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
@@ -152,11 +171,8 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 
 		result.CheckBlockNumber = ret0.Result.CheckBlockNumber
 		result.CheckBlockHash = ret0.Result.CheckBlockhash
-		result.PerformData = common.TrimRightZeroes(ret0.Result.PerformData)
+		result.PerformData = ret0.Result.PerformData
 	}
-
-	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
-	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
 	// reset key to check block number returned from contract
 	// this is the result that will be used in the cache both to reduce repeated
