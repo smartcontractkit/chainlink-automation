@@ -114,6 +114,10 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.Upkee
 	if needsPerform {
 		result.State = types.Perform
 		result.PerformData = u.PerformData
+		result.FastGasWei = u.FastGasWei
+		result.LinkNative = u.LinkNative
+		result.CheckBlockNumber = u.CheckBlockNumber
+		result.CheckBlockHash = u.CheckBlockHash
 	}
 
 	if stateCached {
