@@ -132,14 +132,8 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
 	if len(rawPerformData) > 0 {
-		type performDataStruct struct {
-			CheckBlockNumber uint32   `abi:"checkBlockNumber"`
-			CheckBlockhash   [32]byte `abi:"checkBlockhash"`
-			PerformData      []byte   `abi:"performData"`
-		}
-
 		type r struct {
-			Result performDataStruct
+			Result wrappedPerform
 		}
 
 		// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
@@ -162,7 +156,7 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 		var ret0 = new(r)
 		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
 		if err != nil {
-			return false, types.UpkeepResult{}, fmt.Errorf("%w", err)
+			return false, types.UpkeepResult{}, fmt.Errorf("%w: failed to decode perform data", err)
 		}
 
 		result.CheckBlockNumber = ret0.Result.CheckBlockNumber

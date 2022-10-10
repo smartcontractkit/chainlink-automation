@@ -15,11 +15,11 @@ type Registry interface {
 
 type ReportEncoder interface {
 	EncodeReport([]UpkeepResult) ([]byte, error)
+	IDsFromReport([]byte) ([]UpkeepIdentifier, error)
 }
 
 type PerformLogProvider interface {
-	Subscribe() (string, chan PerformLog)
-	Unsubscribe(string)
+	ConfirmedPerformsFromIndex(context.Context, int) (int, []PerformLog, error)
 }
 
 type PerformLog struct {

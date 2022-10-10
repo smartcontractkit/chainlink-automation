@@ -69,7 +69,7 @@ func TestDedupe(t *testing.T) {
 
 func TestSortedDedup_Error(t *testing.T) {
 	obs := []types.AttributedObservation{{Observation: types.Observation([]byte("incorrectly encoded"))}}
-	_, _, err := sortedDedupedKeyList(obs)
+	_, err := sortedDedupedKeyList(obs)
 	assert.NotNil(t, err)
 }
 
@@ -109,7 +109,7 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 
 				b.StartTimer()
-				_, _, err := sortedDedupedKeyList(ob)
+				_, err := sortedDedupedKeyList(ob)
 				b.StopTimer()
 
 				if err != nil {

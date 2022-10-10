@@ -13,17 +13,16 @@ import (
 )
 
 type onDemandUpkeepService struct {
-	logger         *log.Logger
-	ratio          sampleRatio
-	registry       types.Registry
-	perfLogs       types.PerformLogProvider
-	shuffler       shuffler[types.UpkeepKey]
-	cache          *cache[types.UpkeepResult]
-	inFlightCache  *cache[types.UpkeepKey]
-	cacheCleaner   *intervalCacheCleaner[types.UpkeepResult]
-	workers        *workerGroup[types.UpkeepResult]
-	stopProcs      chan struct{}
-	subscriptionId string
+	logger       *log.Logger
+	ratio        sampleRatio
+	registry     types.Registry
+	perfLogs     types.PerformLogProvider
+	shuffler     shuffler[types.UpkeepKey]
+	cache        *cache[types.UpkeepResult]
+	lockoutCache *cache[bool]
+	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
+	workers      *workerGroup[types.UpkeepResult]
+	stopProcs    chan struct{}
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -33,15 +32,15 @@ type onDemandUpkeepService struct {
 // from this service.
 func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, perfLogs types.PerformLogProvider, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
-		logger:        logger,
-		ratio:         ratio,
-		registry:      registry,
-		perfLogs:      perfLogs,
-		shuffler:      new(cryptoShuffler[types.UpkeepKey]),
-		cache:         newCache[types.UpkeepResult](cacheExpire),
-		inFlightCache: newCache[types.UpkeepKey](staleWindow),
-		workers:       newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
-		stopProcs:     make(chan struct{}),
+		logger:       logger,
+		ratio:        ratio,
+		registry:     registry,
+		perfLogs:     perfLogs,
+		shuffler:     new(cryptoShuffler[types.UpkeepKey]),
+		cache:        newCache[types.UpkeepResult](cacheExpire),
+		lockoutCache: newCache[bool](staleWindow),
+		workers:      newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
+		stopProcs:    make(chan struct{}),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -92,7 +91,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.Upkee
 
 	// if an upkeep is in-flight (reported but not confirmed) all checks should
 	// return the InFlight status
-	_, isInFlight := s.inFlightCache.Get(string(id))
+	_, isInFlight := s.lockoutCache.Get(string(id))
 
 	// the cache is a collection of keys (block & id) that map to cached
 	// results. if the same upkeep is checked at a block that has already been
@@ -133,85 +132,69 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.Upkee
 	return result, nil
 }
 
-func (s *onDemandUpkeepService) SetUpkeepState(ctx context.Context, uk types.UpkeepKey, state types.UpkeepState) error {
-	var err error
-
-	id, err := s.registry.IdentifierFromKey(uk)
-	if err != nil {
-		return err
-	}
-
+func (s *onDemandUpkeepService) LockoutUpkeep(ctx context.Context, id types.UpkeepIdentifier) error {
 	// set the state cache to the default expiration using the upkeep identifer
 	// as the key
-	s.inFlightCache.Set(string(id), uk, defaultExpiration)
-
-	// if the result for this key is cached, update the state to in-flight
-	result, cached := s.cache.Get(string(uk))
-	if !cached {
-		// if the value is not in the cache, do a hard check
-		result, err = s.CheckUpkeep(ctx, uk)
-		if err != nil {
-			return fmt.Errorf("%w: cache miss and check for key '%s'", err, string(uk))
-		}
-	}
-
-	result.State = state
-	s.cache.Set(string(uk), result, defaultExpiration)
+	s.lockoutCache.Set(string(id), true, defaultExpiration)
 	return nil
 }
 
+func (s *onDemandUpkeepService) IsUpkeepLocked(ctx context.Context, id types.UpkeepIdentifier) (bool, error) {
+	_, ok := s.lockoutCache.Get(string(id))
+	return ok, nil
+}
+
 func (s *onDemandUpkeepService) start() {
+	// TODO: if this process panics, restart it
 
 	if s.perfLogs != nil {
-		var chPerfLogs chan types.PerformLog
-		s.subscriptionId, chPerfLogs = s.perfLogs.Subscribe()
+		go func() {
+			cadence := time.Second
+			t := time.NewTimer(cadence)
+			var idx int
 
-		go func(ch chan types.PerformLog) {
 			for {
+				ctx, cancel := context.WithTimeout(context.Background(), cadence)
 				select {
-				case log := <-ch:
-					// TODO: check perform log confirmations; expect the log
-					// provider to send a log again at a higher block number
-					// which will have more confirmations
-
-					// update the cache with a performed state. in the case
-					// that this key is queried again, it will not be added to
-					// a report
-					r, cached := s.cache.Get(string(log.Key))
-					if cached {
-						r.State = types.Performed
-						s.cache.Set(string(log.Key), r, defaultExpiration)
-					}
-
-					id, err := s.registry.IdentifierFromKey(log.Key)
+				case <-t.C:
+					lastIndex, logs, err := s.perfLogs.ConfirmedPerformsFromIndex(ctx, idx)
 					if err != nil {
-						s.logger.Printf("failed to get id from upkeep key: %s", err)
-						continue
+						s.logger.Printf("failed to get performed logs: %s", err)
 					}
 
-					// remove the in-flight key since this id has been confirmed
-					s.inFlightCache.Delete(string(id))
+					for _, log := range logs {
+						// remove the item from the cache to clear the state
+						_, cached := s.cache.Get(string(log.Key))
+						if cached {
+							s.cache.Delete(string(log.Key))
+						}
 
+						id, err := s.registry.IdentifierFromKey(log.Key)
+						if err != nil {
+							s.logger.Printf("failed to get id from upkeep key: %s", err)
+							continue
+						}
+
+						// remove the lock since this id has been confirmed
+						s.lockoutCache.Delete(string(id))
+					}
+					idx = lastIndex
+
+					cancel()
+					t.Reset(cadence)
 				case <-s.stopProcs:
-					// closing the channel indicates to the sender that the channel is
-					// no longer being used. This will cause the sending service to
-					// panic if it attempts to send to the channel. This should be
-					// accounted for by the sending service.
-					close(ch)
+					t.Stop()
+					cancel()
 					return
 				}
 			}
-		}(chPerfLogs)
+		}()
 	}
 
 	go s.cacheCleaner.Run(s.cache)
 }
 
 func (s *onDemandUpkeepService) stop() {
-	if s.perfLogs != nil {
-		s.perfLogs.Unsubscribe(s.subscriptionId)
-	}
-
 	close(s.stopProcs)
 	close(s.cacheCleaner.stop)
 }
@@ -269,7 +252,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 		// the reported state is in the state cache for the upkeep id
 		// if the upkeep id has been reported, we consider this to be 'in-flight'
 		// and should not be included in samples
-		_, isInFlight := s.inFlightCache.Get(string(id))
+		_, isInFlight := s.lockoutCache.Get(string(id))
 		if isInFlight {
 			cacheHits++
 			continue

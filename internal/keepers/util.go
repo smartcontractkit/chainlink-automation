@@ -122,10 +122,9 @@ type randomValues struct {
 	Observer commontypes.OracleID
 }
 
-func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]randomValues, []ktypes.UpkeepKey, error) {
+func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.UpkeepKey, error) {
 	var err error
 
-	rdm := make([]randomValues, len(attributed))
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
 	for i, attr := range attributed {
 		b := []byte(attr.Observation)
@@ -136,12 +135,7 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]randomVal
 		var ob observationMessageProto
 		err = decode(b, &ob)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
-		}
-
-		rdm[i] = randomValues{
-			Value:    ob.RandomValue,
-			Observer: attr.Observer,
+			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
 		}
 
 		sort.Sort(sortUpkeepKeys(ob.Keys))
@@ -150,12 +144,12 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]randomVal
 
 	keys, err := dedupe(kys)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%w: observation dedupe", err)
+		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}
 
 	sort.Sort(sortUpkeepKeys(keys))
 
-	return rdm, keys, nil
+	return keys, nil
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {

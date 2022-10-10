@@ -169,7 +169,6 @@ func TestReport(t *testing.T) {
 		ExpectedReport []byte
 		ExpectedBool   bool
 		ExpectedErr    error
-		Transmitter    bool
 	}{
 		{
 			Name: "Single Common Upkeep",
@@ -361,7 +360,6 @@ func TestReport(t *testing.T) {
 			Perform:        []int{0},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
 			ExpectedBool:   true,
-			Transmitter:    true,
 		},
 	}
 
@@ -389,9 +387,6 @@ func TestReport(t *testing.T) {
 					u := test.Checks[p]
 					u.R.Key = u.K
 					toPerform[i] = u.R
-					if test.EncodeErr == nil {
-						ms.Mock.On("SetUpkeepState", ctx, u.R.Key, ktypes.InFlight).Return(nil)
-					}
 				}
 				me.Mock.On("EncodeReport", toPerform).Return(test.ExpectedReport, test.EncodeErr)
 			}
@@ -400,7 +395,6 @@ func TestReport(t *testing.T) {
 			ok, r, err := plugin.Report(ctx, types.ReportTimestamp{}, types.Query{}, test.Observations)
 			cancel()
 
-			assert.Equal(t, test.Transmitter, plugin.transmit)
 			assert.Equal(t, test.ExpectedBool, ok)
 			assert.Equal(t, types.Report(test.ExpectedReport), r)
 
@@ -505,12 +499,26 @@ func BenchmarkShouldAcceptFinalizedReport(b *testing.B) {
 }
 
 func TestShouldTransmitAcceptedReport(t *testing.T) {
-	plugin := &keepers{
-		logger: log.New(io.Discard, "", 0),
-	}
-	ok, err := plugin.ShouldTransmitAcceptedReport(context.Background(), types.ReportTimestamp{}, types.Report{})
+	ms := new(MockedUpkeepService)
+	me := new(MockedReportEncoder)
 
-	assert.Equal(t, false, ok)
+	plugin := &keepers{
+		logger:  log.New(io.Discard, "", 0),
+		encoder: me,
+		service: ms,
+	}
+
+	id := ktypes.UpkeepIdentifier([]byte("18"))
+
+	ctx := context.Background()
+	r := []byte{}
+
+	me.Mock.On("IDsFromReport", r).Return([]ktypes.UpkeepIdentifier{id}, nil)
+	ms.Mock.On("IsUpkeepLocked", ctx, id).Return(false, nil)
+
+	ok, err := plugin.ShouldTransmitAcceptedReport(ctx, types.ReportTimestamp{}, types.Report(r))
+
+	assert.Equal(t, true, ok)
 	assert.NoError(t, err)
 }
 
@@ -566,8 +574,23 @@ func (_m *MockedUpkeepService) CheckUpkeep(ctx context.Context, key ktypes.Upkee
 	return r0, ret.Error(1)
 }
 
-func (_m *MockedUpkeepService) SetUpkeepState(ctx context.Context, key ktypes.UpkeepKey, state ktypes.UpkeepState) error {
-	return _m.Mock.Called(ctx, key, state).Error(0)
+func (_m *MockedUpkeepService) LockoutUpkeep(ctx context.Context, key ktypes.UpkeepIdentifier) error {
+	return _m.Mock.Called(ctx, key).Error(0)
+}
+
+func (_m *MockedUpkeepService) IsUpkeepLocked(ctx context.Context, key ktypes.UpkeepIdentifier) (bool, error) {
+	ret := _m.Mock.Called(ctx, key)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(bool)
+		}
+	}
+
+	return r0, ret.Error(1)
 }
 
 type BenchmarkMockUpkeepService struct {
@@ -582,8 +605,12 @@ func (_m *BenchmarkMockUpkeepService) CheckUpkeep(ctx context.Context, key ktype
 	return _m.rtnCheck, nil
 }
 
-func (_m *BenchmarkMockUpkeepService) SetUpkeepState(ctx context.Context, key ktypes.UpkeepKey, state ktypes.UpkeepState) error {
+func (_m *BenchmarkMockUpkeepService) LockoutUpkeep(ctx context.Context, key ktypes.UpkeepIdentifier) error {
 	return nil
+}
+
+func (_m *BenchmarkMockUpkeepService) IsUpkeepLocked(ctx context.Context, key ktypes.UpkeepIdentifier) (bool, error) {
+	return false, nil
 }
 
 func mustEncodeKeys(value int64, keys []ktypes.UpkeepKey) []byte {
@@ -608,6 +635,21 @@ func (_m *MockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]b
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	return r0, ret.Error(1)
+}
+
+func (_m *MockedReportEncoder) IDsFromReport(report []byte) ([]ktypes.UpkeepIdentifier, error) {
+	ret := _m.Mock.Called(report)
+
+	var r0 []ktypes.UpkeepIdentifier
+	if rf, ok := ret.Get(0).(func() []ktypes.UpkeepIdentifier); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ktypes.UpkeepIdentifier)
 		}
 	}
 
@@ -639,8 +681,13 @@ func (_m *MockedRandomSource) Seed(seed int64) {
 
 type BenchmarkMockedReportEncoder struct {
 	rtnBytes []byte
+	rtnKeys  []ktypes.UpkeepIdentifier
 }
 
 func (_m *BenchmarkMockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte, error) {
 	return _m.rtnBytes, nil
+}
+
+func (_m *BenchmarkMockedReportEncoder) IDsFromReport(report []byte) ([]ktypes.UpkeepIdentifier, error) {
+	return _m.rtnKeys, nil
 }
