@@ -123,8 +123,16 @@ func TestEncodeReport_EmptyPerformData(t *testing.T) {
 }
 
 func TestDecodeReport(t *testing.T) {
-	expected := []ktypes.UpkeepIdentifier{
-		ktypes.UpkeepIdentifier([]byte("18")),
+	expected := []ktypes.UpkeepResult{
+		{
+			Key:              ktypes.UpkeepKey([]byte("43|18")),
+			State:            ktypes.Eligible, // it is assumed that all items in a report were eligible
+			PerformData:      []byte{},
+			FastGasWei:       big.NewInt(8),
+			LinkNative:       big.NewInt(16),
+			CheckBlockNumber: 43,
+			CheckBlockHash:   [32]byte{2},
+		},
 	}
 
 	enc := &evmReportEncoder{}
@@ -144,7 +152,7 @@ func TestDecodeReport(t *testing.T) {
 	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000060")) // tuple bytes offset
 	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000000")) // tuple bytes
 
-	ids, err := enc.IDsFromReport(buff.Bytes())
+	ids, err := enc.DecodeReport(buff.Bytes())
 
 	assert.NoError(t, err)
 	assert.Equal(t, expected, ids)

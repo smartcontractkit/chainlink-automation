@@ -65,6 +65,18 @@ func (c *cache[T]) Get(key string) (T, bool) {
 	return value.Item, true
 }
 
+func (c *cache[T]) Keys() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	keys := make([]string, 0, len(c.data))
+	for key, _ := range c.data {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
 func (c *cache[T]) Delete(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

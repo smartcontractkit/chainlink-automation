@@ -16,10 +16,8 @@ type onDemandUpkeepService struct {
 	logger       *log.Logger
 	ratio        sampleRatio
 	registry     types.Registry
-	perfLogs     types.PerformLogProvider
 	shuffler     shuffler[types.UpkeepKey]
 	cache        *cache[types.UpkeepResult]
-	lockoutCache *cache[bool]
 	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
 	workers      *workerGroup[types.UpkeepResult]
 	stopProcs    chan struct{}
@@ -30,17 +28,15 @@ type onDemandUpkeepService struct {
 // need to be sampled. This variant has limitations in how quickly large numbers
 // of upkeeps can be checked. Be aware that network calls are not rate limited
 // from this service.
-func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, perfLogs types.PerformLogProvider, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
+func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
-		logger:       logger,
-		ratio:        ratio,
-		registry:     registry,
-		perfLogs:     perfLogs,
-		shuffler:     new(cryptoShuffler[types.UpkeepKey]),
-		cache:        newCache[types.UpkeepResult](cacheExpire),
-		lockoutCache: newCache[bool](staleWindow),
-		workers:      newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
-		stopProcs:    make(chan struct{}),
+		logger:    logger,
+		ratio:     ratio,
+		registry:  registry,
+		shuffler:  new(cryptoShuffler[types.UpkeepKey]),
+		cache:     newCache[types.UpkeepResult](cacheExpire),
+		workers:   newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
+		stopProcs: make(chan struct{}),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -60,7 +56,7 @@ func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, perfLo
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
-func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
 	// - get all upkeeps from contract
 	s.logger.Printf("get all active upkeep keys")
 	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
@@ -78,119 +74,34 @@ func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upk
 	if s.workers == nil {
 		panic("cannot sample upkeeps without runner")
 	}
-	return s.parallelCheck(ctx, keys[:size])
+	return s.parallelCheck(ctx, keys[:size], filters...)
 }
 
 func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
 	var result types.UpkeepResult
-
-	id, err := s.registry.IdentifierFromKey(key)
-	if err != nil {
-		return result, err
-	}
-
-	// if an upkeep is in-flight (reported but not confirmed) all checks should
-	// return the InFlight status
-	_, isInFlight := s.lockoutCache.Get(string(id))
 
 	// the cache is a collection of keys (block & id) that map to cached
 	// results. if the same upkeep is checked at a block that has already been
 	// checked, return the cached result
 	result, cached := s.cache.Get(string(key))
 	if cached {
-		if isInFlight {
-			result.State = types.InFlight
-		}
 		return result, nil
 	}
 
 	// check upkeep at block number in key
 	// return result including performData
-	needsPerform, u, err := s.registry.CheckUpkeep(ctx, key)
+	_, u, err := s.registry.CheckUpkeep(ctx, key)
 	if err != nil {
 		return types.UpkeepResult{}, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
 
-	result = types.UpkeepResult{
-		Key:   key,
-		State: types.NotEligible,
-	}
+	s.cache.Set(string(key), u, defaultExpiration)
 
-	if needsPerform {
-		result.State = types.Eligible
-		result.PerformData = u.PerformData
-	}
-
-	// the upkeep should be in the cache, but in the case it's not and it is
-	// in-flight, set the state appropriately
-	if isInFlight {
-		result.State = types.InFlight
-	}
-
-	s.cache.Set(string(key), result, defaultExpiration)
-
-	return result, nil
-}
-
-func (s *onDemandUpkeepService) LockoutUpkeep(ctx context.Context, id types.UpkeepIdentifier) error {
-	// set the state cache to the default expiration using the upkeep identifer
-	// as the key
-	s.lockoutCache.Set(string(id), true, defaultExpiration)
-	return nil
-}
-
-func (s *onDemandUpkeepService) IsUpkeepLocked(ctx context.Context, id types.UpkeepIdentifier) (bool, error) {
-	_, ok := s.lockoutCache.Get(string(id))
-	return ok, nil
+	return u, nil
 }
 
 func (s *onDemandUpkeepService) start() {
 	// TODO: if this process panics, restart it
-
-	if s.perfLogs != nil {
-		go func() {
-			cadence := time.Second
-			t := time.NewTimer(cadence)
-			var idx int
-
-			for {
-				ctx, cancel := context.WithTimeout(context.Background(), cadence)
-				select {
-				case <-t.C:
-					lastIndex, logs, err := s.perfLogs.ConfirmedPerformsFromIndex(ctx, idx)
-					if err != nil {
-						s.logger.Printf("failed to get performed logs: %s", err)
-					}
-
-					for _, log := range logs {
-						// remove the item from the cache to clear the state
-						_, cached := s.cache.Get(string(log.Key))
-						if cached {
-							s.cache.Delete(string(log.Key))
-						}
-
-						id, err := s.registry.IdentifierFromKey(log.Key)
-						if err != nil {
-							s.logger.Printf("failed to get id from upkeep key: %s", err)
-							continue
-						}
-
-						// remove the lock since this id has been confirmed
-						s.lockoutCache.Delete(string(id))
-					}
-					idx = lastIndex
-
-					cancel()
-					t.Reset(cadence)
-				case <-s.stopProcs:
-					t.Stop()
-					cancel()
-					return
-				}
-			}
-		}()
-	}
-
 	go s.cacheCleaner.Run(s.cache)
 }
 
@@ -199,7 +110,7 @@ func (s *onDemandUpkeepService) stop() {
 	close(s.cacheCleaner.stop)
 }
 
-func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
 	samples := newSyncedArray[*types.UpkeepResult]()
 
 	var cacheHits int
@@ -243,18 +154,15 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	// go through keys and check the cache first
 	// if an item doesn't exist on the cache, send the items to the worker threads
 	for _, key := range keys {
-		// get reported status and continue if found
-		id, err := s.registry.IdentifierFromKey(key)
-		if err != nil {
-			return samples.Values(), err
+		add := true
+		for _, filter := range filters {
+			if !filter(key) {
+				add = false
+				break
+			}
 		}
 
-		// the reported state is in the state cache for the upkeep id
-		// if the upkeep id has been reported, we consider this to be 'in-flight'
-		// and should not be included in samples
-		_, isInFlight := s.lockoutCache.Get(string(id))
-		if isInFlight {
-			cacheHits++
+		if !add {
 			continue
 		}
 

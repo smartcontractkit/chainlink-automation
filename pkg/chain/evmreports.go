@@ -72,35 +72,36 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 	return bts, nil
 }
 
-func (b *evmReportEncoder) IDsFromReport(report []byte) ([]ktypes.UpkeepIdentifier, error) {
-	ids := []ktypes.UpkeepIdentifier{}
+func (b *evmReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, error) {
+	mKeys := []string{"fastGasWei", "linkNative", "upkeepIds", "wrappedPerformDatas"}
 
 	reportArgs := abi.Arguments{
-		{Name: "fastGasWei", Type: Uint256},
-		{Name: "linkNative", Type: Uint256},
-		{Name: "upkeepIds", Type: Uint256Arr},
-		{Name: "wrappedPerformDatas", Type: PerformDataArr},
+		{Name: mKeys[0], Type: Uint256},
+		{Name: mKeys[1], Type: Uint256},
+		{Name: mKeys[2], Type: Uint256Arr},
+		{Name: mKeys[3], Type: PerformDataArr},
 	}
 
 	m := make(map[string]interface{})
-	err := reportArgs.UnpackIntoMap(m, report)
-	if err != nil {
-		return ids, err
+	if err := reportArgs.UnpackIntoMap(m, report); err != nil {
+		return nil, err
 	}
 
-	rawUkeepIds, ok := m["upkeepIds"]
-	if !ok {
-		return ids, fmt.Errorf("missing upkeep ids in report")
+	for _, key := range mKeys {
+		if _, ok := m[key]; !ok {
+			return nil, fmt.Errorf("decoding error: %s missing from struct", key)
+		}
 	}
 
-	rawPerforms, ok := m["wrappedPerformDatas"]
-	if !ok {
-		return ids, fmt.Errorf("missing wrapped perform data structs in report")
-	}
+	res := []ktypes.UpkeepResult{}
 
-	upkeepIds, ok := rawUkeepIds.([]*big.Int)
-	if !ok {
-		return ids, fmt.Errorf("upkeep ids of incorrect type in report")
+	var ok bool
+	var upkeepIds []*big.Int
+	var wei *big.Int
+	var link *big.Int
+
+	if upkeepIds, ok = m[mKeys[2]].([]*big.Int); !ok {
+		return res, fmt.Errorf("upkeep ids of incorrect type in report")
 	}
 
 	// TODO: a type assertion on `wrappedPerform` did not work, even with the
@@ -109,25 +110,41 @@ func (b *evmReportEncoder) IDsFromReport(report []byte) ([]ktypes.UpkeepIdentifi
 	// ex:
 	// t := reflect.TypeOf(rawPerforms)
 	// fmt.Printf("%v\n", t)
-	performs, ok := rawPerforms.([]struct {
+	performs, ok := m[mKeys[3]].([]struct {
 		CheckBlockNumber uint32   `json:"checkBlockNumber"`
 		CheckBlockhash   [32]byte `json:"checkBlockhash"`
 		PerformData      []byte   `json:"performData"`
 	})
 	if !ok {
-		return ids, fmt.Errorf("performs of incorrect structure in report")
+		return res, fmt.Errorf("performs of incorrect structure in report")
 	}
 
 	if len(upkeepIds) != len(performs) {
-		return ids, fmt.Errorf("upkeep ids and performs should have matching length")
+		return res, fmt.Errorf("upkeep ids and performs should have matching length")
 	}
 
-	ids = make([]ktypes.UpkeepIdentifier, len(upkeepIds))
+	if wei, ok = m[mKeys[0]].(*big.Int); !ok {
+		return res, fmt.Errorf("fast gas as wrong type")
+	}
+
+	if link, ok = m[mKeys[1]].(*big.Int); !ok {
+		return res, fmt.Errorf("link native as wrong type")
+	}
+
+	res = make([]ktypes.UpkeepResult, len(upkeepIds))
 	for i := 0; i < len(upkeepIds); i++ {
-		ids[i] = ktypes.UpkeepIdentifier(upkeepIds[i].String())
+		res[i] = ktypes.UpkeepResult{
+			Key:              BlockAndIdToKey(big.NewInt(int64(performs[i].CheckBlockNumber)), upkeepIds[i]),
+			State:            ktypes.Eligible,
+			PerformData:      performs[i].PerformData,
+			FastGasWei:       wei,
+			LinkNative:       link,
+			CheckBlockNumber: performs[i].CheckBlockNumber,
+			CheckBlockHash:   performs[i].CheckBlockhash,
+		}
 	}
 
-	return ids, nil
+	return res, nil
 }
 
 type wrappedPerform struct {

@@ -78,13 +78,13 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 	key2 := ktypes.UpkeepKey([]byte("1|2"))
 	key3 := ktypes.UpkeepKey([]byte("2|1"))
 
-	encoded := mustEncodeKeys(0, []ktypes.UpkeepKey{key1, key2})
+	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
 
 	observations := []types.AttributedObservation{
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
-		{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{key2, key3}))},
+		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{key2, key3}))},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},

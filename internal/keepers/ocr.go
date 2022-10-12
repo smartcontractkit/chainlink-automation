@@ -18,17 +18,14 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 // of upkeeps available in and UpkeepService and produces an observation containing upkeeps that
 // need to be executed.
 func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ types.Query) (types.Observation, error) {
-	results, err := k.service.SampleUpkeeps(ctx)
+	results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
 	if err != nil {
 		return types.Observation{}, err
 	}
 
-	ob := observationMessageProto{
-		RandomValue: k.rSrc.Int63(),
-		Keys:        keyList(filterUpkeeps(results, ktypes.Eligible)),
-	}
+	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	b, err := encode(ob)
+	b, err := encode(keys)
 	if err != nil {
 		return types.Observation{}, err
 	}
@@ -43,7 +40,9 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Query, attributed []types.AttributedObservation) (bool, types.Report, error) {
 	var err error
 
-	keys, err := sortedDedupedKeyList(attributed)
+	// pass the filter to the dedupe function
+	// ensure no locked keys come through
+	keys, err := sortedDedupedKeyList(attributed, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations", err)
 	}
@@ -51,7 +50,6 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 	// select, verify, and build report
 	toPerform := make([]ktypes.UpkeepResult, 0, 1)
 	for _, key := range keys {
-		// TODO: check if there is a lockout on the current id
 
 		upkeep, err := k.service.CheckUpkeep(ctx, key)
 		if err != nil {
@@ -62,6 +60,10 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 			// only build a report from a single upkeep for now
 			k.logger.Printf("reporting %s to be performed", upkeep.Key)
 			toPerform = append(toPerform, upkeep)
+			err = k.filter.Add(upkeep.Key)
+			if err != nil {
+				return false, nil, fmt.Errorf("%w: failed to add key to report filter in report", err)
+			}
 			break
 		}
 	}
@@ -88,22 +90,19 @@ func (k *keepers) ShouldAcceptFinalizedReport(ctx context.Context, rt types.Repo
 		return false, nil
 	}
 
-	ids, err := k.encoder.IDsFromReport(r)
+	results, err := k.encoder.DecodeReport(r)
 	if err != nil {
 		return false, err
 	}
 
-	if len(ids) == 0 {
+	if len(results) == 0 {
 		k.logger.Printf("no upkeeps in report; not accepting epoch %d and round %d", rt.Epoch, rt.Round)
 		return false, nil
 	}
 
-	for _, id := range ids {
-		// set a lockout on the key
-		err = k.service.LockoutUpkeep(ctx, id)
-		if err != nil {
-			return false, fmt.Errorf("failed to lock upkeep '%s' in epoch %d for round %d: %s", id, rt.Epoch, rt.Round, err)
-		}
+	for _, r := range results {
+		// indicate to the filter that the key has been accepted for transmit
+		k.filter.Accept(r.Key)
 	}
 
 	return true, nil
@@ -112,26 +111,26 @@ func (k *keepers) ShouldAcceptFinalizedReport(ctx context.Context, rt types.Repo
 // ShouldTransmitAcceptedReport implements the types.ReportingPlugin interface
 // from OCR2. The implementation essentially draws straws on which node should
 // be the transmitter.
-func (k *keepers) ShouldTransmitAcceptedReport(ctx context.Context, rt types.ReportTimestamp, r types.Report) (bool, error) {
-	ids, err := k.encoder.IDsFromReport(r)
+func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.ReportTimestamp, r types.Report) (bool, error) {
+	results, err := k.encoder.DecodeReport(r)
 	if err != nil {
 		return false, fmt.Errorf("failed to get ids from report: %w", err)
 	}
 
-	if len(ids) == 0 {
+	if len(results) == 0 {
 		return false, fmt.Errorf("no ids in report in epoch %d for round %d", rt.Epoch, rt.Round)
 	}
 
-	for _, id := range ids {
-		locked, err := k.service.IsUpkeepLocked(ctx, id)
-		if err != nil {
-			return false, fmt.Errorf("failed to check lock for upkeep '%s' in epoch %d for round %d: %s", string(id), rt.Epoch, rt.Round, err)
-		}
+	for _, id := range results {
+		transmitting := k.filter.IsTransmitting(id.Key)
 
+		// TODO: reevaluate this assumption. we may want to attempt another transmit
+		// if one of the performs failed in a batch.
+		//
 		// multiple keys can be in a single report. if one fails to run in the
 		// contract, but others are successful, don't try to transmit again
-		if locked {
-			k.logger.Printf("not transmitting report because upkeep '%s' is locked in epoch %d and round %d", string(id), rt.Epoch, rt.Round)
+		if transmitting {
+			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted for epoch %d and round %d", string(id.Key), rt.Epoch, rt.Round)
 			return false, nil
 		}
 	}

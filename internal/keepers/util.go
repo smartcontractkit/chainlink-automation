@@ -87,7 +87,7 @@ func (s sortUpkeepKeys) Len() int {
 	return len(s)
 }
 
-func dedupe[T any](inputs [][]T) ([]T, error) {
+func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	if len(inputs) == 0 {
 		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
 	}
@@ -105,6 +105,18 @@ func dedupe[T any](inputs [][]T) ([]T, error) {
 	matched := make(map[string]bool)
 	for _, input := range inputs {
 		for _, val := range input {
+			add := true
+			for _, filter := range filters {
+				if !filter(val) {
+					add = false
+					break
+				}
+			}
+
+			if !add {
+				continue
+			}
+
 			key := fmt.Sprintf("%v", val)
 			_, ok := matched[key]
 			if !ok {
@@ -122,7 +134,7 @@ type randomValues struct {
 	Observer commontypes.OracleID
 }
 
-func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.UpkeepKey, error) {
+func sortedDedupedKeyList(attributed []types.AttributedObservation, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
 	var err error
 
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
@@ -132,17 +144,17 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]ktypes.Up
 			continue
 		}
 
-		var ob observationMessageProto
+		var ob []ktypes.UpkeepKey
 		err = decode(b, &ob)
 		if err != nil {
 			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
 		}
 
-		sort.Sort(sortUpkeepKeys(ob.Keys))
-		kys[i] = ob.Keys
+		sort.Sort(sortUpkeepKeys(ob))
+		kys[i] = ob
 	}
 
-	keys, err := dedupe(kys)
+	keys, err := dedupe(kys, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}

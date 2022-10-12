@@ -330,6 +330,6 @@ func wrapPluginReceiver(logger *log.Logger, controller *OCRController, receiver 
 
 type mockPerfLogs struct{}
 
-func (m *mockPerfLogs) ConfirmedPerformsFromIndex(context.Context, int) (int, []ktypes.PerformLog, error) {
-	return 0, nil, nil
+func (m *mockPerfLogs) PerformLogs(context.Context) ([]ktypes.PerformLog, error) {
+	return nil, nil
 }

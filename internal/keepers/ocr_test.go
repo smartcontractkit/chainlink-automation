@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -53,13 +52,13 @@ func TestObservation(t *testing.T) {
 			Name:                "Empty Set",
 			Ctx:                 func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet:           []*ktypes.UpkeepResult{},
-			ExpectedObservation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{})),
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
 		{
 			Name:                "Timer Context",
 			Ctx:                 func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			SampleSet:           []*ktypes.UpkeepResult{},
-			ExpectedObservation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{})),
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
 		{
 			Name:                "Upkeep Service Error",
@@ -76,7 +75,7 @@ func TestObservation(t *testing.T) {
 				{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.NotEligible},
 				{Key: ktypes.UpkeepKey([]byte("1|2")), State: ktypes.NotEligible},
 			},
-			ExpectedObservation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{})),
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
 		{
 			Name: "Filter to Non-empty Set",
@@ -85,7 +84,7 @@ func TestObservation(t *testing.T) {
 				{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.NotEligible},
 				{Key: ktypes.UpkeepKey([]byte("1|2")), State: ktypes.Eligible},
 			},
-			ExpectedObservation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{[]byte("1|2")})),
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{[]byte("1|2")})),
 		},
 	}
 
@@ -93,11 +92,18 @@ func TestObservation(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
 			rd := new(MockedRandomSource)
+			mf := new(MockedFilterer)
+
 			plugin := &keepers{
 				rSrc:    rd,
 				service: ms,
 				logger:  log.New(io.Discard, "", 0),
+				filter:  mf,
 			}
+
+			mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
+				return true
+			})
 
 			ctx, cancel := test.Ctx()
 			ms.Mock.On("SampleUpkeeps", ctx).Return(test.SampleSet, test.SampleErr)
@@ -123,10 +129,13 @@ func TestObservation(t *testing.T) {
 func BenchmarkObservation(b *testing.B) {
 	ms := new(MockedUpkeepService)
 	rd := new(MockedRandomSource)
+	mf := &BenchmarkMockedFilterer{}
+
 	plugin := &keepers{
 		rSrc:    rd,
 		service: ms,
 		logger:  log.New(io.Discard, "", 0),
+		filter:  mf,
 	}
 
 	set := make([]*ktypes.UpkeepResult, 2, 100)
@@ -157,8 +166,10 @@ func BenchmarkObservation(b *testing.B) {
 func TestReport(t *testing.T) {
 	tests := []struct {
 		Name         string
+		Description  string
 		Ctx          func() (context.Context, func())
 		Observations []types.AttributedObservation
+		FilterOut    []ktypes.UpkeepKey
 		Checks       []struct {
 			K ktypes.UpkeepKey
 			R ktypes.UpkeepResult
@@ -171,12 +182,13 @@ func TestReport(t *testing.T) {
 		ExpectedErr    error
 	}{
 		{
-			Name: "Single Common Upkeep",
-			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Name:        "Single Common Upkeep",
+			Description: "A single report should be created when all observations match",
+			Ctx:         func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -193,9 +205,9 @@ func TestReport(t *testing.T) {
 			Name: "Forward Context",
 			Ctx:  func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -215,9 +227,9 @@ func TestReport(t *testing.T) {
 			Name: "Wrap Error",
 			Ctx:  func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -230,12 +242,13 @@ func TestReport(t *testing.T) {
 			ExpectedErr:  ErrMockTestError,
 		},
 		{
-			Name: "Unsorted Observations",
-			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Name:        "Unsorted Observations",
+			Description: "A single report should be created from the id of the earliest block number and sorting of keys should take place in this step",
+			Ctx:         func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2")), ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2")), ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -252,9 +265,9 @@ func TestReport(t *testing.T) {
 			Name: "Earliest Block",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("2|1"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("3|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("2|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("3|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -268,40 +281,43 @@ func TestReport(t *testing.T) {
 			ExpectedBool:   true,
 		},
 		{
-			Name: "Skip Already Performed",
-			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			Name:        "Skip Already Performed",
+			Description: "Observations that had already been added to the filter should not be checked nor should they be performed",
+			Ctx:         func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+			},
+			FilterOut: []ktypes.UpkeepKey{
+				ktypes.UpkeepKey([]byte("1|1")),
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.InFlight, PerformData: []byte("abcd")}},
 				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: ktypes.Eligible, PerformData: []byte("abcd")}},
 			},
-			Perform:        []int{1},
-			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
+			Perform:        []int{0},
+			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 2, []byte("abcd"))),
 			ExpectedBool:   true,
 		},
 		{
 			Name: "Nothing to Report",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
 				R ktypes.UpkeepResult
 				E error
 			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.InFlight, PerformData: []byte("abcd")}},
-				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: ktypes.InFlight, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.NotEligible, PerformData: []byte("abcd")}},
+				{K: ktypes.UpkeepKey([]byte("1|2")), R: ktypes.UpkeepResult{State: ktypes.NotEligible, PerformData: []byte("abcd")}},
 			},
 			ExpectedBool: false,
 		},
@@ -309,9 +325,9 @@ func TestReport(t *testing.T) {
 			Name: "Empty Observations",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{}))},
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{}))},
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
 			},
 			ExpectedBool: false,
 		},
@@ -326,9 +342,9 @@ func TestReport(t *testing.T) {
 			Name: "Encoding Error",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: []struct {
 				K ktypes.UpkeepKey
@@ -342,38 +358,30 @@ func TestReport(t *testing.T) {
 			ExpectedBool: false,
 			ExpectedErr:  ErrMockTestError,
 		},
-		{
-			Name: "Is Transmitter",
-			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
-			Observations: []types.AttributedObservation{
-				{Observer: commontypes.OracleID(int8(0)), Observation: types.Observation(mustEncodeKeys(1, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(1)), Observation: types.Observation(mustEncodeKeys(2, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observer: commontypes.OracleID(int8(2)), Observation: types.Observation(mustEncodeKeys(3, []ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-			},
-			Checks: []struct {
-				K ktypes.UpkeepKey
-				R ktypes.UpkeepResult
-				E error
-			}{
-				{K: ktypes.UpkeepKey([]byte("1|1")), R: ktypes.UpkeepResult{State: ktypes.Eligible, PerformData: []byte("abcd")}},
-			},
-			Perform:        []int{0},
-			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
-			ExpectedBool:   true,
-		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
 			me := new(MockedReportEncoder)
+			mf := new(MockedFilterer)
 
 			plugin := &keepers{
 				service: ms,
 				encoder: me,
 				logger:  log.New(io.Discard, "", 0),
+				filter:  mf,
 			}
 			ctx, cancel := test.Ctx()
+
+			mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
+				for _, key := range test.FilterOut {
+					if string(k) == string(key) {
+						return false
+					}
+				}
+				return true
+			})
 
 			// set up upkeep checks with the mocked service
 			for _, check := range test.Checks {
@@ -387,6 +395,7 @@ func TestReport(t *testing.T) {
 					u := test.Checks[p]
 					u.R.Key = u.K
 					toPerform[i] = u.R
+					mf.Mock.On("Add", u.K).Return(nil)
 				}
 				me.Mock.On("EncodeReport", toPerform).Return(test.ExpectedReport, test.EncodeErr)
 			}
@@ -413,10 +422,13 @@ func TestReport(t *testing.T) {
 func BenchmarkReport(b *testing.B) {
 	ms := &BenchmarkMockUpkeepService{}
 	me := &BenchmarkMockedReportEncoder{}
+	mf := &BenchmarkMockedFilterer{}
+
 	plugin := &keepers{
 		service: ms,
 		encoder: me,
 		logger:  log.New(io.Discard, "", 0),
+		filter:  mf,
 	}
 
 	key1 := ktypes.UpkeepKey([]byte("1|1"))
@@ -424,7 +436,7 @@ func BenchmarkReport(b *testing.B) {
 	key3 := ktypes.UpkeepKey([]byte("2|1"))
 	data := []byte("abcd")
 
-	encoded := mustEncodeKeys(0, []ktypes.UpkeepKey{key1, key2})
+	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
 
 	set := []ktypes.UpkeepResult{
 		{Key: key1, State: ktypes.Eligible, PerformData: data},
@@ -434,7 +446,7 @@ func BenchmarkReport(b *testing.B) {
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
-		{Observation: types.Observation(mustEncodeKeys(0, []ktypes.UpkeepKey{key2, key3}))},
+		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{key2, key3}))},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
@@ -485,8 +497,13 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 }
 
 func BenchmarkShouldAcceptFinalizedReport(b *testing.B) {
+	me := &BenchmarkMockedReportEncoder{}
+	mf := &BenchmarkMockedFilterer{}
+
 	plugin := &keepers{
-		logger: log.New(io.Discard, "", 0),
+		logger:  log.New(io.Discard, "", 0),
+		encoder: me,
+		filter:  mf,
 	}
 
 	// run the ShouldAcceptFinalizedReport function b.N times
@@ -499,32 +516,129 @@ func BenchmarkShouldAcceptFinalizedReport(b *testing.B) {
 }
 
 func TestShouldTransmitAcceptedReport(t *testing.T) {
-	ms := new(MockedUpkeepService)
-	me := new(MockedReportEncoder)
+	tests := []struct {
+		Name           string
+		Description    string
+		ReportContents []ktypes.UpkeepResult
+		TransmitChecks []struct {
+			K ktypes.UpkeepKey
+			B bool
+		}
+		DecodeErr    error
+		ExpectedBool bool
+		Err          error
+	}{
+		{
+			Name:           "Decode Error",
+			Description:    "Should transmit should return false and a wrapped error when report decoding fails",
+			ReportContents: nil,
+			DecodeErr:      fmt.Errorf("wrapped error"),
+			ExpectedBool:   false,
+			Err:            fmt.Errorf("failed to get ids from report: wrapped error"),
+		},
+		{
+			Name:           "Empty Report",
+			Description:    "Should transmit should return false with an error when report does not contain items",
+			ReportContents: nil,
+			ExpectedBool:   false,
+			Err:            fmt.Errorf("no ids in report in epoch 5 for round 2"),
+		},
+		{
+			Name:        "Is Transmitted",
+			Description: "Should not transmit if call to filter transmitted returns true",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+			},
+			TransmitChecks: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: true},
+			},
+			ExpectedBool: false,
+			Err:          nil,
+		},
+		{
+			Name:        "Is Not Transmitted",
+			Description: "Should transmit if call to filter transmitted returns false",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+			},
+			TransmitChecks: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: false},
+			},
+			ExpectedBool: true,
+			Err:          nil,
+		},
+		{
+			Name:        "Multiple Results w/ Last Transmitted",
+			Description: "Should not transmit if one key in report has been transmitted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+				{
+					Key: ktypes.UpkeepKey("1|2"),
+				},
+			},
+			TransmitChecks: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: false},
+				{K: ktypes.UpkeepKey("1|2"), B: true},
+			},
+			ExpectedBool: false,
+			Err:          nil,
+		},
+	}
+
+	for _, test := range tests {
+		ms := new(MockedUpkeepService)
+		me := new(MockedReportEncoder)
+		mf := new(MockedFilterer)
+
+		plugin := &keepers{
+			logger:  log.New(io.Discard, "", 0),
+			encoder: me,
+			filter:  mf,
+			service: ms,
+		}
+
+		me.Mock.On("DecodeReport", []byte("abc")).Return(test.ReportContents, test.DecodeErr)
+
+		// set the transmit filters before calling the function in test
+		for _, a := range test.TransmitChecks {
+			mf.Mock.On("IsTransmitting", a.K).Return(a.B)
+		}
+
+		ctx := context.Background()
+		ok, err := plugin.ShouldTransmitAcceptedReport(ctx, types.ReportTimestamp{Epoch: 5, Round: 2}, types.Report([]byte("abc")))
+
+		assert.Equal(t, test.ExpectedBool, ok)
+		if test.Err != nil {
+			assert.Equal(t, test.Err.Error(), err.Error())
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+}
+
+func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
+	me := &BenchmarkMockedReportEncoder{}
+	mf := &BenchmarkMockedFilterer{}
 
 	plugin := &keepers{
 		logger:  log.New(io.Discard, "", 0),
 		encoder: me,
-		service: ms,
-	}
-
-	id := ktypes.UpkeepIdentifier([]byte("18"))
-
-	ctx := context.Background()
-	r := []byte{}
-
-	me.Mock.On("IDsFromReport", r).Return([]ktypes.UpkeepIdentifier{id}, nil)
-	ms.Mock.On("IsUpkeepLocked", ctx, id).Return(false, nil)
-
-	ok, err := plugin.ShouldTransmitAcceptedReport(ctx, types.ReportTimestamp{}, types.Report(r))
-
-	assert.Equal(t, true, ok)
-	assert.NoError(t, err)
-}
-
-func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
-	plugin := &keepers{
-		logger: log.New(io.Discard, "", 0),
+		filter:  mf,
 	}
 
 	// run the ShouldTransmitAcceptedReport function b.N times
@@ -544,8 +658,20 @@ type MockedUpkeepService struct {
 	mock.Mock
 }
 
-func (_m *MockedUpkeepService) SampleUpkeeps(ctx context.Context) ([]*ktypes.UpkeepResult, error) {
-	ret := _m.Mock.Called(ctx)
+func (_m *MockedUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(ktypes.UpkeepKey) bool) ([]*ktypes.UpkeepResult, error) {
+	arguments := []interface{}{ctx}
+	if len(filters) > 0 {
+		args := make([]interface{}, len(arguments)+len(filters))
+		args[0] = arguments[0]
+
+		for i, filter := range filters {
+			args[i+1] = filter
+		}
+
+		copy(arguments, args)
+	}
+
+	ret := _m.Mock.Called(arguments...)
 
 	var r0 []*ktypes.UpkeepResult
 	if rf, ok := ret.Get(0).(func() []*ktypes.UpkeepResult); ok {
@@ -597,7 +723,7 @@ type BenchmarkMockUpkeepService struct {
 	rtnCheck ktypes.UpkeepResult
 }
 
-func (_m *BenchmarkMockUpkeepService) SampleUpkeeps(ctx context.Context) ([]*ktypes.UpkeepResult, error) {
+func (_m *BenchmarkMockUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(ktypes.UpkeepKey) bool) ([]*ktypes.UpkeepResult, error) {
 	return nil, nil
 }
 
@@ -613,12 +739,8 @@ func (_m *BenchmarkMockUpkeepService) IsUpkeepLocked(ctx context.Context, key kt
 	return false, nil
 }
 
-func mustEncodeKeys(value int64, keys []ktypes.UpkeepKey) []byte {
-	o := observationMessageProto{
-		RandomValue: value,
-		Keys:        keys,
-	}
-	b, _ := encode(o)
+func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
+	b, _ := encode(keys)
 	return b
 }
 
@@ -641,19 +763,53 @@ func (_m *MockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]b
 	return r0, ret.Error(1)
 }
 
-func (_m *MockedReportEncoder) IDsFromReport(report []byte) ([]ktypes.UpkeepIdentifier, error) {
+func (_m *MockedReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, error) {
 	ret := _m.Mock.Called(report)
 
-	var r0 []ktypes.UpkeepIdentifier
-	if rf, ok := ret.Get(0).(func() []ktypes.UpkeepIdentifier); ok {
+	var r0 []ktypes.UpkeepResult
+	if rf, ok := ret.Get(0).(func() []ktypes.UpkeepResult); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]ktypes.UpkeepIdentifier)
+			r0 = ret.Get(0).([]ktypes.UpkeepResult)
 		}
 	}
 
 	return r0, ret.Error(1)
+}
+
+type MockedFilterer struct {
+	mock.Mock
+}
+
+func (_m *MockedFilterer) Add(key ktypes.UpkeepKey) error {
+	return _m.Mock.Called(key).Error(0)
+}
+
+func (_m *MockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
+	ret := _m.Mock.Called()
+
+	var r0 func(ktypes.UpkeepKey) bool
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(func(ktypes.UpkeepKey) bool)
+	}
+
+	return r0
+}
+
+func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) {
+	_m.Mock.Called(key)
+}
+
+func (_m *MockedFilterer) IsTransmitting(key ktypes.UpkeepKey) bool {
+	ret := _m.Mock.Called(key)
+
+	var r0 bool
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
 }
 
 type MockedRandomSource struct {
@@ -681,13 +837,49 @@ func (_m *MockedRandomSource) Seed(seed int64) {
 
 type BenchmarkMockedReportEncoder struct {
 	rtnBytes []byte
-	rtnKeys  []ktypes.UpkeepIdentifier
+	rtnKeys  []ktypes.UpkeepResult
 }
 
 func (_m *BenchmarkMockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte, error) {
 	return _m.rtnBytes, nil
 }
 
-func (_m *BenchmarkMockedReportEncoder) IDsFromReport(report []byte) ([]ktypes.UpkeepIdentifier, error) {
+func (_m *BenchmarkMockedReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, error) {
 	return _m.rtnKeys, nil
+}
+
+type BenchmarkMockedRegistry struct {
+	rtnKeys []ktypes.UpkeepKey
+	rtnRes  ktypes.UpkeepResult
+	rtnId   ktypes.UpkeepIdentifier
+}
+
+func (_m *BenchmarkMockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key ktypes.BlockKey) ([]ktypes.UpkeepKey, error) {
+	return _m.rtnKeys, nil
+}
+
+func (_m *BenchmarkMockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey) (bool, ktypes.UpkeepResult, error) {
+	return true, _m.rtnRes, nil
+}
+
+func (_m *BenchmarkMockedRegistry) IdentifierFromKey(key ktypes.UpkeepKey) (ktypes.UpkeepIdentifier, error) {
+	return _m.rtnId, nil
+}
+
+type BenchmarkMockedFilterer struct{}
+
+func (_m *BenchmarkMockedFilterer) Add(key ktypes.UpkeepKey) error {
+	return nil
+}
+
+func (_m *BenchmarkMockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
+	return func(ktypes.UpkeepKey) bool {
+		return true
+	}
+}
+
+func (_m *BenchmarkMockedFilterer) Accept(key ktypes.UpkeepKey) {}
+
+func (_m *BenchmarkMockedFilterer) IsTransmitting(key ktypes.UpkeepKey) bool {
+	return false
 }

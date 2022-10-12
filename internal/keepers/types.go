@@ -15,9 +15,13 @@ func (r sampleRatio) OfInt(count int) int {
 }
 
 type upkeepService interface {
-	SampleUpkeeps(context.Context) ([]*types.UpkeepResult, error)
+	SampleUpkeeps(context.Context, ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error)
 	CheckUpkeep(context.Context, types.UpkeepKey) (types.UpkeepResult, error)
-	// SetUpkeepState(context.Context, types.UpkeepKey, types.UpkeepState) error
-	LockoutUpkeep(context.Context, types.UpkeepIdentifier) error
-	IsUpkeepLocked(context.Context, types.UpkeepIdentifier) (bool, error)
+}
+
+type filterer interface {
+	Add(types.UpkeepKey) error
+	Filter() func(types.UpkeepKey) bool
+	Accept(key types.UpkeepKey)
+	IsTransmitting(key types.UpkeepKey) bool
 }

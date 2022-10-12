@@ -15,11 +15,11 @@ type Registry interface {
 
 type ReportEncoder interface {
 	EncodeReport([]UpkeepResult) ([]byte, error)
-	IDsFromReport([]byte) ([]UpkeepIdentifier, error)
+	DecodeReport([]byte) ([]UpkeepResult, error)
 }
 
 type PerformLogProvider interface {
-	ConfirmedPerformsFromIndex(context.Context, int) (int, []PerformLog, error)
+	PerformLogs(context.Context) ([]PerformLog, error)
 }
 
 type PerformLog struct {
@@ -56,8 +56,6 @@ type UpkeepState uint
 const (
 	NotEligible UpkeepState = iota
 	Eligible
-	InFlight
-	Performed
 )
 
 type OffchainConfig struct {
@@ -67,6 +65,12 @@ type OffchainConfig struct {
 	PerformLockoutWindow int64 `json:"performLockoutWindow"`
 	// UniqueReports sets quorum requirements for the OCR process
 	UniqueReports bool `json:"uniqueReports"`
+	// TargetProbability is the probability that all upkeeps will be checked
+	// within the provided number rounds
+	TargetProbability string `json:"targetProbability"`
+	// TargetInRounds is the number of rounds for the above probability to be
+	// calculated
+	TargetInRounds int `json:"targetInRounds"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
