@@ -48,6 +48,7 @@ func TestGetActiveUpkeepKeys(t *testing.T) {
 
 func TestCheckUpkeep(t *testing.T) {
 	kabi, _ := keeper_registry_wrapper2_0.KeeperRegistryMetaData.GetAbi()
+	wrappedPerformData := common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000075eaba92fcb25fdda1cc2bd48010ece747ff7dbd1fa2c3d105279265191198a45e7bfc00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000")
 
 	t.Run("Perform", func(t *testing.T) {
 		mockClient := new(mocks.Client)
@@ -61,8 +62,12 @@ func TestCheckUpkeep(t *testing.T) {
 		//      uint256 gasUsed,
 		//      uint256 fastGasWei,
 		//      uint256 linkNative
-		responseArgs := []interface{}{true, []byte{}, uint8(0), big.NewInt(0), big.NewInt(0), big.NewInt(0)}
+		responseArgs := []interface{}{true, wrappedPerformData, uint8(0), big.NewInt(0), big.NewInt(0), big.NewInt(0)}
 		rec.MockResponse("checkUpkeep", responseArgs...)
+		// simulatePerformUpkeep returns
+		//      bool success
+		//      uint256 gasUsed
+		rec.MockResponse("simulatePerformUpkeep", true, big.NewInt(0))
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
 		if err != nil {
@@ -101,6 +106,25 @@ func TestCheckUpkeep(t *testing.T) {
 		assert.Equal(t, types.NotEligible, upkeep.State)
 	})
 
+	t.Run("Check upkeep true but simulate perform fails", func(t *testing.T) {
+		mockClient := new(mocks.Client)
+		ctx := context.Background()
+		rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
+
+		responseArgs := []interface{}{true, wrappedPerformData, uint8(0), big.NewInt(0), big.NewInt(0), big.NewInt(0)}
+		rec.MockResponse("checkUpkeep", responseArgs...)
+		rec.MockResponse("simulatePerformUpkeep", false, big.NewInt(0))
+
+		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
+		if err != nil {
+			t.FailNow()
+		}
+
+		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		assert.NoError(t, err)
+		assert.Equal(t, false, ok)
+		assert.Equal(t, types.Skip, upkeep.State)
+	})
 }
 
 var MockRegistryState = keeper_registry_wrapper2_0.State{

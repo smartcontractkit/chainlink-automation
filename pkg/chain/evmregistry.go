@@ -121,24 +121,25 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	}
 
 	upkeepNeeded := *abi.ConvertType(out[0], new(bool)).(*bool)
-	if !upkeepNeeded {
-		result.State = types.NotEligible
-	}
-
 	rawPerformData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
 	result.FailureReason = *abi.ConvertType(out[2], new(uint8)).(*uint8)
 	result.GasUsed = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
-	if len(rawPerformData) > 0 {
-		type r struct {
-			Result wrappedPerform
-		}
+	type performDataStruct struct {
+		CheckBlockNumber uint32   `abi:"checkBlockNumber"`
+		CheckBlockhash   [32]byte `abi:"checkBlockhash"`
+		PerformData      []byte   `abi:"performData"`
+	}
 
-		// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
-		// function which returns this tuple in order to decode the bytes
-		pdataABI, _ := abi.JSON(strings.NewReader(`[{
+	type res struct {
+		Result performDataStruct
+	}
+
+	// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
+	// function which returns this tuple in order to decode the bytes
+	pdataABI, _ := abi.JSON(strings.NewReader(`[{
 			"name":"check",
 			"type":"function",
 			"outputs":[{
@@ -151,18 +152,17 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 					]
 				}]
 			}]`,
-		))
+	))
 
-		var ret0 = new(r)
-		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
-		if err != nil {
-			return false, types.UpkeepResult{}, fmt.Errorf("%w: failed to decode perform data", err)
-		}
-
-		result.CheckBlockNumber = ret0.Result.CheckBlockNumber
-		result.CheckBlockHash = ret0.Result.CheckBlockhash
-		result.PerformData = ret0.Result.PerformData
+	var ret0 = new(res)
+	err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
+	if err != nil {
+		return false, types.UpkeepResult{}, fmt.Errorf("%w", err)
 	}
+
+	result.CheckBlockNumber = ret0.Result.CheckBlockNumber
+	result.CheckBlockHash = ret0.Result.CheckBlockhash
+	result.PerformData = ret0.Result.PerformData
 
 	// reset key to check block number returned from contract
 	// this is the result that will be used in the cache both to reduce repeated
@@ -170,9 +170,33 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	// the reason for this is in the case that the block the upkeep is checked
 	// at is different than what the contract returned. the contract value
 	// takes priority.
-	result.Key = BlockAndIdToKey(big.NewInt(int64(result.CheckBlockNumber)), upkeepId)
+	result.Key = BlockAndIdToKey(big.NewInt(int64(result.CheckBlockNumber+1)), upkeepId)
 
-	return upkeepNeeded, result, nil
+	if !upkeepNeeded {
+		result.State = types.NotEligible
+		return false, result, nil
+	}
+
+	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
+	/*
+		simulatePerformUpkeep(uint256 id, bytes calldata performData)
+		returns (
+			bool success,
+			uint256 gasUsed
+		)
+	*/
+	var out2 []interface{}
+	err = rawCall.Call(opts, &out2, "simulatePerformUpkeep", upkeepId, result.PerformData)
+	if err != nil {
+		return false, types.UpkeepResult{}, fmt.Errorf("%w: simulate perform upkeep returned result: %s", ErrRegistryCallFailure, err)
+	}
+	simulatePerformSuccess := *abi.ConvertType(out2[0], new(bool)).(*bool)
+	if !simulatePerformSuccess {
+		result.State = types.NotEligible
+		return false, result, nil
+	}
+
+	return true, result, nil
 }
 
 func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
