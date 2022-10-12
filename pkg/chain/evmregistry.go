@@ -127,6 +127,12 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
+	// TODO: not sure it it's best to short circuit here
+	if !upkeepNeeded {
+		result.State = types.NotEligible
+		return false, result, nil
+	}
+
 	type performDataStruct struct {
 		CheckBlockNumber uint32   `abi:"checkBlockNumber"`
 		CheckBlockhash   [32]byte `abi:"checkBlockhash"`
@@ -171,11 +177,6 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	// at is different than what the contract returned. the contract value
 	// takes priority.
 	result.Key = BlockAndIdToKey(big.NewInt(int64(result.CheckBlockNumber+1)), upkeepId)
-
-	if !upkeepNeeded {
-		result.State = types.NotEligible
-		return false, result, nil
-	}
 
 	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
 	/*
