@@ -10,7 +10,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -127,11 +126,6 @@ func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	}
 
 	return output, nil
-}
-
-type randomValues struct {
-	Value    int64
-	Observer commontypes.OracleID
 }
 
 func sortedDedupedKeyList(attributed []types.AttributedObservation, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {

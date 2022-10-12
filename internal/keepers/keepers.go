@@ -16,8 +16,3 @@ type keepers struct {
 	logger  *log.Logger
 	filter  filterer
 }
-
-type observationMessageProto struct {
-	RandomValue int64             `json:"random_value"`
-	Keys        []types.UpkeepKey `json:"keys"`
-}

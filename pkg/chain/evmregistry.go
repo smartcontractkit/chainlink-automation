@@ -18,11 +18,10 @@ const ActiveUpkeepIDBatchSize int64 = 10000
 const separator string = "|"
 
 var (
-	ErrRegistryCallFailure      = fmt.Errorf("registry chain call failure")
-	ErrBlockKeyNotParsable      = fmt.Errorf("block identifier not parsable")
-	ErrUpkeepKeyNotParsable     = fmt.Errorf("upkeep key not parsable")
-	ErrInitializationFailure    = fmt.Errorf("failed to initialize registry")
-	ErrBlockAtCheckDoesNotMatch = fmt.Errorf("header block and check block do not match")
+	ErrRegistryCallFailure   = fmt.Errorf("registry chain call failure")
+	ErrBlockKeyNotParsable   = fmt.Errorf("block identifier not parsable")
+	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
+	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
 )
 
 type evmRegistryv2_0 struct {
@@ -169,14 +168,6 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	result.CheckBlockNumber = ret0.Result.CheckBlockNumber
 	result.CheckBlockHash = ret0.Result.CheckBlockhash
 	result.PerformData = ret0.Result.PerformData
-
-	// reset key to check block number returned from contract
-	// this is the result that will be used in the cache both to reduce repeated
-	// check attempts and provide a lookup for in-flight performs
-	// the reason for this is in the case that the block the upkeep is checked
-	// at is different than what the contract returned. the contract value
-	// takes priority.
-	result.Key = BlockAndIdToKey(big.NewInt(int64(result.CheckBlockNumber+1)), upkeepId)
 
 	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
 	/*

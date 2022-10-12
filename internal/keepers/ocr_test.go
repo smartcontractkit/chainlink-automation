@@ -782,10 +782,6 @@ type MockedFilterer struct {
 	mock.Mock
 }
 
-func (_m *MockedFilterer) Add(key ktypes.UpkeepKey) error {
-	return _m.Mock.Called(key).Error(0)
-}
-
 func (_m *MockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	ret := _m.Mock.Called()
 
@@ -797,8 +793,8 @@ func (_m *MockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	return r0
 }
 
-func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) {
-	_m.Mock.Called(key)
+func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) error {
+	return _m.Mock.Called(key).Error(0)
 }
 
 func (_m *MockedFilterer) IsTransmitting(key ktypes.UpkeepKey) bool {
@@ -868,17 +864,15 @@ func (_m *BenchmarkMockedRegistry) IdentifierFromKey(key ktypes.UpkeepKey) (ktyp
 
 type BenchmarkMockedFilterer struct{}
 
-func (_m *BenchmarkMockedFilterer) Add(key ktypes.UpkeepKey) error {
-	return nil
-}
-
 func (_m *BenchmarkMockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	return func(ktypes.UpkeepKey) bool {
 		return true
 	}
 }
 
-func (_m *BenchmarkMockedFilterer) Accept(key ktypes.UpkeepKey) {}
+func (_m *BenchmarkMockedFilterer) Accept(key ktypes.UpkeepKey) error {
+	return nil
+}
 
 func (_m *BenchmarkMockedFilterer) IsTransmitting(key ktypes.UpkeepKey) bool {
 	return false

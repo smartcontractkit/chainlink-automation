@@ -20,8 +20,7 @@ type upkeepService interface {
 }
 
 type filterer interface {
-	Add(types.UpkeepKey) error
 	Filter() func(types.UpkeepKey) bool
-	Accept(key types.UpkeepKey)
+	Accept(key types.UpkeepKey) error
 	IsTransmitting(key types.UpkeepKey) bool
 }

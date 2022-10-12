@@ -248,9 +248,6 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		// close go-routine to prevent memory leaks
 		done <- struct{}{}
 
-		// err could exist if header block and check block don't match
-		// TODO: maybe this should be a soft error
-
 		return u, err
 	}
 }

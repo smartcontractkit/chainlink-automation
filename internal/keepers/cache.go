@@ -70,7 +70,7 @@ func (c *cache[T]) Keys() []string {
 	defer c.mu.RUnlock()
 
 	keys := make([]string, 0, len(c.data))
-	for key, _ := range c.data {
+	for key := range c.data {
 		keys = append(keys, key)
 	}
 

@@ -45,18 +45,6 @@ func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Dur
 	return c
 }
 
-// Add adds the provided upkeep to the filter.
-func (rc *reportCoordinator) Add(key types.UpkeepKey) error {
-	id, err := rc.registry.IdentifierFromKey(key)
-	if err != nil {
-		return err
-	}
-
-	rc.idBlocks.Set(string(id), true, defaultExpiration)
-
-	return nil
-}
-
 // Filter returns a filter function that removes upkeep keys that apply to this
 // filter
 func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
@@ -74,8 +62,16 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 	}
 }
 
-func (rc *reportCoordinator) Accept(key types.UpkeepKey) {
+func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
+	id, err := rc.registry.IdentifierFromKey(key)
+	if err != nil {
+		return err
+	}
+
+	rc.idBlocks.Set(string(id), true, defaultExpiration)
 	rc.activeKeys.Set(string(key), false, defaultExpiration)
+
+	return nil
 }
 
 func (rc *reportCoordinator) IsTransmitting(key types.UpkeepKey) bool {
@@ -110,7 +106,6 @@ func (rc *reportCoordinator) run() {
 		select {
 		case <-timer.C:
 			startTime := time.Now()
-			keys := rc.activeKeys.Keys()
 			logs, _ := rc.logs.PerformLogs(context.Background())
 
 			// log entries indicate that a perform exists on chain in some
@@ -119,42 +114,22 @@ func (rc *reportCoordinator) run() {
 			// causing performs to vanish or get moved to a later block.
 			//
 			// in the case of reorgs causing a perform to be dropped from the
-			// chain, total confirmations are checked to allow other nodes
-			// to retry a transaction based on the OCR transmit cadence.
-			logLookup := make(map[string]types.PerformLog)
-			var minConfirmations int64 = 20
+			// chain, the key is kept in cache even after first detection to
+			// ensure no other nodes attempt to transmit again.
 			for _, log := range logs {
-				logLookup[string(log.Key)] = log
-				if _, ok := rc.activeKeys.Get(string(log.Key)); ok {
-					if log.Confirmations < minConfirmations {
-						// set the active key value to false to indicate that
-						// we now have a transaction identified and no new
-						// attempts at a transaction should be made
-						rc.activeKeys.Set(string(log.Key), true, defaultExpiration)
-					} else {
-						// the transaction is complete so the key can be deleted
-						rc.activeKeys.Delete(string(log.Key))
-					}
-				}
-
-				// if we detect a log, remove it from the observation filters
-				// to allow it to be reported on again
 				id, err := rc.registry.IdentifierFromKey(log.Key)
 				if err != nil {
 					continue
 				}
 
+				// if we detect a log, remove it from the observation filters
+				// to allow it to be reported on again
 				rc.idBlocks.Delete(string(id))
-			}
 
-			// perform logs can potentially come and go. for all keys, if a
-			// perform log is not detected, set the active keys value to true to
-			// indicate that we are waiting for a transaction log and any node
-			// should attempt to transmit.
-			for _, key := range keys {
-				if _, ok := logLookup[key]; !ok {
-					rc.activeKeys.Set(key, false, defaultExpiration)
-				}
+				// set the active key value to true to indicate that
+				// we now have a transaction identified and no new
+				// attempts at a transaction should be made
+				rc.activeKeys.Set(string(log.Key), true, defaultExpiration)
 			}
 
 			// attempt to ahere to a cadence of at least every second

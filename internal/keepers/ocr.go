@@ -60,10 +60,6 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 			// only build a report from a single upkeep for now
 			k.logger.Printf("reporting %s to be performed", upkeep.Key)
 			toPerform = append(toPerform, upkeep)
-			err = k.filter.Add(upkeep.Key)
-			if err != nil {
-				return false, nil, fmt.Errorf("%w: failed to add key to report filter in report", err)
-			}
 			break
 		}
 	}
@@ -102,7 +98,10 @@ func (k *keepers) ShouldAcceptFinalizedReport(ctx context.Context, rt types.Repo
 
 	for _, r := range results {
 		// indicate to the filter that the key has been accepted for transmit
-		k.filter.Accept(r.Key)
+		err = k.filter.Accept(r.Key)
+		if err != nil {
+			return false, fmt.Errorf("%w: failed to accept key from epoch %d and round %d", err, rt.Epoch, rt.Round)
+		}
 	}
 
 	return true, nil
