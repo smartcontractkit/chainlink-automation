@@ -136,6 +136,15 @@ func (rc *reportCoordinator) run() {
 						rc.activeKeys.Delete(string(log.Key))
 					}
 				}
+
+				// if we detect a log, remove it from the observation filters
+				// to allow it to be reported on again
+				id, err := rc.registry.IdentifierFromKey(log.Key)
+				if err != nil {
+					continue
+				}
+
+				rc.idBlocks.Delete(string(id))
 			}
 
 			// perform logs can potentially come and go. for all keys, if a
