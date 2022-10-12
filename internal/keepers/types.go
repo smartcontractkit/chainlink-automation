@@ -22,5 +22,5 @@ type upkeepService interface {
 type filterer interface {
 	Filter() func(types.UpkeepKey) bool
 	Accept(key types.UpkeepKey) error
-	IsTransmitting(key types.UpkeepKey) bool
+	IsTransmissionConfirmed(key types.UpkeepKey) bool
 }

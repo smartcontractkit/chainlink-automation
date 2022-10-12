@@ -74,11 +74,10 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 	return nil
 }
 
-func (rc *reportCoordinator) IsTransmitting(key types.UpkeepKey) bool {
-	// key is assumed to be transmitted if it doesn't exist in cache or if it
-	// is no longer waiting for a transaction to be transmitted
-	inLogs, ok := rc.activeKeys.Get(string(key))
-	return ok && inLogs
+func (rc *reportCoordinator) IsTransmissionConfirmed(key types.UpkeepKey) bool {
+	// key is assumed to be transmitted on chain if it doesn't exist in cache
+	_, ok := rc.activeKeys.Get(string(key))
+	return !ok
 }
 
 func (rc *reportCoordinator) start() {
@@ -126,10 +125,8 @@ func (rc *reportCoordinator) run() {
 				// to allow it to be reported on again
 				rc.idBlocks.Delete(string(id))
 
-				// set the active key value to true to indicate that
-				// we now have a transaction identified and no new
-				// attempts at a transaction should be made
-				rc.activeKeys.Set(string(log.Key), true, defaultExpiration)
+				// remove it from active keys to indicate that the report was transmitted
+				rc.activeKeys.Delete(string(log.Key))
 			}
 
 			// attempt to ahere to a cadence of at least every second

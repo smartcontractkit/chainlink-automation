@@ -68,6 +68,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	// after some blocks pass until a stable number is reached.
 	var p float64
 	if len(offChainCfg.TargetProbability) == 0 {
+		// TODO: Combine all default values in DecodeOffchainConfig
 		offChainCfg.TargetProbability = "0.99999"
 	}
 

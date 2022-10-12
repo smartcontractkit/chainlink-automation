@@ -25,17 +25,16 @@ func TestNewFilter(t *testing.T) {
 
 	f := rc.Filter()
 	assert.Equal(t, true, f(key))
-
-	assert.Equal(t, false, rc.IsTransmitting(key))
+	assert.Equal(t, true, rc.IsTransmissionConfirmed(key))
 
 	assert.NoError(t, rc.Accept(key))
 	assert.Equal(t, false, f(key))
-	assert.Equal(t, false, rc.IsTransmitting(key))
+	assert.Equal(t, false, rc.IsTransmissionConfirmed(key))
 
 	mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 		{Key: key},
 	}, nil)
 
 	<-time.After(1100 * time.Millisecond)
-	assert.Equal(t, true, rc.IsTransmitting(key))
+	assert.Equal(t, true, rc.IsTransmissionConfirmed(key))
 }

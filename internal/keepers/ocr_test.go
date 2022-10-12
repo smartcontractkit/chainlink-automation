@@ -616,7 +616,7 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 
 		// set the transmit filters before calling the function in test
 		for _, a := range test.TransmitChecks {
-			mf.Mock.On("IsTransmitting", a.K).Return(a.B)
+			mf.Mock.On("IsTransmissionConfirmed", a.K).Return(a.B)
 		}
 
 		ctx := context.Background()
@@ -797,7 +797,7 @@ func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) error {
 	return _m.Mock.Called(key).Error(0)
 }
 
-func (_m *MockedFilterer) IsTransmitting(key ktypes.UpkeepKey) bool {
+func (_m *MockedFilterer) IsTransmissionConfirmed(key ktypes.UpkeepKey) bool {
 	ret := _m.Mock.Called(key)
 
 	var r0 bool
@@ -874,6 +874,6 @@ func (_m *BenchmarkMockedFilterer) Accept(key ktypes.UpkeepKey) error {
 	return nil
 }
 
-func (_m *BenchmarkMockedFilterer) IsTransmitting(key ktypes.UpkeepKey) bool {
+func (_m *BenchmarkMockedFilterer) IsTransmissionConfirmed(key ktypes.UpkeepKey) bool {
 	return false
 }

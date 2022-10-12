@@ -121,14 +121,11 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.Repor
 	}
 
 	for _, id := range results {
-		transmitting := k.filter.IsTransmitting(id.Key)
-
-		// TODO: reevaluate this assumption. we may want to attempt another transmit
-		// if one of the performs failed in a batch.
-		//
-		// multiple keys can be in a single report. if one fails to run in the
-		// contract, but others are successful, don't try to transmit again
-		if transmitting {
+		transmitConfirmed := k.filter.IsTransmissionConfirmed(id.Key)
+		// multiple keys can be in a single report. if one has a confirmed transmission
+		// (while others may not have), don't try to transmit again
+		// TODO: reevaluate this assumption
+		if transmitConfirmed {
 			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted for epoch %d and round %d", string(id.Key), rt.Epoch, rt.Round)
 			return false, nil
 		}
