@@ -18,17 +18,14 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 // of upkeeps available in and UpkeepService and produces an observation containing upkeeps that
 // need to be executed.
 func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ types.Query) (types.Observation, error) {
-	results, err := k.service.SampleUpkeeps(ctx)
+	results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
 	if err != nil {
 		return types.Observation{}, err
 	}
 
-	ob := observationMessageProto{
-		RandomValue: k.rSrc.Int63(),
-		Keys:        keyList(filterUpkeeps(results, ktypes.Perform)),
-	}
+	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	b, err := encode(ob)
+	b, err := encode(keys)
 	if err != nil {
 		return types.Observation{}, err
 	}
@@ -43,37 +40,23 @@ func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ ty
 func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Query, attributed []types.AttributedObservation) (bool, types.Report, error) {
 	var err error
 
-	rdm, keys, err := sortedDedupedKeyList(attributed)
+	// pass the filter to the dedupe function
+	// ensure no locked keys come through
+	keys, err := sortedDedupedKeyList(attributed, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations", err)
 	}
 
-	var sent int64
-	values := make([]int64, len(rdm))
-	for i, r := range rdm {
-		values[i] = r.Value
-		if r.Observer == k.id {
-			sent = r.Value
-		}
-	}
-
-	// like drawing straws, if the lowest value from all nodes was sent by this
-	// node, this node should be the next transmitter
-	isTransmitter := sent == lowest(values)
-	k.logger.Printf("node selected as transmitter: %t", isTransmitter)
-	k.mu.Lock()
-	k.transmit = isTransmitter
-	k.mu.Unlock()
-
 	// select, verify, and build report
 	toPerform := make([]ktypes.UpkeepResult, 0, 1)
 	for _, key := range keys {
+
 		upkeep, err := k.service.CheckUpkeep(ctx, key)
 		if err != nil {
 			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation", err)
 		}
 
-		if upkeep.State == ktypes.Perform {
+		if upkeep.State == ktypes.Eligible {
 			// only build a report from a single upkeep for now
 			k.logger.Printf("reporting %s to be performed", upkeep.Key)
 			toPerform = append(toPerform, upkeep)
@@ -91,48 +74,64 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 		return false, nil, fmt.Errorf("%w: failed to encode OCR report", err)
 	}
 
-	// update internal state of upkeeps to ensure they aren't reported or observed again
-	for i := 0; i < len(toPerform); i++ {
-		if err := k.service.SetUpkeepState(ctx, toPerform[i].Key, ktypes.Reported); err != nil {
-			return false, nil, fmt.Errorf("%w: failed to update internal state while generating report", err)
-		}
-	}
-
 	return true, types.Report(b), err
 }
 
 // ShouldAcceptFinalizedReport implements the types.ReportingPlugin interface
-// from OCR2. The implementation is the most basic possible in that it only
-// checks that a report has data to send.
-func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, _ types.ReportTimestamp, r types.Report) (bool, error) {
-	// TODO: isStale check on last performed block number
-	shouldAccept := len(r) != 0
-	if shouldAccept {
-		k.logger.Print("accepting finalized report")
-	} else {
-		k.logger.Print("finalized report empty; not accepting")
+// from OCR2. The implementation checks the length of the report and the number
+// of keys in the report. Finally it applies a lockout to all keys in the report
+func (k *keepers) ShouldAcceptFinalizedReport(ctx context.Context, rt types.ReportTimestamp, r types.Report) (bool, error) {
+	if len(r) == 0 {
+		k.logger.Printf("finalized report is empty; not accepting epoch %d and round %d", rt.Epoch, rt.Round)
+		return false, nil
 	}
-	return shouldAccept, nil
+
+	results, err := k.encoder.DecodeReport(r)
+	if err != nil {
+		return false, err
+	}
+
+	if len(results) == 0 {
+		k.logger.Printf("no upkeeps in report; not accepting epoch %d and round %d", rt.Epoch, rt.Round)
+		return false, nil
+	}
+
+	for _, r := range results {
+		// indicate to the filter that the key has been accepted for transmit
+		err = k.filter.Accept(r.Key)
+		if err != nil {
+			return false, fmt.Errorf("%w: failed to accept key from epoch %d and round %d", err, rt.Epoch, rt.Round)
+		}
+	}
+
+	return true, nil
 }
 
 // ShouldTransmitAcceptedReport implements the types.ReportingPlugin interface
 // from OCR2. The implementation essentially draws straws on which node should
 // be the transmitter.
-func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, _ types.ReportTimestamp, _ types.Report) (bool, error) {
-	// TODO: isStale check on last performed block number
-	// TODO: check that transmission has not completed
-	var isTransmitter bool
-	k.mu.Lock()
-	isTransmitter = k.transmit
-	k.mu.Unlock()
-
-	if isTransmitter {
-		k.logger.Print("accepting report for transmit")
-	} else {
-		k.logger.Print("report available for transmit; not a transmitter")
+func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.ReportTimestamp, r types.Report) (bool, error) {
+	results, err := k.encoder.DecodeReport(r)
+	if err != nil {
+		return false, fmt.Errorf("failed to get ids from report: %w", err)
 	}
 
-	return isTransmitter, nil
+	if len(results) == 0 {
+		return false, fmt.Errorf("no ids in report in epoch %d for round %d", rt.Epoch, rt.Round)
+	}
+
+	for _, id := range results {
+		transmitConfirmed := k.filter.IsTransmissionConfirmed(id.Key)
+		// multiple keys can be in a single report. if one has a confirmed transmission
+		// (while others may not have), don't try to transmit again
+		// TODO: reevaluate this assumption
+		if transmitConfirmed {
+			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted for epoch %d and round %d", string(id.Key), rt.Epoch, rt.Round)
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 // Close implements the types.ReportingPlugin interface in OCR2.

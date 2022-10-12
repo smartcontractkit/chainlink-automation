@@ -10,7 +10,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -87,7 +86,7 @@ func (s sortUpkeepKeys) Len() int {
 	return len(s)
 }
 
-func dedupe[T any](inputs [][]T) ([]T, error) {
+func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	if len(inputs) == 0 {
 		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
 	}
@@ -105,6 +104,18 @@ func dedupe[T any](inputs [][]T) ([]T, error) {
 	matched := make(map[string]bool)
 	for _, input := range inputs {
 		for _, val := range input {
+			add := true
+			for _, filter := range filters {
+				if !filter(val) {
+					add = false
+					break
+				}
+			}
+
+			if !add {
+				continue
+			}
+
 			key := fmt.Sprintf("%v", val)
 			_, ok := matched[key]
 			if !ok {
@@ -117,15 +128,9 @@ func dedupe[T any](inputs [][]T) ([]T, error) {
 	return output, nil
 }
 
-type randomValues struct {
-	Value    int64
-	Observer commontypes.OracleID
-}
-
-func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]randomValues, []ktypes.UpkeepKey, error) {
+func sortedDedupedKeyList(attributed []types.AttributedObservation, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
 	var err error
 
-	rdm := make([]randomValues, len(attributed))
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
 	for i, attr := range attributed {
 		b := []byte(attr.Observation)
@@ -133,29 +138,24 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation) ([]randomVal
 			continue
 		}
 
-		var ob observationMessageProto
+		var ob []ktypes.UpkeepKey
 		err = decode(b, &ob)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
+			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
 		}
 
-		rdm[i] = randomValues{
-			Value:    ob.RandomValue,
-			Observer: attr.Observer,
-		}
-
-		sort.Sort(sortUpkeepKeys(ob.Keys))
-		kys[i] = ob.Keys
+		sort.Sort(sortUpkeepKeys(ob))
+		kys[i] = ob
 	}
 
-	keys, err := dedupe(kys)
+	keys, err := dedupe(kys, filters...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%w: observation dedupe", err)
+		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}
 
 	sort.Sort(sortUpkeepKeys(keys))
 
-	return rdm, keys, nil
+	return keys, nil
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {

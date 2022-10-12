@@ -15,7 +15,7 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-func TestSimpleUpkeepService(t *testing.T) {
+func TestOnDemandUpkeepService(t *testing.T) {
 	t.Run("SampleUpkeeps_RatioPick", func(t *testing.T) {
 
 		ctx := context.Background()
@@ -31,11 +31,11 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		for i := 0; i < 5; i++ {
 			check := false
-			state := types.Skip
+			state := types.NotEligible
 			pData := []byte{}
 			if i%3 == 0 {
 				check = true
-				state = types.Perform
+				state = types.Eligible
 				pData = []byte(fmt.Sprintf("%d", i))
 			}
 			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
@@ -43,13 +43,12 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
-			logger:     l,
-			ratio:      sampleRatio(0.5),
-			registry:   rg,
-			shuffler:   new(noShuffleShuffler[ktypes.UpkeepKey]),
-			cache:      newCache[ktypes.UpkeepResult](1 * time.Second),
-			stateCache: newCache[ktypes.UpkeepState](10 * time.Second),
-			workers:    newWorkerGroup[ktypes.UpkeepResult](2, 10),
+			logger:   l,
+			ratio:    sampleRatio(0.5),
+			registry: rg,
+			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 		}
 
 		// this test does not include the cache cleaner or log subscriber
@@ -68,45 +67,6 @@ func TestSimpleUpkeepService(t *testing.T) {
 		}
 
 		assert.Equal(t, 2, matches)
-
-		rg.Mock.AssertExpectations(t)
-	})
-
-	t.Run("SampleUpkeeps_SkipPreviouslyReported", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		rg := new(MockedRegistry)
-
-		actives := make([]ktypes.UpkeepKey, 2)
-		for i := 0; i < 2; i++ {
-			actives[i] = ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1)))
-			rg.Mock.On("IdentifierFromKey", actives[i]).Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
-		}
-
-		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
-		rg.Mock.On("CheckUpkeep", mock.Anything, actives[1]).Return(false, ktypes.UpkeepResult{Key: actives[1], State: types.Skip}, nil)
-
-		l := log.New(io.Discard, "", 0)
-		svc := &onDemandUpkeepService{
-			logger:     l,
-			ratio:      sampleRatio(1.0),
-			registry:   rg,
-			shuffler:   new(noShuffleShuffler[ktypes.UpkeepKey]),
-			cache:      newCache[ktypes.UpkeepResult](50 * time.Millisecond),
-			stateCache: newCache[ktypes.UpkeepState](10 * time.Second),
-			workers:    newWorkerGroup[ktypes.UpkeepResult](2, 10),
-		}
-
-		// set the cache to a previous block number to simulate a reported
-		// upkeep on a previous block
-		svc.stateCache.Set("1", types.Reported, defaultExpiration)
-		svc.cache.Set("0|1", ktypes.UpkeepResult{Key: ktypes.UpkeepKey("0|1"), State: types.Reported}, defaultExpiration)
-
-		// this test does not include the cache cleaner or log subscriber
-		result, err := svc.SampleUpkeeps(ctx)
-		cancel()
-
-		assert.NoError(t, err)
-		assert.Equal(t, 0, len(result))
 
 		rg.Mock.AssertExpectations(t)
 	})
@@ -173,19 +133,18 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 		for i := 0; i < keyCount; i++ {
 			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).
-				Return(true, ktypes.UpkeepResult{Key: actives[i], State: types.Perform, PerformData: []byte{}}, nil).
+				Return(true, ktypes.UpkeepResult{Key: actives[i], State: types.Eligible, PerformData: []byte{}}, nil).
 				Maybe()
 		}
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
-			logger:     l,
-			ratio:      sampleRatio(1.0),
-			registry:   rg,
-			shuffler:   new(noShuffleShuffler[ktypes.UpkeepKey]),
-			cache:      newCache[ktypes.UpkeepResult](200 * time.Millisecond),
-			stateCache: newCache[ktypes.UpkeepState](10 * time.Second),
-			workers:    newWorkerGroup[ktypes.UpkeepResult](10, 100),
+			logger:   l,
+			ratio:    sampleRatio(1.0),
+			registry: rg,
+			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:    newCache[ktypes.UpkeepResult](200 * time.Millisecond),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](10, 100),
 		}
 
 		result, err := svc.SampleUpkeeps(ctx)
@@ -220,8 +179,8 @@ func TestSimpleUpkeepService(t *testing.T) {
 				ID:             testId,
 				Key:            testKey,
 				Check:          false,
-				RegResult:      ktypes.UpkeepResult{Key: testKey},
-				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.Skip},
+				RegResult:      ktypes.UpkeepResult{Key: testKey, State: types.NotEligible},
+				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.NotEligible},
 			},
 			{
 				Name:           "Timer Context",
@@ -229,8 +188,8 @@ func TestSimpleUpkeepService(t *testing.T) {
 				ID:             testId,
 				Key:            testKey,
 				Check:          false,
-				RegResult:      ktypes.UpkeepResult{Key: testKey},
-				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.Skip},
+				RegResult:      ktypes.UpkeepResult{Key: testKey, State: types.NotEligible},
+				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.NotEligible},
 			},
 			{
 				Name:           "Registry Error",
@@ -249,8 +208,8 @@ func TestSimpleUpkeepService(t *testing.T) {
 				ID:             testId,
 				Key:            testKey,
 				Check:          true,
-				RegResult:      ktypes.UpkeepResult{Key: testKey, PerformData: []byte("1")},
-				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.Perform, PerformData: []byte("1")},
+				RegResult:      ktypes.UpkeepResult{Key: testKey, State: types.Eligible, PerformData: []byte("1")},
+				ExpectedResult: ktypes.UpkeepResult{Key: testKey, State: types.Eligible, PerformData: []byte("1")},
 			},
 		}
 
@@ -263,11 +222,10 @@ func TestSimpleUpkeepService(t *testing.T) {
 
 			l := log.New(io.Discard, "", 0)
 			svc := &onDemandUpkeepService{
-				logger:     l,
-				cache:      newCache[ktypes.UpkeepResult](20 * time.Millisecond),
-				stateCache: newCache[ktypes.UpkeepState](10 * time.Second),
-				registry:   rg,
-				workers:    newWorkerGroup[ktypes.UpkeepResult](2, 10),
+				logger:   l,
+				cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
+				registry: rg,
+				workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
 			}
 
 			result, err := svc.CheckUpkeep(ctx, test.Key)
@@ -282,50 +240,6 @@ func TestSimpleUpkeepService(t *testing.T) {
 			assert.Equal(t, test.ExpectedResult, result, "result should match expected for test %d", i+1)
 
 			rg.Mock.AssertExpectations(t)
-		}
-	})
-
-	t.Run("SetUpkeepState", func(t *testing.T) {
-		id := []byte("test-key")
-		key1 := []byte(fmt.Sprintf("%s-1", string(id)))
-		key2 := []byte(fmt.Sprintf("%s-2", string(id)))
-
-		tests := []struct {
-			ID    []byte
-			Key   []byte
-			State ktypes.UpkeepState
-			Err   error
-		}{
-			{ID: id, Key: key1, State: ktypes.UpkeepState(1), Err: nil},
-			{ID: id, Key: key2, State: ktypes.UpkeepState(2), Err: nil},
-		}
-
-		rg := new(MockedRegistry)
-
-		l := log.New(io.Discard, "", 0)
-		svc := &onDemandUpkeepService{
-			logger:     l,
-			registry:   rg,
-			cache:      newCache[ktypes.UpkeepResult](20 * time.Millisecond),
-			stateCache: newCache[ktypes.UpkeepState](20 * time.Millisecond),
-			workers:    newWorkerGroup[ktypes.UpkeepResult](2, 10),
-		}
-
-		for _, test := range tests {
-			ctx := context.Background()
-			rg.Mock.On("IdentifierFromKey", ktypes.UpkeepKey(test.Key)).Return(ktypes.UpkeepIdentifier(test.ID), nil)
-			rg.Mock.On("CheckUpkeep", mock.Anything, ktypes.UpkeepKey(test.Key)).Return(true, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(key1)}, nil)
-			err := svc.SetUpkeepState(ctx, ktypes.UpkeepKey(test.Key), test.State)
-
-			if test.Err == nil {
-				assert.NoError(t, err, "should not return an error")
-			} else {
-				assert.Error(t, err, "should return an error")
-			}
-
-			assert.Contains(t, svc.stateCache.data, string(test.ID), "internal state should contain id '%s'", test.ID)
-			assert.Contains(t, svc.cache.data, string(test.Key), "internal state should contain key '%s'", test.Key)
-			assert.Equal(t, svc.cache.data[string(test.Key)].Item.State, test.State, "internal state at key '%s' should be %d", test.Key, test.State)
 		}
 	})
 }
@@ -398,23 +312,19 @@ type MockedPerformLogProvider struct {
 	mock.Mock
 }
 
-func (_m *MockedPerformLogProvider) Subscribe() chan ktypes.PerformLog {
-	ret := _m.Mock.Called()
+func (_m *MockedPerformLogProvider) PerformLogs(ctx context.Context) ([]ktypes.PerformLog, error) {
+	ret := _m.Mock.Called(ctx)
 
-	var r0 chan ktypes.PerformLog
-	if rf, ok := ret.Get(0).(func() chan ktypes.PerformLog); ok {
+	var r0 []ktypes.PerformLog
+	if rf, ok := ret.Get(0).(func() []ktypes.PerformLog); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(chan ktypes.PerformLog)
+			r0 = ret.Get(0).([]ktypes.PerformLog)
 		}
 	}
 
-	return r0
-}
-
-func (_m *MockedPerformLogProvider) Unsubscribe() {
-	_m.Mock.Called()
+	return r0, ret.Error(1)
 }
 
 type noShuffleShuffler[T any] struct{}

@@ -3,6 +3,7 @@ package keepers
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
@@ -65,7 +66,22 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	// number needs to either come from a config, or be calculated on actual
 	// performance of the nodes in real time. that is, start at 1 and increment
 	// after some blocks pass until a stable number is reached.
-	sample, err := sampleFromProbability(1, c.N-c.F, 0.99999)
+	var p float64
+	if len(offChainCfg.TargetProbability) == 0 {
+		// TODO: Combine all default values in DecodeOffchainConfig
+		offChainCfg.TargetProbability = "0.99999"
+	}
+
+	p, err = strconv.ParseFloat(offChainCfg.TargetProbability, 32)
+	if err != nil {
+		return nil, info, fmt.Errorf("%w: failed to parse configured probability", err)
+	}
+
+	if offChainCfg.TargetInRounds <= 0 {
+		offChainCfg.TargetInRounds = 1
+	}
+
+	sample, err := sampleFromProbability(offChainCfg.TargetInRounds, c.N-c.F, float32(p))
 	if err != nil {
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
@@ -73,13 +89,18 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	service := newOnDemandUpkeepService(
 		sample,
 		d.registry,
-		d.perfLogs,
 		d.logger,
 		d.config.CacheExpiration,
-		time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
 		d.config.ServiceQueueLength)
 
-	return &keepers{id: c.OracleID, rSrc: newCryptoRandSource(), service: service, encoder: d.encoder, logger: d.logger}, info, nil
+	return &keepers{
+		id:      c.OracleID,
+		rSrc:    newCryptoRandSource(),
+		service: service,
+		encoder: d.encoder,
+		logger:  d.logger,
+		filter:  newReportCoordinator(d.registry, time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond, d.config.CacheEvictionInterval, d.perfLogs, d.logger),
+	}, info, nil
 }

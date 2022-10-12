@@ -330,8 +330,6 @@ func wrapPluginReceiver(logger *log.Logger, controller *OCRController, receiver 
 
 type mockPerfLogs struct{}
 
-func (m *mockPerfLogs) Subscribe() (string, chan ktypes.PerformLog) {
-	return "a", make(chan ktypes.PerformLog)
+func (m *mockPerfLogs) PerformLogs(context.Context) ([]ktypes.PerformLog, error) {
+	return nil, nil
 }
-
-func (m *mockPerfLogs) Unsubscribe(string) {}

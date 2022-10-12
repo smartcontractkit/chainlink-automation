@@ -13,17 +13,14 @@ import (
 )
 
 type onDemandUpkeepService struct {
-	logger         *log.Logger
-	ratio          sampleRatio
-	registry       types.Registry
-	perfLogs       types.PerformLogProvider
-	shuffler       shuffler[types.UpkeepKey]
-	cache          *cache[types.UpkeepResult]
-	stateCache     *cache[types.UpkeepState]
-	cacheCleaner   *intervalCacheCleaner[types.UpkeepResult]
-	workers        *workerGroup[types.UpkeepResult]
-	stopProcs      chan struct{}
-	subscriptionId string
+	logger       *log.Logger
+	ratio        sampleRatio
+	registry     types.Registry
+	shuffler     shuffler[types.UpkeepKey]
+	cache        *cache[types.UpkeepResult]
+	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
+	workers      *workerGroup[types.UpkeepResult]
+	stopProcs    chan struct{}
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -31,17 +28,15 @@ type onDemandUpkeepService struct {
 // need to be sampled. This variant has limitations in how quickly large numbers
 // of upkeeps can be checked. Be aware that network calls are not rate limited
 // from this service.
-func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, perfLogs types.PerformLogProvider, logger *log.Logger, cacheExpire time.Duration, staleWindow time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
+func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
-		logger:     logger,
-		ratio:      ratio,
-		registry:   registry,
-		perfLogs:   perfLogs,
-		shuffler:   new(cryptoShuffler[types.UpkeepKey]),
-		cache:      newCache[types.UpkeepResult](cacheExpire),
-		stateCache: newCache[types.UpkeepState](staleWindow),
-		workers:    newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
-		stopProcs:  make(chan struct{}),
+		logger:    logger,
+		ratio:     ratio,
+		registry:  registry,
+		shuffler:  new(cryptoShuffler[types.UpkeepKey]),
+		cache:     newCache[types.UpkeepResult](cacheExpire),
+		workers:   newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
+		stopProcs: make(chan struct{}),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -61,7 +56,7 @@ func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, perfLo
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
-func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
 	// - get all upkeeps from contract
 	s.logger.Printf("get all active upkeep keys")
 	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
@@ -79,124 +74,46 @@ func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context) ([]*types.Upk
 	if s.workers == nil {
 		panic("cannot sample upkeeps without runner")
 	}
-	return s.parallelCheck(ctx, keys[:size])
+	return s.parallelCheck(ctx, keys[:size], filters...)
 }
 
 func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
 	var result types.UpkeepResult
 
-	id, err := s.registry.IdentifierFromKey(key)
-	if err != nil {
-		return result, err
-	}
-	state, stateCached := s.stateCache.Get(string(id))
-
+	// the cache is a collection of keys (block & id) that map to cached
+	// results. if the same upkeep is checked at a block that has already been
+	// checked, return the cached result
 	result, cached := s.cache.Get(string(key))
 	if cached {
-		if stateCached {
-			result.State = state
-		}
 		return result, nil
 	}
 
 	// check upkeep at block number in key
 	// return result including performData
-	needsPerform, u, err := s.registry.CheckUpkeep(ctx, key)
+	_, u, err := s.registry.CheckUpkeep(ctx, key)
 	if err != nil {
 		return types.UpkeepResult{}, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
 
-	result = types.UpkeepResult{
-		Key:   key,
-		State: types.Skip,
-	}
+	s.cache.Set(string(key), u, defaultExpiration)
 
-	if needsPerform {
-		result.State = types.Perform
-		result.PerformData = u.PerformData
-		result.FastGasWei = u.FastGasWei
-		result.LinkNative = u.LinkNative
-		result.CheckBlockNumber = u.CheckBlockNumber
-		result.CheckBlockHash = u.CheckBlockHash
-	}
-
-	if stateCached {
-		result.State = state
-	}
-
-	s.cache.Set(string(key), result, defaultExpiration)
-
-	return result, nil
-}
-
-func (s *onDemandUpkeepService) SetUpkeepState(ctx context.Context, uk types.UpkeepKey, state types.UpkeepState) error {
-	var err error
-
-	id, err := s.registry.IdentifierFromKey(uk)
-	if err != nil {
-		return err
-	}
-
-	// set the state cache to the default expiration using the upkeep identifer
-	// as the key
-	s.stateCache.Set(string(id), state, defaultExpiration)
-
-	result, cached := s.cache.Get(string(uk))
-	if !cached {
-		// if the value is not in the cache, do a hard check
-		result, err = s.CheckUpkeep(ctx, uk)
-		if err != nil {
-			return fmt.Errorf("%w: cache miss and check for key '%s'", err, string(uk))
-		}
-	}
-
-	result.State = state
-	s.cache.Set(string(uk), result, defaultExpiration)
-	return nil
+	return u, nil
 }
 
 func (s *onDemandUpkeepService) start() {
-
-	if s.perfLogs != nil {
-		var chPerfLogs chan types.PerformLog
-		s.subscriptionId, chPerfLogs = s.perfLogs.Subscribe()
-
-		go func(ch chan types.PerformLog) {
-			for {
-				select {
-				case log := <-ch:
-					// TODO: add delete method to cache; hack sets a new status and 1
-					// nanosecond expire time
-					s.stateCache.Set(string(log.Key), types.Performed, 1)
-				case <-s.stopProcs:
-					// closing the channel indicates to the sender that the channel is
-					// no longer being used. This will cause the sending service to
-					// panic if it attempts to send to the channel. This should be
-					// accounted for by the sending service.
-					close(ch)
-					return
-				}
-			}
-		}(chPerfLogs)
-	}
-
+	// TODO: if this process panics, restart it
 	go s.cacheCleaner.Run(s.cache)
 }
 
 func (s *onDemandUpkeepService) stop() {
-	if s.perfLogs != nil {
-		s.perfLogs.Unsubscribe(s.subscriptionId)
-	}
-
 	close(s.stopProcs)
 	close(s.cacheCleaner.stop)
 }
 
-func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
 	samples := newSyncedArray[*types.UpkeepResult]()
 
 	var cacheHits int
-
 	var wg sync.WaitGroup
 
 	// start the results listener
@@ -219,7 +136,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 					success++
 					// cache results
 					s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
-					if result.Data.State == types.Perform {
+					if result.Data.State == types.Eligible {
 						samples.Append(&result.Data)
 					}
 				} else {
@@ -237,27 +154,30 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	// go through keys and check the cache first
 	// if an item doesn't exist on the cache, send the items to the worker threads
 	for _, key := range keys {
-		// get reported status and continue if found
-		id, err := s.registry.IdentifierFromKey(key)
-		if err != nil {
-			return samples.Values(), err
+		add := true
+		for _, filter := range filters {
+			if !filter(key) {
+				add = false
+				break
+			}
 		}
-		state, stateCached := s.stateCache.Get(string(id))
-		if stateCached && state == types.Reported {
-			cacheHits++
+
+		if !add {
 			continue
 		}
 
-		// skip if reported
+		// no RPC lookups need to be done if a result has already been cached
 		result, cached := s.cache.Get(string(key))
 		if cached {
 			cacheHits++
-			if result.State == types.Perform {
+			if result.State == types.Eligible {
 				samples.Append(&result)
 			}
 			continue
 		}
 
+		// for every job added to the worker queue, add to the wait group
+		// all jobs should complete before completing the function
 		wg.Add(1)
 		if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
 			if errors.Is(err, ErrContextCancelled) {

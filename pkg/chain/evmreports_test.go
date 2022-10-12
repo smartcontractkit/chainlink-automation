@@ -89,7 +89,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 func TestEncodeReport_EmptyPerformData(t *testing.T) {
 	input := []ktypes.UpkeepResult{
 		{
-			Key:              ktypes.UpkeepKey([]byte("42|18")),
+			Key:              ktypes.UpkeepKey([]byte("43|18")),
 			PerformData:      []byte{},
 			FastGasWei:       big.NewInt(8),
 			LinkNative:       big.NewInt(16),
@@ -120,6 +120,42 @@ func TestEncodeReport_EmptyPerformData(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, expected, b)
+}
+
+func TestDecodeReport(t *testing.T) {
+	expected := []ktypes.UpkeepResult{
+		{
+			Key:              ktypes.UpkeepKey([]byte("43|18")),
+			State:            ktypes.Eligible, // it is assumed that all items in a report were eligible
+			PerformData:      []byte{},
+			FastGasWei:       big.NewInt(8),
+			LinkNative:       big.NewInt(16),
+			CheckBlockNumber: 43,
+			CheckBlockHash:   [32]byte{2},
+		},
+	}
+
+	enc := &evmReportEncoder{}
+
+	// fast gas and link native values should come from the result at the latest block number
+	buff := new(bytes.Buffer)
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGast
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000010")) // link native
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000080")) // ids array offset
+	buff.Write(common.Hex2Bytes("00000000000000000000000000000000000000000000000000000000000000c0")) // tuple array offset
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001")) // id array length
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000012")) // id
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001")) // tuple array length
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020")) // tuple 1 offset
+	buff.Write(common.Hex2Bytes("000000000000000000000000000000000000000000000000000000000000002b")) // block number 43
+	buff.Write(common.Hex2Bytes("0200000000000000000000000000000000000000000000000000000000000000")) // block hash 2
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000060")) // tuple bytes offset
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000000")) // tuple bytes
+
+	ids, err := enc.DecodeReport(buff.Bytes())
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected, ids)
 }
 
 func BenchmarkEncodeReport(b *testing.B) {
