@@ -88,7 +88,7 @@ func (rc *reportCoordinator) IsTransmissionConfirmed(key types.UpkeepKey) bool {
 	// key is confirmed if it both exists and has been confirmed by the log
 	// poller
 	confirmed, ok := rc.activeKeys.Get(string(key))
-	return !ok || !confirmed
+	return !ok || (ok && confirmed)
 }
 
 func (rc *reportCoordinator) start() {
