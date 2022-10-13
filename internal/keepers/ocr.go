@@ -17,20 +17,24 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 // Observation implements the types.ReportingPlugin interface in OCR2. This method samples a set
 // of upkeeps available in and UpkeepService and produces an observation containing upkeeps that
 // need to be executed.
-func (k *keepers) Observation(ctx context.Context, _ types.ReportTimestamp, _ types.Query) (types.Observation, error) {
+func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ types.Query) (types.Observation, error) {
+	k.logger.Printf("sampling upkeeps for epoch %d and round %d", rt.Epoch, rt.Round)
+
 	results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
 	if err != nil {
-		return types.Observation{}, err
+		return nil, fmt.Errorf("%w: failed to sample upkeeps for observation", err)
 	}
 
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
+	k.logger.Printf("%d eligible keys included in observation for epoch %d and round %d", len(keys), rt.Epoch, rt.Round)
+
 	b, err := encode(keys)
 	if err != nil {
-		return types.Observation{}, err
+		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation", err)
 	}
 
-	return types.Observation(b), err
+	return types.Observation(b), nil
 }
 
 // Report implements the types.ReportingPlugin inteface in OC2. This method chooses a single upkeep
