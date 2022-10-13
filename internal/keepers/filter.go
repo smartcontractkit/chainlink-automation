@@ -112,7 +112,6 @@ func (rc *reportCoordinator) run() {
 	timer := time.NewTimer(cadence)
 
 	for {
-
 		select {
 		case <-timer.C:
 			startTime := time.Now()
