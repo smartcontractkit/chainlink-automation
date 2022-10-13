@@ -21,8 +21,10 @@ func TestNewFilter(t *testing.T) {
 
 	// set up the mocks and mock data
 	key := types.UpkeepKey([]byte("1|1"))
+	key2 := types.UpkeepKey([]byte("2|1"))
 	id := types.UpkeepIdentifier([]byte("1"))
 	mr.Mock.On("IdentifierFromKey", key).Return(id, nil).Times(6)
+	mr.Mock.On("IdentifierFromKey", key2).Return(id, nil).Times(2)
 
 	// calling filter at this point should return true because the key has not
 	// yet been added to the filter
@@ -41,10 +43,12 @@ func TestNewFilter(t *testing.T) {
 
 	mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 		{Key: key},
+		{Key: key2},
 	}, nil)
 
 	<-time.After(1100 * time.Millisecond)
 	assert.Equal(t, true, rc.IsTransmissionConfirmed(key), "transmit should be confirmed after logs are read for the key")
 
 	assert.ErrorIs(t, rc.Accept(key), ErrKeyAlreadySet, "key should not be accepted after transmit confirmed and should return an error")
+	assert.ErrorIs(t, rc.Accept(key2), ErrKeyAlreadySet, "key should not be accepted because a log entry was detected and should return an error")
 }
