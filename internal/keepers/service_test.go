@@ -242,6 +242,41 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			rg.Mock.AssertExpectations(t)
 		}
 	})
+
+	t.Run("SampleUpkeeps_AllChecksReturnError", func(t *testing.T) {
+		ctx := context.Background()
+		rg := new(MockedRegistry)
+
+		actives := make([]ktypes.UpkeepKey, 10)
+		for i := 0; i < 10; i++ {
+			actives[i] = ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1)))
+			rg.Mock.On("IdentifierFromKey", actives[i]).Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
+		}
+
+		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
+
+		for i := 0; i < 5; i++ {
+			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).Return(false, nil, fmt.Errorf("simulate RPC error"))
+		}
+
+		l := log.New(io.Discard, "", 0)
+		svc := &onDemandUpkeepService{
+			logger:   l,
+			ratio:    sampleRatio(0.5),
+			registry: rg,
+			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
+		}
+
+		// this test does not include the cache cleaner or log subscriber
+		_, err := svc.SampleUpkeeps(ctx)
+
+		// the process should return an error that wraps the last CheckUpkeep
+		// error with context about which key was checked and that too many
+		// errors were encountered during the parallel worker process
+		assert.Equal(t, "simulate RPC error: failed to check upkeep key '1|5': too many errors in parallel worker process; last error provided", err.Error())
+	})
 }
 
 type MockedRegistry struct {
