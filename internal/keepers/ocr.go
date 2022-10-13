@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,6 +110,10 @@ func (k *keepers) ShouldAcceptFinalizedReport(ctx context.Context, rt types.Repo
 		// indicate to the filter that the key has been accepted for transmit
 		err = k.filter.Accept(r.Key)
 		if err != nil {
+			if errors.Is(err, ErrKeyAlreadySet) {
+				k.logger.Printf("%w: key already set; epoch %d and round %d", err, rt.Epoch, rt.Round)
+				return false, nil
+			}
 			return false, fmt.Errorf("%w: failed to accept key from epoch %d and round %d", err, rt.Epoch, rt.Round)
 		}
 		k.logger.Printf("accepting key %s for epoch %d and round %d", r.Key, rt.Epoch, rt.Round)
