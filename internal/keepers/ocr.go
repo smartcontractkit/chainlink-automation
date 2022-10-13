@@ -3,6 +3,7 @@ package keepers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -18,6 +19,8 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 // of upkeeps available in and UpkeepService and produces an observation containing upkeeps that
 // need to be executed.
 func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ types.Query) (types.Observation, error) {
+	t := time.Now()
+
 	k.logger.Printf("sampling upkeeps for epoch %d and round %d", rt.Epoch, rt.Round)
 
 	results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
@@ -34,6 +37,8 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation", err)
 	}
 
+	k.logger.Printf("observation for epoch %d and round %d took %dms", rt.Epoch, rt.Round, time.Since(t)/time.Millisecond)
+
 	return types.Observation(b), nil
 }
 
@@ -41,7 +46,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 // from the provided observations by the earliest block number, checks the upkeep, and builds a
 // report. Multiple upkeeps in a single report is supported by how the data is abi encoded, but
 // no gas estimations exist yet.
-func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Query, attributed []types.AttributedObservation) (bool, types.Report, error) {
+func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.Query, attributed []types.AttributedObservation) (bool, types.Report, error) {
 	var err error
 
 	// pass the filter to the dedupe function
@@ -62,7 +67,7 @@ func (k *keepers) Report(ctx context.Context, _ types.ReportTimestamp, _ types.Q
 
 		if upkeep.State == ktypes.Eligible {
 			// only build a report from a single upkeep for now
-			k.logger.Printf("reporting %s to be performed", upkeep.Key)
+			k.logger.Printf("reporting %s to be performed for epoch %d and round %d", upkeep.Key, rt.Epoch, rt.Round)
 			toPerform = append(toPerform, upkeep)
 			break
 		}
@@ -106,6 +111,7 @@ func (k *keepers) ShouldAcceptFinalizedReport(ctx context.Context, rt types.Repo
 		if err != nil {
 			return false, fmt.Errorf("%w: failed to accept key from epoch %d and round %d", err, rt.Epoch, rt.Round)
 		}
+		k.logger.Printf("accepting key %s for epoch %d and round %d", r.Key, rt.Epoch, rt.Round)
 	}
 
 	return true, nil
@@ -130,9 +136,11 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.Repor
 		// (while others may not have), don't try to transmit again
 		// TODO: reevaluate this assumption
 		if transmitConfirmed {
-			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted for epoch %d and round %d", string(id.Key), rt.Epoch, rt.Round)
+			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted before epoch %d and round %d", string(id.Key), rt.Epoch, rt.Round)
 			return false, nil
 		}
+
+		k.logger.Printf("upkeep '%s' transmit not confirmed for epoch %d and round %d", id.Key, rt.Epoch, rt.Round)
 	}
 
 	return true, nil
