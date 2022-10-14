@@ -66,7 +66,7 @@ func TestNewFilter(t *testing.T) {
 	assert.Equal(t, true, rc.IsTransmissionConfirmed(key), "transmit should be confirmed after logs are read for the key")
 
 	assert.ErrorIs(t, rc.Accept(key), ErrKeyAlreadySet, "key should not be accepted after transmit confirmed and should return an error")
-	assert.ErrorIs(t, rc.Accept(key2), ErrKeyAlreadySet, "key should not be accepted because a log entry was detected and should return an error")
+	assert.NoError(t, rc.Accept(key2), "key2 should be able to accept since log should be ignored if it was not accepted before")
 
 	mp.AssertExpectations(t)
 	mr.AssertExpectations(t)

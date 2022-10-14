@@ -131,14 +131,18 @@ func (rc *reportCoordinator) run() {
 					continue
 				}
 
-				// if we detect a log, remove it from the observation filters
-				// to allow it to be reported on again
-				rc.idBlocks.Delete(string(id))
+				// Process log if the key hasn't been confirmed yet
+				confirmed, ok := rc.activeKeys.Get(string(log.Key))
+				if ok && !confirmed {
+					// if we detect a log, remove it from the observation filters
+					// to allow it to be reported on again
+					rc.idBlocks.Delete(string(id))
 
-				// set state of key to indicate that the report was transmitted
-				// setting a key in this way also blocks it in Accept even if
-				// Accept was never called for on a single node for this key
-				rc.activeKeys.Set(string(log.Key), true, defaultExpiration)
+					// set state of key to indicate that the report was transmitted
+					// setting a key in this way also blocks it in Accept even if
+					// Accept was never called for on a single node for this key
+					rc.activeKeys.Set(string(log.Key), true, defaultExpiration)
+				}
 			}
 
 			// attempt to ahere to a cadence of at least every second
