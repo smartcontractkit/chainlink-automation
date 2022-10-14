@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"runtime"
 	"sync"
@@ -10,12 +11,16 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
+var (
+	ErrKeyAlreadySet = fmt.Errorf("key alredy set")
+)
+
 type reportCoordinator struct {
 	logger       *log.Logger
 	registry     types.Registry
 	logs         types.PerformLogProvider
 	idBlocks     *cache[bool] // should clear out when the next perform with this id occurs
-	activeKeys   *cache[bool] // should clear when next perform with blocknumber and id occurs
+	activeKeys   *cache[bool]
 	cacheCleaner *intervalCacheCleaner[bool]
 	starter      sync.Once
 	chStop       chan struct{}
@@ -63,6 +68,11 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 }
 
 func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
+	_, ok := rc.activeKeys.Get(string(key))
+	if ok {
+		return fmt.Errorf("%w: %s", ErrKeyAlreadySet, key)
+	}
+
 	id, err := rc.registry.IdentifierFromKey(key)
 	if err != nil {
 		return err
@@ -75,9 +85,10 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 }
 
 func (rc *reportCoordinator) IsTransmissionConfirmed(key types.UpkeepKey) bool {
-	// key is assumed to be transmitted on chain if it doesn't exist in cache
-	_, ok := rc.activeKeys.Get(string(key))
-	return !ok
+	// key is confirmed if it both exists and has been confirmed by the log
+	// poller
+	confirmed, ok := rc.activeKeys.Get(string(key))
+	return !ok || (ok && confirmed)
 }
 
 func (rc *reportCoordinator) start() {
@@ -101,7 +112,6 @@ func (rc *reportCoordinator) run() {
 	timer := time.NewTimer(cadence)
 
 	for {
-
 		select {
 		case <-timer.C:
 			startTime := time.Now()
@@ -125,8 +135,10 @@ func (rc *reportCoordinator) run() {
 				// to allow it to be reported on again
 				rc.idBlocks.Delete(string(id))
 
-				// remove it from active keys to indicate that the report was transmitted
-				rc.activeKeys.Delete(string(log.Key))
+				// set state of key to indicate that the report was transmitted
+				// setting a key in this way also blocks it in Accept even if
+				// Accept was never called for on a single node for this key
+				rc.activeKeys.Set(string(log.Key), true, defaultExpiration)
 			}
 
 			// attempt to ahere to a cadence of at least every second
