@@ -275,7 +275,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		// the process should return an error that wraps the last CheckUpkeep
 		// error with context about which key was checked and that too many
 		// errors were encountered during the parallel worker process
-		assert.Equal(t, "simulate RPC error: failed to check upkeep key '1|5': too many errors in parallel worker process; last error provided", err.Error())
+		assert.Contains(t, err.Error(), "too many errors in parallel worker process; last error provided")
 	})
 }
 
