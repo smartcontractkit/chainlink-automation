@@ -139,17 +139,12 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 
 	// go through keys and check the cache first
 	// if an item doesn't exist on the cache, send the items to the worker threads
+EachKey:
 	for _, key := range keys {
-		add := true
 		for _, filter := range filters {
 			if !filter(key) {
-				add = false
-				break
+				continue EachKey
 			}
-		}
-
-		if !add {
-			continue
 		}
 
 		// no RPC lookups need to be done if a result has already been cached
@@ -159,7 +154,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 			if result.State == types.Eligible {
 				samples.Append(&result)
 			}
-			continue
+			continue EachKey
 		}
 
 		// for every job added to the worker queue, add to the wait group
@@ -174,7 +169,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 				// result in a lot of errors in the results collector.
 				s.logger.Printf("context cancelled while attempting to add to queue")
 				wg.Done()
-				break
+				break EachKey
 			}
 
 			// the worker process has probably stopped so the function
