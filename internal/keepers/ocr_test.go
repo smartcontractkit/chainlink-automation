@@ -65,8 +65,8 @@ func TestObservation(t *testing.T) {
 			Ctx:                 func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet:           []*ktypes.UpkeepResult{},
 			SampleErr:           fmt.Errorf("test error"),
-			ExpectedObservation: types.Observation{},
-			ExpectedErr:         fmt.Errorf("test error"),
+			ExpectedObservation: nil,
+			ExpectedErr:         fmt.Errorf("test error: failed to sample upkeeps for observation"),
 		},
 		{
 			Name: "Filter to Empty Set",
@@ -635,6 +635,10 @@ func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
 	me := &BenchmarkMockedReportEncoder{}
 	mf := &BenchmarkMockedFilterer{}
 
+	me.rtnKeys = []ktypes.UpkeepResult{
+		{Key: ktypes.UpkeepKey([]byte("1|1"))},
+	}
+
 	plugin := &keepers{
 		logger:  log.New(io.Discard, "", 0),
 		encoder: me,
@@ -645,6 +649,7 @@ func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		_, err := plugin.ShouldTransmitAcceptedReport(context.Background(), types.ReportTimestamp{}, types.Report{})
 		if err != nil {
+			b.Logf("error encountered during benchmark: %s", err)
 			b.Fail()
 		}
 	}

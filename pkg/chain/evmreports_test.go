@@ -159,13 +159,14 @@ func TestDecodeReport(t *testing.T) {
 }
 
 func BenchmarkEncodeReport(b *testing.B) {
-	key1 := ktypes.UpkeepKey([]byte("1239487928374|187689279234987"))
-	key2 := ktypes.UpkeepKey([]byte("1239487928374|187689279234989"))
-	key3 := ktypes.UpkeepKey([]byte("1239487928375|187689279234987"))
+	key1 := ktypes.UpkeepKey([]byte("1239428374|187689279234987"))
+	key2 := ktypes.UpkeepKey([]byte("1239428374|187689279234989"))
+	key3 := ktypes.UpkeepKey([]byte("1239428375|187689279234987"))
 
 	noData := []byte{}
 	smallData := make([]byte, 12)
 	largeData := make([]byte, 128)
+	zeroBigInt := big.NewInt(0)
 
 	rand.Read(smallData)
 	rand.Read(largeData)
@@ -175,10 +176,20 @@ func BenchmarkEncodeReport(b *testing.B) {
 		Name string
 		Data []ktypes.UpkeepResult
 	}{
-		{Name: "No Perform Data", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: noData}}},
-		{Name: "Small Perform Data", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: smallData}}},
-		{Name: "Large Perform Data", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: largeData}}},
-		{Name: "Multiple Performs", Data: []ktypes.UpkeepResult{{Key: key1, PerformData: smallData}, {Key: key2, PerformData: largeData}, {Key: key3, PerformData: noData}}},
+		{Name: "No Perform Data", Data: []ktypes.UpkeepResult{
+			{Key: key1, PerformData: noData, GasUsed: zeroBigInt, FastGasWei: zeroBigInt, LinkNative: zeroBigInt, CheckBlockNumber: 1239428374},
+		}},
+		{Name: "Small Perform Data", Data: []ktypes.UpkeepResult{
+			{Key: key1, PerformData: smallData, GasUsed: zeroBigInt, FastGasWei: zeroBigInt, LinkNative: zeroBigInt, CheckBlockNumber: 1239428374},
+		}},
+		{Name: "Large Perform Data", Data: []ktypes.UpkeepResult{
+			{Key: key1, PerformData: largeData, GasUsed: zeroBigInt, FastGasWei: zeroBigInt, LinkNative: zeroBigInt, CheckBlockNumber: 1239428374},
+		}},
+		{Name: "Multiple Performs", Data: []ktypes.UpkeepResult{
+			{Key: key1, PerformData: smallData, GasUsed: zeroBigInt, FastGasWei: zeroBigInt, LinkNative: zeroBigInt, CheckBlockNumber: 1239428374},
+			{Key: key2, PerformData: largeData, GasUsed: zeroBigInt, FastGasWei: zeroBigInt, LinkNative: zeroBigInt, CheckBlockNumber: 1239428374},
+			{Key: key3, PerformData: noData, GasUsed: zeroBigInt, FastGasWei: zeroBigInt, LinkNative: zeroBigInt, CheckBlockNumber: 1239428375},
+		}},
 	}
 
 	for _, test := range tests {
