@@ -27,11 +27,11 @@ func newOcrLogContext(rt types.ReportTimestamp) ocrLogContext {
 }
 
 func (c ocrLogContext) String() string {
-	return fmt.Sprintf("[epoch, round, completion]: [%d, %d, %dms]", c.Epoch, c.Round, time.Since(c.StartTime)/time.Millisecond)
+	return fmt.Sprintf("[epoch=%d, round=%d, completion=%dms]", c.Epoch, c.Round, time.Since(c.StartTime)/time.Millisecond)
 }
 
 func (c ocrLogContext) Short() string {
-	return fmt.Sprintf("[epoch, round]: [%d, %d]", c.Epoch, c.Round)
+	return fmt.Sprintf("[epoch=%d, round=%d]", c.Epoch, c.Round)
 }
 
 // Query implements the types.ReportingPlugin interface in OCR2. The query produced from this
