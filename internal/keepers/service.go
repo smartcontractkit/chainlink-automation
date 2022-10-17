@@ -194,8 +194,8 @@ EachKey:
 	// multiple network calls can result in an error while some can be successful
 	// in the case that all workers encounter an error, bubble this up as a hard
 	// failure of the process.
-	if wResults.Total() > 0 && wResults.Total() == wResults.Failure && wResults.LastErr != nil {
-		return samples.Values(), fmt.Errorf("%w: too many errors in parallel worker process; last error provided", wResults.LastErr)
+	if wResults.Total() > 0 && wResults.Total() == wResults.Failures() && wResults.LastErr() != nil {
+		return samples.Values(), fmt.Errorf("%w: too many errors in parallel worker process; last error provided", wResults.LastErr())
 	}
 
 	return samples.Values(), nil
@@ -210,16 +210,16 @@ Outer:
 		case result := <-s.workers.results:
 			w.Done()
 			if result.Err == nil {
-				r.Success++
+				r.AddSuccess(1)
 				// cache results
 				s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
 				if result.Data.State == types.Eligible {
 					sa.Append(&result.Data)
 				}
 			} else {
-				r.LastErr = result.Err
+				r.SetLastErr(result.Err)
 				s.logger.Printf("error received from worker result: %s", result.Err)
-				r.Failure++
+				r.AddFailure(1)
 			}
 		case <-done:
 			s.logger.Printf("done signal received for worker group")
@@ -276,19 +276,56 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 }
 
 type workerResults struct {
-	Success int
-	Failure int
-	LastErr error
+	success int
+	failure int
+	lastErr error
+	mu      sync.RWMutex
+}
+
+func (wr *workerResults) AddSuccess(amt int) {
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+	wr.success = wr.success + amt
+}
+
+func (wr *workerResults) Failures() int {
+	wr.mu.RLock()
+	defer wr.mu.RUnlock()
+	return wr.failure
+}
+
+func (wr *workerResults) LastErr() error {
+	wr.mu.RLock()
+	defer wr.mu.RUnlock()
+	return wr.lastErr
+}
+
+func (wr *workerResults) AddFailure(amt int) {
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+	wr.failure = wr.failure + amt
+}
+
+func (wr *workerResults) SetLastErr(err error) {
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+	wr.lastErr = err
 }
 
 func (wr *workerResults) Total() int {
-	return wr.Success + wr.Failure
+	wr.mu.RLock()
+	defer wr.mu.RUnlock()
+	return wr.success + wr.failure
 }
 
 func (wr *workerResults) SuccessRate() float64 {
-	return float64(wr.Success) / float64(wr.Total())
+	wr.mu.RLock()
+	defer wr.mu.RUnlock()
+	return float64(wr.success) / float64(wr.Total())
 }
 
 func (wr *workerResults) FailureRate() float64 {
-	return float64(wr.Failure) / float64(wr.Total())
+	wr.mu.RLock()
+	defer wr.mu.RUnlock()
+	return float64(wr.failure) / float64(wr.Total())
 }
