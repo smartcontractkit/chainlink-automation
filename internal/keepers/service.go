@@ -57,23 +57,31 @@ func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, logger
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
 func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
-	// - get all upkeeps from contract
-	s.logger.Printf("get all active upkeep keys")
+	// get only the active upkeeps from the contract. this should not include
+	// any cancelled upkeeps
 	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to get upkeeps from registry for sampling", err)
 	}
 
-	s.logger.Printf("%d upkeep keys found in registry", len(keys))
-	// - select x upkeeps at random from set
+	s.logger.Printf("%d active upkeep keys found in registry", len(keys))
+	if len(keys) == 0 {
+		return []*types.UpkeepResult{}, nil
+	}
+
+	// select x upkeeps at random from set
 	keys = s.shuffler.Shuffle(keys)
 	size := s.ratio.OfInt(len(keys))
-	s.logger.Printf("%d keys selected by provided ratio", size)
 
-	// - check upkeeps selected
+	s.logger.Printf("%d keys selected by provided ratio %.8f", size, s.ratio)
+	if size <= 0 {
+		return []*types.UpkeepResult{}, nil
+	}
+
 	if s.workers == nil {
 		panic("cannot sample upkeeps without runner")
 	}
+
 	return s.parallelCheck(ctx, keys[:size], filters...)
 }
 
@@ -113,8 +121,13 @@ func (s *onDemandUpkeepService) stop() {
 func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
 	samples := newSyncedArray[*types.UpkeepResult]()
 
+	if len(keys) == 0 {
+		return samples.Values(), nil
+	}
+
 	var cacheHits int
 	var wg sync.WaitGroup
+	var wResults workerResults
 
 	// start the results listener
 	// if the context provided is cancelled, this listener shouldn't terminate
@@ -122,48 +135,16 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	// function's context and will terminate when that context is cancelled
 	// resulting in multiple errors being collected by this listener.
 	done := make(chan struct{})
-	go func() {
-		s.logger.Printf("starting service to read worker results")
-		var success int
-		var failure int
-
-	Outer:
-		for {
-			select {
-			case result := <-s.workers.results:
-				wg.Done()
-				if result.Err == nil {
-					success++
-					// cache results
-					s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
-					if result.Data.State == types.Eligible {
-						samples.Append(&result.Data)
-					}
-				} else {
-					failure++
-				}
-			case <-done:
-				s.logger.Printf("done signal received")
-				break Outer
-			}
-		}
-
-		s.logger.Printf("worker call success rate: %f; failure rate: %f", float64(success)/float64(success+failure), float64(failure)/float64(success+failure))
-	}()
+	go s.aggregateWorkerResults(&wg, &wResults, samples, done)
 
 	// go through keys and check the cache first
 	// if an item doesn't exist on the cache, send the items to the worker threads
+EachKey:
 	for _, key := range keys {
-		add := true
 		for _, filter := range filters {
 			if !filter(key) {
-				add = false
-				break
+				continue EachKey
 			}
-		}
-
-		if !add {
-			continue
 		}
 
 		// no RPC lookups need to be done if a result has already been cached
@@ -173,7 +154,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 			if result.State == types.Eligible {
 				samples.Append(&result)
 			}
-			continue
+			continue EachKey
 		}
 
 		// for every job added to the worker queue, add to the wait group
@@ -188,7 +169,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 				// result in a lot of errors in the results collector.
 				s.logger.Printf("context cancelled while attempting to add to queue")
 				wg.Done()
-				break
+				break EachKey
 			}
 
 			// the worker process has probably stopped so the function
@@ -202,9 +183,49 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	wg.Wait()
 	close(done)
 
+	if wResults.Total() == 0 {
+		s.logger.Printf("no network calls were made for this sampling set")
+	} else {
+		s.logger.Printf("worker call success rate: %.2f; failure rate: %.2f; total calls %d", wResults.SuccessRate(), wResults.FailureRate(), wResults.Total())
+	}
+
 	s.logger.Printf("sampling cache hit ratio %d/%d", cacheHits, len(keys))
 
+	// multiple network calls can result in an error while some can be successful
+	// in the case that all workers encounter an error, bubble this up as a hard
+	// failure of the process.
+	if wResults.Total() > 0 && wResults.Total() == wResults.Failure && wResults.LastErr != nil {
+		return samples.Values(), fmt.Errorf("%w: too many errors in parallel worker process; last error provided", wResults.LastErr)
+	}
+
 	return samples.Values(), nil
+}
+
+func (s *onDemandUpkeepService) aggregateWorkerResults(w *sync.WaitGroup, r *workerResults, sa *syncedArray[*types.UpkeepResult], done chan struct{}) {
+	s.logger.Printf("starting service to read worker results")
+
+Outer:
+	for {
+		select {
+		case result := <-s.workers.results:
+			w.Done()
+			if result.Err == nil {
+				r.Success++
+				// cache results
+				s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
+				if result.Data.State == types.Eligible {
+					sa.Append(&result.Data)
+				}
+			} else {
+				r.LastErr = result.Err
+				s.logger.Printf("error received from worker result: %s", result.Err)
+				r.Failure++
+			}
+		case <-done:
+			s.logger.Printf("done signal received for worker group")
+			break Outer
+		}
+	}
 }
 
 func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey, jobCtx context.Context) func(ctx context.Context) (types.UpkeepResult, error) {
@@ -212,7 +233,7 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		// cancel the job if either the worker group is stopped (ctx) or the
 		// job context is cancelled (jobCtx)
 		if jobCtx.Err() != nil || ctx.Err() != nil {
-			return types.UpkeepResult{}, fmt.Errorf("job not completed because one of two contexts had already been cancelled")
+			return types.UpkeepResult{}, fmt.Errorf("job not attempted because one of two contexts had already been cancelled")
 		}
 
 		c, cancel := context.WithCancel(context.Background())
@@ -231,18 +252,20 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 			}
 		}()
 
+		start := time.Now()
 		// perform check and update cache with result
 		ok, u, err := registry.CheckUpkeep(c, key)
+		logger.Printf("check upkeep took %dms to perform", time.Since(start)/time.Millisecond)
 		if ok {
 			logger.Printf("upkeep ready to perform for key %s", key)
 		}
 
-		if err != nil {
-			logger.Printf("error checking upkeep '%s': %s", key, err)
-		}
-
 		if u.FailureReason != 0 {
 			logger.Printf("upkeep '%s' had a non-zero failure reason: %d", key, u.FailureReason)
+		}
+
+		if err != nil {
+			err = fmt.Errorf("%w: failed to check upkeep key '%s'", err, key)
 		}
 
 		// close go-routine to prevent memory leaks
@@ -250,4 +273,22 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 
 		return u, err
 	}
+}
+
+type workerResults struct {
+	Success int
+	Failure int
+	LastErr error
+}
+
+func (wr *workerResults) Total() int {
+	return wr.Success + wr.Failure
+}
+
+func (wr *workerResults) SuccessRate() float64 {
+	return float64(wr.Success) / float64(wr.Total())
+}
+
+func (wr *workerResults) FailureRate() float64 {
+	return float64(wr.Failure) / float64(wr.Total())
 }
