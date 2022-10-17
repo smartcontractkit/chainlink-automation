@@ -27,7 +27,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			rg.Mock.On("IdentifierFromKey", actives[i]).Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
 		}
 
-		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).Return(actives, nil)
 
 		for i := 0; i < 5; i++ {
 			check := false
@@ -152,7 +152,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			t.FailNow()
 		}
 
-		assert.Less(t, len(result), 20)
+		assert.Less(t, len(result), 25)
 		assert.Greater(t, len(result), 5)
 
 		cancel()

@@ -48,7 +48,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		Limits: types.ReportingPluginLimits{
 			// queries should be empty anyway with the current implementation
 			MaxQueryLength: 0,
-			// an upkeep key is composed of a block number and upkeep id (~8 bytes)
+			// an upkeep key is composed of a block number and upkeep id (~40 bytes)
 			// an observation is multiple upkeeps to be performed
 			// 100 upkeeps to be performed would be a very high upper limit
 			// 100 * 10 = 1_000 bytes

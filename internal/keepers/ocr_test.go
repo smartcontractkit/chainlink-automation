@@ -106,7 +106,7 @@ func TestObservation(t *testing.T) {
 			})
 
 			ctx, cancel := test.Ctx()
-			ms.Mock.On("SampleUpkeeps", ctx).Return(test.SampleSet, test.SampleErr)
+			ms.Mock.On("SampleUpkeeps", mock.Anything).Return(test.SampleSet, test.SampleErr)
 			rd.Mock.On("Int63").Return(int64(0)).Maybe()
 
 			b, err := plugin.Observation(ctx, types.ReportTimestamp{}, types.Query{})
@@ -115,7 +115,7 @@ func TestObservation(t *testing.T) {
 			if test.ExpectedErr == nil {
 				assert.NoError(t, err, "no error expected for test %d; got %s", i+1, err)
 			} else {
-				assert.Equal(t, err.Error(), test.ExpectedErr.Error(), "error should match expected for test %d", i+1)
+				assert.Contains(t, err.Error(), test.ExpectedErr.Error(), "error should match expected for test %d", i+1)
 			}
 
 			assert.Equal(t, test.ExpectedObservation, b, "observation mismatch for test %d", i+1)
@@ -386,7 +386,7 @@ func TestReport(t *testing.T) {
 			// set up upkeep checks with the mocked service
 			for _, check := range test.Checks {
 				check.R.Key = check.K
-				ms.Mock.On("CheckUpkeep", ctx, check.K).Return(check.R, check.E)
+				ms.Mock.On("CheckUpkeep", mock.Anything, check.K).Return(check.R, check.E)
 			}
 
 			if len(test.Perform) > 0 {
@@ -534,14 +534,14 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 			ReportContents: nil,
 			DecodeErr:      fmt.Errorf("wrapped error"),
 			ExpectedBool:   false,
-			Err:            fmt.Errorf("failed to get ids from report: wrapped error"),
+			Err:            fmt.Errorf("failed to get ids from report"),
 		},
 		{
 			Name:           "Empty Report",
 			Description:    "Should transmit should return false with an error when report does not contain items",
 			ReportContents: nil,
 			ExpectedBool:   false,
-			Err:            fmt.Errorf("no ids in report in epoch 5 for round 2"),
+			Err:            fmt.Errorf("no ids in report"),
 		},
 		{
 			Name:        "Is Transmitted",
@@ -624,7 +624,7 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 
 		assert.Equal(t, test.ExpectedBool, ok)
 		if test.Err != nil {
-			assert.Equal(t, test.Err.Error(), err.Error())
+			assert.Contains(t, err.Error(), test.Err.Error())
 		} else {
 			assert.NoError(t, err)
 		}
