@@ -252,8 +252,10 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 			}
 		}()
 
+		start := time.Now()
 		// perform check and update cache with result
 		ok, u, err := registry.CheckUpkeep(c, key)
+		logger.Printf("check upkeep took %dms to perform", time.Since(start)/time.Millisecond)
 		if ok {
 			logger.Printf("upkeep ready to perform for key %s", key)
 		}
