@@ -9,6 +9,9 @@ dependencies:
 test: dependencies
 	@go test -v $(GOPACKAGES)
 
+race: dependencies
+	@go test -race $(GOPACKAGES)
+
 coverage: 
 	@go test -coverprofile cover.out $(GOPACKAGES)
 

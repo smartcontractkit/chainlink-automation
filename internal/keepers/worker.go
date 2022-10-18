@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -57,8 +58,10 @@ type workerGroup[T any] struct {
 	activeWorkers int
 	workers       chan *worker[T]
 	queue         chan work[T]
+	queueClosed   bool
 	stop          chan struct{}
 	results       chan workResult[T]
+	mu            sync.Mutex
 }
 
 func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
@@ -100,7 +103,10 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 					g.activeWorkers--
 				}
 			case <-g.stop:
+				g.mu.Lock()
 				close(g.queue)
+				g.queueClosed = true
+				g.mu.Unlock()
 				cancel()
 				return
 			}
@@ -115,8 +121,15 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 // Do adds a new work item onto the work queue. This function blocks until
 // the work queue clears up or the context is cancelled.
 func (wg *workerGroup[T]) Do(ctx context.Context, w work[T]) error {
+	wg.mu.Lock()
+	defer wg.mu.Unlock()
+
 	if ctx.Err() != nil {
 		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
+	}
+
+	if wg.queueClosed {
+		return fmt.Errorf("%w; work not added to queue", ErrProcessStopped)
 	}
 
 	select {
