@@ -18,6 +18,10 @@ type ocrLogContext struct {
 	StartTime time.Time
 }
 
+const (
+	maxObservationKeys = 5
+)
+
 func newOcrLogContext(rt types.ReportTimestamp) ocrLogContext {
 	return ocrLogContext{
 		Epoch:     rt.Epoch,
@@ -57,8 +61,8 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// limit the number of keys that can be added to an observation
 	// OCR observation limit is set to 1_000 bytes so this should be under the
 	// limit
-	if len(keys) > 10 {
-		keys = keys[:10]
+	if len(keys) > maxObservationKeys {
+		keys = keys[:maxObservationKeys]
 	}
 
 	b, err := encode(keys)
