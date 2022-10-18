@@ -73,7 +73,7 @@ func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...fu
 	keys = s.shuffler.Shuffle(keys)
 	size := s.ratio.OfInt(len(keys))
 
-	s.logger.Printf("%d keys selected by provided ratio %.8f", size, s.ratio)
+	s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
 	if size <= 0 {
 		return []*types.UpkeepResult{}, nil
 	}
