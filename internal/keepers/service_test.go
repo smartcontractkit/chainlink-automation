@@ -153,7 +153,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		}
 
 		assert.Less(t, len(result), 25)
-		assert.Greater(t, len(result), 5)
+		assert.Greater(t, len(result), 4)
 
 		cancel()
 	})
