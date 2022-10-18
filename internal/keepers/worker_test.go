@@ -280,10 +280,13 @@ func TestWorkerGroup(t *testing.T) {
 		}
 
 		// check that queue is closed
-		testAdd := func() {
-			wg.queue <- func(_ context.Context) (int, error) { return 0, nil }
+		testAdd := func() error {
+			return wg.Do(context.Background(), func(ctx context.Context) (int, error) {
+				return 0, nil
+			})
 		}
-		assert.Panics(t, testAdd, "queue should be closed")
+
+		assert.ErrorIs(t, testAdd(), ErrProcessStopped, "queue should be closed")
 	})
 }
 
