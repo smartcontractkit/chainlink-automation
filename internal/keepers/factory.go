@@ -10,6 +10,8 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
+const maxObservationLength = 1_000
+
 type ReportingFactoryConfig struct {
 	CacheExpiration       time.Duration
 	CacheEvictionInterval time.Duration
@@ -52,7 +54,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			// an observation is multiple upkeeps to be performed
 			// 100 upkeeps to be performed would be a very high upper limit
 			// 100 * 10 = 1_000 bytes
-			MaxObservationLength: 1_000,
+			MaxObservationLength: maxObservationLength,
 			// a report is composed of 1 or more abi encoded perform calls
 			// with performData of arbitrary length
 			MaxReportLength: 10_000, // TODO (config): pick sane limit based on expected performData size. maybe set this to block size limit or 2/3 block size limit?

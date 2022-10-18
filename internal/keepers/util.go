@@ -55,6 +55,8 @@ func keyList(upkeeps []*ktypes.UpkeepResult) []ktypes.UpkeepKey {
 		ret[i] = up.Key
 	}
 
+	sort.Sort(sortUpkeepKeys(ret))
+
 	return ret
 }
 
