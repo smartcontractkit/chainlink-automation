@@ -224,3 +224,66 @@ func (a *syncedArray[T]) Values() []T {
 	defer a.mu.RUnlock()
 	return a.data
 }
+
+func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
+	if len(keys) == 0 {
+		return encode([]ktypes.UpkeepKey{})
+	}
+
+	// limit the number of keys that can be added to an observation
+	// OCR observation limit is set to 1_000 bytes so this should be under the
+	// limit
+	var tot int
+	var idx int
+
+	// json encoding byte arrays follows a linear progression of byte length
+	// vs encoded length. the following is the magic equation where x is the
+	// byte array length and y is the encoded length.
+	// eq: y = 1.32 * x + 7.31
+
+	// if the total plus padding for json encoding is less than the max, another
+	// key can be included
+	c := true
+	for c && idx < len(keys) {
+		tot += len(keys[idx])
+
+		// because we are encoding an array of byte arrays, some bytes are added
+		// per byte array and all byte arrays could be different lengths.
+		// this is only for the purpose of estimation so add some padding for
+		// each byte array
+		v := (1.32 * float64(tot)) + 7.31 + float64((idx+1)*2)
+		if int(math.Ceil(v)) > limit {
+			c = false
+		}
+
+		idx++
+	}
+
+	toEncode := keys[:idx]
+
+	var b []byte
+	var err error
+
+	b, err = encode(toEncode)
+	if err != nil {
+		return nil, err
+	}
+
+	// finally we walk backward from the estimate if the resulting length is
+	// larger than our limit. this ensures that the output is within range.
+	for len(b) > limit {
+		idx--
+		if idx == 0 {
+			return encode([]ktypes.UpkeepKey{})
+		}
+
+		toEncode = keys[:idx]
+
+		b, err = encode(toEncode)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return b, nil
+}

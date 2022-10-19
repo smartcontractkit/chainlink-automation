@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"fmt"
+	"math/rand"
 	"sort"
 	"testing"
 
@@ -161,4 +162,66 @@ func TestLowest(t *testing.T) {
 	result := lowest(values)
 
 	assert.Equal(t, expected, result)
+}
+
+func TestLimitedLengthEncode(t *testing.T) {
+	tests := []struct {
+		Name      string
+		KeyLength int
+		KeyCount  int
+		MaxLength int
+	}{
+		{Name: "Few Short Keys", KeyLength: 14, KeyCount: 10, MaxLength: 1000},
+		{Name: "Many Short Keys", KeyLength: 4, KeyCount: 100, MaxLength: 1000},
+		{Name: "Few Long Keys", KeyLength: 40, KeyCount: 10, MaxLength: 1000},
+		{Name: "Many Long Keys", KeyLength: 62, KeyCount: 100, MaxLength: 1000},
+	}
+
+	for _, test := range tests {
+		keys := make([]ktypes.UpkeepKey, test.KeyCount)
+		for i := 0; i < test.KeyCount; i++ {
+			keys[i] = make([]byte, test.KeyLength)
+		}
+
+		b, err := limitedLengthEncode(keys, test.MaxLength)
+		t.Logf("length: %d", len(b))
+
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), test.MaxLength)
+	}
+}
+
+func FuzzLimitedLengthEncode(f *testing.F) {
+	f.Add(4, 10)
+	f.Fuzz(func(t *testing.T, a int, b int) {
+		// only accept fuzz values of key length between 2 and 700 and number
+		// of keys greater than or equal to 0.
+		// the number 700 was chosen because a key length larger than this
+		// should be paired with a higher limit anyway. this test is scoped to
+		// a single encoded limit while fuzzing the keys and key lengths.
+		// keys are randomized in length to ensure outcome remains within limits
+		if a < 0 || b <= 1 || b >= 700 {
+			return
+		}
+
+		keys := make([]ktypes.UpkeepKey, a)
+		for i := 0; i < a; i++ {
+			keys[i] = ktypes.UpkeepKey(make([]byte, rand.Intn(b)))
+		}
+
+		bt, err := limitedLengthEncode(keys, 1000)
+
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(bt), 1000, "keys: %d; length: %d", a, b)
+
+		if a > 0 {
+			output := make([]ktypes.UpkeepKey, 0)
+			err = decode(bt, &output)
+			assert.NoError(t, err)
+
+			assert.Greater(t, len(bt), 0, "length of bytes :: keys: %d; length: %d", a, b)
+			assert.Greater(t, len(output), 0, "min number of keys :: keys: %d; length: %d", a, b)
+			assert.LessOrEqual(t, len(output), a, "max number of keys :: keys: %d; length: %d", a, b)
+		}
+	})
 }

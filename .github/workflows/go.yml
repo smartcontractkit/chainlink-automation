@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  build:
+  lint:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -24,11 +24,41 @@ jobs:
         # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
         version: latest
 
-    - name: Build
-      run: go build -v ./...
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
 
-    - name: Test
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Run Unit Tests
       run: go test -v ./...
+    
+  race-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
 
-    - name: Race Test
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Run Race Tests
       run: go test -race ./...
+
+  fuzz-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Run Keepers Package Fuzz Tests
+      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/internal/keepers
