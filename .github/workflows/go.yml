@@ -33,5 +33,5 @@ jobs:
     - name: Run Race Tests
       run: go test -race ./...
 
-    - name: Run Fuzz Tests
-      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# ./...
+    - name: Run Keepers Package Fuzz Tests
+      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/internal/keepers
