@@ -46,6 +46,19 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ types.Query) (types.Observation, error) {
 	lCtx := newOcrLogContext(rt)
 	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
+	cancel := func() {}
+
+	deadline, ok := ctx.Deadline()
+	if ok {
+		// reduce deadline by 100 milliseconds to allow observation to have a
+		// soft landing when up against a parent context cancellation.
+		// this forces all workers to close and report early, allowing the
+		// observation round to not be a total loss.
+		deadline.Add(-1 * 100 * time.Millisecond)
+		ctx, cancel = context.WithDeadline(ctx, deadline)
+	}
+
+	defer cancel()
 
 	results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
 	if err != nil {
