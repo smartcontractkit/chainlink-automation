@@ -27,8 +27,11 @@ jobs:
     - name: Build
       run: go build -v ./...
 
-    - name: Test
+    - name: Run Unit Tests
       run: go test -v ./...
 
-    - name: Race Test
+    - name: Run Race Tests
       run: go test -race ./...
+
+    - name: Run Fuzz Tests
+      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# ./...

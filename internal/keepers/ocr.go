@@ -56,21 +56,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	// limit the number of keys that can be added to an observation
-	// OCR observation limit is set to 1_000 bytes so this should be under the
-	// limit
-	var tot int
-	var idx int
-	// if the total plus padding for json encoding is less than the max, another
-	// key can be included
-	for tot+(5*(idx+1)) < maxObservationLength && idx < len(keys) {
-		tot += len(keys[idx])
-		idx++
-	}
-
-	keys = keys[:idx]
-
-	b, err := encode(keys)
+	b, err := limitedLengthEncode(keys, maxObservationLength)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
 	}
