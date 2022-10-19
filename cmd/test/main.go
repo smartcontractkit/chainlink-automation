@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"log"
+	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/libocr/commontypes"
+	"github.com/smartcontractkit/libocr/offchainreporting2/chains/evmutil"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/cmd/test/blocks"
+	"github.com/smartcontractkit/ocr2keepers/cmd/test/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/test/mocks"
-	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/test/simulators"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -18,18 +21,20 @@ import (
 
 func main() {
 
-	var pData []byte
-	var err error
-
-	if pData, err = ioutil.ReadFile("./runbook.yaml"); err != nil {
-		panic(err)
+	rb := config.RunBook{
+		BlockCadence: config.Blocks{
+			Genesis: big.NewInt(128_943_862),
+			Cadence: 14 * time.Second,
+		},
 	}
 
-	data := make(map[interface{}]interface{})
-	err = yaml.Unmarshal(pData, &data)
-	if err != nil {
-		panic(err)
+	blocks := blocks.NewBlockBroadcaster(rb.BlockCadence)
+	digester := evmutil.EVMOffchainConfigDigester{
+		ChainID:         1,
+		ContractAddress: common.BigToAddress(big.NewInt(12)),
 	}
+
+	ct := simulators.NewSimulatedContract(blocks, digester)
 
 	slogger := NewSimpleLogger(log.Writer(), Debug)
 	simNet := simulators.NewSimulatedNetwork()
@@ -37,7 +42,7 @@ func main() {
 	config := ocr2keepers.DelegateConfig{
 		BinaryNetworkEndpointFactory: simNet.NewFactory(),
 		V2Bootstrappers:              []commontypes.BootstrapperLocator{},
-		ContractConfigTracker:        new(mocks.MockContractConfigTracker),
+		ContractConfigTracker:        ct,
 		ContractTransmitter:          new(mocks.MockContractTransmitter),
 		KeepersDatabase:              new(mocks.MockDatabase),
 		LocalConfig: types.LocalConfig{
@@ -51,7 +56,7 @@ func main() {
 		},
 		Logger:                 slogger,
 		MonitoringEndpoint:     new(mocks.MockMonitoringEndpoint),
-		OffchainConfigDigester: new(mocks.MockOffchainConfigDigester),
+		OffchainConfigDigester: digester,
 		OffchainKeyring:        new(mocks.MockOffchainKeyring),
 		OnchainKeyring:         new(mocks.MockOnchainKeyring),
 		Registry:               new(mocks.MockRegistry),
