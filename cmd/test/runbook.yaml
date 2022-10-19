@@ -1,0 +1,30 @@
+blocks:
+  genesis: 1
+  cadence: 14s
+config:
+  1:
+    count: 1
+    signers:
+      - ''
+      - ''
+    transmitters:
+      - ''
+      - ''
+    f: 1
+    onchain: ''
+    offchain-version: 1
+    offchain: ''
+  23:
+    count: 1
+    signers:
+      - ''
+      - ''
+      - ''
+    transmitters:
+      - ''
+      - ''
+      - ''
+    f: 1
+    onchain: ''
+    offchain-version: 1
+    offchain: ''
