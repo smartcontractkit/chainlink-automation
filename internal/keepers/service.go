@@ -232,6 +232,7 @@ Outer:
 }
 
 func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey, jobCtx context.Context) func(ctx context.Context) (types.UpkeepResult, error) {
+	logger.Printf("check upkeep job created for key: '%s'", key)
 	return func(serviceCtx context.Context) (types.UpkeepResult, error) {
 		// cancel the job if either the worker group is stopped (ctx) or the
 		// job context is cancelled (jobCtx)
@@ -318,17 +319,21 @@ func (wr *workerResults) SetLastErr(err error) {
 func (wr *workerResults) Total() int {
 	wr.mu.RLock()
 	defer wr.mu.RUnlock()
+	return wr.total()
+}
+
+func (wr *workerResults) total() int {
 	return wr.success + wr.failure
 }
 
 func (wr *workerResults) SuccessRate() float64 {
 	wr.mu.RLock()
 	defer wr.mu.RUnlock()
-	return float64(wr.success) / float64(wr.Total())
+	return float64(wr.success) / float64(wr.total())
 }
 
 func (wr *workerResults) FailureRate() float64 {
 	wr.mu.RLock()
 	defer wr.mu.RUnlock()
-	return float64(wr.failure) / float64(wr.Total())
+	return float64(wr.failure) / float64(wr.total())
 }

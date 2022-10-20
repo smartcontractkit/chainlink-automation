@@ -163,9 +163,10 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		assert.Greater(t, len(result), 0)
 
 		cancel()
-		<-time.After(10 * time.Millisecond)
+		<-time.After(100 * time.Millisecond)
 
-		scnr := bufio.NewScanner(&logBuff)
+		b := logBuff.Bytes()
+		scnr := bufio.NewScanner(bytes.NewBuffer(b))
 		scnr.Split(bufio.ScanLines)
 
 		var attempted int
