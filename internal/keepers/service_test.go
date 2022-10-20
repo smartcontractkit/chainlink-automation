@@ -169,7 +169,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 
 		go func() {
 			defer pW.Close()
-			io.Copy(pW, &logBuff)
+			_, _ = io.Copy(pW, &logBuff)
 		}()
 
 		scnr := bufio.NewScanner(pR)

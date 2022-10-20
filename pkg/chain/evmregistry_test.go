@@ -130,7 +130,6 @@ func TestCheckUpkeep(t *testing.T) {
 
 	t.Run("Hanging process respects context", func(t *testing.T) {
 		mockClient := new(mocks.Client)
-		ctx := context.Background()
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 
 		rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
