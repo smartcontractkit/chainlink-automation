@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -64,6 +65,23 @@ func (receiver ContractMockReceiver) MockRevertResponse(funcName string, msg str
 			}),
 			mock.Anything).
 		Return(nil, fmt.Errorf("revert%s", msg))
+}
+
+func (receiver ContractMockReceiver) MockNonRevertError(funcName string, err error, after time.Duration) *mock.Call {
+	funcSig := hexutil.Encode(receiver.abi.Methods[funcName].ID)
+	if len(funcSig) != funcSigLength {
+		receiver.t.Fatalf("Unable to find Registry contract function with name %s", funcName)
+	}
+
+	return receiver.ethMock.
+		On(
+			"CallContract",
+			mock.Anything,
+			mock.MatchedBy(func(callArgs ethereum.CallMsg) bool {
+				return hexutil.Encode(callArgs.Data)[0:funcSigLength] == funcSig
+			}),
+			mock.Anything).
+		Return(nil, err).After(after)
 }
 
 func (receiver ContractMockReceiver) mustEncodeResponse(funcName string, responseArgs ...interface{}) []byte {

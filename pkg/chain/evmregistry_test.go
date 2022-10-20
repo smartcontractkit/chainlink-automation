@@ -2,8 +2,10 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -124,6 +126,28 @@ func TestCheckUpkeep(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, false, ok)
 		assert.Equal(t, types.NotEligible, upkeep.State)
+	})
+
+	t.Run("Hanging process respects context", func(t *testing.T) {
+		mockClient := new(mocks.Client)
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+
+		rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
+		rec.MockNonRevertError("checkUpkeep", fmt.Errorf("test error"), 200*time.Millisecond)
+
+		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
+		if err != nil {
+			t.FailNow()
+		}
+
+		start := time.Now()
+		ok, _, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+
+		assert.LessOrEqual(t, time.Since(start), 60*time.Millisecond)
+
+		cancel()
+		assert.ErrorIs(t, err, ErrContextCancelled)
+		assert.Equal(t, false, ok)
 	})
 }
 
