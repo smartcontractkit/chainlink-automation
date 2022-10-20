@@ -165,8 +165,14 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		cancel()
 		<-time.After(100 * time.Millisecond)
 
-		b := logBuff.Bytes()
-		scnr := bufio.NewScanner(bytes.NewBuffer(b))
+		pR, pW := io.Pipe()
+
+		go func() {
+			defer pW.Close()
+			io.Copy(pW, &logBuff)
+		}()
+
+		scnr := bufio.NewScanner(pR)
 		scnr.Split(bufio.ScanLines)
 
 		var attempted int
