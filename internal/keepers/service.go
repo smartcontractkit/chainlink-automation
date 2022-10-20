@@ -211,7 +211,6 @@ Outer:
 	for {
 		select {
 		case result := <-s.workers.results:
-			w.Done()
 			if result.Err == nil {
 				r.AddSuccess(1)
 				// cache results
@@ -224,6 +223,7 @@ Outer:
 				s.logger.Printf("error received from worker result: %s", result.Err)
 				r.AddFailure(1)
 			}
+			w.Done()
 		case <-done:
 			s.logger.Printf("done signal received for job result aggregator")
 			break Outer
