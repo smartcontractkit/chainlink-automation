@@ -12,6 +12,8 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
+var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
+
 type onDemandUpkeepService struct {
 	logger       *log.Logger
 	ratio        sampleRatio
@@ -160,6 +162,7 @@ EachKey:
 		// for every job added to the worker queue, add to the wait group
 		// all jobs should complete before completing the function
 		wg.Add(1)
+		s.logger.Printf("attempting to send key to worker group")
 		if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
 			if errors.Is(err, ErrContextCancelled) {
 				// if the context is cancelled before the work can be
@@ -195,7 +198,7 @@ EachKey:
 	// in the case that all workers encounter an error, bubble this up as a hard
 	// failure of the process.
 	if wResults.Total() > 0 && wResults.Total() == wResults.Failures() && wResults.LastErr() != nil {
-		return samples.Values(), fmt.Errorf("%w: too many errors in parallel worker process; last error provided", wResults.LastErr())
+		return samples.Values(), fmt.Errorf("%w: last error encounter by worker was '%s'", ErrTooManyErrors, wResults.LastErr())
 	}
 
 	return samples.Values(), nil
@@ -222,17 +225,17 @@ Outer:
 				r.AddFailure(1)
 			}
 		case <-done:
-			s.logger.Printf("done signal received for worker group")
+			s.logger.Printf("done signal received for job result aggregator")
 			break Outer
 		}
 	}
 }
 
 func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey, jobCtx context.Context) func(ctx context.Context) (types.UpkeepResult, error) {
-	return func(ctx context.Context) (types.UpkeepResult, error) {
+	return func(serviceCtx context.Context) (types.UpkeepResult, error) {
 		// cancel the job if either the worker group is stopped (ctx) or the
 		// job context is cancelled (jobCtx)
-		if jobCtx.Err() != nil || ctx.Err() != nil {
+		if jobCtx.Err() != nil || serviceCtx.Err() != nil {
 			return types.UpkeepResult{}, fmt.Errorf("job not attempted because one of two contexts had already been cancelled")
 		}
 
@@ -244,7 +247,7 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 			case <-jobCtx.Done():
 				logger.Printf("check upkeep job context cancelled for key %s", key)
 				cancel()
-			case <-ctx.Done():
+			case <-serviceCtx.Done():
 				logger.Printf("worker service context cancelled")
 				cancel()
 			case <-done:

@@ -1,10 +1,13 @@
 package keepers
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"testing"
 	"time"
 
@@ -98,9 +101,11 @@ func TestOnDemandUpkeepService(t *testing.T) {
 	})
 
 	t.Run("SampleUpkeeps_CancelContext", func(t *testing.T) {
+
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		rg := new(MockedRegistry)
 
+		// test with 100 keys which should start up 100 worker jobs
 		keyCount := 100
 		actives := make([]ktypes.UpkeepKey, keyCount)
 		for i := 0; i < keyCount; i++ {
@@ -108,10 +113,12 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			rg.Mock.On("IdentifierFromKey", actives[i]).Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
 		}
 
+		// the after func simulates a blocking RPC call that either takes
+		// 90 milliseconds to complete or exits on context cancellation
 		makeAfterFunc := func(ct context.Context) func() chan struct{} {
 			return func() chan struct{} {
 				c := make(chan struct{}, 1)
-				t := time.NewTimer(90 * time.Millisecond)
+				t := time.NewTimer(15 * time.Millisecond)
 
 				go func() {
 					select {
@@ -137,14 +144,15 @@ func TestOnDemandUpkeepService(t *testing.T) {
 				Maybe()
 		}
 
-		l := log.New(io.Discard, "", 0)
+		var logBuff bytes.Buffer
+		l := log.New(&logBuff, "", 0)
 		svc := &onDemandUpkeepService{
 			logger:   l,
 			ratio:    sampleRatio(1.0),
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:    newCache[ktypes.UpkeepResult](200 * time.Millisecond),
-			workers:  newWorkerGroup[ktypes.UpkeepResult](10, 100),
+			workers:  newWorkerGroup[ktypes.UpkeepResult](10, 20),
 		}
 
 		result, err := svc.SampleUpkeeps(ctx)
@@ -152,10 +160,53 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			t.FailNow()
 		}
 
-		assert.Less(t, len(result), 25)
-		assert.Greater(t, len(result), 4)
+		assert.Greater(t, len(result), 0)
 
 		cancel()
+		<-time.After(10 * time.Millisecond)
+
+		scnr := bufio.NewScanner(&logBuff)
+		scnr.Split(bufio.ScanLines)
+
+		var attempted int
+		var notAttempted int
+		var cancelled int
+		var completed int
+		var notSentToWorker int
+		for scnr.Scan() {
+			line := scnr.Text()
+
+			if strings.Contains(line, "attempting to send") {
+				attempted++
+			}
+
+			//if strings.Contains(line, "upkeep ready to perform") {
+			if strings.Contains(line, "check upkeep took") {
+				completed++
+			}
+
+			if strings.Contains(line, "check upkeep job context cancelled") {
+				cancelled++
+			}
+
+			if strings.Contains(line, "job not attempted") {
+				notAttempted++
+			}
+
+			if strings.Contains(line, "context cancelled while") {
+				notSentToWorker++
+			}
+		}
+
+		t.Logf("jobs attempted: %d", attempted)
+		t.Logf("jobs not attempted: %d", notAttempted)
+		t.Logf("jobs completed: %d", completed)
+		t.Logf("jobs cancelled: %d", cancelled)
+		t.Logf("jobs not sent to worker: %d", notSentToWorker)
+
+		assert.Equal(t, attempted, completed+notAttempted+notSentToWorker)
+		assert.Greater(t, cancelled, 0)
+
 	})
 
 	t.Run("CheckUpkeep", func(t *testing.T) {
@@ -275,7 +326,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		// the process should return an error that wraps the last CheckUpkeep
 		// error with context about which key was checked and that too many
 		// errors were encountered during the parallel worker process
-		assert.Contains(t, err.Error(), "too many errors in parallel worker process; last error provided")
+		assert.Contains(t, err.Error(), "too many errors in parallel worker process: last error ")
 	})
 }
 

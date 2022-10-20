@@ -22,7 +22,14 @@ var (
 	ErrBlockKeyNotParsable   = fmt.Errorf("block identifier not parsable")
 	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
 	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
+	ErrContextCancelled      = fmt.Errorf("context was cancelled")
 )
+
+type outStruct struct {
+	ok  bool
+	ur  types.UpkeepResult
+	err error
+}
 
 type evmRegistryv2_0 struct {
 	registry  *keeper_registry_wrapper2_0.KeeperRegistryCaller
@@ -81,37 +88,35 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 	return keys, nil
 }
 
-func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
-	var err error
-
+func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch chan outStruct) {
 	block, upkeepId, err := BlockAndIdFromKey(key)
 	if err != nil {
-		return false, types.UpkeepResult{}, err
+		ch <- outStruct{
+			ur:  types.UpkeepResult{},
+			err: err,
+		}
+		return
 	}
 
 	opts, err := r.buildCallOpts(ctx, block)
 	if err != nil {
-		return false, types.UpkeepResult{}, err
+		ch <- outStruct{
+			ur:  types.UpkeepResult{},
+			err: err,
+		}
+		return
 	}
 
 	rawCall := &keeper_registry_wrapper2_0.KeeperRegistryCallerRaw{Contract: r.registry}
 
-	/*
-		checkUpkeep(uint256 id)
-		returns (
-		      bool upkeepNeeded,
-		      bytes memory performData,
-			  UpkeepFailureReason upkeepFailureReason,
-		      uint256 gasUsed,
-		      uint256 fastGasWei,
-		      uint256 linkNative
-		)
-	*/
-
 	var out []interface{}
 	err = rawCall.Call(opts, &out, "checkUpkeep", upkeepId)
 	if err != nil {
-		return false, types.UpkeepResult{}, fmt.Errorf("%w: checkUpkeep returned result: %s", ErrRegistryCallFailure, err)
+		ch <- outStruct{
+			ur:  types.UpkeepResult{},
+			err: fmt.Errorf("%w: checkUpkeep returned result: %s", ErrRegistryCallFailure, err),
+		}
+		return
 	}
 
 	result := types.UpkeepResult{
@@ -129,7 +134,10 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	// TODO: not sure it it's best to short circuit here
 	if !upkeepNeeded {
 		result.State = types.NotEligible
-		return false, result, nil
+		ch <- outStruct{
+			ur: result,
+		}
+		return
 	}
 
 	type performDataStruct struct {
@@ -162,7 +170,11 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	var ret0 = new(res)
 	err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
 	if err != nil {
-		return false, types.UpkeepResult{}, fmt.Errorf("%w", err)
+		ch <- outStruct{
+			ur:  types.UpkeepResult{},
+			err: fmt.Errorf("%w", err),
+		}
+		return
 	}
 
 	result.CheckBlockNumber = ret0.Result.CheckBlockNumber
@@ -170,25 +182,45 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) 
 	result.PerformData = ret0.Result.PerformData
 
 	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
-	/*
-		simulatePerformUpkeep(uint256 id, bytes calldata performData)
-		returns (
-			bool success,
-			uint256 gasUsed
-		)
-	*/
 	var out2 []interface{}
 	err = rawCall.Call(opts, &out2, "simulatePerformUpkeep", upkeepId, result.PerformData)
 	if err != nil {
-		return false, types.UpkeepResult{}, fmt.Errorf("%w: simulate perform upkeep returned result: %s", ErrRegistryCallFailure, err)
+		ch <- outStruct{
+			ur:  types.UpkeepResult{},
+			err: fmt.Errorf("%w: simulate perform upkeep returned result: %s", ErrRegistryCallFailure, err),
+		}
+		return
 	}
 	simulatePerformSuccess := *abi.ConvertType(out2[0], new(bool)).(*bool)
 	if !simulatePerformSuccess {
 		result.State = types.NotEligible
-		return false, result, nil
+		ch <- outStruct{
+			ur: result,
+		}
+		return
 	}
 
-	return true, result, nil
+	ch <- outStruct{
+		ok: true,
+		ur: result,
+	}
+}
+
+func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
+	chResult := make(chan outStruct)
+	go r.check(ctx, key, chResult)
+
+	select {
+	case rs := <-chResult:
+		return rs.ok, rs.ur, rs.err
+	case <-ctx.Done():
+		// safety on context done to provide an error on context cancellation
+		// contract calls through the geth wrappers are a bit of a black box
+		// so this safety net ensures contexts are fully respected and contract
+		// call functions have a more graceful closure outside the scope of
+		// CheckUpkeep needing to return immediately.
+		return false, types.UpkeepResult{}, fmt.Errorf("%w: failed to check upkeep on registry", ErrContextCancelled)
+	}
 }
 
 func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
