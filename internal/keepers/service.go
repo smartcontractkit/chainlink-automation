@@ -208,7 +208,6 @@ Outer:
 	for {
 		select {
 		case result := <-s.workers.results:
-			w.Done()
 			if result.Err == nil {
 				r.AddSuccess(1)
 				// cache results
@@ -221,6 +220,7 @@ Outer:
 				s.logger.Printf("error received from worker result: %s", result.Err)
 				r.AddFailure(1)
 			}
+			w.Done()
 		case <-done:
 			s.logger.Printf("done signal received for worker group")
 			break Outer
@@ -315,17 +315,21 @@ func (wr *workerResults) SetLastErr(err error) {
 func (wr *workerResults) Total() int {
 	wr.mu.RLock()
 	defer wr.mu.RUnlock()
-	return wr.success + wr.failure
+	return wr.unsafeTotal()
 }
 
 func (wr *workerResults) SuccessRate() float64 {
 	wr.mu.RLock()
 	defer wr.mu.RUnlock()
-	return float64(wr.success) / float64(wr.Total())
+	return float64(wr.success) / float64(wr.unsafeTotal())
 }
 
 func (wr *workerResults) FailureRate() float64 {
 	wr.mu.RLock()
 	defer wr.mu.RUnlock()
-	return float64(wr.failure) / float64(wr.Total())
+	return float64(wr.failure) / float64(wr.unsafeTotal())
+}
+
+func (wr *workerResults) unsafeTotal() int {
+	return wr.success + wr.failure
 }

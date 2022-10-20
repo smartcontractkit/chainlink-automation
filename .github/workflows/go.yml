@@ -16,7 +16,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.18
+        go-version: 1.19
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
@@ -32,7 +32,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.18
+        go-version: 1.19
 
     - name: Run Unit Tests
       run: go test -v ./...
@@ -45,7 +45,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.18
+        go-version: 1.19
 
     - name: Run Race Tests
       run: go test -race ./...
@@ -58,7 +58,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.18
+        go-version: 1.19
 
     - name: Run Keepers Package Fuzz Tests
       run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/internal/keepers
