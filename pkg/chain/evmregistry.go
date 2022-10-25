@@ -207,7 +207,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 }
 
 func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
-	chResult := make(chan outStruct)
+	chResult := make(chan outStruct, 1)
 	go r.check(ctx, key, chResult)
 
 	select {
