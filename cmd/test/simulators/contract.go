@@ -3,16 +3,20 @@ package simulators
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/test/config"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type BlockBroadcaster interface {
 	Subscribe(bool) (int, chan config.SymBlock)
+	Unsubscribe(int)
+	Transmit([]byte, uint32) error
 }
 
 type Digester interface {
@@ -20,25 +24,44 @@ type Digester interface {
 }
 
 type SimulatedContract struct {
-	src        BlockBroadcaster
-	dgst       Digester
-	blocks     map[string]config.SymBlock
-	configs    map[string]config.Config
+	src    BlockBroadcaster
+	enc    ktypes.ReportEncoder
+	logger *log.Logger
+	dgst   Digester
+	// blocks come from a simulated block provider. this value is to store
+	// the blocks as they come in for reference.
+	blocks map[string]config.SymBlock
+	// runConfigs are OCR configurations defined in the runbook. the key is the
+	// blocknumber that the config is included in the simulated blockchain.
+	runConfigs map[string]config.Config
 	lastBlock  *big.Int
+	// lastConfig is the last blocknumber a config was read from
 	lastConfig *big.Int
-	notify     chan struct{}
-	start      sync.Once
-	done       chan struct{}
+	// lastEpoch is the last epoch in which a transmit took place
+	lastEpoch uint32
+	// account is the account that this contract simulates for
+	account string
+	// block subscription id for unsubscribing from channel
+	subscription int
+	// upkeep mapping of big int id to simulated upkeep
+	upkeeps map[string]*SimulatedUpkeep
+	perLogs *sortedKeyMap[[]ktypes.PerformLog]
+	notify  chan struct{}
+	start   sync.Once
+	done    chan struct{}
 }
 
-func NewSimulatedContract(src BlockBroadcaster, d Digester) *SimulatedContract {
+func NewSimulatedContract(src BlockBroadcaster, d Digester, sym []SimulatedUpkeep, enc ktypes.ReportEncoder, l *log.Logger) *SimulatedContract {
 	return &SimulatedContract{
-		src:     src,
-		dgst:    d,
-		blocks:  make(map[string]config.SymBlock),
-		configs: make(map[string]config.Config),
-		notify:  make(chan struct{}, 1000),
-		done:    make(chan struct{}),
+		src:        src,
+		enc:        enc,
+		dgst:       d,
+		logger:     l,
+		blocks:     make(map[string]config.SymBlock),
+		runConfigs: make(map[string]config.Config),
+		perLogs:    newSortedKeyMap[[]ktypes.PerformLog](),
+		notify:     make(chan struct{}, 1000),
+		done:       make(chan struct{}),
 	}
 }
 
@@ -47,16 +70,32 @@ func (ct *SimulatedContract) Notify() <-chan struct{} {
 }
 
 func (ct *SimulatedContract) LatestConfigDetails(_ context.Context) (uint64, types.ConfigDigest, error) {
-	//config := ct.configs[ct.lastConfig.String()]
-	return ct.lastConfig.Uint64(), [32]byte{}, nil
+	ct.logger.Printf("latest config and details")
+	conf, ok := ct.runConfigs[ct.lastConfig.String()]
+	if ok {
+		c := types.ContractConfig{
+			ConfigCount:           uint64(conf.Count),
+			Signers:               parseSigners(conf.Signers),
+			Transmitters:          parseTransmitters(conf.Transmitters),
+			F:                     uint8(conf.F),
+			OnchainConfig:         conf.Onchain,
+			OffchainConfigVersion: uint64(conf.OffchainVersion),
+			OffchainConfig:        conf.Offchain,
+		}
+
+		digest, err := ct.dgst.ConfigDigest(c)
+
+		return ct.lastConfig.Uint64(), digest, err
+	}
+
+	return ct.lastConfig.Uint64(), [32]byte{}, fmt.Errorf("config not available yet")
 }
 
 func (ct *SimulatedContract) LatestConfig(_ context.Context, changedInBlock uint64) (types.ContractConfig, error) {
 	bn := big.NewInt(int64(changedInBlock))
-	conf, ok := ct.configs[bn.String()]
+	conf, ok := ct.runConfigs[bn.String()]
 	if ok {
 		c := types.ContractConfig{
-			ConfigDigest:          types.ConfigDigest{},
 			ConfigCount:           uint64(conf.Count),
 			Signers:               parseSigners(conf.Signers),
 			Transmitters:          parseTransmitters(conf.Transmitters),
@@ -80,16 +119,45 @@ func (ct *SimulatedContract) LatestBlockHeight(_ context.Context) (uint64, error
 }
 
 func (ct *SimulatedContract) run() {
-	_, chBlocks := ct.src.Subscribe(true)
+	sub, chBlocks := ct.src.Subscribe(true)
+	ct.subscription = sub
 
 	for {
 		select {
 		case block := <-chBlocks:
 			ct.blocks[block.BlockNumber.String()] = block
 			ct.lastBlock = block.BlockNumber
-			_, ok := ct.configs[block.BlockNumber.String()]
+			_, ok := ct.runConfigs[block.BlockNumber.String()]
 			if ok {
 				ct.lastConfig = block.BlockNumber
+			}
+
+			if block.LatestEpoch != nil {
+				if *block.LatestEpoch > ct.lastEpoch {
+					ct.lastEpoch = *block.LatestEpoch
+				}
+
+				results, err := ct.enc.DecodeReport(block.TransmittedData)
+				if err != nil {
+					continue
+				}
+
+				logs := make([]ktypes.PerformLog, len(results))
+				for i, result := range results {
+					logs[i] = ktypes.PerformLog{
+						Key:           result.Key,
+						TransmitBlock: ktypes.BlockKey([]byte(block.BlockNumber.String())),
+						Confirmations: 0,
+					}
+
+					id, _ := ct.IdentifierFromKey(result.Key)
+					up, ok := ct.upkeeps[string(id)]
+					if ok {
+						//result.PerformData
+
+					}
+				}
+				ct.perLogs.Set(block.BlockNumber.String(), logs)
 			}
 
 			go func() { ct.notify <- struct{}{} }()
@@ -106,6 +174,7 @@ func (ct *SimulatedContract) Start() {
 }
 
 func (ct *SimulatedContract) Stop() {
+	ct.src.Unsubscribe(ct.subscription)
 	close(ct.done)
 }
 

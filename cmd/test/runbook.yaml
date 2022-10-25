@@ -1,6 +1,7 @@
 blocks:
   genesis: 1
-  cadence: 14s
+  cadence: 12s
+  duration: 2000
 config:
   1:
     count: 1
@@ -28,3 +29,27 @@ config:
     onchain: ''
     offchain-version: 1
     offchain: ''
+upkeeps:
+  -
+    count: 15
+    id-start-at: 200
+    function: '2x + 1'
+    genesis-offset: '3x + 2'
+  -
+    count: 20
+    id-start-at: 300
+    function: '5x - 3'
+    genesis-offset: '2x - 4'
+events:
+  -
+    type: cancel
+    upkeep-id: 201
+    block: 1002
+  -
+    type: nolink
+    upkeep-id: 302
+    block: 105
+  -
+    type: fundlink
+    upkeep-id: 302
+    block: 400

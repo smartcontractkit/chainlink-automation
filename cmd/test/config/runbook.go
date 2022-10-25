@@ -8,11 +8,15 @@ import (
 type RunBook struct {
 	BlockCadence Blocks
 	Configs      map[uint64]Config
+	Upkeeps      []Upkeep
 }
 
 type Blocks struct {
 	Genesis *big.Int
 	Cadence time.Duration
+	// Duration is the number of blocks to simulate before blocks should stop
+	// broadcasting
+	Duration int
 }
 
 type Config struct {
@@ -26,5 +30,14 @@ type Config struct {
 }
 
 type SymBlock struct {
-	BlockNumber *big.Int
+	BlockNumber     *big.Int
+	TransmittedData []byte
+	LatestEpoch     *uint32
+}
+
+type Upkeep struct {
+	Count        int
+	StartID      *big.Int
+	GenerateFunc string
+	OffsetFunc   string
 }
