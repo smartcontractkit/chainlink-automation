@@ -5,18 +5,18 @@ import (
 	"testing"
 
 	"github.com/shopspring/decimal"
-	"github.com/smartcontractkit/ocr2keepers/cmd/test/config"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateSimulatedUpkeeps(t *testing.T) {
 	rb := config.RunBook{
 		BlockCadence: config.Blocks{
-			Genesis:  big.NewInt(1),
-			Duration: 100,
+			Genesis:  big.NewInt(128_943_862),
+			Duration: 10,
 		},
 		Upkeeps: []config.Upkeep{
-			{Count: 15, StartID: big.NewInt(200), GenerateFunc: "12.56x - 3.24", OffsetFunc: "2x - 4"},
+			{Count: 15, StartID: big.NewInt(200), GenerateFunc: "24x - 3", OffsetFunc: "3x - 4"},
 		},
 	}
 

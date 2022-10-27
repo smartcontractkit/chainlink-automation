@@ -68,7 +68,10 @@ func (m *sortedKeyMap[T]) Keys(l int) []string {
 		l = len(m.keys)
 	}
 
+	// keys are sorted ascending by block number
+	// only return the last 'l' keys
 	keys := make([]string, l)
+	// loop starting at 1 so the first insert can be l-1, or the last item
 	for i := 1; i <= l; i++ {
 		keys[i-1] = m.keys[l-i]
 	}

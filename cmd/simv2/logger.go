@@ -34,7 +34,7 @@ func NewSimpleLogger(out io.Writer, lvl LogLevel) *simpleLogger {
 
 	for i := 0; i <= int(lvl); i++ {
 		var prefix string
-		switch lvl {
+		switch LogLevel(i) {
 		case Critical:
 			prefix = "[critical] "
 		case Error:
@@ -56,7 +56,7 @@ func NewSimpleLogger(out io.Writer, lvl LogLevel) *simpleLogger {
 }
 
 func (l *simpleLogger) log(lvl LogLevel, msg string, fields commontypes.LogFields) {
-	if int(lvl) > len(l.loggers) {
+	if int(lvl) >= len(l.loggers) {
 		return
 	}
 	var color string
@@ -106,7 +106,7 @@ func (l *simpleLogger) Trace(msg string, fields commontypes.LogFields) {
 func toKeysAndValues(fields commontypes.LogFields) []interface{} {
 	out := []interface{}{}
 	for key, val := range fields {
-		out = append(out, key, val)
+		out = append(out, fmt.Sprintf(", %s: ", key), val)
 	}
 	return out
 }

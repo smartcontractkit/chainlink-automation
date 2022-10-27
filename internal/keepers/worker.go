@@ -74,7 +74,7 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 	}
 
 	go func(g *workerGroup[T]) {
-		timer := time.NewTimer(time.Second)
+		// timer := time.NewTimer(5 * time.Second)
 		ctx, cancel := context.WithCancel(context.Background())
 		for {
 			select {
@@ -95,13 +95,15 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 				// have worker do the work
 				go wkr.Do(ctx, g.results, item)
 
-				timer.Reset(time.Second)
-			case <-timer.C:
-				// close workers when not needed
-				if g.activeWorkers > 0 {
-					<-g.workers
-					g.activeWorkers--
-				}
+				// timer.Reset(5 * time.Second)
+				/*
+					case <-timer.C:
+						// close workers when not needed
+						if g.activeWorkers > 0 {
+							<-g.workers
+							g.activeWorkers--
+						}
+				*/
 			case <-g.stop:
 				g.mu.Lock()
 				close(g.queue)

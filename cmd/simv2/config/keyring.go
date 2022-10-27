@@ -143,6 +143,11 @@ func (ok *evmKeyring) PublicKey() types.OnchainPublicKey {
 	return address[:]
 }
 
+// XXX: PublicKey returns the address of the public key not the public key itself
+func (ok *evmKeyring) PKString() string {
+	return ok.signingAddress().String()
+}
+
 func (ok *evmKeyring) reportToSigData(reportCtx types.ReportContext, report types.Report) []byte {
 	rawReportContext := evmutil.RawReportContext(reportCtx)
 	sigData := crypto.Keccak256(report)

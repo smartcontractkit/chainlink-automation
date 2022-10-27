@@ -27,3 +27,4 @@
 # executable output folder
 bin/
 reports/
+ocr_logs/

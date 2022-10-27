@@ -6,7 +6,7 @@ import (
 
 	"github.com/Maldris/mathparse"
 	"github.com/shopspring/decimal"
-	"github.com/smartcontractkit/ocr2keepers/cmd/test/config"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 )
 
 func GenerateSimulatedUpkeeps(rb config.RunBook) ([]SimulatedUpkeep, error) {
@@ -34,7 +34,7 @@ func GenerateSimulatedUpkeeps(rb config.RunBook) ([]SimulatedUpkeep, error) {
 					return nil, err
 				}
 
-				genesis = g.BigInt()
+				genesis = new(big.Int).Add(rb.BlockCadence.Genesis, g.BigInt())
 			}
 
 			if err := generateEligibles(&sym, genesis, limit, upkeep.GenerateFunc); err != nil {
