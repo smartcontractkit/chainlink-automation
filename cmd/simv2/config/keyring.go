@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
-	"encoding/binary"
 	"io"
 
 	"golang.org/x/crypto/curve25519"
@@ -90,35 +89,6 @@ func (ok *OffchainKeyring) configEncryptionPublicKey() (types.ConfigEncryptionPu
 	var rvFixed [curve25519.PointSize]byte
 	copy(rvFixed[:], rv)
 	return rvFixed, nil
-}
-
-func (ok *OffchainKeyring) marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-	err := binary.Write(buffer, binary.LittleEndian, ok.signingKey)
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(buffer, binary.LittleEndian, ok.encryptionKey)
-	if err != nil {
-		return nil, err
-	}
-	return buffer.Bytes(), nil
-}
-
-func (ok *OffchainKeyring) unmarshal(in []byte) error {
-	buffer := bytes.NewReader(in)
-	ok.signingKey = make(ed25519.PrivateKey, ed25519.PrivateKeySize)
-	err := binary.Read(buffer, binary.LittleEndian, &ok.signingKey)
-	if err != nil {
-		return err
-	}
-	ok.encryptionKey = [curve25519.ScalarSize]byte{}
-	err = binary.Read(buffer, binary.LittleEndian, &ok.encryptionKey)
-	if err != nil {
-		return err
-	}
-	_, err = ok.configEncryptionPublicKey()
-	return err
 }
 
 var curve = secp256k1.S256()

@@ -1,22 +1,43 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"math/big"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/libocr/offchainreporting2/chains/evmutil"
+	flag "github.com/spf13/pflag"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 )
 
+var (
+	simulationFile  = flag.StringP("simulation-file", "f", "runbook.json", "file path to read simulation config from")
+	outputDirectory = flag.StringP("output-directory", "o", "./runbook_logs", "directory path to output log files")
+	profiler        = flag.Bool("pprof", false, "run pprof server on startup")
+	pprofPort       = flag.Int("pprof-port", 6060, "port to serve the profiler on")
+)
+
 func main() {
-	f, err := os.OpenFile("output.log", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	flag.Parse()
+
+	if *profiler {
+		log.Println("starting profiler; waiting 5 seconds to start simulation")
+		go func() {
+			log.Println(http.ListenAndServe(fmt.Sprintf("localhost:%d", *pprofPort), nil))
+		}()
+		<-time.After(5 * time.Second)
+	}
+
+	f, err := os.OpenFile(fmt.Sprintf("%s/simulation.log", *outputDirectory), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
@@ -24,40 +45,15 @@ func main() {
 
 	log.SetOutput(f)
 
-	rb := config.RunBook{
-		Nodes:             4,
-		AvgNetworkLatency: config.Duration(50 * time.Millisecond),
-		RPCDetail: config.RPC{
-			MaxBlockDelay:  2000,
-			AverageLatency: 200,
-		},
-		BlockCadence: config.Blocks{
-			Genesis:  big.NewInt(128_943_862),
-			Cadence:  12 * time.Second,
-			Duration: 50,
-		},
-		ConfigEvents: []config.ConfigEvent{
-			{
-				Block:          big.NewInt(128_943_863),
-				F:              1,
-				Offchain:       []byte(`{"targetProbability":"0.99","targetInRounds":6,"uniqueReports":false}`),
-				Rmax:           uint8(7),
-				DeltaProgress:  config.Duration(10 * time.Second),
-				DeltaResend:    config.Duration(10 * time.Second),
-				DeltaRound:     config.Duration(2 * time.Second),
-				DeltaGrace:     config.Duration(500 * time.Millisecond),
-				DeltaStage:     config.Duration(2 * time.Second),
-				MaxObservation: config.Duration(time.Second),
-				MaxReport:      config.Duration(500 * time.Millisecond),
-				MaxAccept:      config.Duration(50 * time.Millisecond),
-				MaxTransmit:    config.Duration(50 * time.Millisecond),
-			},
-		},
-		Upkeeps: []config.Upkeep{
-			{Count: 15, StartID: big.NewInt(200), GenerateFunc: "24x - 3", OffsetFunc: "3x + 4"},
-			{Count: 30, StartID: big.NewInt(400), GenerateFunc: "12x - 1", OffsetFunc: "2x + 5"},
-			{Count: 20, StartID: big.NewInt(600), GenerateFunc: "6x - 5", OffsetFunc: "2x + 1"},
-		},
+	dat, err := os.ReadFile(*simulationFile)
+	if err != nil {
+		panic(err)
+	}
+
+	var rb config.RunBook
+	err = json.Unmarshal(dat, &rb)
+	if err != nil {
+		panic(err)
 	}
 
 	log.Println("generating upkeeps")
@@ -84,12 +80,12 @@ func main() {
 		MonitorIO:     io.Discard, // TODO: the monitor data format is not text. not sure what to make of it yet.
 		RPCConfig:     rb.RPCDetail,
 		AvgNetLatency: rb.AvgNetworkLatency.Value(),
-		LogPath:       "./ocr_logs",
+		LogPath:       *outputDirectory,
 		Logger:        log.Default(),
 	}
 	ng := NewNodeGroup(ngConf)
 
-	if err := ng.Start(rb.Nodes); err != nil {
+	if err := ng.Start(rb.Nodes, rb.MaxServiceWorkers, rb.MaxQueueSize); err != nil {
 		log.Printf("%s", err)
 	}
 }

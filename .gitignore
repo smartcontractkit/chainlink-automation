@@ -26,5 +26,8 @@
 
 # executable output folder
 bin/
+
+# default simulation output folders
 reports/
-ocr_logs/
+runbook_logs/
+private_runbooks/

@@ -3,7 +3,6 @@ package blocks
 import (
 	"log"
 	"sync"
-	"time"
 
 	ocr2config "github.com/smartcontractkit/libocr/offchainreporting2/confighelper"
 
@@ -109,8 +108,8 @@ func buildConfig(c config.ConfigEvent, oracles []ocr2config.OracleIdentityExtra,
 		c.Rmax,                   // rMax uint8,
 		S,                        // s []int,
 		oracles,                  // oracles []OracleIdentityExtra,
-		c.Offchain,               // reportingPluginConfig []byte,
-		50*time.Millisecond,      // maxDurationQuery time.Duration,
+		[]byte(c.Offchain),       // reportingPluginConfig []byte,
+		c.MaxQuery.Value(),       // maxDurationQuery time.Duration,
 		c.MaxObservation.Value(), // maxDurationObservation time.Duration,
 		c.MaxReport.Value(),      // maxDurationReport time.Duration,
 		c.MaxAccept.Value(),      // maxDurationShouldAcceptFinalizedReport time.Duration,

@@ -2,6 +2,7 @@ package blocks
 
 import (
 	"log"
+	"math"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -25,6 +26,7 @@ type BlockBroadcaster struct {
 	subscriptions map[int]chan config.SymBlock
 	delays        map[int]bool
 	loaders       []BlockLoader
+	jitter        time.Duration
 	subCount      int
 	activeSubs    int
 }
@@ -33,14 +35,15 @@ func NewBlockBroadcaster(conf config.Blocks, maxDelay int, loaders ...BlockLoade
 	limit := new(big.Int).Add(conf.Genesis, big.NewInt(int64(conf.Duration)))
 
 	// add a 5 block padding to allow all transmits to come through
-	limit = new(big.Int).Add(limit, big.NewInt(5))
+	limit = new(big.Int).Add(limit, big.NewInt(int64(conf.EndPadding)))
 
 	return &BlockBroadcaster{
 		nextBlock:     conf.Genesis,
-		cadence:       conf.Cadence,
+		cadence:       conf.Cadence.Value(),
 		maxDelay:      maxDelay,
 		loaders:       loaders,
 		limit:         limit,
+		jitter:        conf.Jitter.Value(),
 		done:          make(chan struct{}),
 		subscriptions: make(map[int]chan config.SymBlock),
 		delays:        make(map[int]bool),
@@ -48,12 +51,14 @@ func NewBlockBroadcaster(conf config.Blocks, maxDelay int, loaders ...BlockLoade
 }
 
 func (bb *BlockBroadcaster) run() {
-	t := time.NewTicker(bb.cadence)
+	timer := time.NewTimer(bb.cadenceWithJitter())
+
+	// broadcast the first block immediately
 	bb.broadcast()
 
 	for {
 		select {
-		case <-t.C:
+		case <-timer.C:
 			bb.mu.Lock()
 			bb.nextBlock = big.NewInt(0).Add(bb.nextBlock, big.NewInt(1))
 			bb.mu.Unlock()
@@ -64,10 +69,25 @@ func (bb *BlockBroadcaster) run() {
 			} else {
 				bb.broadcast()
 			}
+			timer.Reset(bb.cadenceWithJitter())
 		case <-bb.done:
+			timer.Stop()
 			return
 		}
 	}
+}
+
+func (bb *BlockBroadcaster) cadenceWithJitter() time.Duration {
+	if bb.jitter > 0 {
+		jitter := rand.Intn(int(bb.jitter))
+		half := float64(bb.jitter) / 2
+		applied := math.Round(float64(jitter) - half)
+
+		// plus or minus jitter amount
+		return bb.cadence + time.Duration(int64(applied))
+	}
+
+	return bb.cadence
 }
 
 func (bb *BlockBroadcaster) broadcast() {

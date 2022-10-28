@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -93,7 +94,7 @@ func NewNodeGroup(conf NodeGroupConfig) *NodeGroup {
 	}
 }
 
-func (g *NodeGroup) Add() {
+func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	net := g.network.NewFactory()
 
 	offchainRing, err := config.NewOffchainKeyring(rand.Reader, rand.Reader)
@@ -150,8 +151,8 @@ func (g *NodeGroup) Add() {
 		Registry:               ct,
 		PerformLogProvider:     ct,
 		ReportEncoder:          g.encoder,
-		MaxServiceWorkers:      10,
-		ServiceQueueLength:     100,
+		MaxServiceWorkers:      maxWorkers,
+		ServiceQueueLength:     maxQueueSize,
 	}
 
 	service, err := ocr2keepers.NewDelegate(dConfig)
@@ -172,11 +173,11 @@ func (g *NodeGroup) Add() {
 	g.confLoader.AddSigner(net.PeerID(), onchainRing, offchainRing)
 }
 
-func (g *NodeGroup) Start(count int) error {
+func (g *NodeGroup) Start(count int, maxWorkers int, maxQueueSize int) error {
 	var err error
 
 	for i := 0; i < count; i++ {
-		g.Add()
+		g.Add(maxWorkers, maxQueueSize)
 	}
 
 	c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
@@ -267,14 +268,27 @@ func (g *NodeGroup) ReportResults() {
 
 	g.logger.Println("================ results ================")
 
+	totalIDChecks := 0
+	totalIDs := 0
+	idCheckData := []int{}
+
 	var missed int
 	for upID, upkeep := range upkeepLookup {
+		totalIDs++
 		eligibles := len(upkeep.EligibleAt)
 		var performs int
 
 		performStrings, ok := performsById[upID]
 		if ok {
 			performs = len(performStrings)
+		}
+
+		checks, wasChecked := g.telemetry.keyIDLookup[upID]
+		if wasChecked {
+			totalIDChecks += len(checks)
+			idCheckData = append(idCheckData, len(checks))
+		} else {
+			idCheckData = append(idCheckData, 0)
 		}
 
 		missed += eligibles - performs
@@ -289,12 +303,62 @@ func (g *NodeGroup) ReportResults() {
 			g.logger.Printf("%s was eligible at %s", upID, strings.Join(printEligibles, ", "))
 			g.logger.Printf("%s was performed at %s", upID, strings.Join(performStrings, ", "))
 
-			keys, ok := g.telemetry.keyIDLookup[upID]
-			if ok {
-				g.logger.Printf("%s was checked at %s", upID, strings.Join(keys, ", "))
+			if wasChecked {
+				g.logger.Printf("%s was checked at %s", upID, strings.Join(checks, ", "))
 			}
 		}
 	}
+
+	g.logger.Printf("total ids: %d", totalIDs)
+	g.logger.Printf("total checks by network: %d", totalIDChecks)
+
+	g.logger.Printf(" ---- Statistics / Checks per ID ---")
+	sort.Slice(idCheckData, func(i, j int) bool {
+		return idCheckData[i] < idCheckData[j]
+	})
+
+	// average
+	avgChecksPerID := float64(totalIDChecks) / float64(len(idCheckData))
+	g.logger.Printf("average: %0.2f", avgChecksPerID)
+
+	// median
+	median, q1Data, q3Data := findMedianAndSplitData(idCheckData)
+	q1, lowerOutliers, _ := findMedianAndSplitData(q1Data)
+	q3, _, upperOutliers := findMedianAndSplitData(q3Data)
+	iqr := q3 - q1
+
+	g.logger.Printf("IQR: %0.2f", iqr)
+	inIQR := 0
+	for i := 0; i < len(idCheckData); i++ {
+		if float64(idCheckData[i]) >= q1 && float64(idCheckData[i]) <= q3 {
+			inIQR++
+		}
+	}
+	g.logger.Printf("IQR percent of whole: %0.2f%s", float64(inIQR)/float64(len(idCheckData))*100, "%")
+
+	lowest, lOutliers := findLowestAndOutliers(q1-(1.5*iqr), lowerOutliers)
+	if lOutliers > 0 {
+		g.logger.Printf("lowest value: %d", lowest)
+		g.logger.Printf("lower outliers (count): %d", lOutliers)
+	} else {
+		g.logger.Printf("no outliers below lower fence")
+	}
+
+	g.logger.Printf("Lower Fence (Q1 - 1.5*IQR): %0.2f", q1-(1.5*iqr))
+	g.logger.Printf("Q1: %0.2f", q1)
+	g.logger.Printf("Median: %0.2f", median)
+	g.logger.Printf("Q3: %0.2f", q3)
+	g.logger.Printf("Upper Fence (Q3 + 1.5*IQR): %0.2f", q3+(1.5*iqr))
+
+	highest, hOutliers := findHighestAndOutliers(q3+(1.5*iqr), upperOutliers)
+	if hOutliers > 0 {
+		g.logger.Printf("highest value: %d", highest)
+		g.logger.Printf("upper outliers (count): %d", hOutliers)
+	} else {
+		g.logger.Printf("no outliers above upper fence")
+	}
+
+	g.logger.Printf(" ---- end ---")
 
 	perc := make(map[string]float64)
 	// transmit account distribution
@@ -302,9 +366,11 @@ func (g *NodeGroup) ReportResults() {
 		perc[acc] = float64(trs) / float64(len(transmits)) * 100
 	}
 
+	g.logger.Printf(" ---- Statistics / Transmits per Node (account) ---")
 	for acc, p := range perc {
-		g.logger.Printf("account %s transmitted %d times (%.2f percent)", acc, trAccounts[acc], p)
+		g.logger.Printf("account %s transmitted %d times (%.2f%s)", acc, trAccounts[acc], p, "%")
 	}
+	g.logger.Printf(" ---- end ---")
 
 	// average perform delay
 	g.logger.Printf("average perform delay: %d blocks", int(math.Round(avgPerformDelay)))
