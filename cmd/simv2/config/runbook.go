@@ -39,6 +39,12 @@ type RPC struct {
 	// AverageLatency is the average amount of time in ms that an RPC network
 	// call can take
 	AverageLatency int `json:"averageLatency"`
+	// ErrorRate is the chance that any RPC call will return an error. This helps
+	// simulated heavily loaded RPC servers.
+	ErrorRate float64 `json:"errorRate"`
+	// RateLimitThreshold is the point at which rate limiting occurs for RPC calls.
+	// this limit is calls per second
+	RateLimitThreshold int `json:"rateLimitThreshold"`
 }
 
 // ConfigEvent is an event that indicates a new config should be broadcast

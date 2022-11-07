@@ -1,11 +1,13 @@
 {
-    "nodes": 4,
-    "maxNodeServiceWorkers": 50,
+    "nodes": 8,
+    "maxNodeServiceWorkers": 100,
     "maxNodeServiceQueueSize": 1000,
     "avgNetworkLatency": "100ms",
     "rpcDetail": {
         "maxBlockDelay": 2000,
-        "averageLatency": 150
+        "averageLatency": 300,
+        "errorRate": 0.02,
+        "rateLimitThreshold": 1000
     },
     "blockDetail": {
         "genesisBlock": 128943862,
@@ -16,17 +18,17 @@
     "configEvents": [
         {
             "triggerBlockNumber": 128943863,
-            "maxFaultyNodes": 1,
-            "offchainConfigJSON": "{\"targetProbability\":\"0.999\",\"targetInRounds\":5,\"uniqueReports\":false}",
+            "maxFaultyNodes": 2,
+            "offchainConfigJSON": "{\"targetProbability\":\"0.999\",\"targetInRounds\":4,\"uniqueReports\":false}",
             "maxRoundsPerEpoch": 7,
             "deltaProgress": "10s",
             "deltaResend": "10s",
-            "deltaRound": "2s",
+            "deltaRound": "2500ms",
             "deltaGrace": "500ms",
             "deltaStage": "2s",
             "maxQueryTime": "50ms",
-            "maxObservationTime": "1s",
-            "maxReportTime": "500ms",
+            "maxObservationTime": "1300ms",
+            "maxReportTime": "700ms",
             "maxShouldAcceptTime": "50ms",
             "maxShouldTransmitTime": "50ms"
         }
@@ -34,7 +36,7 @@
     "upkeeps": [
         {
             "_comment": "upkeeps that have no performs",
-            "count": 500,
+            "count": 800,
             "startID": 1000,
             "generateFunc": "x + 1000",
             "offsetFunc": "x"
@@ -58,6 +60,20 @@
             "count": 50,
             "startID": 600,
             "generateFunc": "50x - 15",
+            "offsetFunc": "2x + 1"
+        },
+        {
+            "_comment": "2 performs per upkeep; offset from previous",
+            "count": 50,
+            "startID": 600,
+            "generateFunc": "50x - 10",
+            "offsetFunc": "2x + 1"
+        },
+        {
+            "_comment": "2 performs per upkeep; offset from previous",
+            "count": 50,
+            "startID": 600,
+            "generateFunc": "50x - 5",
             "offsetFunc": "2x + 1"
         }
     ]

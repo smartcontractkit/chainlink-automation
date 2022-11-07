@@ -7,13 +7,8 @@ import (
 	"io"
 	"log"
 	"math"
-	"math/big"
-	"os"
-	"os/signal"
 	"sort"
 	"strings"
-	"sync"
-	"syscall"
 	"time"
 
 	"github.com/smartcontractkit/libocr/commontypes"
@@ -22,6 +17,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/blocks"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -50,6 +46,7 @@ type NodeGroupConfig struct {
 	MonitorIO     io.Writer
 	LogPath       string
 	Logger        *log.Logger
+	Collectors    []telemetry.Collector
 }
 
 type NodeGroup struct {
@@ -65,8 +62,7 @@ type NodeGroup struct {
 	rpcConf     config.RPC
 	logPath     string
 	logger      *log.Logger
-	openFiles   map[string][]*os.File
-	telemetry   *ResultsTelemetry
+	collectors  []telemetry.Collector
 }
 
 func NewNodeGroup(conf NodeGroupConfig) *NodeGroup {
@@ -78,7 +74,6 @@ func NewNodeGroup(conf NodeGroupConfig) *NodeGroup {
 
 	return &NodeGroup{
 		nodes:       make(map[string]*ActiveNode),
-		openFiles:   make(map[string][]*os.File),
 		network:     simulators.NewSimulatedNetwork(conf.AvgNetLatency),
 		digester:    conf.Digester,
 		blockSrc:    blocks.NewBlockBroadcaster(conf.Cadence, conf.RPCConfig.MaxBlockDelay, transmit, confLoad),
@@ -90,12 +85,26 @@ func NewNodeGroup(conf NodeGroupConfig) *NodeGroup {
 		rpcConf:     conf.RPCConfig,
 		logPath:     conf.LogPath,
 		logger:      conf.Logger,
-		telemetry:   NewResultsTelemetry(),
+		collectors:  conf.Collectors,
 	}
 }
 
 func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	net := g.network.NewFactory()
+
+	var rpcTel *telemetry.RPCCollector
+	var logTel *telemetry.NodeLogCollector
+	var ctrTel *telemetry.ContractEventCollector
+	for _, col := range g.collectors {
+		switch cT := col.(type) {
+		case *telemetry.RPCCollector:
+			rpcTel = cT
+		case *telemetry.NodeLogCollector:
+			logTel = cT
+		case *telemetry.ContractEventCollector:
+			ctrTel = cT
+		}
+	}
 
 	offchainRing, err := config.NewOffchainKeyring(rand.Reader, rand.Reader)
 	if err != nil {
@@ -107,25 +116,34 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		panic(err)
 	}
 
-	f, err := os.OpenFile(fmt.Sprintf("%s/oracle_%s.log", g.logPath, net.PeerID()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		g.logger.Println(err.Error())
-		f.Close()
-		return
-	}
-
-	cLog, err := os.OpenFile(fmt.Sprintf("%s/oracle_%s_contract.log", g.logPath, net.PeerID()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		g.logger.Println(err.Error())
-		cLog.Close()
-		return
-	}
+	_ = logTel.AddNode(net.PeerID())
+	_ = rpcTel.AddNode(net.PeerID())
+	_ = ctrTel.AddNode(net.PeerID())
 
 	// general logger
-	slogger := NewSimpleLogger(f, Debug)
-	cLogger := log.New(cLog, "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	var slogger *simpleLogger
+	var cLogger *log.Logger
+	if logTel != nil {
+		slogger = NewSimpleLogger(logTel.GeneralLog(net.PeerID()), Debug)
+		cLogger = log.New(logTel.ContractLog(net.PeerID()), "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	} else {
+		slogger = NewSimpleLogger(io.Discard, Critical)
+		cLogger = log.New(io.Discard, "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	}
 
-	ct := simulators.NewSimulatedContract(g.blockSrc, g.digester, g.upkeeps, g.encoder, g.transmitter, g.rpcConf.AverageLatency, onchainRing.PKString(), g.telemetry, cLogger)
+	ct := simulators.NewSimulatedContract(
+		g.blockSrc,
+		g.digester,
+		g.upkeeps,
+		g.encoder,
+		g.transmitter,
+		g.rpcConf.AverageLatency,
+		onchainRing.PKString(),
+		g.rpcConf.ErrorRate,
+		g.rpcConf.RateLimitThreshold,
+		ctrTel.ContractEventCollectorNode(net.PeerID()),
+		rpcTel.RPCCollectorNode(net.PeerID()),
+		cLogger)
 	db := simulators.NewSimulatedDatabase()
 
 	dConfig := ocr2keepers.DelegateConfig{
@@ -160,7 +178,6 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		panic(err)
 	}
 
-	g.openFiles[net.PeerID()] = []*os.File{f, cLog}
 	g.nodes[net.PeerID()] = &ActiveNode{
 		Service:  service,
 		Contract: ct,
@@ -173,21 +190,18 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	g.confLoader.AddSigner(net.PeerID(), onchainRing, offchainRing)
 }
 
-func (g *NodeGroup) Start(count int, maxWorkers int, maxQueueSize int) error {
+func (g *NodeGroup) Start(ctx context.Context, count int, maxWorkers int, maxQueueSize int) error {
 	var err error
 
 	for i := 0; i < count; i++ {
 		g.Add(maxWorkers, maxQueueSize)
 	}
 
-	c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
 	log.Print("starting simulation")
 	select {
 	case <-g.blockSrc.Start():
 		err = fmt.Errorf("block duration ended")
-	case <-c:
+	case <-ctx.Done():
 		g.blockSrc.Stop()
 		err = fmt.Errorf("SIGTERM event stopping process")
 	}
@@ -199,112 +213,83 @@ func (g *NodeGroup) Start(count int, maxWorkers int, maxQueueSize int) error {
 			log.Printf("error encountered while attempting to close down node '%s': %s", id, err)
 		}
 		node.Contract.Stop()
-		files, ok := g.openFiles[id]
-		if ok {
-			for _, f := range files {
-				f.Close()
-			}
-		}
+	}
+
+	for _, col := range g.collectors {
+		col.Close()
 	}
 
 	return err
 }
 
 func (g *NodeGroup) ReportResults() {
-
-	upkeepLookup := make(map[string]simulators.SimulatedUpkeep)
-	performsById := make(map[string][]string)
-	var uCount int
-	for _, up := range g.upkeeps {
-		upkeepLookup[up.ID.String()] = up
-		performsById[up.ID.String()] = []string{}
-		uCount += len(up.EligibleAt)
-	}
-
-	// performed upkeeps
-	// missed upkeeps
-	var avgPerformDelay float64
-	trAccounts := make(map[string]int)
-
-	// report results
-	transmits := g.transmitter.Results()
-	var performsInTransactions int
-	for _, tr := range transmits {
-		block, ok := new(big.Int).SetString(tr.InBlock, 10)
-		if !ok {
-			g.logger.Printf("could not parse block: %s", tr.InBlock)
-			continue
-		}
-
-		_, ok = trAccounts[tr.SendingAddress]
-		if !ok {
-			trAccounts[tr.SendingAddress] = 0
-		}
-		trAccounts[tr.SendingAddress]++
-
-		trResults, err := g.encoder.DecodeReport(tr.Report)
-		if err != nil {
-			g.logger.Printf("error decoding report: %s", err)
-			continue
-		}
-
-		for _, trResult := range trResults {
-			delay := float64(new(big.Int).Sub(block, big.NewInt(int64(trResult.CheckBlockNumber))).Int64())
-
-			if avgPerformDelay == 0 {
-				avgPerformDelay = delay
-			} else {
-				avgPerformDelay = (avgPerformDelay + delay) / 2
+	var keyIDLookup map[string][]string
+	for _, col := range g.collectors {
+		switch ct := col.(type) {
+		case *telemetry.RPCCollector:
+			err := ct.WriteResults()
+			if err != nil {
+				panic(err)
 			}
-			performsInTransactions++
-
-			parts := strings.Split(string(trResult.Key), "|")
-			_, ok := performsById[parts[1]]
-			if ok {
-				performsById[parts[1]] = append(performsById[parts[1]], block.String())
-			}
+		case *telemetry.ContractEventCollector:
+			_, keyIDLookup = ct.Data()
 		}
 	}
 
-	g.logger.Println("================ results ================")
+	ub, err := newUpkeepStatsBuilder(g.upkeeps, g.transmitter.Results(), keyIDLookup, g.encoder)
+	if err != nil {
+		g.logger.Printf("stats builder failure: %s", err)
+	}
+
+	g.logger.Println("================ summary ================")
 
 	totalIDChecks := 0
 	totalIDs := 0
+	totalEligibles := 0
+	totalPerforms := 0
+	totalMisses := 0
+	var avgPerformDelay float64 = -1
+	var avgCheckDelay float64 = -1
 	idCheckData := []int{}
 
-	var missed int
-	for upID, upkeep := range upkeepLookup {
+	for _, id := range ub.UpkeepIDs() {
+		stats := ub.UpkeepStats(id)
 		totalIDs++
-		eligibles := len(upkeep.EligibleAt)
-		var performs int
+		totalEligibles += stats.Eligible
+		totalMisses += stats.Missed
+		totalPerforms += stats.Eligible - stats.Missed
 
-		performStrings, ok := performsById[upID]
-		if ok {
-			performs = len(performStrings)
+		if stats.AvgPerformDelay >= 0 {
+			if avgPerformDelay < 0 {
+				avgPerformDelay = stats.AvgPerformDelay
+			} else {
+				avgPerformDelay = (avgPerformDelay + stats.AvgPerformDelay) / 2
+			}
 		}
 
-		checks, wasChecked := g.telemetry.keyIDLookup[upID]
-		if wasChecked {
+		if stats.AvgCheckDelay >= 0 {
+			if avgCheckDelay < 0 {
+				avgCheckDelay = stats.AvgCheckDelay
+			} else {
+				avgCheckDelay = (avgCheckDelay + stats.AvgCheckDelay) / 2
+			}
+		}
+
+		checks, checked := keyIDLookup[id]
+		if checked {
 			totalIDChecks += len(checks)
 			idCheckData = append(idCheckData, len(checks))
 		} else {
 			idCheckData = append(idCheckData, 0)
 		}
 
-		missed += eligibles - performs
-		if eligibles-performs > 0 {
-			g.logger.Printf("%s was missed %d times", upID, eligibles-performs)
+		if stats.Missed != 0 {
+			g.logger.Printf("%s was missed %d times", id, stats.Missed)
+			g.logger.Printf("%s was eligible at %s", id, strings.Join(ub.Eligibles(id), ", "))
+			g.logger.Printf("%s was performed at %s", id, strings.Join(ub.Performs(id), ", "))
 
-			printEligibles := make([]string, len(upkeep.EligibleAt))
-			for i, el := range upkeep.EligibleAt {
-				printEligibles[i] = el.String()
-			}
-
-			g.logger.Printf("%s was eligible at %s", upID, strings.Join(printEligibles, ", "))
-			g.logger.Printf("%s was performed at %s", upID, strings.Join(performStrings, ", "))
-
-			if wasChecked {
-				g.logger.Printf("%s was checked at %s", upID, strings.Join(checks, ", "))
+			if checked {
+				g.logger.Printf("%s was checked at %s", id, strings.Join(checks, ", "))
 			}
 		}
 	}
@@ -313,6 +298,7 @@ func (g *NodeGroup) ReportResults() {
 	g.logger.Printf("total checks by network: %d", totalIDChecks)
 
 	g.logger.Printf(" ---- Statistics / Checks per ID ---")
+
 	sort.Slice(idCheckData, func(i, j int) bool {
 		return idCheckData[i] < idCheckData[j]
 	})
@@ -360,65 +346,18 @@ func (g *NodeGroup) ReportResults() {
 
 	g.logger.Printf(" ---- end ---")
 
-	perc := make(map[string]float64)
-	// transmit account distribution
-	for acc, trs := range trAccounts {
-		perc[acc] = float64(trs) / float64(len(transmits)) * 100
-	}
-
 	g.logger.Printf(" ---- Statistics / Transmits per Node (account) ---")
-	for acc, p := range perc {
-		g.logger.Printf("account %s transmitted %d times (%.2f%s)", acc, trAccounts[acc], p, "%")
+	accStats := ub.Transmits()
+	for _, acc := range accStats {
+		g.logger.Printf("account %s transmitted %d times (%.2f%s)", acc.Account, acc.Count, acc.Pct, "%")
 	}
 	g.logger.Printf(" ---- end ---")
 
 	// average perform delay
 	g.logger.Printf("average perform delay: %d blocks", int(math.Round(avgPerformDelay)))
-	g.logger.Printf("total eligibles: %d", uCount)
-	g.logger.Printf("total performs in a transaction: %d", performsInTransactions)
-	g.logger.Printf("total confirmed misses: %d", missed)
+	g.logger.Printf("average check delay: %d blocks", int(math.Round(avgCheckDelay)))
+	g.logger.Printf("total eligibles: %d", totalEligibles)
+	g.logger.Printf("total performs in a transaction: %d", totalPerforms)
+	g.logger.Printf("total confirmed misses: %d", totalMisses)
 	g.logger.Println("================ end ================")
-}
-
-type ResultsTelemetry struct {
-	mu          sync.Mutex
-	keyChecks   map[string]int
-	keyIDLookup map[string][]string
-}
-
-func NewResultsTelemetry() *ResultsTelemetry {
-	return &ResultsTelemetry{
-		keyChecks:   make(map[string]int),
-		keyIDLookup: make(map[string][]string),
-	}
-}
-
-func (rt *ResultsTelemetry) CheckKey(key []byte) {
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
-
-	k := string(key)
-	parts := strings.Split(k, "|")
-
-	_, ok := rt.keyChecks[k]
-	if !ok {
-		rt.keyChecks[k] = 0
-	}
-	rt.keyChecks[k]++
-
-	val, ok := rt.keyIDLookup[parts[1]]
-	if !ok {
-		rt.keyIDLookup[parts[1]] = []string{parts[0]}
-	} else {
-		var found bool
-		for _, v := range val {
-			if v == parts[0] {
-				found = true
-			}
-		}
-
-		if !found {
-			rt.keyIDLookup[parts[1]] = append(val, parts[0])
-		}
-	}
 }

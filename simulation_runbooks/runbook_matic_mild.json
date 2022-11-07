@@ -1,33 +1,35 @@
 {
-    "nodes": 4,
-    "maxNodeServiceWorkers": 20,
+    "nodes": 8,
+    "maxNodeServiceWorkers": 100,
     "maxNodeServiceQueueSize": 1000,
     "avgNetworkLatency": "100ms",
     "rpcDetail": {
         "maxBlockDelay": 2000,
-        "averageLatency": 150
+        "averageLatency": 300,
+        "errorRate": 0.02,
+        "rateLimitThreshold": 1000
     },
     "blockDetail": {
         "genesisBlock": 128943862,
         "blockCadence": "3s",
         "blockCadenceJitter": "200ms",
-        "durationInBlocks": 100,
-        "endPadding": 10
+        "durationInBlocks": 200,
+        "endPadding": 20
     },
     "configEvents": [
         {
             "triggerBlockNumber": 128943863,
-            "maxFaultyNodes": 1,
-            "offchainConfigJSON": "{\"targetProbability\":\"0.999\",\"targetInRounds\":7,\"uniqueReports\":false}",
+            "maxFaultyNodes": 2,
+            "offchainConfigJSON": "{\"targetProbability\":\"0.999\",\"targetInRounds\":2,\"uniqueReports\":false}",
             "maxRoundsPerEpoch": 7,
             "deltaProgress": "10s",
             "deltaResend": "10s",
-            "deltaRound": "2s",
+            "deltaRound": "2800ms",
             "deltaGrace": "500ms",
             "deltaStage": "2s",
             "maxQueryTime": "50ms",
-            "maxObservationTime": "1s",
-            "maxReportTime": "500ms",
+            "maxObservationTime": "1600ms",
+            "maxReportTime": "700ms",
             "maxShouldAcceptTime": "50ms",
             "maxShouldTransmitTime": "50ms"
         }
@@ -35,24 +37,17 @@
     "upkeeps": [
         {
             "_comment": "upkeeps that have no performs",
-            "count": 300,
+            "count": 780,
             "startID": 1000,
             "generateFunc": "x + 1000",
             "offsetFunc": "x"
         },
         {
             "_comment": "2 performs per upkeep",
-            "count": 50,
+            "count": 30,
             "startID": 200,
             "generateFunc": "50x - 25",
-            "offsetFunc": "2x + 1"
-        },
-        {
-            "_comment": "2 performs per upkeep; offset from previous",
-            "count": 20,
-            "startID": 400,
-            "generateFunc": "50x - 20",
-            "offsetFunc": "2x + 1"
+            "offsetFunc": "4x + 2"
         }
     ]
 }

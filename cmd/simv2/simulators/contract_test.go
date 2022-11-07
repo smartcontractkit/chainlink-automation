@@ -22,7 +22,7 @@ func TestLatestConfig(t *testing.T) {
 	me := new(MockEncoder)
 
 	logs := log.New(io.Discard, "", 0)
-	sim := NewSimulatedContract(mb, md, []SimulatedUpkeep{}, me, nil, 500, "", nil, logs)
+	sim := NewSimulatedContract(mb, md, []SimulatedUpkeep{}, me, nil, 500, "", 0.01, 1000, nil, nil, logs)
 
 	chBlock := make(chan config.SymBlock)
 
@@ -61,7 +61,7 @@ func TestLatestBlockHeight(t *testing.T) {
 	me := new(MockEncoder)
 
 	logs := log.New(io.Discard, "", 0)
-	sim := NewSimulatedContract(mb, md, []SimulatedUpkeep{}, me, nil, 500, "", nil, logs)
+	sim := NewSimulatedContract(mb, md, []SimulatedUpkeep{}, me, nil, 500, "", 0.01, 1000, nil, nil, logs)
 
 	chBlock := make(chan config.SymBlock)
 

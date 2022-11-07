@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 
@@ -30,7 +31,13 @@ type ContractTelemetry interface {
 	CheckKey([]byte)
 }
 
+type RPCTelemetry interface {
+	RegisterCall(string, time.Duration, error)
+	AddRateDataPoint(int)
+}
+
 type SimulatedContract struct {
+	mu     sync.RWMutex
 	src    BlockBroadcaster
 	enc    ktypes.ReportEncoder
 	logger *log.Logger
@@ -57,6 +64,8 @@ type SimulatedContract struct {
 
 	telemetry ContractTelemetry
 
+	rpc *SimulatedRPC
+
 	transmitter Transmitter
 	notify      chan struct{}
 	start       sync.Once
@@ -71,7 +80,10 @@ func NewSimulatedContract(
 	transmitter Transmitter,
 	avgLatency int,
 	account string,
+	rpcErrorRate float64,
+	rpcLoadLimitThreshold int,
 	telemetry ContractTelemetry,
+	rpcTelemetry RPCTelemetry,
 	l *log.Logger,
 ) *SimulatedContract {
 	upkeeps := make(map[string]SimulatedUpkeep)
@@ -79,6 +91,8 @@ func NewSimulatedContract(
 		upkeep.Performs = make(map[string]ktypes.PerformLog)
 		upkeeps[upkeep.ID.String()] = upkeep
 	}
+
+	rpc := NewSimulatedRPC(rpcErrorRate, rpcLoadLimitThreshold, avgLatency, rpcTelemetry)
 
 	return &SimulatedContract{
 		src:         src,
@@ -93,6 +107,7 @@ func NewSimulatedContract(
 		perLogs:     newSortedKeyMap[[]ktypes.PerformLog](),
 		upkeeps:     upkeeps,
 		telemetry:   telemetry,
+		rpc:         rpc,
 		notify:      make(chan struct{}, 1000),
 		done:        make(chan struct{}),
 	}
@@ -103,6 +118,9 @@ func (ct *SimulatedContract) Notify() <-chan struct{} {
 }
 
 func (ct *SimulatedContract) LatestBlockHeight(_ context.Context) (uint64, error) {
+	ct.mu.RLock()
+	defer ct.mu.RUnlock()
+
 	if ct.lastBlock == nil {
 		return 0, fmt.Errorf("no config found")
 	}
@@ -118,6 +136,7 @@ func (ct *SimulatedContract) run() {
 		case block := <-chBlocks:
 			ct.logger.Printf("received block %s", block.BlockNumber)
 
+			ct.mu.Lock()
 			ct.blocks[block.BlockNumber.String()] = block
 			ct.lastBlock = block.BlockNumber
 
@@ -164,6 +183,7 @@ func (ct *SimulatedContract) run() {
 					}
 				}
 			}
+			ct.mu.Unlock()
 		case <-ct.done:
 			return
 		}

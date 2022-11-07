@@ -20,6 +20,9 @@ func (ct *SimulatedContract) Transmit(
 	r types.Report,
 	s []types.AttributedOnchainSignature,
 ) error {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+
 	ct.lastEpoch = rc.Epoch
 	// TODO: simulate gas bumping
 	return ct.transmitter.Transmit(ct.account, []byte(r), rc.Epoch, rc.Round)
@@ -34,6 +37,9 @@ func (ct *SimulatedContract) LatestConfigDigestAndEpoch(
 	epoch uint32,
 	err error,
 ) {
+	ct.mu.RLock()
+	defer ct.mu.RUnlock()
+
 	conf, ok := ct.runConfigs[ct.lastConfig.String()]
 	if ok {
 		return conf.ConfigDigest, ct.lastEpoch, nil
@@ -44,5 +50,8 @@ func (ct *SimulatedContract) LatestConfigDigestAndEpoch(
 
 // Account from which the transmitter invokes the contract
 func (ct *SimulatedContract) FromAccount() types.Account {
+	ct.mu.RLock()
+	defer ct.mu.RUnlock()
+
 	return types.Account(ct.account)
 }

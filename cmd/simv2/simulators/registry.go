@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -18,17 +16,9 @@ type SimulatedUpkeep struct {
 }
 
 func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.BlockKey) ([]types.UpkeepKey, error) {
+
+	ct.mu.RLock()
 	ct.logger.Printf("getting keys at block %s", ct.lastBlock)
-
-	r := rand.Intn(ct.avgLatency)
-	timer := time.NewTimer(time.Duration(r*2) * time.Millisecond)
-
-	select {
-	case <-ctx.Done():
-		timer.Stop()
-		return nil, fmt.Errorf("context cancelled")
-	case <-timer.C:
-	}
 
 	block := ct.lastBlock.String()
 	keys := []types.UpkeepKey{}
@@ -38,22 +28,27 @@ func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.
 		k := types.UpkeepKey([]byte(fmt.Sprintf("%s|%s", block, key)))
 		keys = append(keys, k)
 	}
+	ct.mu.RUnlock()
+
+	// call to GetState
+	err := <-ct.rpc.Call(ctx, "getState")
+	if err != nil {
+		return nil, err
+	}
+	// call to GetActiveIDs
+	// TODO: batch size is hard coded at 10_000, if the number of keys is more
+	// than this, simulate another rpc call
+	err = <-ct.rpc.Call(ctx, "getActiveIDs")
+	if err != nil {
+		return nil, err
+	}
 
 	return keys, nil
 }
 
 func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
-	rl := rand.Intn(ct.avgLatency)
-	timer := time.NewTimer(time.Duration(rl*2) * time.Millisecond)
-
-	ct.telemetry.CheckKey([]byte(key))
-
-	select {
-	case <-ctx.Done():
-		timer.Stop()
-		return false, types.UpkeepResult{}, fmt.Errorf("context cancelled")
-	case <-timer.C:
-	}
+	ct.mu.RLock()
+	defer ct.mu.RUnlock()
 
 	parts := strings.Split(string(key), "|")
 	if len(parts) != 2 {
@@ -84,6 +79,22 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, key types.UpkeepKe
 		CheckBlockNumber: uint32(block.Int64() - 1), // minus 1 because the real contract does this
 		CheckBlockHash:   bl,
 	}
+
+	// call to CheckUpkeep
+	err := <-ct.rpc.Call(ctx, "checkUpkeep")
+	if err != nil {
+		return false, types.UpkeepResult{}, err
+	}
+
+	// call to SimulatePerform
+	err = <-ct.rpc.Call(ctx, "simulatePerform")
+	if err != nil {
+		return false, types.UpkeepResult{}, err
+	}
+
+	// call telemetry after RPC delays have been applied. if a check is cancelled
+	// it doesn't count toward telemetry.
+	ct.telemetry.CheckKey([]byte(key))
 
 	// start at the highest blocks eligible. the first eligible will be a block
 	// lower than the current

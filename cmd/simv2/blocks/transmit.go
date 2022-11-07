@@ -57,6 +57,7 @@ func (l *TransmitLoader) Transmit(from string, reportBytes []byte, epoch uint32,
 	}
 
 	report := &TransmitEvent{
+		InBlock:        "0",
 		SendingAddress: from,
 		Report:         reportBytes,
 		Hash:           h,
@@ -71,6 +72,9 @@ func (l *TransmitLoader) Transmit(from string, reportBytes []byte, epoch uint32,
 }
 
 func (l *TransmitLoader) Results() []TransmitEvent {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	events := []TransmitEvent{}
 	for _, r := range l.transmitted {
 		events = append(events, *r)

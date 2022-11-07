@@ -11,7 +11,7 @@ import (
 
 func GenerateSimulatedUpkeeps(rb config.RunBook) ([]SimulatedUpkeep, error) {
 	generated := []SimulatedUpkeep{}
-	limit := big.NewInt(0).Add(rb.BlockCadence.Genesis, big.NewInt(int64(rb.BlockCadence.Duration)))
+	limit := new(big.Int).Add(rb.BlockCadence.Genesis, big.NewInt(int64(rb.BlockCadence.Duration)))
 
 	for _, upkeep := range rb.Upkeeps {
 		p := mathparse.NewParser(upkeep.OffsetFunc)
@@ -19,7 +19,7 @@ func GenerateSimulatedUpkeeps(rb config.RunBook) ([]SimulatedUpkeep, error) {
 
 		for y := 1; y <= upkeep.Count; y++ {
 			sym := SimulatedUpkeep{
-				ID:         big.NewInt(0).Add(upkeep.StartID, big.NewInt(int64(y))),
+				ID:         new(big.Int).Add(upkeep.StartID, big.NewInt(int64(y))),
 				EligibleAt: make([]*big.Int, 0),
 			}
 

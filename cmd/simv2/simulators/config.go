@@ -9,6 +9,9 @@ import (
 )
 
 func (ct *SimulatedContract) LatestConfigDetails(_ context.Context) (uint64, types.ConfigDigest, error) {
+	ct.mu.RLock()
+	defer ct.mu.RUnlock()
+
 	if ct.lastConfig == nil {
 		return 0, types.ConfigDigest{}, fmt.Errorf("no config found")
 	}
@@ -22,6 +25,9 @@ func (ct *SimulatedContract) LatestConfigDetails(_ context.Context) (uint64, typ
 }
 
 func (ct *SimulatedContract) LatestConfig(_ context.Context, changedInBlock uint64) (types.ContractConfig, error) {
+	ct.mu.RLock()
+	defer ct.mu.RUnlock()
+
 	bn := big.NewInt(int64(changedInBlock))
 	conf, ok := ct.runConfigs[bn.String()]
 	if ok {

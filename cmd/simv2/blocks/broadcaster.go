@@ -34,7 +34,7 @@ type BlockBroadcaster struct {
 func NewBlockBroadcaster(conf config.Blocks, maxDelay int, loaders ...BlockLoader) *BlockBroadcaster {
 	limit := new(big.Int).Add(conf.Genesis, big.NewInt(int64(conf.Duration)))
 
-	// add a 5 block padding to allow all transmits to come through
+	// add a block padding to allow all transmits to come through
 	limit = new(big.Int).Add(limit, big.NewInt(int64(conf.EndPadding)))
 
 	return &BlockBroadcaster{
@@ -60,7 +60,7 @@ func (bb *BlockBroadcaster) run() {
 		select {
 		case <-timer.C:
 			bb.mu.Lock()
-			bb.nextBlock = big.NewInt(0).Add(bb.nextBlock, big.NewInt(1))
+			bb.nextBlock = new(big.Int).Add(bb.nextBlock, big.NewInt(1))
 			bb.mu.Unlock()
 			log.Printf("next block: %s", bb.nextBlock)
 
