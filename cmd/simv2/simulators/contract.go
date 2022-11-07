@@ -144,7 +144,6 @@ func (ct *SimulatedContract) run() {
 				ct.logger.Printf("new config identified at block: %s", block.BlockNumber)
 				ct.lastConfig = block.BlockNumber
 				ct.runConfigs[block.BlockNumber.String()] = *block.Config
-				go func() { ct.notify <- struct{}{} }()
 			}
 
 			if block.LatestEpoch != nil {
@@ -184,6 +183,7 @@ func (ct *SimulatedContract) run() {
 				}
 			}
 			ct.mu.Unlock()
+			go func() { ct.notify <- struct{}{} }()
 		case <-ct.done:
 			return
 		}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"sort"
@@ -160,7 +159,7 @@ func (c *RPCCollector) collectDataFromFile() ([]string, map[string][]rpcDataPoin
 	rateData := make(map[string][]rpcDataPoint)
 	path := c.filePath
 
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return ids, rateData, err
 	}
@@ -170,7 +169,7 @@ func (c *RPCCollector) collectDataFromFile() ([]string, map[string][]rpcDataPoin
 			nm := file.Name()
 
 			dataPath := fmt.Sprintf("%s/%s/rpc_call_detail.json", path, nm)
-			b, err := ioutil.ReadFile(dataPath)
+			b, err := os.ReadFile(dataPath)
 			if err != nil {
 				return ids, rateData, err
 			}
