@@ -11,9 +11,9 @@
     },
     "blockDetail": {
         "genesisBlock": 128943862,
-        "blockCadence": "3s",
-        "blockCadenceJitter": "200ms",
-        "durationInBlocks": 200,
+        "blockCadence": "1s",
+        "blockCadenceJitter": "100ms",
+        "durationInBlocks": 300,
         "endPadding": 20
     },
     "configEvents": [
@@ -24,11 +24,11 @@
             "maxRoundsPerEpoch": 7,
             "deltaProgress": "10s",
             "deltaResend": "10s",
-            "deltaRound": "2800ms",
+            "deltaRound": "2500ms",
             "deltaGrace": "500ms",
             "deltaStage": "20s",
             "maxQueryTime": "50ms",
-            "maxObservationTime": "1500ms",
+            "maxObservationTime": "1200ms",
             "maxReportTime": "800ms",
             "maxShouldAcceptTime": "50ms",
             "maxShouldTransmitTime": "50ms"
@@ -37,17 +37,17 @@
     "upkeeps": [
         {
             "_comment": "upkeeps that have no performs",
-            "count": 780,
+            "count": 900,
             "startID": 1000,
             "generateFunc": "x + 1000",
             "offsetFunc": "x"
         },
         {
-            "_comment": "2 performs per upkeep",
+            "_comment": "~3 performs per upkeep spaced at every 7 blocks",
             "count": 30,
             "startID": 200,
-            "generateFunc": "50x - 25",
-            "offsetFunc": "4x + 2"
+            "generateFunc": "100x",
+            "offsetFunc": "7x + 2"
         }
     ]
 }

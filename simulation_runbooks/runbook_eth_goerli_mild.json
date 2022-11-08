@@ -25,10 +25,10 @@
             "deltaResend": "10s",
             "deltaRound": "2500ms",
             "deltaGrace": "500ms",
-            "deltaStage": "2s",
+            "deltaStage": "20s",
             "maxQueryTime": "50ms",
-            "maxObservationTime": "1300ms",
-            "maxReportTime": "700ms",
+            "maxObservationTime": "1200ms",
+            "maxReportTime": "800ms",
             "maxShouldAcceptTime": "50ms",
             "maxShouldTransmitTime": "50ms"
         }

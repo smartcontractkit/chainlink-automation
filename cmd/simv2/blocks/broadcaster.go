@@ -103,6 +103,12 @@ func (bb *BlockBroadcaster) broadcast() {
 
 	for sub, chSub := range bb.subscriptions {
 		go func(ch chan config.SymBlock, delay bool) {
+			defer func() {
+				if err := recover(); err != nil {
+					log.Println(err)
+				}
+			}()
+
 			if delay {
 				// add up to a 2 second delay at random
 				r := rand.Intn(bb.maxDelay)
