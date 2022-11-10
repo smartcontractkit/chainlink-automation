@@ -145,6 +145,7 @@ EachKey:
 	for _, key := range keys {
 		for _, filter := range filters {
 			if !filter(key) {
+				s.logger.Printf("filtered out key '%s'", key)
 				continue EachKey
 			}
 		}

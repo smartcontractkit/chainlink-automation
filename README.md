@@ -96,3 +96,15 @@ $ ./bin/simulator --pprof --contract 0x02777053d6764996e594c3E88AF1D58D5363a2e6 
 # terminal 2
 $ go tool pprof -top http://localhost:6060/debug/pprof/heap
 ```
+
+## Simulator V2
+
+This simulator uses OCR directly to immitate an automation network. The version uses runbooks as seen in `simulation_runbooks` to configure simulations.
+
+### Usage
+
+The executable takes a runbook json file to define configuration parameters.
+
+```
+$ ./bin/simv2 --simulation-file ./simulation_runbooks/runbook_eth_goerli_mild.json
+```
