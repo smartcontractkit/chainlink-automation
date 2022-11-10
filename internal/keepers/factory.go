@@ -99,7 +99,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 
 	return &keepers{
 		id:      c.OracleID,
-		rSrc:    newCryptoRandSource(),
 		service: service,
 		encoder: d.encoder,
 		logger:  d.logger,

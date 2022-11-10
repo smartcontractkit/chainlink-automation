@@ -2,7 +2,6 @@ package keepers
 
 import (
 	"log"
-	"math/rand"
 
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -10,7 +9,6 @@ import (
 
 type keepers struct {
 	id      commontypes.OracleID
-	rSrc    rand.Source
 	service upkeepService
 	encoder types.ReportEncoder
 	logger  *log.Logger

@@ -116,11 +116,9 @@ func TestObservation(t *testing.T) {
 	for i, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
-			rd := new(MockedRandomSource)
 			mf := new(MockedFilterer)
 
 			plugin := &keepers{
-				rSrc:    rd,
 				service: ms,
 				logger:  log.New(io.Discard, "", 0),
 				filter:  mf,
@@ -132,7 +130,6 @@ func TestObservation(t *testing.T) {
 
 			ctx, cancel := test.Ctx()
 			ms.Mock.On("SampleUpkeeps", mock.Anything).Return(test.SampleSet, test.SampleErr)
-			rd.Mock.On("Int63").Return(int64(0)).Maybe()
 
 			b, err := plugin.Observation(ctx, types.ReportTimestamp{}, types.Query{})
 			cancel()
@@ -154,11 +151,9 @@ func TestObservation(t *testing.T) {
 
 func BenchmarkObservation(b *testing.B) {
 	ms := new(MockedUpkeepService)
-	rd := new(MockedRandomSource)
 	mf := &BenchmarkMockedFilterer{}
 
 	plugin := &keepers{
-		rSrc:    rd,
 		service: ms,
 		logger:  log.New(io.Discard, "", 0),
 		filter:  mf,
@@ -171,7 +166,6 @@ func BenchmarkObservation(b *testing.B) {
 	for i := 2; i < 100; i++ {
 		set = append(set, &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1))), State: ktypes.NotEligible})
 	}
-	rd.Mock.On("Int63").Return(int64(0)).Times(100).Maybe()
 
 	b.ResetTimer()
 	// run the Observation function b.N times

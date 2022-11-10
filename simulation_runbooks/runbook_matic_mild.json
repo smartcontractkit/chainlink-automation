@@ -1,6 +1,6 @@
 {
     "nodes": 8,
-    "maxNodeServiceWorkers": 100,
+    "maxNodeServiceWorkers": 20,
     "maxNodeServiceQueueSize": 1000,
     "avgNetworkLatency": "100ms",
     "rpcDetail": {
@@ -13,7 +13,7 @@
         "genesisBlock": 128943862,
         "blockCadence": "3s",
         "blockCadenceJitter": "200ms",
-        "durationInBlocks": 200,
+        "durationInBlocks": 100,
         "endPadding": 20
     },
     "configEvents": [
@@ -29,7 +29,7 @@
             "deltaStage": "20s",
             "maxQueryTime": "50ms",
             "maxObservationTime": "1500ms",
-            "maxReportTime": "800ms",
+            "maxReportTime": "700ms",
             "maxShouldAcceptTime": "50ms",
             "maxShouldTransmitTime": "50ms"
         }
