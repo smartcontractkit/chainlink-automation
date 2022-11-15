@@ -1,8 +1,6 @@
 package keepers
 
 import (
-	"crypto/rand"
-	"encoding/binary"
 	"fmt"
 	"math"
 	"math/cmplx"
@@ -18,23 +16,6 @@ var (
 	ErrEncoding        = fmt.Errorf("error encountered while encoding")
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
-
-type cryptoRandSource struct{}
-
-func newCryptoRandSource() cryptoRandSource {
-	return cryptoRandSource{}
-}
-
-func (_ cryptoRandSource) Int63() int64 {
-	var b [8]byte
-	_, err := rand.Read(b[:])
-	if err != nil {
-		panic(err)
-	}
-	return int64(binary.LittleEndian.Uint64(b[:]) & (1<<63 - 1))
-}
-
-func (_ cryptoRandSource) Seed(_ int64) {}
 
 func filterUpkeeps(upkeeps []*ktypes.UpkeepResult, filter ktypes.UpkeepState) []*ktypes.UpkeepResult {
 	ret := make([]*ktypes.UpkeepResult, 0, len(upkeeps))
@@ -130,7 +111,7 @@ func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	return output, nil
 }
 
-func sortedDedupedKeyList(attributed []types.AttributedObservation, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
 	var err error
 
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
@@ -155,7 +136,11 @@ func sortedDedupedKeyList(attributed []types.AttributedObservation, filters ...f
 		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}
 
-	sort.Sort(sortUpkeepKeys(keys))
+	src := newKeyedCryptoRandSource(key)
+	r := rnd.New(src)
+	r.Shuffle(len(keys), func(i, j int) {
+		keys[i], keys[j] = keys[j], keys[i]
+	})
 
 	return keys, nil
 }

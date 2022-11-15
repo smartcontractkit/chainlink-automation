@@ -2,12 +2,14 @@ package keepers
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	"golang.org/x/crypto/sha3"
 )
 
 type ocrLogContextKey struct{}
@@ -79,9 +81,21 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	lCtx := newOcrLogContext(rt)
 	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
 
+	// similar key building as libocr transmit selector
+	hash := sha3.NewLegacyKeccak256()
+	hash.Write(rt.ConfigDigest[:])
+	temp := make([]byte, 8)
+	binary.LittleEndian.PutUint64(temp, uint64(rt.Epoch))
+	hash.Write(temp)
+	binary.LittleEndian.PutUint64(temp, uint64(rt.Round))
+	hash.Write(temp)
+
+	var key [16]byte
+	copy(key[:], hash.Sum(nil))
+
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keys, err := sortedDedupedKeyList(attributed, k.filter.Filter())
+	keys, err := shuffledDedupedKeyList(attributed, key, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
