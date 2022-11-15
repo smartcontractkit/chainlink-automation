@@ -86,19 +86,23 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
-	// Check upkeeps
-	upkeeps, err := k.service.CheckUpkeep(ctx, keys...)
-	if err != nil {
-		return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
-	}
-
+	// TODO: Generate multiple reports
 	// select, verify, and build report
 	toPerform := make([]ktypes.UpkeepResult, 0, 1)
-	for _, upkeep := range upkeeps {
-		if upkeep.State == ktypes.Eligible {
+	for _, key := range keys {
+		upkeeps, err := k.service.CheckUpkeep(ctx, key)
+		if err != nil {
+			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
+		}
+
+		if len(upkeeps) != 1 {
+			continue
+		}
+
+		if upkeeps[0].State == ktypes.Eligible {
 			// only build a report from a single upkeep for now
-			k.logger.Printf("reporting %s to be performed: %s", upkeep.Key, lCtx.Short())
-			toPerform = append(toPerform, upkeep)
+			k.logger.Printf("reporting %s to be performed: %s", upkeeps[0].Key, lCtx.Short())
+			toPerform = append(toPerform, upkeeps[0])
 			break
 		}
 	}
