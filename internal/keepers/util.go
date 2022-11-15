@@ -292,7 +292,7 @@ func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
 func upkeepKeysToString(keys []ktypes.UpkeepKey) string {
 	keysStr := make([]string, len(keys))
 	for i, key := range keys {
-		keysStr[i] = fmt.Sprintf("%s", key)
+		keysStr[i] = string(key)
 	}
 
 	return strings.Join(keysStr, ", ")

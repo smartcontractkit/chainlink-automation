@@ -168,7 +168,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 				continue
 			}
 			// some other error
-			multierr.Append(err, req.Error)
+			multierr.AppendInto(&err, req.Error)
 		} else {
 			results[i], err = unmarshalCheckUpkeepResult(keys[i], *checkResults[i])
 			if err != nil {
@@ -246,7 +246,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 				continue
 			}
 			// some other error
-			multierr.Append(err, req.Error)
+			multierr.AppendInto(&err, req.Error)
 		} else {
 			simulatePerformSuccess, err := unmarshalPerformUpkeepSimulationResult(*performResults[i])
 			if err != nil {

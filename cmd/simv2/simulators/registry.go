@@ -139,8 +139,6 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 					return
 				}
 			}
-
-			return
 		}(i, key)
 	}
 
