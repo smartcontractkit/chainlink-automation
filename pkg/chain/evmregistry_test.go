@@ -18,7 +18,7 @@ import (
 )
 
 func TestGetActiveUpkeepKeys(t *testing.T) {
-	mockClient := new(mocks.Client)
+	mockClient := mocks.NewClient(t)
 	ctx := context.Background()
 	kabi, _ := keeper_registry_wrapper2_0.KeeperRegistryMetaData.GetAbi()
 	rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
@@ -53,7 +53,7 @@ func TestCheckUpkeep(t *testing.T) {
 	wrappedPerformData := common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000075eaba92fcb25fdda1cc2bd48010ece747ff7dbd1fa2c3d105279265191198a45e7bfc00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000")
 
 	t.Run("Perform", func(t *testing.T) {
-		mockClient := new(mocks.Client)
+		mockClient := mocks.NewClient(t)
 		ctx := context.Background()
 		rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
 
@@ -76,14 +76,14 @@ func TestCheckUpkeep(t *testing.T) {
 			t.FailNow()
 		}
 
-		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey("1|1234"))
 		assert.NoError(t, err)
-		assert.Equal(t, true, ok)
-		assert.Equal(t, types.Eligible, upkeep.State)
+		assert.Len(t, upkeep, 1)
+		assert.Equal(t, types.Eligible, upkeep[0].State)
 	})
 
 	t.Run("UPKEEP_NOT_NEEDED", func(t *testing.T) {
-		mockClient := new(mocks.Client)
+		mockClient := mocks.NewClient(t)
 		ctx := context.Background()
 		rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
 
@@ -102,14 +102,14 @@ func TestCheckUpkeep(t *testing.T) {
 			t.FailNow()
 		}
 
-		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey("1|1234"))
 		assert.NoError(t, err)
-		assert.Equal(t, false, ok)
-		assert.Equal(t, types.NotEligible, upkeep.State)
+		assert.Len(t, upkeep, 1)
+		assert.Equal(t, types.NotEligible, upkeep[0].State)
 	})
 
 	t.Run("Check upkeep true but simulate perform fails", func(t *testing.T) {
-		mockClient := new(mocks.Client)
+		mockClient := mocks.NewClient(t)
 		ctx := context.Background()
 		rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
 
@@ -122,14 +122,14 @@ func TestCheckUpkeep(t *testing.T) {
 			t.FailNow()
 		}
 
-		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey("1|1234"))
 		assert.NoError(t, err)
-		assert.Equal(t, false, ok)
-		assert.Equal(t, types.NotEligible, upkeep.State)
+		assert.Len(t, upkeep, 1)
+		assert.Equal(t, types.NotEligible, upkeep[0].State)
 	})
 
 	t.Run("Hanging process respects context", func(t *testing.T) {
-		mockClient := new(mocks.Client)
+		mockClient := mocks.NewClient(t)
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 
 		rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
@@ -141,13 +141,12 @@ func TestCheckUpkeep(t *testing.T) {
 		}
 
 		start := time.Now()
-		ok, _, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		_, err = reg.CheckUpkeep(ctx, types.UpkeepKey("1|1234"))
 
 		assert.LessOrEqual(t, time.Since(start), 60*time.Millisecond)
 
 		cancel()
 		assert.ErrorIs(t, err, ErrContextCancelled)
-		assert.Equal(t, false, ok)
 	})
 }
 

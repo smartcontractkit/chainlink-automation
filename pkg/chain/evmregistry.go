@@ -6,16 +6,21 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-const ActiveUpkeepIDBatchSize int64 = 10000
-const separator string = "|"
+const (
+	ActiveUpkeepIDBatchSize int64  = 10000
+	separator               string = "|"
+)
 
 var (
 	ErrRegistryCallFailure   = fmt.Errorf("registry chain call failure")
@@ -23,26 +28,32 @@ var (
 	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
 	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
 	ErrContextCancelled      = fmt.Errorf("context was cancelled")
+
+	keeperRegistryABI = mustGetABI(keeper_registry_wrapper2_0.KeeperRegistryABI)
 )
 
 type outStruct struct {
-	ok  bool
-	ur  types.UpkeepResult
+	ur  []types.UpkeepResult
 	err error
 }
 
+// evmRegistryv2_0 implements types.Registry interface
 type evmRegistryv2_0 struct {
-	registry  *keeper_registry_wrapper2_0.KeeperRegistryCaller
-	evmClient bind.ContractBackend
+	registry *keeper_registry_wrapper2_0.KeeperRegistryCaller
+	client   EVMClient
 }
 
-func NewEVMRegistryV2_0(address common.Address, backend bind.ContractBackend) (*evmRegistryv2_0, error) {
-	caller, err := keeper_registry_wrapper2_0.NewKeeperRegistryCaller(address, backend)
+// NewEVMRegistryV2_0 is the constructor of evmRegistryv2_0
+func NewEVMRegistryV2_0(address common.Address, client EVMClient) (*evmRegistryv2_0, error) {
+	registry, err := keeper_registry_wrapper2_0.NewKeeperRegistryCaller(address, client)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to create caller for address and backend", ErrInitializationFailure)
 	}
 
-	return &evmRegistryv2_0{registry: caller, evmClient: backend}, nil
+	return &evmRegistryv2_0{
+		registry: registry,
+		client:   client,
+	}, nil
 }
 
 func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.BlockKey) ([]types.UpkeepKey, error) {
@@ -88,138 +99,195 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 	return keys, nil
 }
 
-func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch chan outStruct) {
-	block, upkeepId, err := BlockAndIdFromKey(key)
-	if err != nil {
+func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch chan outStruct) {
+	var (
+		checkReqs    = make([]rpc.BatchElem, len(keys))
+		checkResults = make([]*string, len(keys))
+	)
+
+	for i, key := range keys {
+		block, upkeepId, err := BlockAndIdFromKey(key)
+		if err != nil {
+			ch <- outStruct{
+				err: err,
+			}
+			return
+		}
+
+		opts, err := r.buildCallOpts(ctx, block)
+		if err != nil {
+			ch <- outStruct{
+				err: err,
+			}
+			return
+		}
+
+		payload, err := keeperRegistryABI.Pack("checkUpkeep", upkeepId)
+		if err != nil {
+			ch <- outStruct{
+				err: err,
+			}
+			return
+		}
+
+		var result string
+		checkReqs[i] = rpc.BatchElem{
+			Method: "eth_call",
+			Args: []interface{}{
+				map[string]interface{}{
+					"to":   r.registry,
+					"data": hexutil.Bytes(payload),
+				},
+				hexutil.EncodeBig(opts.BlockNumber),
+			},
+			Result: &result,
+		}
+
+		checkResults[i] = &result
+	}
+
+	if err := r.client.BatchCallContext(ctx, checkReqs); err != nil {
 		ch <- outStruct{
-			ur:  types.UpkeepResult{},
 			err: err,
 		}
 		return
 	}
 
-	opts, err := r.buildCallOpts(ctx, block)
+	var (
+		err            error
+		performReqs    = make([]rpc.BatchElem, len(keys))
+		performResults = make([]*string, len(keys))
+		results        = make([]types.UpkeepResult, len(keys))
+	)
+
+	for i, req := range checkReqs {
+		if req.Error != nil {
+			if strings.Contains(req.Error.Error(), "reverted") {
+				// subscription was canceled
+				// NOTE: would we want to publish the fact that it is inactive?
+				continue
+			}
+			// some other error
+			multierr.Append(err, req.Error)
+		} else {
+			results[i], err = unmarshalCheckUpkeepResult(keys[i], *checkResults[i])
+			if err != nil {
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+
+			block, upkeepId, err := BlockAndIdFromKey(keys[i])
+			if err != nil {
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+
+			opts, err := r.buildCallOpts(ctx, block)
+			if err != nil {
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+
+			// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
+			payload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepId, results[i].PerformData)
+			if err != nil {
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+
+			var result string
+			performReqs[i] = rpc.BatchElem{
+				Method: "eth_call",
+				Args: []interface{}{
+					map[string]interface{}{
+						"to":   r.registry,
+						"data": hexutil.Bytes(payload),
+					},
+					hexutil.EncodeBig(opts.BlockNumber),
+				},
+				Result: &result,
+			}
+
+			performResults[i] = &result
+		}
+	}
+
 	if err != nil {
 		ch <- outStruct{
-			ur:  types.UpkeepResult{},
 			err: err,
 		}
 		return
 	}
 
-	rawCall := &keeper_registry_wrapper2_0.KeeperRegistryCallerRaw{Contract: r.registry}
-
-	var out []interface{}
-	err = rawCall.Call(opts, &out, "checkUpkeep", upkeepId)
-	if err != nil {
+	if err = r.client.BatchCallContext(ctx, performReqs); err != nil {
 		ch <- outStruct{
-			ur:  types.UpkeepResult{},
-			err: fmt.Errorf("%w: checkUpkeep returned result: %s", ErrRegistryCallFailure, err),
-		}
-		return
-	}
-
-	result := types.UpkeepResult{
-		Key:   key,
-		State: types.Eligible,
-	}
-
-	upkeepNeeded := *abi.ConvertType(out[0], new(bool)).(*bool)
-	rawPerformData := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
-	result.FailureReason = *abi.ConvertType(out[2], new(uint8)).(*uint8)
-	result.GasUsed = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
-	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
-	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
-
-	// TODO: not sure it it's best to short circuit here
-	if !upkeepNeeded {
-		result.State = types.NotEligible
-		ch <- outStruct{
-			ur: result,
-		}
-		return
-	}
-
-	type performDataStruct struct {
-		CheckBlockNumber uint32   `abi:"checkBlockNumber"`
-		CheckBlockhash   [32]byte `abi:"checkBlockhash"`
-		PerformData      []byte   `abi:"performData"`
-	}
-
-	type res struct {
-		Result performDataStruct
-	}
-
-	// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
-	// function which returns this tuple in order to decode the bytes
-	pdataABI, _ := abi.JSON(strings.NewReader(`[{
-			"name":"check",
-			"type":"function",
-			"outputs":[{
-				"name":"ret",
-				"type":"tuple",
-				"components":[
-					{"type":"uint32","name":"checkBlockNumber"},
-					{"type":"bytes32","name":"checkBlockhash"},
-					{"type":"bytes","name":"performData"}
-					]
-				}]
-			}]`,
-	))
-
-	var ret0 = new(res)
-	err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
-	if err != nil {
-		ch <- outStruct{
-			ur:  types.UpkeepResult{},
-			err: fmt.Errorf("%w", err),
-		}
-		return
-	}
-
-	result.CheckBlockNumber = ret0.Result.CheckBlockNumber
-	result.CheckBlockHash = ret0.Result.CheckBlockhash
-	result.PerformData = ret0.Result.PerformData
-
-	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
-	var out2 []interface{}
-	err = rawCall.Call(opts, &out2, "simulatePerformUpkeep", upkeepId, result.PerformData)
-	if err != nil {
-		ch <- outStruct{
-			ur:  types.UpkeepResult{},
 			err: fmt.Errorf("%w: simulate perform upkeep returned result: %s", ErrRegistryCallFailure, err),
 		}
 		return
 	}
-	simulatePerformSuccess := *abi.ConvertType(out2[0], new(bool)).(*bool)
-	if !simulatePerformSuccess {
-		result.State = types.NotEligible
+
+	out := outStruct{
+		ur: make([]types.UpkeepResult, len(keys)),
+	}
+
+	for i, req := range performReqs {
+		if req.Error != nil {
+			if strings.Contains(req.Error.Error(), "reverted") {
+				// subscription was canceled
+				// NOTE: would we want to publish the fact that it is inactive?
+				continue
+			}
+			// some other error
+			multierr.Append(err, req.Error)
+		} else {
+			simulatePerformSuccess, err := unmarshalPerformUpkeepSimulationResult(*performResults[i])
+			if err != nil {
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+
+			if !simulatePerformSuccess {
+				results[i].State = types.NotEligible
+			}
+
+			out.ur[i] = results[i]
+		}
+	}
+
+	if err != nil {
 		ch <- outStruct{
-			ur: result,
+			err: err,
 		}
 		return
 	}
 
-	ch <- outStruct{
-		ok: true,
-		ur: result,
-	}
+	ch <- out
 }
 
-func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
+func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
 	chResult := make(chan outStruct, 1)
-	go r.check(ctx, key, chResult)
+	go r.check(ctx, keys, chResult)
 
 	select {
 	case rs := <-chResult:
-		return rs.ok, rs.ur, rs.err
+		return rs.ur, rs.err
 	case <-ctx.Done():
 		// safety on context done to provide an error on context cancellation
 		// contract calls through the geth wrappers are a bit of a black box
 		// so this safety net ensures contexts are fully respected and contract
 		// call functions have a more graceful closure outside the scope of
 		// CheckUpkeep needing to return immediately.
-		return false, types.UpkeepResult{}, fmt.Errorf("%w: failed to check upkeep on registry", ErrContextCancelled)
+		return nil, fmt.Errorf("%w: failed to check upkeep on registry", ErrContextCancelled)
 	}
 }
 
@@ -229,7 +297,7 @@ func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepId
 		return nil, err
 	}
 
-	return types.UpkeepIdentifier(id.Bytes()), nil
+	return id.Bytes(), nil
 }
 
 func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {
@@ -242,7 +310,7 @@ func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKe
 
 	if b == nil || b.Int64() == 0 {
 		// fetch the current block number so batched GetActiveUpkeepKeys calls can be performed on the same block
-		header, err := r.evmClient.HeaderByNumber(ctx, nil)
+		header, err := r.client.HeaderByNumber(ctx, nil)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s: EVM failed to fetch block header", err, ErrRegistryCallFailure)
 		}
@@ -259,18 +327,18 @@ func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKe
 func BlockAndIdFromKey(key types.UpkeepKey) (types.BlockKey, *big.Int, error) {
 	parts := strings.Split(string(key), separator)
 	if len(parts) != 2 {
-		return types.BlockKey(""), nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
 
 	id := new(big.Int)
 	_, ok := id.SetString(parts[1], 10)
 	if !ok {
-		return types.BlockKey(""), nil, fmt.Errorf("%w: must be big int", ErrUpkeepKeyNotParsable)
+		return "", nil, fmt.Errorf("%w: must be big int", ErrUpkeepKeyNotParsable)
 	}
 
 	return types.BlockKey(parts[0]), id, nil
 }
 
 func BlockAndIdToKey(block *big.Int, id *big.Int) types.UpkeepKey {
-	return types.UpkeepKey([]byte(fmt.Sprintf("%s%s%s", block, separator, id)))
+	return types.UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
 }

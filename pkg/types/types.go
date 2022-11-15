@@ -9,7 +9,7 @@ import (
 
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
-	CheckUpkeep(context.Context, UpkeepKey) (bool, UpkeepResult, error)
+	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 
@@ -38,6 +38,8 @@ type UpkeepKey []byte
 
 // UpkeepIdentifier is an identifier for an active upkeep, typically a big int
 type UpkeepIdentifier []byte
+
+type UpkeepResults []UpkeepResult
 
 type UpkeepResult struct {
 	Key              UpkeepKey

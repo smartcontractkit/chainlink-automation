@@ -12,9 +12,10 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -168,7 +169,7 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 		l := log.New(w, fmt.Sprintf("[node %d] ", i+1), log.Lshortfile|log.Lmsgprefix)
 
 		// each node has its own rpc connection
-		client, err := ethclient.Dial(*config.RPC)
+		client, err := rpc.Dial(*config.RPC)
 		if err != nil {
 			return err
 		}
@@ -187,7 +188,7 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 	}
 
 	c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	log.Print("starting simulation")
 	select {
@@ -209,7 +210,9 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 	return nil
 }
 
-func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, client *ethclient.Client, i int8, n int) types.ReportingPlugin {
+func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, rpcClient *rpc.Client, i int8, n int) types.ReportingPlugin {
+	client := chain.NewClient(rpcClient, 10)
+
 	reg, err := chain.NewEVMRegistryV2_0(address, client)
 	if err != nil {
 		panic(err)
@@ -226,7 +229,7 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 
 	factory := keepers.NewReportingPluginFactory(reg, pLogs, chain.NewEVMReportEncoder(), logger, config)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{
-		ConfigDigest: types.ConfigDigest([32]byte{}),
+		ConfigDigest: [32]byte{},
 		OracleID:     commontypes.OracleID(i),
 		N:            n,
 		F:            0,

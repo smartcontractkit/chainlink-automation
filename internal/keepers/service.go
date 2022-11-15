@@ -21,7 +21,7 @@ type onDemandUpkeepService struct {
 	shuffler     shuffler[types.UpkeepKey]
 	cache        *cache[types.UpkeepResult]
 	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
-	workers      *workerGroup[types.UpkeepResult]
+	workers      *workerGroup[types.UpkeepResults]
 	stopProcs    chan struct{}
 }
 
@@ -37,7 +37,7 @@ func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, logger
 		registry:  registry,
 		shuffler:  new(cryptoShuffler[types.UpkeepKey]),
 		cache:     newCache[types.UpkeepResult](cacheExpire),
-		workers:   newWorkerGroup[types.UpkeepResult](workers, workerQueueLength),
+		workers:   newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		stopProcs: make(chan struct{}),
 	}
 
@@ -87,27 +87,46 @@ func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...fu
 	return s.parallelCheck(ctx, keys[:size], filters...)
 }
 
-func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (types.UpkeepResult, error) {
-	var result types.UpkeepResult
+func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
+	var (
+		wg                sync.WaitGroup
+		results           = make([]types.UpkeepResult, len(keys))
+		nonCachedKeysIdxs []int
+		nonCachedKeys     []types.UpkeepKey
+	)
 
-	// the cache is a collection of keys (block & id) that map to cached
-	// results. if the same upkeep is checked at a block that has already been
-	// checked, return the cached result
-	result, cached := s.cache.Get(string(key))
-	if cached {
-		return result, nil
+	for i, key := range keys {
+		wg.Add(1)
+		go func(i int, key types.UpkeepKey) {
+			// the cache is a collection of keys (block & id) that map to cached
+			// results. if the same upkeep is checked at a block that has already been
+			// checked, return the cached result
+			if result, cached := s.cache.Get(string(key)); cached {
+				results[i] = result
+			} else {
+				nonCachedKeysIdxs = append(nonCachedKeysIdxs, i)
+				nonCachedKeys = append(nonCachedKeys, key)
+			}
+			wg.Done()
+		}(i, key)
 	}
+
+	wg.Wait()
 
 	// check upkeep at block number in key
 	// return result including performData
-	_, u, err := s.registry.CheckUpkeep(ctx, key)
+	checkResults, err := s.registry.CheckUpkeep(ctx, nonCachedKeys...)
 	if err != nil {
-		return types.UpkeepResult{}, fmt.Errorf("%w: service failed to check upkeep from registry", err)
+		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
 
-	s.cache.Set(string(key), u, defaultExpiration)
+	// Cache results
+	for i, u := range checkResults {
+		s.cache.Set(string(keys[nonCachedKeysIdxs[i]]), u, defaultExpiration)
+		results[nonCachedKeysIdxs[i]] = u
+	}
 
-	return u, nil
+	return results, nil
 }
 
 func (s *onDemandUpkeepService) start() {
@@ -127,9 +146,12 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 		return samples.Values(), nil
 	}
 
-	var cacheHits int
-	var wg sync.WaitGroup
-	var wResults workerResults
+	var (
+		cacheHits  int
+		wg         sync.WaitGroup
+		wResults   workerResults
+		keysToSend []types.UpkeepKey
+	)
 
 	// start the results listener
 	// if the context provided is cancelled, this listener shouldn't terminate
@@ -160,27 +182,29 @@ EachKey:
 			continue EachKey
 		}
 
-		// for every job added to the worker queue, add to the wait group
-		// all jobs should complete before completing the function
-		wg.Add(1)
-		s.logger.Printf("attempting to send key to worker group")
-		if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, key, ctx)); err != nil {
-			if errors.Is(err, ErrContextCancelled) {
-				// if the context is cancelled before the work can be
-				// finished, stop adding work and allow existing to finish.
-				// cancelling this context will cancel all waiting worker
-				// functions and have them report immediately. this will
-				// result in a lot of errors in the results collector.
-				s.logger.Printf("context cancelled while attempting to add to queue")
-				wg.Done()
-				break EachKey
-			}
+		// Add key to the slice that is going to be sent to the worker queue
+		keysToSend = append(keysToSend, key)
+	}
 
+	// for every job added to the worker queue, add to the wait group
+	// all jobs should complete before completing the function
+	s.logger.Printf("attempting to send keys to worker group")
+	wg.Add(1)
+	if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, keysToSend, ctx)); err != nil {
+		if !errors.Is(err, ErrContextCancelled) {
 			// the worker process has probably stopped so the function
 			// should terminate with an error
 			close(done)
 			return nil, fmt.Errorf("%w: failed to add upkeep check to worker queue", err)
 		}
+
+		// if the context is cancelled before the work can be
+		// finished, stop adding work and allow existing to finish.
+		// cancelling this context will cancel all waiting worker
+		// functions and have them report immediately. this will
+		// result in a lot of errors in the results collector.
+		s.logger.Printf("context cancelled while attempting to add to queue")
+		wg.Done()
 	}
 
 	s.logger.Printf("waiting for results to be read")
@@ -214,10 +238,13 @@ Outer:
 		case result := <-s.workers.results:
 			if result.Err == nil {
 				r.AddSuccess(1)
-				// cache results
-				s.cache.Set(string(result.Data.Key), result.Data, defaultExpiration)
-				if result.Data.State == types.Eligible {
-					sa.Append(&result.Data)
+
+				// Cache results
+				for _, res := range result.Data {
+					s.cache.Set(string(res.Key), res, defaultExpiration)
+					if res.State == types.Eligible {
+						sa.Append(&res)
+					}
 				}
 			} else {
 				r.SetLastErr(result.Err)
@@ -232,13 +259,14 @@ Outer:
 	}
 }
 
-func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.UpkeepKey, jobCtx context.Context) func(ctx context.Context) (types.UpkeepResult, error) {
-	logger.Printf("check upkeep job created for key: '%s'", key)
-	return func(serviceCtx context.Context) (types.UpkeepResult, error) {
+func makeWorkerFunc(logger *log.Logger, registry types.Registry, keys []types.UpkeepKey, jobCtx context.Context) work[types.UpkeepResults] {
+	keysStr := upkeepKeysToString(keys)
+	logger.Printf("check upkeep job created for keys: %s", keysStr)
+	return func(serviceCtx context.Context) (types.UpkeepResults, error) {
 		// cancel the job if either the worker group is stopped (ctx) or the
 		// job context is cancelled (jobCtx)
 		if jobCtx.Err() != nil || serviceCtx.Err() != nil {
-			return types.UpkeepResult{}, fmt.Errorf("job not attempted because one of two contexts had already been cancelled")
+			return nil, fmt.Errorf("job not attempted because one of two contexts had already been cancelled")
 		}
 
 		c, cancel := context.WithCancel(context.Background())
@@ -247,7 +275,7 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		go func() {
 			select {
 			case <-jobCtx.Done():
-				logger.Printf("check upkeep job context cancelled for key %s", key)
+				logger.Printf("check upkeep job context cancelled for keys: %s", keysStr)
 				cancel()
 			case <-serviceCtx.Done():
 				logger.Printf("worker service context cancelled")
@@ -258,25 +286,30 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 		}()
 
 		start := time.Now()
+
 		// perform check and update cache with result
-		ok, u, err := registry.CheckUpkeep(c, key)
-		logger.Printf("check upkeep took %dms to perform", time.Since(start)/time.Millisecond)
-		if ok {
-			logger.Printf("upkeep ready to perform for key %s", key)
-		}
-
-		if u.FailureReason != 0 {
-			logger.Printf("upkeep '%s' had a non-zero failure reason: %d", key, u.FailureReason)
-		}
-
+		checkResults, err := registry.CheckUpkeep(c, keys...)
 		if err != nil {
-			err = fmt.Errorf("%w: failed to check upkeep key '%s'", err, key)
+			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keysStr)
+		} else {
+			logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
+
+			for _, result := range checkResults {
+				if result.State == types.Eligible {
+					logger.Printf("upkeep ready to perform for key %s", result.Key)
+				}
+
+				if result.FailureReason != 0 {
+					logger.Printf("upkeep '%s' had a non-zero failure reason: %d", result.Key, result.FailureReason)
+				}
+			}
+
 		}
 
 		// close go-routine to prevent memory leaks
 		done <- struct{}{}
 
-		return u, err
+		return checkResults, err
 	}
 }
 

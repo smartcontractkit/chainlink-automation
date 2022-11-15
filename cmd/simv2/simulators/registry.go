@@ -46,7 +46,7 @@ func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.
 	return keys, nil
 }
 
-func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
+func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]bool, []types.UpkeepResult, error) {
 	ct.mu.RLock()
 	defer ct.mu.RUnlock()
 

@@ -17,13 +17,12 @@ import (
 
 func TestOnDemandUpkeepService(t *testing.T) {
 	t.Run("SampleUpkeeps_RatioPick", func(t *testing.T) {
-
 		ctx := context.Background()
 		rg := new(MockedRegistry)
 
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
-			actives[i] = ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1)))
+			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 			rg.Mock.On("IdentifierFromKey", actives[i]).Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
 		}
 
@@ -48,7 +47,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
-			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
+			workers:  newWorkerGroup[ktypes.UpkeepResults](2, 10),
 		}
 
 		// this test does not include the cache cleaner or log subscriber
@@ -75,14 +74,15 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		ctx := context.Background()
 
 		rg := new(MockedRegistry)
-		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
+		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).
+			Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
 			logger:   l,
 			registry: rg,
 			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
-			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
+			workers:  newWorkerGroup[ktypes.UpkeepResults](2, 10),
 		}
 
 		// this test does not include the cache cleaner or log subscriber
@@ -212,8 +212,8 @@ func TestOnDemandUpkeepService(t *testing.T) {
 	*/
 
 	t.Run("CheckUpkeep", func(t *testing.T) {
-		testId := ktypes.UpkeepIdentifier([]byte("1"))
-		testKey := ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%s", string(testId))))
+		testId := ktypes.UpkeepIdentifier("1")
+		testKey := ktypes.UpkeepKey(fmt.Sprintf("1|%s", string(testId)))
 
 		tests := []struct {
 			Name           string
@@ -278,7 +278,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 				logger:   l,
 				cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 				registry: rg,
-				workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
+				workers:  newWorkerGroup[ktypes.UpkeepResults](2, 10),
 			}
 
 			result, err := svc.CheckUpkeep(ctx, test.Key)
@@ -302,14 +302,16 @@ func TestOnDemandUpkeepService(t *testing.T) {
 
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
-			actives[i] = ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1)))
-			rg.Mock.On("IdentifierFromKey", actives[i]).Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
+			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
+			rg.Mock.On("IdentifierFromKey", actives[i]).
+				Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
 		}
 
 		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey("0")).Return(actives, nil)
 
 		for i := 0; i < 5; i++ {
-			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).Return(false, nil, fmt.Errorf("simulate RPC error"))
+			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).
+				Return(false, nil, fmt.Errorf("simulate RPC error"))
 		}
 
 		l := log.New(io.Discard, "", 0)
@@ -319,7 +321,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			registry: rg,
 			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
-			workers:  newWorkerGroup[ktypes.UpkeepResult](2, 10),
+			workers:  newWorkerGroup[ktypes.UpkeepResults](2, 10),
 		}
 
 		// this test does not include the cache cleaner or log subscriber
@@ -354,31 +356,31 @@ func (_m *MockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key ktypes.Bl
 	return r0, ret.Error(1)
 }
 
-func (_m *MockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey) (bool, ktypes.UpkeepResult, error) {
-	ret := _m.Mock.Called(ctx, key)
+func (_m *MockedRegistry) CheckUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) (ktypes.UpkeepResults, error) {
+	ret := _m.Mock.Called(ctx, keys)
 
-	var r1 ktypes.UpkeepResult
+	var r0 ktypes.UpkeepResults
 	if _m.WithAfter {
 		select {
 		case <-ctx.Done():
-			return false, r1, ctx.Err()
+			return r0, ctx.Err()
 		case <-_m.After():
 		}
 	}
 
 	if ctx.Err() != nil {
-		return false, r1, ctx.Err()
+		return r0, ctx.Err()
 	}
 
-	if rf, ok := ret.Get(1).(func() ktypes.UpkeepResult); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(0).(func() ktypes.UpkeepResults); ok {
+		r0 = rf()
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(ktypes.UpkeepResult)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ktypes.UpkeepResults)
 		}
 	}
 
-	return ret.Bool(0), r1, ret.Error(2)
+	return r0, ret.Error(1)
 }
 
 func (_m *MockedRegistry) IdentifierFromKey(key ktypes.UpkeepKey) (ktypes.UpkeepIdentifier, error) {

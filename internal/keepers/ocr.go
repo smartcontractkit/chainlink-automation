@@ -86,15 +86,15 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
+	// Check upkeeps
+	upkeeps, err := k.service.CheckUpkeep(ctx, keys...)
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
+	}
+
 	// select, verify, and build report
 	toPerform := make([]ktypes.UpkeepResult, 0, 1)
-	for _, key := range keys {
-
-		upkeep, err := k.service.CheckUpkeep(ctx, key)
-		if err != nil {
-			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
-		}
-
+	for _, upkeep := range upkeeps {
 		if upkeep.State == ktypes.Eligible {
 			// only build a report from a single upkeep for now
 			k.logger.Printf("reporting %s to be performed: %s", upkeep.Key, lCtx.Short())
@@ -116,7 +116,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 	k.logger.Printf("OCR report completed successfully with %d upkeep added to the report: %s", len(toPerform), lCtx)
 
-	return true, types.Report(b), err
+	return true, b, err
 }
 
 // ShouldAcceptFinalizedReport implements the types.ReportingPlugin interface
