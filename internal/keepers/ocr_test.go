@@ -433,7 +433,6 @@ func TestReport(t *testing.T) {
 				for i, k := range check.K {
 					check.R[i].Key = k
 				}
-				fmt.Println("check.K", check.K)
 				ms.Mock.On("CheckUpkeep", mock.Anything, check.K).Return(check.R, check.E)
 			}
 

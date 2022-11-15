@@ -69,7 +69,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	return types.Observation(b), nil
 }
 
-// Report implements the types.ReportingPlugin inteface in OC2. This method chooses a single upkeep
+// Report implements the types.ReportingPlugin interface in OC2. This method chooses a single upkeep
 // from the provided observations by the earliest block number, checks the upkeep, and builds a
 // report. Multiple upkeeps in a single report is supported by how the data is abi encoded, but
 // no gas estimations exist yet.
