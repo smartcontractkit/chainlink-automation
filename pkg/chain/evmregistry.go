@@ -39,6 +39,7 @@ type outStruct struct {
 
 // evmRegistryv2_0 implements types.Registry interface
 type evmRegistryv2_0 struct {
+	address  common.Address
 	registry *keeper_registry_wrapper2_0.KeeperRegistryCaller
 	client   EVMClient
 }
@@ -51,6 +52,7 @@ func NewEVMRegistryV2_0(address common.Address, client EVMClient) (*evmRegistryv
 	}
 
 	return &evmRegistryv2_0{
+		address:  address,
 		registry: registry,
 		client:   client,
 	}, nil
@@ -135,7 +137,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 			Method: "eth_call",
 			Args: []interface{}{
 				map[string]interface{}{
-					"to":   r.registry,
+					"to":   r.address.Hex(),
 					"data": hexutil.Bytes(payload),
 				},
 				hexutil.EncodeBig(opts.BlockNumber),
@@ -208,7 +210,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 				Method: "eth_call",
 				Args: []interface{}{
 					map[string]interface{}{
-						"to":   r.registry,
+						"to":   r.address.Hex(),
 						"data": hexutil.Bytes(payload),
 					},
 					hexutil.EncodeBig(opts.BlockNumber),

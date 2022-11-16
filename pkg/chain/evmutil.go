@@ -11,6 +11,35 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
+var (
+	// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
+	// function which returns this tuple in order to decode the bytes
+	pdataABI, _ = abi.JSON(strings.NewReader(`[{
+		"name":"check",
+		"type":"function",
+		"outputs":[{
+			"name":"ret",
+			"type":"tuple",
+			"components":[
+				{"type":"uint32","name":"checkBlockNumber"},
+				{"type":"bytes32","name":"checkBlockhash"},
+				{"type":"bytes","name":"performData"}
+				]
+			}]
+		}]`,
+	))
+)
+
+type performDataStruct struct {
+	CheckBlockNumber uint32   `abi:"checkBlockNumber"`
+	CheckBlockhash   [32]byte `abi:"checkBlockhash"`
+	PerformData      []byte   `abi:"performData"`
+}
+
+type res struct {
+	Result performDataStruct
+}
+
 // mustGetABI returns an abi.ABI object associated with the given JSON
 // representation of the ABI. It panics if it is unable to do so.
 func mustGetABI(json string) abi.ABI {
@@ -44,33 +73,6 @@ func unmarshalCheckUpkeepResult(key types.UpkeepKey, raw string) (types.UpkeepRe
 	if !upkeepNeeded {
 		result.State = types.NotEligible
 	} else {
-		type performDataStruct struct {
-			CheckBlockNumber uint32   `abi:"checkBlockNumber"`
-			CheckBlockhash   [32]byte `abi:"checkBlockhash"`
-			PerformData      []byte   `abi:"performData"`
-		}
-
-		type res struct {
-			Result performDataStruct
-		}
-
-		// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
-		// function which returns this tuple in order to decode the bytes
-		pdataABI, _ := abi.JSON(strings.NewReader(`[{
-			"name":"check",
-			"type":"function",
-			"outputs":[{
-				"name":"ret",
-				"type":"tuple",
-				"components":[
-					{"type":"uint32","name":"checkBlockNumber"},
-					{"type":"bytes32","name":"checkBlockhash"},
-					{"type":"bytes","name":"performData"}
-					]
-				}]
-			}]`,
-		))
-
 		var ret0 = new(res)
 		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
 		if err != nil {
