@@ -297,3 +297,14 @@ func upkeepKeysToString(keys []ktypes.UpkeepKey) string {
 
 	return strings.Join(keysStr, ", ")
 }
+
+func createBatches[T any](b []T, size int) (batches [][]T) {
+	for i := 0; i < len(b); i += size {
+		j := i + size
+		if j > len(b) {
+			j = len(b)
+		}
+		batches = append(batches, b[i:j])
+	}
+	return
+}

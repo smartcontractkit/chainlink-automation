@@ -23,22 +23,27 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
 			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
-			rg.Mock.On("IdentifierFromKey", actives[i]).Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).Maybe()
+			rg.Mock.On("IdentifierFromKey", actives[i]).
+				Return(ktypes.UpkeepIdentifier([]byte(fmt.Sprintf("%d", i+1))), nil).
+				Maybe()
 		}
 
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).Return(actives, nil)
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
+			Return(actives, nil)
 
+		returnResults := make(ktypes.UpkeepResults, 5)
 		for i := 0; i < 5; i++ {
-			check := false
 			state := types.NotEligible
 			pData := []byte{}
 			if i%3 == 0 {
-				check = true
 				state = types.Eligible
 				pData = []byte(fmt.Sprintf("%d", i))
 			}
-			rg.Mock.On("CheckUpkeep", mock.Anything, actives[i]).Return(check, ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}, nil)
+			returnResults[i] = ktypes.UpkeepResult{Key: actives[i], State: state, PerformData: pData}
+
 		}
+		rg.Mock.On("CheckUpkeep", mock.Anything, actives[:5]).
+			Return(returnResults, nil)
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{

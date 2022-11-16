@@ -61,7 +61,7 @@ var _ upkeepService = (*onDemandUpkeepService)(nil)
 func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
 	// get only the active upkeeps from the contract. this should not include
 	// any cancelled upkeeps
-	keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
+	keys, err := s.registry.GetActiveUpkeepKeys(ctx, "0")
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to get upkeeps from registry for sampling", err)
 	}
@@ -186,25 +186,30 @@ EachKey:
 		keysToSend = append(keysToSend, key)
 	}
 
-	// for every job added to the worker queue, add to the wait group
-	// all jobs should complete before completing the function
-	s.logger.Printf("attempting to send keys to worker group")
-	wg.Add(1)
-	if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, keysToSend, ctx)); err != nil {
-		if !errors.Is(err, ErrContextCancelled) {
-			// the worker process has probably stopped so the function
-			// should terminate with an error
-			close(done)
-			return nil, fmt.Errorf("%w: failed to add upkeep check to worker queue", err)
-		}
+	// Create batches from the given keys.
+	// Max 10 items in the batch.
+	keysBatches := createBatches(keysToSend, 10)
+	for _, batch := range keysBatches {
+		// for every job added to the worker queue, add to the wait group
+		// all jobs should complete before completing the function
+		s.logger.Printf("attempting to send keys to worker group")
+		wg.Add(1)
+		if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, batch, ctx)); err != nil {
+			if !errors.Is(err, ErrContextCancelled) {
+				// the worker process has probably stopped so the function
+				// should terminate with an error
+				close(done)
+				return nil, fmt.Errorf("%w: failed to add upkeep check to worker queue", err)
+			}
 
-		// if the context is cancelled before the work can be
-		// finished, stop adding work and allow existing to finish.
-		// cancelling this context will cancel all waiting worker
-		// functions and have them report immediately. this will
-		// result in a lot of errors in the results collector.
-		s.logger.Printf("context cancelled while attempting to add to queue")
-		wg.Done()
+			// if the context is cancelled before the work can be
+			// finished, stop adding work and allow existing to finish.
+			// cancelling this context will cancel all waiting worker
+			// functions and have them report immediately. this will
+			// result in a lot of errors in the results collector.
+			s.logger.Printf("context cancelled while attempting to add to queue")
+			wg.Done()
+		}
 	}
 
 	s.logger.Printf("waiting for results to be read")
