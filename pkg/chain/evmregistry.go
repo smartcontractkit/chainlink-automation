@@ -101,7 +101,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 	return keys, nil
 }
 
-func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch chan outStruct) {
+func (r *evmRegistryv2_0) checkUpkeeps(ctx context.Context, keys []types.UpkeepKey) ([]types.UpkeepResult, error) {
 	var (
 		checkReqs    = make([]rpc.BatchElem, len(keys))
 		checkResults = make([]*string, len(keys))
@@ -110,26 +110,17 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 	for i, key := range keys {
 		block, upkeepId, err := BlockAndIdFromKey(key)
 		if err != nil {
-			ch <- outStruct{
-				err: err,
-			}
-			return
+			return nil, err
 		}
 
 		opts, err := r.buildCallOpts(ctx, block)
 		if err != nil {
-			ch <- outStruct{
-				err: err,
-			}
-			return
+			return nil, err
 		}
 
 		payload, err := keeperRegistryABI.Pack("checkUpkeep", upkeepId)
 		if err != nil {
-			ch <- outStruct{
-				err: err,
-			}
-			return
+			return nil, err
 		}
 
 		var result string
@@ -149,17 +140,12 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 	}
 
 	if err := r.client.BatchCallContext(ctx, checkReqs); err != nil {
-		ch <- outStruct{
-			err: err,
-		}
-		return
+		return nil, err
 	}
 
 	var (
-		err            error
-		performReqs    = make([]rpc.BatchElem, len(keys))
-		performResults = make([]*string, len(keys))
-		results        = make([]types.UpkeepResult, len(keys))
+		err     error
+		results = make([]types.UpkeepResult, len(keys))
 	)
 
 	for i, req := range checkReqs {
@@ -174,71 +160,66 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 		} else {
 			results[i], err = unmarshalCheckUpkeepResult(keys[i], *checkResults[i])
 			if err != nil {
-				ch <- outStruct{
-					err: err,
-				}
-				return
+				return nil, err
 			}
+		}
+	}
 
-			block, upkeepId, err := BlockAndIdFromKey(keys[i])
-			if err != nil {
-				ch <- outStruct{
-					err: err,
-				}
-				return
-			}
+	return results, err
+}
 
-			opts, err := r.buildCallOpts(ctx, block)
-			if err != nil {
-				ch <- outStruct{
-					err: err,
-				}
-				return
-			}
+func (r *evmRegistryv2_0) simulatePerformUpkeeps(ctx context.Context, checkResults []types.UpkeepResult) ([]types.UpkeepResult, error) {
+	var (
+		performReqs     = make([]rpc.BatchElem, 0, len(checkResults))
+		performResults  = make([]*string, 0, len(checkResults))
+		performToKeyIdx = make([]int, 0, len(checkResults))
+	)
 
-			// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
-			payload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepId, results[i].PerformData)
-			if err != nil {
-				ch <- outStruct{
-					err: err,
-				}
-				return
-			}
+	for i, checkResult := range checkResults {
+		if checkResult.State == types.NotEligible {
+			continue
+		}
 
-			var result string
-			performReqs[i] = rpc.BatchElem{
-				Method: "eth_call",
-				Args: []interface{}{
-					map[string]interface{}{
-						"to":   r.address.Hex(),
-						"data": hexutil.Bytes(payload),
-					},
-					hexutil.EncodeBig(opts.BlockNumber),
+		block, upkeepId, err := BlockAndIdFromKey(checkResult.Key)
+		if err != nil {
+			return nil, err
+		}
+
+		opts, err := r.buildCallOpts(ctx, block)
+		if err != nil {
+			return nil, err
+		}
+
+		// Since checkUpkeep is true, simulate perform upkeep to ensure it doesn't revert
+		payload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepId, checkResult.PerformData)
+		if err != nil {
+			return nil, err
+		}
+
+		var result string
+		performReqs = append(performReqs, rpc.BatchElem{
+			Method: "eth_call",
+			Args: []interface{}{
+				map[string]interface{}{
+					"to":   r.address.Hex(),
+					"data": hexutil.Bytes(payload),
 				},
-				Result: &result,
-			}
+				hexutil.EncodeBig(opts.BlockNumber),
+			},
+			Result: &result,
+		})
 
-			performResults[i] = &result
+		performResults = append(performResults, &result)
+		performToKeyIdx = append(performToKeyIdx, i)
+	}
+
+	if len(performReqs) > 0 {
+		if err := r.client.BatchCallContext(ctx, performReqs); err != nil {
+			return nil, err
 		}
 	}
 
-	if err != nil {
-		ch <- outStruct{
-			err: err,
-		}
-		return
-	}
-
-	if err = r.client.BatchCallContext(ctx, performReqs); err != nil {
-		ch <- outStruct{
-			err: fmt.Errorf("%w: simulate perform upkeep returned result: %s", ErrRegistryCallFailure, err),
-		}
-		return
-	}
-
-	out := outStruct{
-		ur: make([]types.UpkeepResult, len(keys)),
-	}
+	var err error
 
 	for i, req := range performReqs {
 		if req.Error != nil {
@@ -252,20 +233,20 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 		} else {
 			simulatePerformSuccess, err := unmarshalPerformUpkeepSimulationResult(*performResults[i])
 			if err != nil {
-				ch <- outStruct{
-					err: err,
-				}
-				return
+				return nil, err
 			}
 
 			if !simulatePerformSuccess {
-				results[i].State = types.NotEligible
+				checkResults[performToKeyIdx[i]].State = types.NotEligible
 			}
-
-			out.ur[i] = results[i]
 		}
 	}
 
+	return checkResults, nil
+}
+
+func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch chan outStruct) {
+	upkeepResults, err := r.checkUpkeeps(ctx, keys)
 	if err != nil {
 		ch <- outStruct{
 			err: err,
@@ -273,7 +254,17 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 		return
 	}
 
-	ch <- out
+	upkeepResults, err = r.simulatePerformUpkeeps(ctx, upkeepResults)
+	if err != nil {
+		ch <- outStruct{
+			err: err,
+		}
+		return
+	}
+
+	ch <- outStruct{
+		ur: upkeepResults,
+	}
 }
 
 func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
