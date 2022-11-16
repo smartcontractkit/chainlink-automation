@@ -160,18 +160,18 @@ func BenchmarkObservation(b *testing.B) {
 	}
 
 	set := make([]*ktypes.UpkeepResult, 2, 100)
-	set[0] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.Eligible}
-	set[1] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte("1|2")), State: ktypes.Eligible}
+	set[0] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible}
+	set[1] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|2"), State: ktypes.Eligible}
 
 	for i := 2; i < 100; i++ {
-		set = append(set, &ktypes.UpkeepResult{Key: ktypes.UpkeepKey([]byte(fmt.Sprintf("1|%d", i+1))), State: ktypes.NotEligible})
+		set = append(set, &ktypes.UpkeepResult{Key: ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1)), State: ktypes.NotEligible})
 	}
 
 	b.ResetTimer()
 	// run the Observation function b.N times
 	for n := 0; n < b.N; n++ {
 		ctx := context.Background()
-		ms.Mock.On("SampleUpkeeps", ctx).Return(set, nil)
+		ms.Mock.On("SampleUpkeeps", mock.Anything).Return(set, nil)
 
 		b.StartTimer()
 		_, err := plugin.Observation(ctx, types.ReportTimestamp{}, types.Query{})
