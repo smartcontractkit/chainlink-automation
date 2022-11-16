@@ -95,8 +95,13 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
 		}
 
-		if len(upkeeps) != 1 {
+		// No upkeeps found for the given key
+		if len(upkeeps) == 0 {
 			continue
+		}
+
+		if len(upkeeps) > 1 {
+			return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected 1 but given %d", key, len(upkeeps))
 		}
 
 		if upkeeps[0].State == ktypes.Eligible {
