@@ -308,7 +308,6 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, keys []types.Up
 					logger.Printf("upkeep '%s' had a non-zero failure reason: %d", result.Key, result.FailureReason)
 				}
 			}
-
 		}
 
 		// close go-routine to prevent memory leaks

@@ -112,7 +112,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 
 			// call telemetry after RPC delays have been applied. if a check is cancelled
 			// it doesn't count toward telemetry.
-			ct.telemetry.CheckKey([]byte(key))
+			ct.telemetry.CheckKey(key)
 
 			// start at the highest blocks eligible. the first eligible will be a block
 			// lower than the current
@@ -144,7 +144,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 
 	wg.Wait()
 
-	return results, nil
+	return results, mErr
 }
 
 func (ct *SimulatedContract) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
