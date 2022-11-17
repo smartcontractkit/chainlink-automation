@@ -96,20 +96,6 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 				CheckBlockHash:   bl,
 			}
 
-			// call to CheckUpkeep
-			err := <-ct.rpc.Call(ctx, "checkUpkeep")
-			if err != nil {
-				mErr = multierr.Append(mErr, err)
-				return
-			}
-
-			// call to SimulatePerform
-			err = <-ct.rpc.Call(ctx, "simulatePerform")
-			if err != nil {
-				mErr = multierr.Append(mErr, err)
-				return
-			}
-
 			// call telemetry after RPC delays have been applied. if a check is cancelled
 			// it doesn't count toward telemetry.
 			ct.telemetry.CheckKey(key)
@@ -144,7 +130,23 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 
 	wg.Wait()
 
-	return results, mErr
+	if mErr != nil {
+		return nil, mErr
+	}
+
+	// call to CheckUpkeep
+	err := <-ct.rpc.Call(ctx, "checkUpkeep")
+	if err != nil {
+		return nil, err
+	}
+
+	// call to SimulatePerform
+	err = <-ct.rpc.Call(ctx, "simulatePerform")
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 func (ct *SimulatedContract) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {

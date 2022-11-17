@@ -245,7 +245,8 @@ Outer:
 				r.AddSuccess(1)
 
 				// Cache results
-				for _, res := range result.Data {
+				for i := range result.Data {
+					res := result.Data[i]
 					s.cache.Set(string(res.Key), res, defaultExpiration)
 					if res.State == types.Eligible {
 						sa.Append(&res)
