@@ -51,8 +51,8 @@ func (l *TransmitLoader) Transmit(from string, reportBytes []byte, epoch uint32,
 
 	h := hash(reportBytes)
 
-	r, ok := l.transmitted[h]
-	if ok && r.Epoch == epoch {
+	_, ok := l.transmitted[h]
+	if ok {
 		return fmt.Errorf("report already transmitted in epoch %d", epoch)
 	}
 
