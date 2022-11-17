@@ -45,21 +45,19 @@ func TestCheckUpkeep(t *testing.T) {
 	mct.On("CheckKey", mock.Anything)
 
 	checkKey := types.UpkeepKey([]byte("8|201"))
-	ok, res, err := contract.CheckUpkeep(context.Background(), checkKey)
-
-	assert.Equal(t, false, ok)
+	res, err := contract.CheckUpkeep(context.Background(), checkKey)
 	assert.NoError(t, err)
-	assert.Equal(t, checkKey, res.Key)
-	assert.Equal(t, types.NotEligible, res.State)
+	assert.Len(t, res, 1)
+	assert.Equal(t, checkKey, res[0].Key)
+	assert.Equal(t, types.NotEligible, res[0].State)
 
 	tel.On("RegisterCall", "checkUpkeep", mock.Anything, nil)
 	checkKey2 := types.UpkeepKey([]byte("11|201"))
-	ok, res, err = contract.CheckUpkeep(context.Background(), checkKey2)
-
-	assert.Equal(t, true, ok)
+	res, err = contract.CheckUpkeep(context.Background(), checkKey2)
 	assert.NoError(t, err)
-	assert.Equal(t, checkKey2, res.Key)
-	assert.Equal(t, types.Eligible, res.State)
+	assert.Len(t, res, 1)
+	assert.Equal(t, checkKey2, res[0].Key)
+	assert.Equal(t, types.Eligible, res[0].State)
 }
 
 type MockRPCTelemetry struct {

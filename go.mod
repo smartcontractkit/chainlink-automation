@@ -2,6 +2,8 @@ module github.com/smartcontractkit/ocr2keepers
 
 go 1.19
 
+replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
+
 require (
 	github.com/Maldris/mathparse v0.0.0-20170508133428-f0d009a7a773
 	github.com/ethereum/go-ethereum v1.10.25
@@ -12,6 +14,7 @@ require (
 	github.com/smartcontractkit/libocr v0.0.0-20220812191430-db92a9fdaa52
 	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.7.2
+	go.uber.org/multierr v1.6.0
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
 	gonum.org/v1/gonum v0.12.0
 )
@@ -33,7 +36,6 @@ require (
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/exp v0.0.0-20191002040644-a1355ae1e2c3 // indirect
 	golang.org/x/sys v0.0.0-20221013171732-95e765b1cc43 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect

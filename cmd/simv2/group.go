@@ -286,7 +286,13 @@ func (g *NodeGroup) ReportResults() {
 		if stats.Missed != 0 {
 			g.logger.Printf("%s was missed %d times", id, stats.Missed)
 			g.logger.Printf("%s was eligible at %s", id, strings.Join(ub.Eligibles(id), ", "))
-			g.logger.Printf("%s was performed at %s", id, strings.Join(ub.Performs(id), ", "))
+
+			by := []string{}
+			for _, tr := range ub.TransmitEvents(id) {
+				v := fmt.Sprintf("[address=%s, epoch=%d, round=%d, block=%s]", tr.SendingAddress, tr.Epoch, tr.Round, tr.InBlock)
+				by = append(by, v)
+			}
+			g.logger.Printf("%s transactions %s", id, strings.Join(by, ", "))
 
 			if checked {
 				g.logger.Printf("%s was checked at %s", id, strings.Join(checks, ", "))

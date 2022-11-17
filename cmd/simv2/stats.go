@@ -16,6 +16,7 @@ type upkeepStatsBuilder struct {
 	performsByID     map[string][]string
 	eligiblesByID    map[string][]string
 	checksByID       map[string][]string
+	trsByID          map[string][]blocks.TransmitEvent
 	accountTransmits map[string]int
 }
 
@@ -31,6 +32,7 @@ func newUpkeepStatsBuilder(
 
 	// each perform by id
 	performsByID := make(map[string][]string)
+	trsByID := make(map[string][]blocks.TransmitEvent)
 
 	for _, tr := range transmits {
 		block, ok := new(big.Int).SetString(tr.InBlock, 10)
@@ -50,9 +52,11 @@ func newUpkeepStatsBuilder(
 			return nil, fmt.Errorf("error decoding report: %s", err)
 		}
 
+		// tr.SendingAddress
 		for _, trResult := range reported {
 			parts := strings.Split(string(trResult.Key), "|")
 			performsByID[parts[1]] = append(performsByID[parts[1]], block.String())
+			trsByID[parts[1]] = append(trsByID[parts[1]], tr)
 		}
 	}
 
@@ -73,6 +77,7 @@ func newUpkeepStatsBuilder(
 		performsByID:     performsByID,
 		eligiblesByID:    elByID,
 		checksByID:       checks,
+		trsByID:          trsByID,
 		accountTransmits: accTr,
 	}, nil
 }
@@ -111,6 +116,17 @@ func (b *upkeepStatsBuilder) Performs(id string) []string {
 	ids := []string{}
 
 	x, ok := b.performsByID[id]
+	if ok {
+		ids = x
+	}
+
+	return ids
+}
+
+func (b *upkeepStatsBuilder) TransmitEvents(id string) []blocks.TransmitEvent {
+	ids := []blocks.TransmitEvent{}
+
+	x, ok := b.trsByID[id]
 	if ok {
 		ids = x
 	}

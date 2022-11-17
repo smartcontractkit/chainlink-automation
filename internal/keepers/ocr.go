@@ -71,7 +71,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	return types.Observation(b), nil
 }
 
-// Report implements the types.ReportingPlugin inteface in OC2. This method chooses a single upkeep
+// Report implements the types.ReportingPlugin interface in OC2. This method chooses a single upkeep
 // from the provided observations by the earliest block number, checks the upkeep, and builds a
 // report. Multiple upkeeps in a single report is supported by how the data is abi encoded, but
 // no gas estimations exist yet.
@@ -100,19 +100,28 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
+	// TODO: Generate multiple reports
 	// select, verify, and build report
 	toPerform := make([]ktypes.UpkeepResult, 0, 1)
 	for _, key := range keys {
-
-		upkeep, err := k.service.CheckUpkeep(ctx, key)
+		upkeeps, err := k.service.CheckUpkeep(ctx, key)
 		if err != nil {
 			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
 		}
 
-		if upkeep.State == ktypes.Eligible {
+		// No upkeeps found for the given key
+		if len(upkeeps) == 0 {
+			continue
+		}
+
+		if len(upkeeps) > 1 {
+			return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected 1 but given %d", key, len(upkeeps))
+		}
+
+		if upkeeps[0].State == ktypes.Eligible {
 			// only build a report from a single upkeep for now
-			k.logger.Printf("reporting %s to be performed: %s", upkeep.Key, lCtx.Short())
-			toPerform = append(toPerform, upkeep)
+			k.logger.Printf("reporting %s to be performed: %s", upkeeps[0].Key, lCtx.Short())
+			toPerform = append(toPerform, upkeeps[0])
 			break
 		}
 	}
@@ -130,7 +139,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 	k.logger.Printf("OCR report completed successfully with %d upkeep added to the report: %s", len(toPerform), lCtx)
 
-	return true, types.Report(b), err
+	return true, b, err
 }
 
 // ShouldAcceptFinalizedReport implements the types.ReportingPlugin interface

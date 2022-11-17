@@ -13,7 +13,7 @@ import (
 
 var (
 	contract  = flag.StringP("contract", "c", "", "contract address")
-	rpc       = flag.StringP("rpc-node", "n", "https://rinkeby.infura.io", "rpc host to make calls")
+	rpcNode   = flag.StringP("rpc-node", "n", "https://rinkeby.infura.io", "rpc host to make calls")
 	out       = flag.StringP("print-reports", "p", "", "directory to print reports to. prints one report per file")
 	nodes     = flag.IntP("nodes", "s", 3, "number of nodes to simulate")
 	rounds    = flag.IntP("rounds", "d", 2, "OCR rounds to simulate; 0 for no limit")
@@ -41,7 +41,7 @@ func main() {
 
 	config := &SimulatorConfig{
 		ContractAddress:      contract,
-		RPC:                  rpc,
+		RPC:                  rpcNode,
 		Nodes:                nodes,
 		Rounds:               rounds,
 		RoundTime:            rndTime,

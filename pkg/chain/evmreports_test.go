@@ -20,7 +20,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		input := []ktypes.UpkeepResult{
 			{
-				Key:              ktypes.UpkeepKey([]byte("42|18")),
+				Key:              ktypes.UpkeepKey("42|18"),
 				PerformData:      []byte("hello"),
 				FastGasWei:       big.NewInt(16),
 				LinkNative:       big.NewInt(8),
@@ -28,7 +28,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 				CheckBlockHash:   [32]byte{1},
 			},
 			{
-				Key:              ktypes.UpkeepKey([]byte("43|23")),
+				Key:              ktypes.UpkeepKey("43|23"),
 				PerformData:      []byte("long perform data that takes up more than 32 bytes to show how byte arrays are abi encoded. this should take up multiple slots."),
 				FastGasWei:       big.NewInt(8),
 				LinkNative:       big.NewInt(16),

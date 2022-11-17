@@ -6,6 +6,7 @@ import (
 	"math/cmplx"
 	rnd "math/rand"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
@@ -271,4 +272,24 @@ func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+func upkeepKeysToString(keys []ktypes.UpkeepKey) string {
+	keysStr := make([]string, len(keys))
+	for i, key := range keys {
+		keysStr[i] = string(key)
+	}
+
+	return strings.Join(keysStr, ", ")
+}
+
+func createBatches[T any](b []T, size int) (batches [][]T) {
+	for i := 0; i < len(b); i += size {
+		j := i + size
+		if j > len(b) {
+			j = len(b)
+		}
+		batches = append(batches, b[i:j])
+	}
+	return
 }

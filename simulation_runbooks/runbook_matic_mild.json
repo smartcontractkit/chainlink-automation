@@ -1,6 +1,6 @@
 {
     "nodes": 8,
-    "maxNodeServiceWorkers": 20,
+    "maxNodeServiceWorkers": 100,
     "maxNodeServiceQueueSize": 1000,
     "avgNetworkLatency": "100ms",
     "rpcDetail": {
@@ -22,22 +22,22 @@
             "maxFaultyNodes": 2,
             "offchainConfigJSON": "{\"targetProbability\":\"0.999\",\"targetInRounds\":2,\"uniqueReports\":false}",
             "maxRoundsPerEpoch": 7,
-            "deltaProgress": "10s",
+            "deltaProgress": "5s",
             "deltaResend": "10s",
-            "deltaRound": "2800ms",
-            "deltaGrace": "500ms",
+            "deltaRound": "2100ms",
+            "deltaGrace": "50ms",
             "deltaStage": "20s",
-            "maxQueryTime": "50ms",
-            "maxObservationTime": "1500ms",
+            "maxQueryTime": "20ms",
+            "maxObservationTime": "1200ms",
             "maxReportTime": "700ms",
-            "maxShouldAcceptTime": "50ms",
-            "maxShouldTransmitTime": "50ms"
+            "maxShouldAcceptTime": "20ms",
+            "maxShouldTransmitTime": "20ms"
         }
     ],
     "upkeeps": [
         {
             "_comment": "upkeeps that have no performs",
-            "count": 780,
+            "count": 880,
             "startID": 1000,
             "generateFunc": "x + 1000",
             "offsetFunc": "x"
