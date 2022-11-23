@@ -43,13 +43,15 @@ type DelegateConfig struct {
 	OnchainKeyring               types.OnchainKeyring
 	LocalConfig                  types.LocalConfig
 
+	// EVMClient is an EVM head subscriber
+	HeadSubscriber ktypes.HeadSubscriber
 	// Registry is an abstract plugin registry; can be evm based or anything else
 	Registry ktypes.Registry
 	// PerformLogProvider is an abstract provider of logs where upkeep performs
 	// occur. This interface provides subscribe and unsubscribe methods.
 	PerformLogProvider ktypes.PerformLogProvider
 	// ReportEncoder is an abstract encoder for encoding reports destined for
-	// trasmission; can be evm based or anything else.
+	// transmission; can be evm based or anything else.
 	ReportEncoder ktypes.ReportEncoder
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is

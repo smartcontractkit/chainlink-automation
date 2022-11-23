@@ -63,7 +63,14 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester:       c.OffchainConfigDigester,
 		OffchainKeyring:              c.OffchainKeyring,
 		OnchainKeyring:               c.OnchainKeyring,
-		ReportingPluginFactory:       keepers.NewReportingPluginFactory(c.Registry, c.PerformLogProvider, c.ReportEncoder, l, conf),
+		ReportingPluginFactory: keepers.NewReportingPluginFactory(
+			c.HeadSubscriber,
+			c.Registry,
+			c.PerformLogProvider,
+			c.ReportEncoder,
+			l,
+			conf,
+		),
 	})
 
 	if err != nil {

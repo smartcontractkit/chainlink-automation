@@ -5,7 +5,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 )
+
+// HeadSubscriber represents head subscriber behaviour; used for evm chains;
+type HeadSubscriber interface {
+	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
+}
+
+// EVMClient represents evm client's behavior
+type EVMClient interface {
+	HeadSubscriber
+	bind.ContractCaller
+	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
+	BatchCallContext(ctx context.Context, b []rpc.BatchElem) error
+}
 
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)

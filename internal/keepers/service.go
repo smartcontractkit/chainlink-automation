@@ -9,20 +9,25 @@ import (
 	"sync"
 	"time"
 
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
 type onDemandUpkeepService struct {
-	logger       *log.Logger
-	ratio        sampleRatio
-	registry     types.Registry
-	shuffler     shuffler[types.UpkeepKey]
-	cache        *cache[types.UpkeepResult]
-	cacheCleaner *intervalCacheCleaner[types.UpkeepResult]
-	workers      *workerGroup[types.UpkeepResults]
-	stopProcs    chan struct{}
+	logger                 *log.Logger
+	ratio                  sampleRatio
+	headSubscriber         types.HeadSubscriber
+	registry               types.Registry
+	shuffler               shuffler[types.UpkeepKey]
+	cache                  *cache[types.UpkeepResult]
+	cacheCleaner           *intervalCacheCleaner[types.UpkeepResult]
+	eligibleUpkeepKeys     []types.UpkeepKey
+	eligibleUpkeepKeysLock sync.Mutex
+	workers                *workerGroup[types.UpkeepResults]
+	stopProcs              chan struct{}
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -30,15 +35,25 @@ type onDemandUpkeepService struct {
 // need to be sampled. This variant has limitations in how quickly large numbers
 // of upkeeps can be checked. Be aware that network calls are not rate limited
 // from this service.
-func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, logger *log.Logger, cacheExpire time.Duration, cacheClean time.Duration, workers int, workerQueueLength int) *onDemandUpkeepService {
+func newOnDemandUpkeepService(
+	ratio sampleRatio,
+	headSubscriber types.HeadSubscriber,
+	registry types.Registry,
+	logger *log.Logger,
+	cacheExpire time.Duration,
+	cacheClean time.Duration,
+	workers int,
+	workerQueueLength int,
+) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
-		logger:    logger,
-		ratio:     ratio,
-		registry:  registry,
-		shuffler:  new(cryptoShuffler[types.UpkeepKey]),
-		cache:     newCache[types.UpkeepResult](cacheExpire),
-		workers:   newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		stopProcs: make(chan struct{}),
+		logger:         logger,
+		ratio:          ratio,
+		headSubscriber: headSubscriber,
+		registry:       registry,
+		shuffler:       new(cryptoShuffler[types.UpkeepKey]),
+		cache:          newCache[types.UpkeepResult](cacheExpire),
+		workers:        newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		stopProcs:      make(chan struct{}),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -53,38 +68,27 @@ func newOnDemandUpkeepService(ratio sampleRatio, registry types.Registry, logger
 
 	// start background services
 	s.start()
+
 	return s
 }
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
 func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
-	// get only the active upkeeps from the contract. this should not include
-	// any cancelled upkeeps
-	keys, err := s.registry.GetActiveUpkeepKeys(ctx, "0")
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to get upkeeps from registry for sampling", err)
-	}
-
-	s.logger.Printf("%d active upkeep keys found in registry", len(keys))
-	if len(keys) == 0 {
-		return []*types.UpkeepResult{}, nil
-	}
-
-	// select x upkeeps at random from set
-	keys = s.shuffler.Shuffle(keys)
-	size := s.ratio.OfInt(len(keys))
-
-	s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
-	if size <= 0 {
-		return []*types.UpkeepResult{}, nil
-	}
-
 	if s.workers == nil {
 		panic("cannot sample upkeeps without runner")
 	}
 
-	return s.parallelCheck(ctx, keys[:size], filters...)
+	s.eligibleUpkeepKeysLock.Lock()
+	keys := make([]types.UpkeepKey, len(s.eligibleUpkeepKeys))
+	copy(keys, s.eligibleUpkeepKeys)
+	s.eligibleUpkeepKeysLock.Unlock()
+
+	if len(keys) == 0 {
+		return nil, nil
+	}
+
+	return s.parallelCheck(ctx, keys, filters...)
 }
 
 func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
@@ -261,6 +265,68 @@ Outer:
 		case <-done:
 			s.logger.Printf("done signal received for job result aggregator")
 			break Outer
+		}
+	}
+}
+
+func (s *onDemandUpkeepService) runSamplingUpkeeps(ctx context.Context) error {
+	ch := make(chan *ethtypes.Header, 1)
+	sub, err := s.headSubscriber.SubscribeNewHead(ctx, ch)
+	if err != nil {
+		return err
+	}
+
+	// Start the sampling upkeep process for heads
+	heads := make(chan *ethtypes.Header)
+	go func() {
+		for head := range heads {
+			// get only the active upkeeps from the contract. this should not include
+			// any cancelled upkeeps
+			keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey(head.Number.String()))
+			if err != nil {
+				s.logger.Printf("%w: failed to get upkeeps from registry for sampling", err)
+				continue
+			}
+
+			s.logger.Printf("%d active upkeep keys found in registry", len(keys))
+			if len(keys) == 0 {
+				continue
+			}
+
+			// select x upkeeps at random from set
+			keys = s.shuffler.Shuffle(keys)
+			size := s.ratio.OfInt(len(keys))
+
+			s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
+			if size <= 0 {
+				continue
+			}
+
+			s.eligibleUpkeepKeysLock.Lock()
+			s.eligibleUpkeepKeys = keys[:size]
+			s.eligibleUpkeepKeysLock.Unlock()
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err = <-sub.Err():
+			sub, err = s.headSubscriber.SubscribeNewHead(ctx, ch)
+			if err != nil {
+				return err
+			}
+		case <-s.stopProcs:
+			return nil
+		case head := <-ch:
+			// This is needed in order to do not block the process when a new head comes in.
+			// The running upkeep sampling process should be finished first before starting
+			// sampling for the next head.
+			select {
+			case heads <- head:
+			default:
+			}
 		}
 	}
 }
