@@ -136,6 +136,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 func (s *onDemandUpkeepService) start() {
 	// TODO: if this process panics, restart it
 	go s.cacheCleaner.Run(s.cache)
+	go s.runSamplingUpkeeps()
 }
 
 func (s *onDemandUpkeepService) stop() {
@@ -269,7 +270,9 @@ Outer:
 	}
 }
 
-func (s *onDemandUpkeepService) runSamplingUpkeeps(ctx context.Context) error {
+func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
+	ctx := context.Background()
+
 	ch := make(chan *ethtypes.Header, 1)
 	sub, err := s.headSubscriber.SubscribeNewHead(ctx, ch)
 	if err != nil {
@@ -284,7 +287,7 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps(ctx context.Context) error {
 			// any cancelled upkeeps
 			keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey(head.Number.String()))
 			if err != nil {
-				s.logger.Printf("%w: failed to get upkeeps from registry for sampling", err)
+				s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 				continue
 			}
 

@@ -13,6 +13,8 @@ import (
 )
 
 // HeadSubscriber represents head subscriber behaviour; used for evm chains;
+//
+//go:generate mockery --name HeadSubscriber --inpackage --output . --case=underscore --filename head_subscribed.generated.go
 type HeadSubscriber interface {
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 }
@@ -25,12 +27,18 @@ type EVMClient interface {
 	BatchCallContext(ctx context.Context, b []rpc.BatchElem) error
 }
 
+// Registry represents keeper registry behaviour
+//
+//go:generate mockery --name Registry --inpackage --output . --case=underscore --filename registry.generated.go
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 
+// ReportEncoder represents the report encoder behaviour
+//
+//go:generate mockery --name ReportEncoder --inpackage --output . --case=underscore --filename report_encoder.generated.go
 type ReportEncoder interface {
 	EncodeReport([]UpkeepResult) ([]byte, error)
 	DecodeReport([]byte) ([]UpkeepResult, error)

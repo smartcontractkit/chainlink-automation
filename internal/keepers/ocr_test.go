@@ -408,7 +408,7 @@ func TestReport(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
-			me := new(MockedReportEncoder)
+			me := ktypes.NewMockReportEncoder(t)
 			mf := new(MockedFilterer)
 
 			plugin := &keepers{
@@ -653,7 +653,7 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 
 	for _, test := range tests {
 		ms := new(MockedUpkeepService)
-		me := new(MockedReportEncoder)
+		me := ktypes.NewMockReportEncoder(t)
 		mf := new(MockedFilterer)
 
 		plugin := &keepers{
@@ -798,40 +798,6 @@ func (_m *BenchmarkMockUpkeepService) IsUpkeepLocked(ctx context.Context, key kt
 func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
 	b, _ := encode(keys)
 	return b
-}
-
-type MockedReportEncoder struct {
-	mock.Mock
-}
-
-func (_m *MockedReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte, error) {
-	ret := _m.Mock.Called(toReport)
-
-	var r0 []byte
-	if rf, ok := ret.Get(0).(func() []byte); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
-		}
-	}
-
-	return r0, ret.Error(1)
-}
-
-func (_m *MockedReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, error) {
-	ret := _m.Mock.Called(report)
-
-	var r0 []ktypes.UpkeepResult
-	if rf, ok := ret.Get(0).(func() []ktypes.UpkeepResult); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]ktypes.UpkeepResult)
-		}
-	}
-
-	return r0, ret.Error(1)
 }
 
 type MockedFilterer struct {

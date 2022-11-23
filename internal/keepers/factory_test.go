@@ -8,13 +8,21 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestNewReportingPluginFactory(t *testing.T) {
-	f := NewReportingPluginFactory(nil, nil, nil, nil, ReportingFactoryConfig{})
+	f := NewReportingPluginFactory(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		ReportingFactoryConfig{},
+	)
 	assert.NotNil(t, f)
 }
 
@@ -22,8 +30,8 @@ func TestNewReportingPlugin(t *testing.T) {
 	mp := new(MockedPerformLogProvider)
 
 	f := &keepersReportingFactory{
-		registry: new(MockedRegistry),
-		encoder:  new(MockedReportEncoder),
+		registry: ktypes.NewMockRegistry(t),
+		encoder:  ktypes.NewMockReportEncoder(t),
 		perfLogs: mp,
 		logger:   log.New(io.Discard, "test", 0),
 		config: ReportingFactoryConfig{

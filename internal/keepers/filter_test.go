@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewFilter(t *testing.T) {
-	mr := new(MockedRegistry)
+	mr := types.NewMockRegistry(t)
 	mp := new(MockedPerformLogProvider)
 
 	l := log.New(io.Discard, "nil", 0)
