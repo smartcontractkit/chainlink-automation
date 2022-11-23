@@ -136,7 +136,11 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 func (s *onDemandUpkeepService) start() {
 	// TODO: if this process panics, restart it
 	go s.cacheCleaner.Run(s.cache)
-	go s.runSamplingUpkeeps()
+	go func() {
+		if err := s.runSamplingUpkeeps(); err != nil {
+			s.logger.Fatal(err)
+		}
+	}()
 }
 
 func (s *onDemandUpkeepService) stop() {
