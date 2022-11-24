@@ -118,6 +118,12 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		service: service,
 		encoder: d.encoder,
 		logger:  d.logger,
-		filter:  newReportCoordinator(d.registry, time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond, d.config.CacheEvictionInterval, d.perfLogs, d.logger),
+		filter: newReportCoordinator(
+			d.registry,
+			time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
+			d.config.CacheEvictionInterval,
+			d.perfLogs,
+			d.logger,
+		),
 	}, info, nil
 }

@@ -149,7 +149,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 				subscribed <- struct{}{}
 			}).Return(&rpc.ClientSubscription{}, nil)
 
-		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey(header.Number.String())).
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey(header.Number.String())).
 			Run(func(args mock.Arguments) {
 				subscribed <- struct{}{}
 			}).
