@@ -283,8 +283,10 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 		return err
 	}
 
-	// Start the sampling upkeep process for heads
 	heads := make(chan *ethtypes.Header)
+	defer close(heads)
+
+	// Start the sampling upkeep process for heads
 	go func() {
 		for head := range heads {
 			// get only the active upkeeps from the contract. this should not include
@@ -326,7 +328,6 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 				return err
 			}
 		case <-s.stopProcs:
-			close(heads)
 			return nil
 		case head := <-ch:
 			// This is needed in order to do not block the process when a new head comes in.
