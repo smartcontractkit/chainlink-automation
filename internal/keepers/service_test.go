@@ -97,9 +97,14 @@ func TestOnDemandUpkeepService(t *testing.T) {
 
 		// Wait until eligible keys are populated
 		for i := 0; i < 5; i++ {
-			if len(svc.eligibleUpkeepKeys) > 0 {
+			svc.eligibleUpkeepKeysLock.Lock()
+			keysExist := len(svc.eligibleUpkeepKeys) > 0
+			svc.eligibleUpkeepKeysLock.Unlock()
+
+			if keysExist {
 				break
 			}
+
 			time.Sleep(time.Millisecond * 500)
 		}
 
@@ -443,9 +448,14 @@ func TestOnDemandUpkeepService(t *testing.T) {
 
 		// Wait until eligible keys are populated
 		for i := 0; i < 5; i++ {
-			if len(svc.eligibleUpkeepKeys) > 0 {
+			svc.eligibleUpkeepKeysLock.Lock()
+			keysExist := len(svc.eligibleUpkeepKeys) > 0
+			svc.eligibleUpkeepKeysLock.Unlock()
+
+			if keysExist {
 				break
 			}
+
 			time.Sleep(time.Millisecond * 500)
 		}
 
