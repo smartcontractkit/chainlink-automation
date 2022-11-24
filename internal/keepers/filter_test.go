@@ -59,8 +59,10 @@ func TestNewFilter(t *testing.T) {
 
 	// simulate starting the run process
 	go rc.run()
+
 	// wait for only 1 cycle to complete
 	<-time.After(1100 * time.Millisecond)
+
 	// stop the run process
 	rc.chStop <- struct{}{}
 
