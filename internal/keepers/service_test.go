@@ -1,7 +1,6 @@
 package keepers
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -155,8 +154,8 @@ func TestOnDemandUpkeepService(t *testing.T) {
 			}).
 			Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
 
-		logWriter := bytes.NewBuffer(nil)
-		l := log.New(logWriter, "", 0)
+		var logWriter buffer
+		l := log.New(&logWriter, "", 0)
 		svc := &onDemandUpkeepService{
 			logger:         l,
 			registry:       rg,
