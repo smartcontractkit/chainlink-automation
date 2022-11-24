@@ -275,7 +275,8 @@ Outer:
 }
 
 func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	ch := make(chan *ethtypes.Header, 1)
 	sub, err := s.headSubscriber.SubscribeNewHead(ctx, ch)
@@ -319,8 +320,6 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
 		case err = <-sub.Err():
 			s.logger.Printf("%s: heads subscription failed", err)
 
