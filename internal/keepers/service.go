@@ -326,6 +326,7 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 				return err
 			}
 		case <-s.stopProcs:
+			close(heads)
 			return nil
 		case head := <-ch:
 			// This is needed in order to do not block the process when a new head comes in.
