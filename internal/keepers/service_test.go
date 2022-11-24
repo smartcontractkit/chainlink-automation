@@ -463,25 +463,6 @@ func TestOnDemandUpkeepService(t *testing.T) {
 	})
 }
 
-type MockedPerformLogProvider struct {
-	mock.Mock
-}
-
-func (_m *MockedPerformLogProvider) PerformLogs(ctx context.Context) ([]ktypes.PerformLog, error) {
-	ret := _m.Mock.Called(ctx)
-
-	var r0 []ktypes.PerformLog
-	if rf, ok := ret.Get(0).(func() []ktypes.PerformLog); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]ktypes.PerformLog)
-		}
-	}
-
-	return r0, ret.Error(1)
-}
-
 type noShuffleShuffler[T any] struct{}
 
 func (_ *noShuffleShuffler[T]) Shuffle(a []T) []T {

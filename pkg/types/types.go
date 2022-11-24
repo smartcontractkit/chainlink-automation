@@ -44,6 +44,9 @@ type ReportEncoder interface {
 	DecodeReport([]byte) ([]UpkeepResult, error)
 }
 
+// PerformLogProvider represents the perform log provider
+//
+//go:generate mockery --name PerformLogProvider --inpackage --output . --case=underscore --filename perform_log_provider.generated.go
 type PerformLogProvider interface {
 	PerformLogs(context.Context) ([]PerformLog, error)
 }

@@ -27,7 +27,7 @@ func TestNewReportingPluginFactory(t *testing.T) {
 }
 
 func TestNewReportingPlugin(t *testing.T) {
-	mp := new(MockedPerformLogProvider)
+	mp := ktypes.NewMockPerformLogProvider(t)
 
 	f := &keepersReportingFactory{
 		registry: ktypes.NewMockRegistry(t),
