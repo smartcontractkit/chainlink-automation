@@ -184,6 +184,8 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		result, err := svc.SampleUpkeeps(ctx)
 		require.NoError(t, err)
 
+		svc.stop()
+
 		assert.Equal(t, "contract error: failed to get upkeeps from registry for sampling\n", logWriter.String())
 		assert.Empty(t, result)
 
