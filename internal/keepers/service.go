@@ -290,30 +290,29 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	// Start the sampling upkeep process for heads
 	go func() {
 		for head := range heads {
-			// get only the active upkeeps from the contract. this should not include
-			// any cancelled upkeeps
+			// Get only the active upkeeps from the contract. This should not include
+			// any cancelled upkeeps.
 			keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey(head.Number.String()))
 			if err != nil {
 				s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
-				continue
-			}
+			} else {
+				s.logger.Printf("%d active upkeep keys found in registry", len(keys))
+				if len(keys) > 0 {
+					// select x upkeeps at random from set
+					keys = s.shuffler.Shuffle(keys)
+					size := s.ratio.OfInt(len(keys))
 
-			s.logger.Printf("%d active upkeep keys found in registry", len(keys))
-			if len(keys) == 0 {
-				continue
-			}
-
-			// select x upkeeps at random from set
-			keys = s.shuffler.Shuffle(keys)
-			size := s.ratio.OfInt(len(keys))
-
-			s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
-			if size <= 0 {
-				continue
+					s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
+					if size <= 0 {
+						keys = nil
+					} else {
+						keys = keys[:size]
+					}
+				}
 			}
 
 			s.eligibleUpkeepKeysLock.Lock()
-			s.eligibleUpkeepKeys = keys[:size]
+			s.eligibleUpkeepKeys = keys
 			s.eligibleUpkeepKeysLock.Unlock()
 		}
 	}()
