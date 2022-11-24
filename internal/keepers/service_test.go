@@ -420,7 +420,7 @@ func TestOnDemandUpkeepService(t *testing.T) {
 				Maybe()
 		}
 
-		rg.Mock.On("GetActiveUpkeepKeys", ctx, ktypes.BlockKey(header.Number.String())).
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey(header.Number.String())).
 			Return(actives, nil)
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, actives[0], actives[1], actives[2], actives[3], actives[4]).
