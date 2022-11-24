@@ -166,7 +166,8 @@ func TestOnDemandUpkeepService(t *testing.T) {
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
-			workers: newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			workers:   newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			stopProcs: make(chan struct{}),
 		}
 
 		// Start background processes
