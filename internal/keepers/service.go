@@ -320,8 +320,9 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case err = <-sub.Err():
-			sub, err = s.headSubscriber.SubscribeNewHead(ctx, ch)
-			if err != nil {
+			s.logger.Printf("%s: heads subscription failed", err)
+
+			if sub, err = s.headSubscriber.SubscribeNewHead(ctx, ch); err != nil {
 				return err
 			}
 		case <-s.stopProcs:
