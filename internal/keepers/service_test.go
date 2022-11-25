@@ -324,7 +324,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	})
 }
 
-func Test_runSamplingUpkeeps(t *testing.T) {
+func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 	t.Run("successfully populated keys", func(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
@@ -415,7 +415,7 @@ func Test_runSamplingUpkeeps(t *testing.T) {
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey(header.Number.String())).
 			Run(func(args mock.Arguments) {
-				subscribed <- struct{}{}
+				close(subscribed)
 			}).
 			Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
 
