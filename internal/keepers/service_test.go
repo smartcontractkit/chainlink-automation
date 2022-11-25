@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
@@ -20,38 +18,102 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-func TestOnDemandUpkeepService(t *testing.T) {
-	t.Run("SampleUpkeeps_RatioPick", func(t *testing.T) {
-		ctx := context.Background()
+func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
+	testId := ktypes.UpkeepIdentifier("1")
+	testKey := ktypes.UpkeepKey(fmt.Sprintf("1|%s", string(testId)))
+
+	tests := []struct {
+		Name           string
+		Ctx            func() (context.Context, func())
+		ID             ktypes.UpkeepIdentifier
+		Key            ktypes.UpkeepKey
+		RegResult      ktypes.UpkeepResults
+		Err            error
+		ExpectedResult ktypes.UpkeepResults
+		ExpectedErr    error
+	}{
+		{
+			Name:           "Result: Skip",
+			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
+			ID:             testId,
+			Key:            testKey,
+			RegResult:      ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
+			ExpectedResult: ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
+		},
+		{
+			Name:           "Timer Context",
+			Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
+			ID:             testId,
+			Key:            testKey,
+			RegResult:      ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
+			ExpectedResult: ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
+		},
+		{
+			Name:           "Registry Error",
+			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
+			ID:             testId,
+			Key:            testKey,
+			RegResult:      nil,
+			Err:            fmt.Errorf("contract error"),
+			ExpectedResult: nil,
+			ExpectedErr:    fmt.Errorf("contract error: service failed to check upkeep from registry"),
+		},
+		{
+			Name:           "Result: Perform",
+			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
+			ID:             testId,
+			Key:            testKey,
+			RegResult:      ktypes.UpkeepResults{{Key: testKey, State: types.Eligible, PerformData: []byte("1")}},
+			ExpectedResult: ktypes.UpkeepResults{{Key: testKey, State: types.Eligible, PerformData: []byte("1")}},
+		},
+	}
+
+	for i, test := range tests {
+		ctx, cancel := test.Ctx()
+
 		rg := ktypes.NewMockRegistry(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
-		subscribed := make(chan struct{})
-		headsCh := make(chan<- *ethtypes.Header, 1)
-		header := &ethtypes.Header{
-			Number: big.NewInt(1),
+		rg.Mock.On("IdentifierFromKey", mock.Anything).
+			Return(test.ID, nil).
+			Maybe()
+		rg.Mock.On("CheckUpkeep", mock.Anything, test.Key).
+			Return(test.RegResult, test.Err)
+
+		l := log.New(io.Discard, "", 0)
+		svc := &onDemandUpkeepService{
+			logger:   l,
+			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			registry: rg,
+			workers:  newWorkerGroup[ktypes.UpkeepResults](2, 10),
 		}
 
-		hs.On("SubscribeNewHead", mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				switch ch := args.Get(1).(type) {
-				case chan<- *ethtypes.Header:
-					headsCh = ch
-				default:
-					t.Error("unexpected chan type")
-				}
-				subscribed <- struct{}{}
-			}).Return(&rpc.ClientSubscription{}, nil)
+		result, err := svc.CheckUpkeep(ctx, test.Key)
+		cancel()
+
+		if test.ExpectedErr == nil {
+			assert.NoError(t, err)
+		} else {
+			assert.Equal(t, err.Error(), test.ExpectedErr.Error(), "error should match expected for test %d", i+1)
+		}
+
+		assert.Equal(t, test.ExpectedResult, result, "result should match expected for test %d", i+1)
+
+		rg.Mock.AssertExpectations(t)
+	}
+}
+
+func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
+	t.Run("ratio pick", func(t *testing.T) {
+		ctx := context.Background()
+		rg := ktypes.NewMockRegistry(t)
 
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
 			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
+
 			rg.Mock.On("IdentifierFromKey", actives[i]).
 				Return(ktypes.UpkeepIdentifier(fmt.Sprintf("%d", i+1)), nil).
 				Maybe()
 		}
-
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey(header.Number.String())).
-			Return(actives, nil)
 
 		returnResults := make(ktypes.UpkeepResults, 5)
 		for i := 0; i < 5; i++ {
@@ -73,38 +135,17 @@ func TestOnDemandUpkeepService(t *testing.T) {
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
-			logger:         l,
-			headSubscriber: hs,
-			ratio:          sampleRatio(0.5),
-			registry:       rg,
-			shuffler:       new(noShuffleShuffler[ktypes.UpkeepKey]),
-			cache:          newCache[ktypes.UpkeepResult](1 * time.Second),
+			logger:   l,
+			ratio:    sampleRatio(0.5),
+			registry: rg,
+			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
 			cacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
-			workers: newWorkerGroup[ktypes.UpkeepResults](2, 10),
-		}
-
-		// Start all required processes
-		svc.start()
-
-		// Sent head to the head subscriber so
-		// the service could sample upkeeps for the given head
-		<-subscribed
-		headsCh <- header
-
-		// Wait until eligible keys are populated
-		for i := 0; i < 5; i++ {
-			svc.eligibleUpkeepKeysLock.Lock()
-			keysExist := len(svc.eligibleUpkeepKeys) > 0
-			svc.eligibleUpkeepKeysLock.Unlock()
-
-			if keysExist {
-				break
-			}
-
-			time.Sleep(time.Millisecond * 500)
+			eligibleUpkeepKeys: actives[:5],
+			workers:            newWorkerGroup[ktypes.UpkeepResults](2, 10),
 		}
 
 		// this test does not include the cache cleaner or log subscriber
@@ -124,73 +165,6 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		assert.Equal(t, 2, matches)
 
 		rg.AssertExpectations(t)
-		hs.AssertExpectations(t)
-	})
-
-	t.Run("SampleUpkeeps_GetKeysError", func(t *testing.T) {
-		ctx := context.Background()
-		rg := ktypes.NewMockRegistry(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
-		subscribed := make(chan struct{})
-		headsCh := make(chan<- *ethtypes.Header, 1)
-		header := &ethtypes.Header{
-			Number: big.NewInt(1),
-		}
-
-		hs.On("SubscribeNewHead", mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				switch ch := args.Get(1).(type) {
-				case chan<- *ethtypes.Header:
-					headsCh = ch
-				default:
-					t.Error("unexpected chan type")
-				}
-				subscribed <- struct{}{}
-			}).Return(&rpc.ClientSubscription{}, nil)
-
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey(header.Number.String())).
-			Run(func(args mock.Arguments) {
-				subscribed <- struct{}{}
-			}).
-			Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
-
-		var logWriter buffer
-		l := log.New(&logWriter, "", 0)
-		svc := &onDemandUpkeepService{
-			logger:         l,
-			registry:       rg,
-			headSubscriber: hs,
-			cache:          newCache[ktypes.UpkeepResult](20 * time.Millisecond),
-			cacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
-				Interval: time.Second,
-				stop:     make(chan struct{}),
-			},
-			workers:   newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			stopProcs: make(chan struct{}),
-		}
-
-		// Start background processes
-		svc.start()
-
-		// Sent head to the head subscriber so
-		// the service could sample upkeeps for the given head
-		<-subscribed
-		headsCh <- header
-
-		// Wait until GetActiveUpkeepKeys has executed
-		<-subscribed
-
-		// this test does not include the cache cleaner or log subscriber
-		result, err := svc.SampleUpkeeps(ctx)
-		require.NoError(t, err)
-
-		svc.stop()
-
-		assert.Equal(t, "contract error: failed to get upkeeps from registry for sampling\n", logWriter.String())
-		assert.Empty(t, result)
-
-		rg.Mock.AssertExpectations(t)
-		hs.AssertExpectations(t)
 	})
 
 	/*
@@ -307,91 +281,51 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		})
 	*/
 
-	t.Run("CheckUpkeep", func(t *testing.T) {
-		testId := ktypes.UpkeepIdentifier("1")
-		testKey := ktypes.UpkeepKey(fmt.Sprintf("1|%s", string(testId)))
-
-		tests := []struct {
-			Name           string
-			Ctx            func() (context.Context, func())
-			ID             ktypes.UpkeepIdentifier
-			Key            ktypes.UpkeepKey
-			RegResult      ktypes.UpkeepResults
-			Err            error
-			ExpectedResult ktypes.UpkeepResults
-			ExpectedErr    error
-		}{
-			{
-				Name:           "Result: Skip",
-				Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
-				ID:             testId,
-				Key:            testKey,
-				RegResult:      ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
-				ExpectedResult: ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
-			},
-			{
-				Name:           "Timer Context",
-				Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
-				ID:             testId,
-				Key:            testKey,
-				RegResult:      ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
-				ExpectedResult: ktypes.UpkeepResults{{Key: testKey, State: types.NotEligible}},
-			},
-			{
-				Name:           "Registry Error",
-				Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
-				ID:             testId,
-				Key:            testKey,
-				RegResult:      nil,
-				Err:            fmt.Errorf("contract error"),
-				ExpectedResult: nil,
-				ExpectedErr:    fmt.Errorf("contract error: service failed to check upkeep from registry"),
-			},
-			{
-				Name:           "Result: Perform",
-				Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
-				ID:             testId,
-				Key:            testKey,
-				RegResult:      ktypes.UpkeepResults{{Key: testKey, State: types.Eligible, PerformData: []byte("1")}},
-				ExpectedResult: ktypes.UpkeepResults{{Key: testKey, State: types.Eligible, PerformData: []byte("1")}},
-			},
-		}
-
-		for i, test := range tests {
-			ctx, cancel := test.Ctx()
-
-			rg := ktypes.NewMockRegistry(t)
-			rg.Mock.On("IdentifierFromKey", mock.Anything).
-				Return(test.ID, nil).
-				Maybe()
-			rg.Mock.On("CheckUpkeep", mock.Anything, test.Key).
-				Return(test.RegResult, test.Err)
-
-			l := log.New(io.Discard, "", 0)
-			svc := &onDemandUpkeepService{
-				logger:   l,
-				cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
-				registry: rg,
-				workers:  newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			}
-
-			result, err := svc.CheckUpkeep(ctx, test.Key)
-			cancel()
-
-			if test.ExpectedErr == nil {
-				assert.NoError(t, err)
-			} else {
-				assert.Equal(t, err.Error(), test.ExpectedErr.Error(), "error should match expected for test %d", i+1)
-			}
-
-			assert.Equal(t, test.ExpectedResult, result, "result should match expected for test %d", i+1)
-
-			rg.Mock.AssertExpectations(t)
-		}
-	})
-
-	t.Run("SampleUpkeeps_AllChecksReturnError", func(t *testing.T) {
+	t.Run("all checks return error", func(t *testing.T) {
 		ctx := context.Background()
+		rg := ktypes.NewMockRegistry(t)
+
+		actives := make([]ktypes.UpkeepKey, 10)
+		for i := 0; i < 10; i++ {
+			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
+			rg.Mock.On("IdentifierFromKey", actives[i]).
+				Return(ktypes.UpkeepIdentifier(fmt.Sprintf("%d", i+1)), nil).
+				Maybe()
+		}
+
+		rg.Mock.On("CheckUpkeep", mock.Anything, actives[0], actives[1], actives[2], actives[3], actives[4]).
+			Return(nil, fmt.Errorf("simulate RPC error"))
+
+		l := log.New(io.Discard, "", 0)
+		svc := &onDemandUpkeepService{
+			logger:   l,
+			ratio:    sampleRatio(0.5),
+			registry: rg,
+			shuffler: new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:    newCache[ktypes.UpkeepResult](1 * time.Second),
+			cacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
+				Interval: time.Second,
+				stop:     make(chan struct{}),
+			},
+			workers:            newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			eligibleUpkeepKeys: actives[:5],
+		}
+
+		// this test does not include the cache cleaner or log subscriber
+		_, err := svc.SampleUpkeeps(ctx)
+
+		// the process should return an error that wraps the last CheckUpkeep
+		// error with context about which key was checked and that too many
+		// errors were encountered during the parallel worker process
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "too many errors in parallel worker process: last error ")
+
+		rg.Mock.AssertExpectations(t)
+	})
+}
+
+func Test_runSamplingUpkeeps(t *testing.T) {
+	t.Run("successfully populated keys", func(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{})
@@ -414,25 +348,84 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
 			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
-			rg.Mock.On("IdentifierFromKey", actives[i]).
-				Return(ktypes.UpkeepIdentifier(fmt.Sprintf("%d", i+1)), nil).
-				Maybe()
 		}
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey(header.Number.String())).
+			Run(func(args mock.Arguments) {
+				subscribed <- struct{}{}
+			}).
 			Return(actives, nil)
-
-		rg.Mock.On("CheckUpkeep", mock.Anything, actives[0], actives[1], actives[2], actives[3], actives[4]).
-			Return(nil, fmt.Errorf("simulate RPC error"))
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
 			logger:         l,
-			ratio:          sampleRatio(0.5),
 			headSubscriber: hs,
+			ratio:          sampleRatio(0.5),
 			registry:       rg,
 			shuffler:       new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:          newCache[ktypes.UpkeepResult](1 * time.Second),
+			cacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
+				Interval: time.Second,
+				stop:     make(chan struct{}),
+			},
+			workers:   newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			stopProcs: make(chan struct{}),
+		}
+
+		// Start all required processes
+		svc.start()
+
+		// Sent head to the head subscriber so
+		// the service could sample upkeeps for the given head
+		<-subscribed
+		headsCh <- header
+
+		// Wait until eligible keys are populated
+		<-subscribed
+
+		svc.stop()
+
+		svc.eligibleUpkeepKeysLock.Lock()
+		assert.Equal(t, actives[:5], svc.eligibleUpkeepKeys)
+		svc.eligibleUpkeepKeysLock.Unlock()
+
+		rg.AssertExpectations(t)
+		hs.AssertExpectations(t)
+	})
+
+	t.Run("getting active upkeeps error", func(t *testing.T) {
+		rg := ktypes.NewMockRegistry(t)
+		hs := ktypes.NewMockHeadSubscriber(t)
+		subscribed := make(chan struct{})
+		headsCh := make(chan<- *ethtypes.Header, 1)
+		header := &ethtypes.Header{
+			Number: big.NewInt(1),
+		}
+
+		hs.On("SubscribeNewHead", mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				switch ch := args.Get(1).(type) {
+				case chan<- *ethtypes.Header:
+					headsCh = ch
+				default:
+					t.Error("unexpected chan type")
+				}
+				subscribed <- struct{}{}
+			}).Return(&rpc.ClientSubscription{}, nil)
+
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey(header.Number.String())).
+			Run(func(args mock.Arguments) {
+				subscribed <- struct{}{}
+			}).
+			Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
+
+		var logWriter buffer
+		l := log.New(&logWriter, "", 0)
+		svc := &onDemandUpkeepService{
+			logger:         l,
+			registry:       rg,
+			headSubscriber: hs,
+			cache:          newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			cacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
 				Interval: time.Second,
 				stop:     make(chan struct{}),
@@ -449,29 +442,12 @@ func TestOnDemandUpkeepService(t *testing.T) {
 		<-subscribed
 		headsCh <- header
 
-		// Wait until eligible keys are populated
-		for i := 0; i < 5; i++ {
-			svc.eligibleUpkeepKeysLock.Lock()
-			keysExist := len(svc.eligibleUpkeepKeys) > 0
-			svc.eligibleUpkeepKeysLock.Unlock()
-
-			if keysExist {
-				break
-			}
-
-			time.Sleep(time.Millisecond * 500)
-		}
+		// Wait until GetActiveUpkeepKeys has executed
+		<-subscribed
 
 		svc.stop()
 
-		// this test does not include the cache cleaner or log subscriber
-		_, err := svc.SampleUpkeeps(ctx)
-
-		// the process should return an error that wraps the last CheckUpkeep
-		// error with context about which key was checked and that too many
-		// errors were encountered during the parallel worker process
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "too many errors in parallel worker process: last error ")
+		assert.Equal(t, "contract error: failed to get upkeeps from registry for sampling\n", logWriter.String())
 
 		rg.Mock.AssertExpectations(t)
 		hs.AssertExpectations(t)
