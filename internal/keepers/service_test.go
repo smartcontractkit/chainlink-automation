@@ -239,7 +239,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, header).
 			Run(func(args mock.Arguments) {
-				subscribed <- struct{}{}
+				close(subscribed)
 			}).
 			Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
 

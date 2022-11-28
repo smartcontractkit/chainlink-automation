@@ -164,39 +164,7 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	// Start the sampling upkeep process for heads
 	go func() {
 		for head := range heads {
-			// Get only the active upkeeps from the contract. This should not include
-			// any cancelled upkeeps.
-			keys, err := s.registry.GetActiveUpkeepKeys(ctx, head)
-			if err != nil {
-				s.samplingResults.purge()
-				s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
-				continue
-			}
-
-			s.logger.Printf("%d active upkeep keys found in registry", len(keys))
-			if len(keys) == 0 {
-				s.samplingResults.purge()
-				continue
-			}
-
-			// select x upkeeps at random from set
-			keys = s.shuffler.Shuffle(keys)
-			size := s.ratio.OfInt(len(keys))
-
-			s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
-			if size <= 0 {
-				s.samplingResults.purge()
-				continue
-			}
-
-			upkeepResults, err := s.parallelCheck(ctx, keys[:size])
-			if err != nil {
-				s.samplingResults.purge()
-				s.logger.Printf("%s: failed to parallel check upkeeps", err)
-				continue
-			}
-
-			s.samplingResults.set(upkeepResults)
+			s.handleIncomingHead(ctx, head)
 		}
 	}()
 
@@ -215,6 +183,46 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 		default:
 		}
 	})
+}
+
+// handleIncomingHead performs checking upkeep logic for all eligible keys of the given head
+func (s *onDemandUpkeepService) handleIncomingHead(ctx context.Context, head types.BlockKey) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	// Get only the active upkeeps from the contract. This should not include
+	// any cancelled upkeeps.
+	keys, err := s.registry.GetActiveUpkeepKeys(ctx, head)
+	if err != nil {
+		s.samplingResults.purge()
+		s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
+		return
+	}
+
+	s.logger.Printf("%d active upkeep keys found in registry", len(keys))
+	if len(keys) == 0 {
+		s.samplingResults.purge()
+		return
+	}
+
+	// select x upkeeps at random from set
+	keys = s.shuffler.Shuffle(keys)
+	size := s.ratio.OfInt(len(keys))
+
+	s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
+	if size <= 0 {
+		s.samplingResults.purge()
+		return
+	}
+
+	upkeepResults, err := s.parallelCheck(ctx, keys[:size])
+	if err != nil {
+		s.samplingResults.purge()
+		s.logger.Printf("%s: failed to parallel check upkeeps", err)
+		return
+	}
+
+	s.samplingResults.set(upkeepResults)
 }
 
 func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
