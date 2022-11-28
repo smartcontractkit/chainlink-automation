@@ -15,17 +15,17 @@ import (
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
 type onDemandUpkeepService struct {
-	logger                 *log.Logger
-	ratio                  sampleRatio
-	headSubscriber         types.HeadSubscriber
-	registry               types.Registry
-	shuffler               shuffler[types.UpkeepKey]
-	cache                  *cache[types.UpkeepResult]
-	cacheCleaner           *intervalCacheCleaner[types.UpkeepResult]
-	eligibleUpkeepKeys     []types.UpkeepKey
-	eligibleUpkeepKeysLock sync.Mutex
-	workers                *workerGroup[types.UpkeepResults]
-	stopProcs              chan struct{}
+	logger            *log.Logger
+	ratio             sampleRatio
+	headSubscriber    types.HeadSubscriber
+	registry          types.Registry
+	shuffler          shuffler[types.UpkeepKey]
+	cache             *cache[types.UpkeepResult]
+	cacheCleaner      *intervalCacheCleaner[types.UpkeepResult]
+	upkeepResults     []*types.UpkeepResult
+	upkeepResultsLock sync.Mutex
+	workers           *workerGroup[types.UpkeepResults]
+	stopProcs         chan struct{}
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -72,21 +72,35 @@ func newOnDemandUpkeepService(
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
-func (s *onDemandUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
 	if s.workers == nil {
 		panic("cannot sample upkeeps without runner")
 	}
 
-	s.eligibleUpkeepKeysLock.Lock()
-	keys := make([]types.UpkeepKey, len(s.eligibleUpkeepKeys))
-	copy(keys, s.eligibleUpkeepKeys)
-	s.eligibleUpkeepKeysLock.Unlock()
+	s.upkeepResultsLock.Lock()
+	results := make([]*types.UpkeepResult, len(s.upkeepResults))
+	copy(results, s.upkeepResults)
+	s.upkeepResultsLock.Unlock()
 
-	if len(keys) == 0 {
+	if len(results) == 0 {
 		return nil, nil
 	}
 
-	return s.parallelCheck(ctx, keys, filters...)
+	var filteredResults []*types.UpkeepResult
+
+EachKey:
+	for _, result := range results {
+		for _, filter := range filters {
+			if !filter(result.Key) {
+				s.logger.Printf("filtered out key '%s'", result.Key)
+				continue EachKey
+			}
+
+			filteredResults = append(filteredResults, result)
+		}
+	}
+
+	return filteredResults, nil
 }
 
 func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
@@ -146,7 +160,66 @@ func (s *onDemandUpkeepService) stop() {
 	close(s.cacheCleaner.stop)
 }
 
-func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	heads := make(chan types.BlockKey)
+	defer close(heads)
+
+	// Start the sampling upkeep process for heads
+	go func() {
+		for head := range heads {
+			// Get only the active upkeeps from the contract. This should not include
+			// any cancelled upkeeps.
+			keys, err := s.registry.GetActiveUpkeepKeys(ctx, head)
+			if err != nil {
+				s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
+			} else {
+				s.logger.Printf("%d active upkeep keys found in registry", len(keys))
+				if len(keys) > 0 {
+					// select x upkeeps at random from set
+					keys = s.shuffler.Shuffle(keys)
+					size := s.ratio.OfInt(len(keys))
+
+					s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
+					if size <= 0 {
+						keys = nil
+					} else {
+						keys = keys[:size]
+					}
+				}
+			}
+
+			upkeepResults, err := s.parallelCheck(ctx, keys)
+			if err != nil {
+				s.logger.Printf("%s: failed to parallel check upkeeps", err)
+				continue
+			}
+
+			s.upkeepResultsLock.Lock()
+			s.upkeepResults = upkeepResults
+			s.upkeepResultsLock.Unlock()
+		}
+	}()
+
+	// Cancel context when receiving the stop signal
+	go func() {
+		<-s.stopProcs
+		cancel()
+	}()
+
+	return s.headSubscriber.OnNewHead(ctx, func(blockKey types.BlockKey) {
+		// This is needed in order to do not block the process when a new head comes in.
+		// The running upkeep sampling process should be finished first before starting
+		// sampling for the next head.
+		select {
+		case heads <- blockKey:
+		default:
+		}
+	})
+}
+
+func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
 	samples := newSyncedArray[*types.UpkeepResult]()
 
 	if len(keys) == 0 {
@@ -172,13 +245,6 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	// if an item doesn't exist on the cache, send the items to the worker threads
 EachKey:
 	for _, key := range keys {
-		for _, filter := range filters {
-			if !filter(key) {
-				s.logger.Printf("filtered out key '%s'", key)
-				continue EachKey
-			}
-		}
-
 		// no RPC lookups need to be done if a result has already been cached
 		result, cached := s.cache.Get(string(key))
 		if cached {
@@ -270,59 +336,6 @@ Outer:
 			break Outer
 		}
 	}
-}
-
-func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	heads := make(chan types.BlockKey)
-	defer close(heads)
-
-	// Start the sampling upkeep process for heads
-	go func() {
-		for head := range heads {
-			// Get only the active upkeeps from the contract. This should not include
-			// any cancelled upkeeps.
-			keys, err := s.registry.GetActiveUpkeepKeys(ctx, head)
-			if err != nil {
-				s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
-			} else {
-				s.logger.Printf("%d active upkeep keys found in registry", len(keys))
-				if len(keys) > 0 {
-					// select x upkeeps at random from set
-					keys = s.shuffler.Shuffle(keys)
-					size := s.ratio.OfInt(len(keys))
-
-					s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
-					if size <= 0 {
-						keys = nil
-					} else {
-						keys = keys[:size]
-					}
-				}
-			}
-
-			s.eligibleUpkeepKeysLock.Lock()
-			s.eligibleUpkeepKeys = keys
-			s.eligibleUpkeepKeysLock.Unlock()
-		}
-	}()
-
-	// Cancel context when receiving the stop signal
-	go func() {
-		<-s.stopProcs
-		cancel()
-	}()
-
-	return s.headSubscriber.OnNewHead(ctx, func(blockKey types.BlockKey) {
-		// This is needed in order to do not block the process when a new head comes in.
-		// The running upkeep sampling process should be finished first before starting
-		// sampling for the next head.
-		select {
-		case heads <- blockKey:
-		default:
-		}
-	})
 }
 
 func makeWorkerFunc(logger *log.Logger, registry types.Registry, keys []types.UpkeepKey, jobCtx context.Context) work[types.UpkeepResults] {
