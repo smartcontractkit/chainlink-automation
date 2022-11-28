@@ -5,32 +5,18 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/core/types"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-type simulatedSubscription struct {
-}
-
-func (s *simulatedSubscription) Unsubscribe() {
-
-}
-
-func (s *simulatedSubscription) Err() <-chan error {
-	return make(chan error)
-}
-
-func (ct *SimulatedContract) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error) {
+func (ct *SimulatedContract) OnNewHead(ctx context.Context, cb func(header ktypes.BlockKey)) error {
 	initialBlock := int64(0)
 	ticker := time.NewTicker(time.Second * 2)
 	go func() {
 		for range ticker.C {
-			ch <- &types.Header{
-				Number: big.NewInt(initialBlock),
-			}
+			cb(ktypes.BlockKey(big.NewInt(initialBlock).String()))
 			initialBlock++
 		}
 	}()
 
-	return &simulatedSubscription{}, nil
+	return nil
 }
