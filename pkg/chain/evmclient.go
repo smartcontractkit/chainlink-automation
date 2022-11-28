@@ -77,7 +77,7 @@ func (ec *evmClient) OnNewHead(ctx context.Context, cb func(blockKey types.Block
 				return err
 			}
 		case head := <-ch:
-			cb(types.BlockKey(head.Number.String()))
+			go cb(types.BlockKey(head.Number.String()))
 		}
 	}
 }

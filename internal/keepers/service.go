@@ -158,7 +158,7 @@ func (s *onDemandUpkeepService) stop() {
 func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	heads := make(chan types.BlockKey)
+	heads := make(chan types.BlockKey, 1)
 	defer close(heads)
 
 	// Start the sampling upkeep process for heads
