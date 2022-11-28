@@ -319,6 +319,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		svc.stop()
 
+		// TODO: Get rid of this
+		time.Sleep(time.Second)
+
 		assert.Contains(t, logWriter.String(), "simulate RPC error: failed to check upkeep keys:")
 
 		rg.Mock.AssertExpectations(t)
