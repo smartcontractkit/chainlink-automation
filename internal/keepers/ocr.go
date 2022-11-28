@@ -68,7 +68,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// of for each epoch/round
 	k.logger.Printf("OCR observation completed successfully with %d eligible keys: %s", len(keys), lCtx)
 
-	return types.Observation(b), nil
+	return b, nil
 }
 
 // Report implements the types.ReportingPlugin interface in OC2. This method chooses a single upkeep

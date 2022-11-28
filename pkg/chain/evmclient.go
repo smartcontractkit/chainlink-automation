@@ -70,7 +70,7 @@ func (ec *evmClient) OnNewHead(ctx context.Context, cb func(blockKey types.Block
 
 	for {
 		select {
-		case err = <-ctx.Done():
+		case <-ctx.Done():
 			return ctx.Err()
 		case err = <-sub.Err():
 			if sub, err = ec.SubscribeNewHead(ctx, ch); err != nil {

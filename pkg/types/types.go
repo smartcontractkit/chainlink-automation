@@ -19,6 +19,8 @@ type HeadSubscriber interface {
 }
 
 // EVMClient represents evm client's behavior
+//
+//go:generate mockery --name EVMClient --inpackage --output . --case=underscore --filename evm_client.generated.go
 type EVMClient interface {
 	HeadSubscriber
 	bind.ContractCaller

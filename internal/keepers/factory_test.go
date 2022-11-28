@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -46,10 +45,10 @@ func TestNewReportingPlugin(t *testing.T) {
 		},
 	}
 
-	hs.On("SubscribeNewHead", mock.Anything, mock.Anything).
+	hs.On("OnNewHead", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			subscribed <- struct{}{}
-		}).Return(&rpc.ClientSubscription{}, nil)
+		}).Return(nil)
 
 	mp.Mock.On("PerformLogs", mock.Anything).
 		Return([]ktypes.PerformLog{}, nil).

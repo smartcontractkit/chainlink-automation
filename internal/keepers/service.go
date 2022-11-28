@@ -71,7 +71,7 @@ func newOnDemandUpkeepService(
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
-func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error) {
+func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.UpkeepResults, error) {
 	if s.workers == nil {
 		panic("cannot sample upkeeps without runner")
 	}
@@ -81,7 +81,7 @@ func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func
 		return nil, nil
 	}
 
-	var filteredResults []*types.UpkeepResult
+	filteredResults := make(types.UpkeepResults, 0, len(results))
 
 EachKey:
 	for _, result := range results {
@@ -90,9 +90,9 @@ EachKey:
 				s.logger.Printf("filtered out key '%s'", result.Key)
 				continue EachKey
 			}
-
-			filteredResults = append(filteredResults, result)
 		}
+
+		filteredResults = append(filteredResults, result)
 	}
 
 	return filteredResults, nil
@@ -217,8 +217,8 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	})
 }
 
-func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) ([]*types.UpkeepResult, error) {
-	samples := newSyncedArray[*types.UpkeepResult]()
+func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
+	samples := newSyncedArray[types.UpkeepResult]()
 
 	if len(keys) == 0 {
 		return samples.Values(), nil
@@ -248,7 +248,7 @@ EachKey:
 		if cached {
 			cacheHits++
 			if result.State == types.Eligible {
-				samples.Append(&result)
+				samples.Append(result)
 			}
 			continue EachKey
 		}
@@ -305,7 +305,7 @@ EachKey:
 	return samples.Values(), nil
 }
 
-func (s *onDemandUpkeepService) aggregateWorkerResults(w *sync.WaitGroup, r *workerResults, sa *syncedArray[*types.UpkeepResult], done chan struct{}) {
+func (s *onDemandUpkeepService) aggregateWorkerResults(w *sync.WaitGroup, r *workerResults, sa *syncedArray[types.UpkeepResult], done chan struct{}) {
 	s.logger.Printf("starting service to read worker results")
 
 Outer:
@@ -320,7 +320,7 @@ Outer:
 					res := result.Data[i]
 					s.cache.Set(string(res.Key), res, defaultExpiration)
 					if res.State == types.Eligible {
-						sa.Append(&res)
+						sa.Append(res)
 					}
 				}
 			} else {
@@ -449,26 +449,26 @@ func (wr *workerResults) FailureRate() float64 {
 }
 
 type samplingUpkeepsResults struct {
-	upkeepResults []*types.UpkeepResult
+	upkeepResults types.UpkeepResults
 	sync.Mutex
 }
 
 func (sur *samplingUpkeepsResults) purge() {
 	sur.Lock()
-	sur.upkeepResults = make([]*types.UpkeepResult, 0)
+	sur.upkeepResults = make(types.UpkeepResults, 0)
 	sur.Unlock()
 }
 
-func (sur *samplingUpkeepsResults) set(results []*types.UpkeepResult) {
+func (sur *samplingUpkeepsResults) set(results types.UpkeepResults) {
 	sur.Lock()
-	sur.upkeepResults = make([]*types.UpkeepResult, len(results))
+	sur.upkeepResults = make(types.UpkeepResults, len(results))
 	copy(sur.upkeepResults, results)
 	sur.Unlock()
 }
 
-func (sur *samplingUpkeepsResults) get() []*types.UpkeepResult {
+func (sur *samplingUpkeepsResults) get() types.UpkeepResults {
 	sur.Lock()
-	results := make([]*types.UpkeepResult, len(sur.upkeepResults))
+	results := make(types.UpkeepResults, len(sur.upkeepResults))
 	copy(results, sur.upkeepResults)
 	sur.Unlock()
 

@@ -20,7 +20,7 @@ func (r sampleRatio) String() string {
 }
 
 type upkeepService interface {
-	SampleUpkeeps(context.Context, ...func(types.UpkeepKey) bool) ([]*types.UpkeepResult, error)
+	SampleUpkeeps(context.Context, ...func(types.UpkeepKey) bool) (types.UpkeepResults, error)
 	CheckUpkeep(context.Context, ...types.UpkeepKey) (types.UpkeepResults, error)
 }
 

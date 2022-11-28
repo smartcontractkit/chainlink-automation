@@ -19,8 +19,8 @@ var (
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
 
-func filterUpkeeps(upkeeps []*ktypes.UpkeepResult, filter ktypes.UpkeepState) []*ktypes.UpkeepResult {
-	ret := make([]*ktypes.UpkeepResult, 0, len(upkeeps))
+func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState) ktypes.UpkeepResults {
+	ret := make(ktypes.UpkeepResults, 0, len(upkeeps))
 
 	for _, up := range upkeeps {
 		if up.State == filter {
@@ -31,7 +31,7 @@ func filterUpkeeps(upkeeps []*ktypes.UpkeepResult, filter ktypes.UpkeepState) []
 	return ret
 }
 
-func keyList(upkeeps []*ktypes.UpkeepResult) []ktypes.UpkeepKey {
+func keyList(upkeeps ktypes.UpkeepResults) []ktypes.UpkeepKey {
 	ret := make([]ktypes.UpkeepKey, len(upkeeps))
 
 	for i, up := range upkeeps {
