@@ -15,17 +15,16 @@ import (
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
 type onDemandUpkeepService struct {
-	logger            *log.Logger
-	ratio             sampleRatio
-	headSubscriber    types.HeadSubscriber
-	registry          types.Registry
-	shuffler          shuffler[types.UpkeepKey]
-	cache             *cache[types.UpkeepResult]
-	cacheCleaner      *intervalCacheCleaner[types.UpkeepResult]
-	upkeepResults     []*types.UpkeepResult
-	upkeepResultsLock sync.Mutex
-	workers           *workerGroup[types.UpkeepResults]
-	stopProcs         chan struct{}
+	logger          *log.Logger
+	ratio           sampleRatio
+	headSubscriber  types.HeadSubscriber
+	registry        types.Registry
+	shuffler        shuffler[types.UpkeepKey]
+	cache           *cache[types.UpkeepResult]
+	cacheCleaner    *intervalCacheCleaner[types.UpkeepResult]
+	samplingResults samplingUpkeepsResults
+	workers         *workerGroup[types.UpkeepResults]
+	stopProcs       chan struct{}
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -77,11 +76,7 @@ func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func
 		panic("cannot sample upkeeps without runner")
 	}
 
-	s.upkeepResultsLock.Lock()
-	results := make([]*types.UpkeepResult, len(s.upkeepResults))
-	copy(results, s.upkeepResults)
-	s.upkeepResultsLock.Unlock()
-
+	results := s.samplingResults.get()
 	if len(results) == 0 {
 		return nil, nil
 	}
@@ -173,32 +168,35 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 			// any cancelled upkeeps.
 			keys, err := s.registry.GetActiveUpkeepKeys(ctx, head)
 			if err != nil {
+				s.samplingResults.purge()
 				s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
-			} else {
-				s.logger.Printf("%d active upkeep keys found in registry", len(keys))
-				if len(keys) > 0 {
-					// select x upkeeps at random from set
-					keys = s.shuffler.Shuffle(keys)
-					size := s.ratio.OfInt(len(keys))
-
-					s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
-					if size <= 0 {
-						keys = nil
-					} else {
-						keys = keys[:size]
-					}
-				}
+				continue
 			}
 
-			upkeepResults, err := s.parallelCheck(ctx, keys)
+			s.logger.Printf("%d active upkeep keys found in registry", len(keys))
+			if len(keys) == 0 {
+				s.samplingResults.purge()
+				continue
+			}
+
+			// select x upkeeps at random from set
+			keys = s.shuffler.Shuffle(keys)
+			size := s.ratio.OfInt(len(keys))
+
+			s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
+			if size <= 0 {
+				s.samplingResults.purge()
+				continue
+			}
+
+			upkeepResults, err := s.parallelCheck(ctx, keys[:size])
 			if err != nil {
+				s.samplingResults.purge()
 				s.logger.Printf("%s: failed to parallel check upkeeps", err)
 				continue
 			}
 
-			s.upkeepResultsLock.Lock()
-			s.upkeepResults = upkeepResults
-			s.upkeepResultsLock.Unlock()
+			s.samplingResults.set(upkeepResults)
 		}
 	}()
 
@@ -448,4 +446,31 @@ func (wr *workerResults) FailureRate() float64 {
 	wr.mu.RLock()
 	defer wr.mu.RUnlock()
 	return float64(wr.failure) / float64(wr.total())
+}
+
+type samplingUpkeepsResults struct {
+	upkeepResults []*types.UpkeepResult
+	sync.Mutex
+}
+
+func (sur *samplingUpkeepsResults) purge() {
+	sur.Lock()
+	sur.upkeepResults = make([]*types.UpkeepResult, 0)
+	sur.Unlock()
+}
+
+func (sur *samplingUpkeepsResults) set(results []*types.UpkeepResult) {
+	sur.Lock()
+	sur.upkeepResults = make([]*types.UpkeepResult, len(results))
+	copy(sur.upkeepResults, results)
+	sur.Unlock()
+}
+
+func (sur *samplingUpkeepsResults) get() []*types.UpkeepResult {
+	sur.Lock()
+	results := make([]*types.UpkeepResult, len(sur.upkeepResults))
+	copy(results, sur.upkeepResults)
+	sur.Unlock()
+
+	return results
 }
