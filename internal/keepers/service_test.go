@@ -204,12 +204,19 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		svc.stop()
 
-		// TODO: Get rid of it
-		time.Sleep(time.Second)
+		// TODO: Use gomega or something similar
+		var actualResults types.UpkeepResults
+		for i := 0; i < 5; i++ {
+			time.Sleep(time.Second)
+			actualResults = svc.samplingResults.get()
+			if len(actualResults) > 0 {
+				break
+			}
+		}
 
-		assert.Len(t, svc.samplingResults.get(), 2)
-		assert.Equal(t, returnResults[0], svc.samplingResults.get()[0])
-		assert.Equal(t, returnResults[3], svc.samplingResults.get()[1])
+		assert.Len(t, actualResults, 2)
+		assert.Equal(t, returnResults[0], actualResults[0])
+		assert.Equal(t, returnResults[3], actualResults[1])
 
 		rg.AssertExpectations(t)
 		hs.AssertExpectations(t)
@@ -290,7 +297,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, actives[0], actives[1], actives[2], actives[3], actives[4]).
 			Run(func(args mock.Arguments) {
-				subscribed <- struct{}{}
+				close(subscribed)
 			}).
 			Return(nil, fmt.Errorf("simulate RPC error"))
 
