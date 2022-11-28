@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -16,7 +15,7 @@ import (
 //
 //go:generate mockery --name HeadSubscriber --inpackage --output . --case=underscore --filename head_subscribed.generated.go
 type HeadSubscriber interface {
-	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
+	OnNewHead(ctx context.Context, cb func(blockKey BlockKey)) error
 }
 
 // EVMClient represents evm client's behavior

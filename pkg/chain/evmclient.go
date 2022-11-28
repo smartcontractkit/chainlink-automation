@@ -61,6 +61,27 @@ func (ec *evmClient) BatchCallContext(ctx context.Context, b []rpc.BatchElem) er
 	return errors.Wrap(multierr.Combine(errs...), "batch call error")
 }
 
+func (ec *evmClient) OnNewHead(ctx context.Context, cb func(blockKey types.BlockKey)) error {
+	ch := make(chan *ethtypes.Header, 1)
+	sub, err := ec.SubscribeNewHead(ctx, ch)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case err = <-ctx.Done():
+			return ctx.Err()
+		case err = <-sub.Err():
+			if sub, err = ec.SubscribeNewHead(ctx, ch); err != nil {
+				return err
+			}
+		case head := <-ch:
+			cb(types.BlockKey(head.Number.String()))
+		}
+	}
+}
+
 func (ec *evmClient) createBatches(b []rpc.BatchElem) (batches [][]rpc.BatchElem) {
 	for i := 0; i < len(b); i += ec.batchSize {
 		j := i + ec.batchSize

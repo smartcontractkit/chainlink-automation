@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -276,15 +274,8 @@ Outer:
 
 func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	ch := make(chan *ethtypes.Header, 1)
-	sub, err := s.headSubscriber.SubscribeNewHead(ctx, ch)
-	if err != nil {
-		return err
-	}
-
-	heads := make(chan *ethtypes.Header)
+	heads := make(chan types.BlockKey)
 	defer close(heads)
 
 	// Start the sampling upkeep process for heads
@@ -292,7 +283,7 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 		for head := range heads {
 			// Get only the active upkeeps from the contract. This should not include
 			// any cancelled upkeeps.
-			keys, err := s.registry.GetActiveUpkeepKeys(ctx, types.BlockKey(head.Number.String()))
+			keys, err := s.registry.GetActiveUpkeepKeys(ctx, head)
 			if err != nil {
 				s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 			} else {
@@ -317,26 +308,21 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 		}
 	}()
 
-	for {
-		select {
-		case err = <-sub.Err():
-			s.logger.Printf("%s: heads subscription failed", err)
+	// Cancel context when receiving the stop signal
+	go func() {
+		<-s.stopProcs
+		cancel()
+	}()
 
-			if sub, err = s.headSubscriber.SubscribeNewHead(ctx, ch); err != nil {
-				return err
-			}
-		case <-s.stopProcs:
-			return nil
-		case head := <-ch:
-			// This is needed in order to do not block the process when a new head comes in.
-			// The running upkeep sampling process should be finished first before starting
-			// sampling for the next head.
-			select {
-			case heads <- head:
-			default:
-			}
+	return s.headSubscriber.OnNewHead(ctx, func(blockKey types.BlockKey) {
+		// This is needed in order to do not block the process when a new head comes in.
+		// The running upkeep sampling process should be finished first before starting
+		// sampling for the next head.
+		select {
+		case heads <- blockKey:
+		default:
 		}
-	}
+	})
 }
 
 func makeWorkerFunc(logger *log.Logger, registry types.Registry, keys []types.UpkeepKey, jobCtx context.Context) work[types.UpkeepResults] {
