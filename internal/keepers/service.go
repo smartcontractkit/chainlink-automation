@@ -267,7 +267,7 @@ EachKey:
 
 	// Create batches from the given keys.
 	// Max 10 items in the batch.
-	keysBatches := createBatches(keysToSend, 10)
+	keysBatches := createBatches(keysToSend, 20)
 	for _, batch := range keysBatches {
 		// for every job added to the worker queue, add to the wait group
 		// all jobs should complete before completing the function
