@@ -15,10 +15,11 @@ const maxObservationLength = 1_000
 var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
 
 type ReportingFactoryConfig struct {
-	CacheExpiration       time.Duration
-	CacheEvictionInterval time.Duration
-	MaxServiceWorkers     int
-	ServiceQueueLength    int
+	SamplingUpkeepJobDuration time.Duration
+	CacheExpiration           time.Duration
+	CacheEvictionInterval     time.Duration
+	MaxServiceWorkers         int
+	ServiceQueueLength        int
 }
 
 type keepersReportingFactory struct {
@@ -108,6 +109,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.headSubscriber,
 		d.registry,
 		d.logger,
+		d.config.SamplingUpkeepJobDuration,
 		d.config.CacheExpiration,
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,

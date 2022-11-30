@@ -10,6 +10,8 @@ import (
 )
 
 const (
+	// DefaultSamplingUpkeepJobDuration is the default sampling upkeeps process duration timeout
+	DefaultSamplingUpkeepJobDuration = 10 * time.Second
 	// DefaultCacheExpiration is the default amount of time a key can remain
 	// in the cache before being eligible to be cleared
 	DefaultCacheExpiration = 20 * time.Minute
@@ -45,6 +47,9 @@ type DelegateConfig struct {
 
 	// EVMClient is an EVM head subscriber
 	HeadSubscriber ktypes.HeadSubscriber
+	// SamplingUpkeepJobDuration is the duration of the sampling upkeeps process
+	// See handleIncomingHead in the service
+	SamplingUpkeepJobDuration time.Duration
 	// Registry is an abstract plugin registry; can be evm based or anything else
 	Registry ktypes.Registry
 	// PerformLogProvider is an abstract provider of logs where upkeep performs

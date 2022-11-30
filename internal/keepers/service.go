@@ -15,16 +15,17 @@ import (
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
 type onDemandUpkeepService struct {
-	logger          *log.Logger
-	ratio           sampleRatio
-	headSubscriber  types.HeadSubscriber
-	registry        types.Registry
-	shuffler        shuffler[types.UpkeepKey]
-	cache           *cache[types.UpkeepResult]
-	cacheCleaner    *intervalCacheCleaner[types.UpkeepResult]
-	samplingResults samplingUpkeepsResults
-	workers         *workerGroup[types.UpkeepResults]
-	stopProcs       chan struct{}
+	logger           *log.Logger
+	ratio            sampleRatio
+	headSubscriber   types.HeadSubscriber
+	registry         types.Registry
+	shuffler         shuffler[types.UpkeepKey]
+	cache            *cache[types.UpkeepResult]
+	cacheCleaner     *intervalCacheCleaner[types.UpkeepResult]
+	samplingResults  samplingUpkeepsResults
+	samplingDuration time.Duration
+	workers          *workerGroup[types.UpkeepResults]
+	stopProcs        chan struct{}
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -37,20 +38,22 @@ func newOnDemandUpkeepService(
 	headSubscriber types.HeadSubscriber,
 	registry types.Registry,
 	logger *log.Logger,
+	samplingDuration time.Duration,
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
 	workers int,
 	workerQueueLength int,
 ) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
-		logger:         logger,
-		ratio:          ratio,
-		headSubscriber: headSubscriber,
-		registry:       registry,
-		shuffler:       new(cryptoShuffler[types.UpkeepKey]),
-		cache:          newCache[types.UpkeepResult](cacheExpire),
-		workers:        newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		stopProcs:      make(chan struct{}),
+		logger:           logger,
+		ratio:            ratio,
+		headSubscriber:   headSubscriber,
+		registry:         registry,
+		samplingDuration: samplingDuration,
+		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
+		cache:            newCache[types.UpkeepResult](cacheExpire),
+		workers:          newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		stopProcs:        make(chan struct{}),
 	}
 
 	cl := &intervalCacheCleaner[types.UpkeepResult]{
@@ -163,8 +166,8 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 
 	// Start the sampling upkeep process for heads
 	go func() {
-		for head := range heads {
-			s.handleIncomingHead(ctx, head)
+		for range heads {
+			s.handleIncomingHead(ctx)
 		}
 	}()
 
@@ -186,8 +189,8 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 }
 
 // handleIncomingHead performs checking upkeep logic for all eligible keys of the given head
-func (s *onDemandUpkeepService) handleIncomingHead(ctx context.Context, head types.BlockKey) {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+func (s *onDemandUpkeepService) handleIncomingHead(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, s.samplingDuration)
 	defer cancel()
 
 	// Get only the active upkeeps from the contract. This should not include
