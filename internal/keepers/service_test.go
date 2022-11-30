@@ -1,6 +1,7 @@
 package keepers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -77,10 +78,11 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
-			logger:   l,
-			cache:    newCache[ktypes.UpkeepResult](20 * time.Millisecond),
-			registry: rg,
-			workers:  newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			logger:           l,
+			cache:            newCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			registry:         rg,
+			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			samplingDuration: time.Second * 5,
 		}
 
 		result, err := svc.CheckUpkeep(ctx, test.Key)
@@ -122,7 +124,8 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 			Interval: time.Second,
 			stop:     make(chan struct{}),
 		},
-		workers: newWorkerGroup[ktypes.UpkeepResults](2, 10),
+		workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+		samplingDuration: time.Second * 5,
 	}
 
 	svc.samplingResults.set(returnResults)
@@ -136,6 +139,19 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 }
 
 func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
+	checkKeys := func(t *testing.T, keys, actualKeys []ktypes.UpkeepKey) {
+		for _, key := range keys[:5] {
+			var found bool
+			for _, actualKey := range actualKeys {
+				if bytes.Equal(actualKey, key) {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found)
+		}
+	}
+
 	t.Run("successfully sampled upkeeps", func(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
@@ -156,7 +172,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, header).
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, types.BlockKey("0")).
 			Return(actives, nil)
 
 		returnResults := make(ktypes.UpkeepResults, 5)
@@ -174,8 +190,15 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			}
 		}
 
-		rg.Mock.On("CheckUpkeep", mock.Anything, actives[0], actives[1], actives[2], actives[3], actives[4]).
+		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
+				checkKeys(t, actives[:5], []ktypes.UpkeepKey{
+					args.Get(1).(ktypes.UpkeepKey),
+					args.Get(2).(ktypes.UpkeepKey),
+					args.Get(3).(ktypes.UpkeepKey),
+					args.Get(4).(ktypes.UpkeepKey),
+					args.Get(5).(ktypes.UpkeepKey),
+				})
 				close(subscribed)
 			}).
 			Return(returnResults, nil)
@@ -192,8 +215,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
-			workers:   newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			stopProcs: stopProcs,
+			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			samplingDuration: time.Second * 5,
+			stopProcs:        stopProcs,
 		}
 
 		// Start all required processes
@@ -237,7 +261,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 				<-stopProcs
 			}).Return(nil)
 
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, header).
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
 			Run(func(args mock.Arguments) {
 				close(subscribed)
 			}).
@@ -254,8 +278,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
-			workers:   newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			stopProcs: stopProcs,
+			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			samplingDuration: time.Second * 5,
+			stopProcs:        stopProcs,
 		}
 
 		// Start background processes
@@ -292,11 +317,18 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, header).
+		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
 			Return(actives, nil)
 
-		rg.Mock.On("CheckUpkeep", mock.Anything, actives[0], actives[1], actives[2], actives[3], actives[4]).
+		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
+				checkKeys(t, actives[:5], []ktypes.UpkeepKey{
+					args.Get(1).(ktypes.UpkeepKey),
+					args.Get(2).(ktypes.UpkeepKey),
+					args.Get(3).(ktypes.UpkeepKey),
+					args.Get(4).(ktypes.UpkeepKey),
+					args.Get(5).(ktypes.UpkeepKey),
+				})
 				close(subscribed)
 			}).
 			Return(nil, fmt.Errorf("simulate RPC error"))
@@ -314,8 +346,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
-			workers:   newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			stopProcs: stopProcs,
+			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			samplingDuration: time.Second * 5,
+			stopProcs:        stopProcs,
 		}
 
 		// Start background processes
