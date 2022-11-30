@@ -192,7 +192,7 @@ func (s *onDemandUpkeepService) handleIncomingHead(ctx context.Context, head typ
 
 	// Get only the active upkeeps from the contract. This should not include
 	// any cancelled upkeeps.
-	keys, err := s.registry.GetActiveUpkeepKeys(ctx, head)
+	keys, err := s.registry.GetActiveUpkeepKeys(ctx, "0")
 	if err != nil {
 		s.samplingResults.purge()
 		s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
@@ -209,7 +209,7 @@ func (s *onDemandUpkeepService) handleIncomingHead(ctx context.Context, head typ
 	keys = s.shuffler.Shuffle(keys)
 	size := s.ratio.OfInt(len(keys))
 
-	s.logger.Printf("%d keys selected by provided ratio %s", size, s.ratio)
+	s.logger.Printf("%d results selected by provided ratio %s", size, s.ratio)
 	if size <= 0 {
 		s.samplingResults.purge()
 		return
@@ -233,10 +233,11 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	}
 
 	var (
-		cacheHits  int
-		wg         sync.WaitGroup
-		wResults   workerResults
-		keysToSend []types.UpkeepKey
+		cacheHits      int
+		wg             sync.WaitGroup
+		wResults       workerResults
+		keysToSendLock sync.Mutex
+		keysToSend     = make([]types.UpkeepKey, 0, len(keys))
 	)
 
 	// start the results listener
@@ -249,21 +250,28 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 
 	// go through keys and check the cache first
 	// if an item doesn't exist on the cache, send the items to the worker threads
-EachKey:
 	for _, key := range keys {
-		// no RPC lookups need to be done if a result has already been cached
-		result, cached := s.cache.Get(string(key))
-		if cached {
-			cacheHits++
-			if result.State == types.Eligible {
-				samples.Append(result)
-			}
-			continue EachKey
-		}
+		wg.Add(1)
+		go func(key types.UpkeepKey) {
+			defer wg.Done()
 
-		// Add key to the slice that is going to be sent to the worker queue
-		keysToSend = append(keysToSend, key)
+			// no RPC lookups need to be done if a result has already been cached
+			result, cached := s.cache.Get(string(key))
+			if cached {
+				cacheHits++
+				if result.State == types.Eligible {
+					samples.Append(result)
+				}
+				return
+			}
+
+			// Add key to the slice that is going to be sent to the worker queue
+			keysToSendLock.Lock()
+			keysToSend = append(keysToSend, key)
+			keysToSendLock.Unlock()
+		}(key)
 	}
+	wg.Wait()
 
 	// Create batches from the given keys.
 	// Max 10 items in the batch.
@@ -273,7 +281,7 @@ EachKey:
 		// all jobs should complete before completing the function
 		s.logger.Printf("attempting to send keys to worker group")
 		wg.Add(1)
-		if err := s.workers.Do(ctx, makeWorkerFunc(s.logger, s.registry, batch, ctx)); err != nil {
+		if err := s.workers.Do(ctx, makeWorkerFunc(ctx, s.logger, s.registry, batch)); err != nil {
 			if !errors.Is(err, ErrContextCancelled) {
 				// the worker process has probably stopped so the function
 				// should terminate with an error
@@ -344,7 +352,7 @@ Outer:
 	}
 }
 
-func makeWorkerFunc(logger *log.Logger, registry types.Registry, keys []types.UpkeepKey, jobCtx context.Context) work[types.UpkeepResults] {
+func makeWorkerFunc(jobCtx context.Context, logger *log.Logger, registry types.Registry, keys []types.UpkeepKey) work[types.UpkeepResults] {
 	keysStr := upkeepKeysToString(keys)
 	logger.Printf("check upkeep job created for keys: %s", keysStr)
 	return func(serviceCtx context.Context) (types.UpkeepResults, error) {
@@ -354,7 +362,7 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, keys []types.Up
 			return nil, fmt.Errorf("job not attempted because one of two contexts had already been cancelled")
 		}
 
-		c, cancel := context.WithCancel(context.Background())
+		c, cancel := context.WithCancel(jobCtx)
 		done := make(chan struct{}, 1)
 
 		go func() {
@@ -478,6 +486,7 @@ func (sur *samplingUpkeepsResults) get() types.UpkeepResults {
 	sur.Lock()
 	results := make(types.UpkeepResults, len(sur.upkeepResults))
 	copy(results, sur.upkeepResults)
+	sur.upkeepResults = make(types.UpkeepResults, 0)
 	sur.Unlock()
 
 	return results
