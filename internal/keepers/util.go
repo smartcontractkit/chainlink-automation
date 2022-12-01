@@ -1,6 +1,7 @@
 package keepers
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"math/cmplx"
@@ -18,8 +19,8 @@ var (
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
 
-func filterUpkeeps(upkeeps []*ktypes.UpkeepResult, filter ktypes.UpkeepState) []*ktypes.UpkeepResult {
-	ret := make([]*ktypes.UpkeepResult, 0, len(upkeeps))
+func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState) ktypes.UpkeepResults {
+	ret := make(ktypes.UpkeepResults, 0, len(upkeeps))
 
 	for _, up := range upkeeps {
 		if up.State == filter {
@@ -30,7 +31,7 @@ func filterUpkeeps(upkeeps []*ktypes.UpkeepResult, filter ktypes.UpkeepState) []
 	return ret
 }
 
-func keyList(upkeeps []*ktypes.UpkeepResult) []ktypes.UpkeepKey {
+func keyList(upkeeps ktypes.UpkeepResults) []ktypes.UpkeepKey {
 	ret := make([]ktypes.UpkeepKey, len(upkeeps))
 
 	for i, up := range upkeeps {
@@ -292,4 +293,26 @@ func createBatches[T any](b []T, size int) (batches [][]T) {
 		batches = append(batches, b[i:j])
 	}
 	return
+}
+
+// buffer is a goroutine safe bytes.Buffer
+type buffer struct {
+	buffer bytes.Buffer
+	mutex  sync.Mutex
+}
+
+// Write appends the contents of p to the buffer, growing the buffer as needed. It returns
+// the number of bytes written.
+func (s *buffer) Write(p []byte) (n int, err error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.buffer.Write(p)
+}
+
+// String returns the contents of the unread portion of the buffer
+// as a string.  If the Buffer is a nil pointer, it returns "<nil>".
+func (s *buffer) String() string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.buffer.String()
 }

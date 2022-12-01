@@ -12,6 +12,8 @@ import (
 
 const maxObservationLength = 1_000
 
+var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
+
 type ReportingFactoryConfig struct {
 	CacheExpiration       time.Duration
 	CacheEvictionInterval time.Duration
@@ -19,24 +21,37 @@ type ReportingFactoryConfig struct {
 	ServiceQueueLength    int
 }
 
+type keepersReportingFactory struct {
+	headSubscriber ktypes.HeadSubscriber
+	registry       ktypes.Registry
+	encoder        ktypes.ReportEncoder
+	perfLogs       ktypes.PerformLogProvider
+	logger         *log.Logger
+	config         ReportingFactoryConfig
+}
+
 // NewReportingPluginFactory returns an OCR ReportingPluginFactory. When the plugin
 // starts, a separate service is started as a separate go-routine automatically. There
 // is no start or stop function for this service so stopping this service relies on
 // releasing references to the plugin such that the Go garbage collector cleans up
 // hanging routines automatically.
-func NewReportingPluginFactory(registry ktypes.Registry, perfLogs ktypes.PerformLogProvider, encoder ktypes.ReportEncoder, logger *log.Logger, config ReportingFactoryConfig) types.ReportingPluginFactory {
-	return &keepersReportingFactory{registry: registry, perfLogs: perfLogs, encoder: encoder, logger: logger, config: config}
+func NewReportingPluginFactory(
+	headSubscriber ktypes.HeadSubscriber,
+	registry ktypes.Registry,
+	perfLogs ktypes.PerformLogProvider,
+	encoder ktypes.ReportEncoder,
+	logger *log.Logger,
+	config ReportingFactoryConfig,
+) types.ReportingPluginFactory {
+	return &keepersReportingFactory{
+		headSubscriber: headSubscriber,
+		registry:       registry,
+		perfLogs:       perfLogs,
+		encoder:        encoder,
+		logger:         logger,
+		config:         config,
+	}
 }
-
-type keepersReportingFactory struct {
-	registry ktypes.Registry
-	encoder  ktypes.ReportEncoder
-	perfLogs ktypes.PerformLogProvider
-	logger   *log.Logger
-	config   ReportingFactoryConfig
-}
-
-var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
 
 // NewReportingPlugin implements the libocr/offchainreporting2/types ReportingPluginFactory interface
 func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
@@ -90,8 +105,10 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 
 	service := newOnDemandUpkeepService(
 		sample,
+		d.headSubscriber,
 		d.registry,
 		d.logger,
+		time.Duration(offChainCfg.SamplingJobDuration)*time.Millisecond,
 		d.config.CacheExpiration,
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
@@ -102,6 +119,13 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		service: service,
 		encoder: d.encoder,
 		logger:  d.logger,
-		filter:  newReportCoordinator(d.registry, time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond, d.config.CacheEvictionInterval, d.perfLogs, d.logger),
+		filter: newReportCoordinator(
+			d.registry,
+			time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
+			d.config.CacheEvictionInterval,
+			d.perfLogs,
+			offChainCfg.MinConfirmations,
+			d.logger,
+		),
 	}, info, nil
 }

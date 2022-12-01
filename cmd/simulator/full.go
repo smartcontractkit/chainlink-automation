@@ -211,7 +211,7 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 }
 
 func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, rpcClient *rpc.Client, i int8, n int) types.ReportingPlugin {
-	client := chain.NewClient(rpcClient, 10)
+	client := chain.NewEVMClient(rpcClient, 10)
 
 	reg, err := chain.NewEVMRegistryV2_0(address, client)
 	if err != nil {
@@ -227,7 +227,7 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 		ServiceQueueLength:    1000,
 	}
 
-	factory := keepers.NewReportingPluginFactory(reg, pLogs, chain.NewEVMReportEncoder(), logger, config)
+	factory := keepers.NewReportingPluginFactory(client, reg, pLogs, chain.NewEVMReportEncoder(), logger, config)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{
 		ConfigDigest: [32]byte{},
 		OracleID:     commontypes.OracleID(i),

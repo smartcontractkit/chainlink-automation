@@ -6,14 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestNewFilter(t *testing.T) {
-	mr := new(MockedRegistry)
-	mp := new(MockedPerformLogProvider)
+	mr := types.NewMockRegistry(t)
+	mp := types.NewMockPerformLogProvider(t)
 
 	l := log.New(io.Discard, "nil", 0)
 
@@ -27,9 +28,9 @@ func TestNewFilter(t *testing.T) {
 	}
 
 	// set up the mocks and mock data
-	key := types.UpkeepKey([]byte("1|1"))
-	key2 := types.UpkeepKey([]byte("2|1"))
-	id := types.UpkeepIdentifier([]byte("1"))
+	key := types.UpkeepKey("1|1")
+	key2 := types.UpkeepKey("2|1")
+	id := types.UpkeepIdentifier("1")
 
 	// calling filter at this point should return true because the key has not
 	// yet been added to the filter
@@ -58,8 +59,10 @@ func TestNewFilter(t *testing.T) {
 
 	// simulate starting the run process
 	go rc.run()
+
 	// wait for only 1 cycle to complete
 	<-time.After(1100 * time.Millisecond)
+
 	// stop the run process
 	rc.chStop <- struct{}{}
 

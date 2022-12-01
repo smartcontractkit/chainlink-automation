@@ -14,16 +14,15 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestGetActiveUpkeepKeys(t *testing.T) {
-	mockClient := mocks.NewClient(t)
+	mockClient := types.NewMockEVMClient(t)
 	ctx := context.Background()
 	kabi, _ := keeper_registry_wrapper2_0.KeeperRegistryMetaData.GetAbi()
-	rec := mocks.NewContractMockReceiver(t, mockClient, *kabi)
+	rec := NewContractMockReceiver(t, mockClient, *kabi)
 
 	block := big.NewInt(4)
 	mockClient.On("HeaderByNumber", ctx, mock.Anything).Return(&ethtypes.Header{Number: block}, nil).Once()
@@ -68,7 +67,7 @@ func TestCheckUpkeep(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Perform", func(t *testing.T) {
-		mockClient := mocks.NewClient(t)
+		mockClient := types.NewMockEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -140,7 +139,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("UPKEEP_NOT_NEEDED", func(t *testing.T) {
-		mockClient := mocks.NewClient(t)
+		mockClient := types.NewMockEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -187,7 +186,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("Check upkeep true but simulate perform fails", func(t *testing.T) {
-		mockClient := mocks.NewClient(t)
+		mockClient := types.NewMockEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -259,7 +258,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("Hanging process respects context", func(t *testing.T) {
-		mockClient := mocks.NewClient(t)
+		mockClient := types.NewMockEVMClient(t)
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 
 		mockClient.On("BatchCallContext", ctx, mock.Anything).

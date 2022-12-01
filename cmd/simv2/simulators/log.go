@@ -2,6 +2,7 @@ package simulators
 
 import (
 	"context"
+	"math/big"
 	"sort"
 	"sync"
 
@@ -10,12 +11,21 @@ import (
 
 func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLog, error) {
 	logs := []types.PerformLog{}
+	if ct.lastBlock == nil {
+		return logs, nil
+	}
 
 	keys := ct.perLogs.Keys(100)
 	for _, key := range keys {
 		lgs, ok := ct.perLogs.Get(key)
 		if ok {
-			logs = append(logs, lgs...)
+			for _, log := range lgs {
+				trBlock, trOk := new(big.Int).SetString(string(log.TransmitBlock), 10)
+				if trOk {
+					log.Confirmations = new(big.Int).Sub(ct.lastBlock, trBlock).Int64()
+					logs = append(logs, log)
+				}
+			}
 		}
 	}
 

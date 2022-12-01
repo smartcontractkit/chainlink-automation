@@ -41,11 +41,11 @@ type outStruct struct {
 type evmRegistryv2_0 struct {
 	address  common.Address
 	registry *keeper_registry_wrapper2_0.KeeperRegistryCaller
-	client   EVMClient
+	client   types.EVMClient
 }
 
 // NewEVMRegistryV2_0 is the constructor of evmRegistryv2_0
-func NewEVMRegistryV2_0(address common.Address, client EVMClient) (*evmRegistryv2_0, error) {
+func NewEVMRegistryV2_0(address common.Address, client types.EVMClient) (*evmRegistryv2_0, error) {
 	registry, err := keeper_registry_wrapper2_0.NewKeeperRegistryCaller(address, client)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to create caller for address and backend", ErrInitializationFailure)

@@ -161,7 +161,7 @@ func (ct *SimulatedContract) run() {
 					for i, result := range results {
 						logs[i] = ktypes.PerformLog{
 							Key:           result.Key,
-							TransmitBlock: ktypes.BlockKey([]byte(block.BlockNumber.String())),
+							TransmitBlock: ktypes.BlockKey(block.BlockNumber.String()),
 							Confirmations: 0,
 						}
 

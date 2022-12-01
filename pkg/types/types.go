@@ -5,19 +5,49 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
+// HeadSubscriber represents head subscriber behaviour; used for evm chains;
+//
+//go:generate mockery --name HeadSubscriber --inpackage --output . --case=underscore --filename head_subscribed.generated.go
+type HeadSubscriber interface {
+	OnNewHead(ctx context.Context, cb func(blockKey BlockKey)) error
+}
+
+// EVMClient represents evm client's behavior
+//
+//go:generate mockery --name EVMClient --inpackage --output . --case=underscore --filename evm_client.generated.go
+type EVMClient interface {
+	HeadSubscriber
+	bind.ContractCaller
+	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
+	BatchCallContext(ctx context.Context, b []rpc.BatchElem) error
+}
+
+// Registry represents keeper registry behaviour
+//
+//go:generate mockery --name Registry --inpackage --output . --case=underscore --filename registry.generated.go
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 
+// ReportEncoder represents the report encoder behaviour
+//
+//go:generate mockery --name ReportEncoder --inpackage --output . --case=underscore --filename report_encoder.generated.go
 type ReportEncoder interface {
 	EncodeReport([]UpkeepResult) ([]byte, error)
 	DecodeReport([]byte) ([]UpkeepResult, error)
 }
 
+// PerformLogProvider represents the perform log provider
+//
+//go:generate mockery --name PerformLogProvider --inpackage --output . --case=underscore --filename perform_log_provider.generated.go
 type PerformLogProvider interface {
 	PerformLogs(context.Context) ([]PerformLog, error)
 }
@@ -73,6 +103,12 @@ type OffchainConfig struct {
 	// TargetInRounds is the number of rounds for the above probability to be
 	// calculated
 	TargetInRounds int `json:"targetInRounds"`
+	// SamplingJobDuration is the time allowed for a sampling run to complete
+	// before forcing a new job on the latest block. Units are in milliseconds.
+	SamplingJobDuration int64 `json:"samplingJobDuration"`
+	// MinConfirmations limits registered log events to only those that have
+	// the provided number of confirmations.
+	MinConfirmations int `json:"minConfirmations"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
@@ -87,6 +123,10 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		config.PerformLockoutWindow = 100 * 12 * 1000 // default of 100 blocks * 12 second blocks
 	}
 
+	if config.SamplingJobDuration == 0 {
+		config.SamplingJobDuration = 3000 // default of 3 seconds if not set
+	}
+
 	return config, err
 }
 
@@ -98,8 +138,3 @@ func (c OffchainConfig) Encode() []byte {
 
 	return b
 }
-
-/*
-type onChainConfig struct {
-}
-*/

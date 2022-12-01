@@ -161,6 +161,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 			DatabaseTimeout:                    time.Second,
 			DevelopmentMode:                    "",
 		},
+		HeadSubscriber:         ct,
 		Logger:                 slogger,
 		MonitoringEndpoint:     g.monitor,
 		OffchainConfigDigester: g.digester,

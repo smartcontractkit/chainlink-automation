@@ -6,23 +6,15 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
-)
 
-// EVMClient is an interface that is implemented by go-ethereum's rpc.Client
-//
-//go:generate mockery --name EVMClient --output ./mocks --case=underscore
-type EVMClient interface {
-	bind.ContractCaller
-	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
-	BatchCallContext(ctx context.Context, b []rpc.BatchElem) error
-}
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+)
 
 // evmClient expends the base EVM client by splitting batch calls into sub-batches
 type evmClient struct {
@@ -31,8 +23,8 @@ type evmClient struct {
 	batchSize int
 }
 
-// NewClient is the constructor of evmClient
-func NewClient(client *rpc.Client, batchSize int) EVMClient {
+// NewEVMClient is the constructor of evmClient
+func NewEVMClient(client *rpc.Client, batchSize int) types.EVMClient {
 	return &evmClient{
 		Client:    ethclient.NewClient(client),
 		rpcClient: client,
@@ -42,8 +34,8 @@ func NewClient(client *rpc.Client, batchSize int) EVMClient {
 
 // HeaderByNumber returns a block header from the current canonical chain. If number is
 // nil, the latest known header is returned.
-func (ec *evmClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
-	var head *types.Header
+func (ec *evmClient) HeaderByNumber(ctx context.Context, number *big.Int) (*ethtypes.Header, error) {
+	var head *ethtypes.Header
 	err := ec.rpcClient.CallContext(ctx, &head, "eth_getBlockByNumber", toBlockNumArg(number), false)
 	if err == nil && head == nil {
 		err = ethereum.NotFound
@@ -67,6 +59,27 @@ func (ec *evmClient) BatchCallContext(ctx context.Context, b []rpc.BatchElem) er
 	wg.Wait()
 
 	return errors.Wrap(multierr.Combine(errs...), "batch call error")
+}
+
+func (ec *evmClient) OnNewHead(ctx context.Context, cb func(blockKey types.BlockKey)) error {
+	ch := make(chan *ethtypes.Header, 1)
+	sub, err := ec.SubscribeNewHead(ctx, ch)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-sub.Err():
+			if sub, err = ec.SubscribeNewHead(ctx, ch); err != nil {
+				return err
+			}
+		case head := <-ch:
+			cb(types.BlockKey(head.Number.String()))
+		}
+	}
 }
 
 func (ec *evmClient) createBatches(b []rpc.BatchElem) (batches [][]rpc.BatchElem) {

@@ -1,10 +1,12 @@
-package mocks
+package chain
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -19,11 +21,11 @@ const funcSigLength = 10
 
 type ContractMockReceiver struct {
 	t       *testing.T
-	ethMock *Client
+	ethMock *types.MockEVMClient
 	abi     abi.ABI
 }
 
-func NewContractMockReceiver(t *testing.T, ethMock *Client, abi abi.ABI) ContractMockReceiver {
+func NewContractMockReceiver(t *testing.T, ethMock *types.MockEVMClient, abi abi.ABI) ContractMockReceiver {
 	return ContractMockReceiver{
 		t:       t,
 		ethMock: ethMock,

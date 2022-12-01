@@ -8,24 +8,35 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestNewReportingPluginFactory(t *testing.T) {
-	f := NewReportingPluginFactory(nil, nil, nil, nil, ReportingFactoryConfig{})
+	f := NewReportingPluginFactory(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		ReportingFactoryConfig{},
+	)
 	assert.NotNil(t, f)
 }
 
 func TestNewReportingPlugin(t *testing.T) {
-	mp := new(MockedPerformLogProvider)
+	mp := ktypes.NewMockPerformLogProvider(t)
+	hs := ktypes.NewMockHeadSubscriber(t)
+	subscribed := make(chan struct{})
 
 	f := &keepersReportingFactory{
-		registry: new(MockedRegistry),
-		encoder:  new(MockedReportEncoder),
-		perfLogs: mp,
-		logger:   log.New(io.Discard, "test", 0),
+		registry:       ktypes.NewMockRegistry(t),
+		encoder:        ktypes.NewMockReportEncoder(t),
+		headSubscriber: hs,
+		perfLogs:       mp,
+		logger:         log.New(io.Discard, "test", 0),
 		config: ReportingFactoryConfig{
 			CacheExpiration:       30 * time.Second,
 			CacheEvictionInterval: 5 * time.Second,
@@ -34,7 +45,14 @@ func TestNewReportingPlugin(t *testing.T) {
 		},
 	}
 
-	mp.Mock.On("PerformLogs", mock.Anything).Return([]ktypes.PerformLog{}, nil).Maybe()
+	hs.On("OnNewHead", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			subscribed <- struct{}{}
+		}).Return(nil)
+
+	mp.Mock.On("PerformLogs", mock.Anything).
+		Return([]ktypes.PerformLog{}, nil).
+		Maybe()
 
 	digest := [32]byte{}
 	digestStr := fmt.Sprintf("%32s", "test")
@@ -47,6 +65,8 @@ func TestNewReportingPlugin(t *testing.T) {
 		F:              2,
 		OffchainConfig: []byte{},
 	})
+
+	<-subscribed
 
 	assert.NoError(t, err)
 	assert.Equal(t, "Oracle 1: Keepers Plugin Instance w/ Digest '2020202020202020202020202020202020202020202020202020202074657374'", i.Name)
