@@ -27,11 +27,10 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 
 	// set some defaults
 	conf := keepers.ReportingFactoryConfig{
-		SamplingUpkeepJobDuration: DefaultSamplingUpkeepJobDuration,
-		CacheExpiration:           DefaultCacheExpiration,
-		CacheEvictionInterval:     DefaultCacheClearInterval,
-		MaxServiceWorkers:         DefaultMaxServiceWorkers,
-		ServiceQueueLength:        DefaultServiceQueueLength,
+		CacheExpiration:       DefaultCacheExpiration,
+		CacheEvictionInterval: DefaultCacheClearInterval,
+		MaxServiceWorkers:     DefaultMaxServiceWorkers,
+		ServiceQueueLength:    DefaultServiceQueueLength,
 	}
 
 	// override if set in config
@@ -49,10 +48,6 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 
 	if c.ServiceQueueLength != 0 {
 		conf.ServiceQueueLength = c.ServiceQueueLength
-	}
-
-	if c.SamplingUpkeepJobDuration != 0 {
-		conf.SamplingUpkeepJobDuration = c.SamplingUpkeepJobDuration
 	}
 
 	// create the oracle from config values

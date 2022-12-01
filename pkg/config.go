@@ -47,9 +47,6 @@ type DelegateConfig struct {
 
 	// EVMClient is an EVM head subscriber
 	HeadSubscriber ktypes.HeadSubscriber
-	// SamplingUpkeepJobDuration is the duration of the sampling upkeeps process
-	// See handleIncomingHead in the service
-	SamplingUpkeepJobDuration time.Duration
 	// Registry is an abstract plugin registry; can be evm based or anything else
 	Registry ktypes.Registry
 	// PerformLogProvider is an abstract provider of logs where upkeep performs

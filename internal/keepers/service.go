@@ -167,7 +167,7 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	// Start the sampling upkeep process for heads
 	go func() {
 		for range heads {
-			s.handleIncomingHead(ctx)
+			s.processLatestHead(ctx)
 		}
 	}()
 
@@ -188,8 +188,8 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	})
 }
 
-// handleIncomingHead performs checking upkeep logic for all eligible keys of the given head
-func (s *onDemandUpkeepService) handleIncomingHead(ctx context.Context) {
+// processLatestHead performs checking upkeep logic for all eligible keys of the given head
+func (s *onDemandUpkeepService) processLatestHead(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, s.samplingDuration)
 	defer cancel()
 

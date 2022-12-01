@@ -11,6 +11,9 @@ import (
 
 func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLog, error) {
 	logs := []types.PerformLog{}
+	if ct.lastBlock == nil {
+		return logs, nil
+	}
 
 	keys := ct.perLogs.Keys(100)
 	for _, key := range keys {

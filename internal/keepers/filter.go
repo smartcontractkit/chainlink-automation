@@ -19,6 +19,7 @@ type reportCoordinator struct {
 	logger       *log.Logger
 	registry     types.Registry
 	logs         types.PerformLogProvider
+	minConfs     int
 	idBlocks     *cache[bool] // should clear out when the next perform with this id occurs
 	activeKeys   *cache[bool]
 	cacheCleaner *intervalCacheCleaner[bool]
@@ -26,11 +27,12 @@ type reportCoordinator struct {
 	chStop       chan struct{}
 }
 
-func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, logger *log.Logger) *reportCoordinator {
+func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
 		logger:     logger,
 		registry:   r,
 		logs:       logs,
+		minConfs:   minConfs,
 		idBlocks:   newCache[bool](s),
 		activeKeys: newCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		chStop:     make(chan struct{}),
@@ -126,6 +128,10 @@ func (rc *reportCoordinator) run() {
 			// chain, the key is kept in cache even after first detection to
 			// ensure no other nodes attempt to transmit again.
 			for _, log := range logs {
+				if log.Confirmations < int64(rc.minConfs) {
+					continue
+				}
+
 				id, err := rc.registry.IdentifierFromKey(log.Key)
 				if err != nil {
 					continue

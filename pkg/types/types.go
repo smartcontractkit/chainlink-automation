@@ -103,6 +103,12 @@ type OffchainConfig struct {
 	// TargetInRounds is the number of rounds for the above probability to be
 	// calculated
 	TargetInRounds int `json:"targetInRounds"`
+	// SamplingJobDuration is the time allowed for a sampling run to complete
+	// before forcing a new job on the latest block. Units are in milliseconds.
+	SamplingJobDuration int64 `json:"samplingJobDuration"`
+	// MinConfirmations limits registered log events to only those that have
+	// the provided number of confirmations.
+	MinConfirmations int `json:"minConfirmations"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
@@ -117,6 +123,10 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		config.PerformLockoutWindow = 100 * 12 * 1000 // default of 100 blocks * 12 second blocks
 	}
 
+	if config.SamplingJobDuration == 0 {
+		config.SamplingJobDuration = 3000 // default of 3 seconds if not set
+	}
+
 	return config, err
 }
 
@@ -128,8 +138,3 @@ func (c OffchainConfig) Encode() []byte {
 
 	return b
 }
-
-/*
-type onChainConfig struct {
-}
-*/

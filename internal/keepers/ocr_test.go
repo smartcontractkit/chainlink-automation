@@ -159,12 +159,12 @@ func BenchmarkObservation(b *testing.B) {
 		filter:  mf,
 	}
 
-	set := make([]*ktypes.UpkeepResult, 2, 100)
-	set[0] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible}
-	set[1] = &ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|2"), State: ktypes.Eligible}
+	set := make(ktypes.UpkeepResults, 2, 100)
+	set[0] = ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible}
+	set[1] = ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|2"), State: ktypes.Eligible}
 
 	for i := 2; i < 100; i++ {
-		set = append(set, &ktypes.UpkeepResult{Key: ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1)), State: ktypes.NotEligible})
+		set = append(set, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1)), State: ktypes.NotEligible})
 	}
 
 	b.ResetTimer()
