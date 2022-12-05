@@ -161,12 +161,12 @@ func (s *onDemandUpkeepService) stop() {
 func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	heads := make(chan types.BlockKey, 1)
-	defer close(heads)
+	headTriggerCh := make(chan struct{}, 1)
+	defer close(headTriggerCh)
 
 	// Start the sampling upkeep process for heads
 	go func() {
-		for range heads {
+		for range headTriggerCh {
 			s.processLatestHead(ctx)
 		}
 	}()
@@ -177,12 +177,12 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 		cancel()
 	}()
 
-	return s.headSubscriber.OnNewHead(ctx, func(blockKey types.BlockKey) {
+	return s.headSubscriber.OnNewHead(ctx, func(_ types.BlockKey) {
 		// This is needed in order to do not block the process when a new head comes in.
 		// The running upkeep sampling process should be finished first before starting
 		// sampling for the next head.
 		select {
-		case heads <- blockKey:
+		case headTriggerCh <- struct{}{}:
 		default:
 		}
 	})

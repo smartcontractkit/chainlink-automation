@@ -10,8 +10,6 @@ import (
 )
 
 const (
-	// DefaultSamplingUpkeepJobDuration is the default sampling upkeeps process duration timeout
-	DefaultSamplingUpkeepJobDuration = 10 * time.Second
 	// DefaultCacheExpiration is the default amount of time a key can remain
 	// in the cache before being eligible to be cleared
 	DefaultCacheExpiration = 20 * time.Minute
