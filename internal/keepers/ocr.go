@@ -100,28 +100,38 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
-	// TODO: Generate multiple reports
-	// select, verify, and build report
-	toPerform := make([]ktypes.UpkeepResult, 0, 1)
-	for _, key := range keys {
-		upkeeps, err := k.service.CheckUpkeep(ctx, key)
-		if err != nil {
-			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
+	// No keys found for the given keys
+	if len(keys) == 0 {
+		k.logger.Printf("OCR report completed successfully with no eligible keys: %s", lCtx)
+		return false, nil, nil
+	}
+
+	// Check all upkeeps from the given observation
+	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keys...)
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
+	}
+
+	// No upkeeps found for the given keys
+	if len(checkedUpkeeps) == 0 {
+		k.logger.Printf("OCR report completed successfully with no successfully checked upkeeps: %s", lCtx)
+		return false, nil, nil
+	}
+
+	if len(checkedUpkeeps) > len(keys) {
+		return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected max %d but given %d", key, len(keys), len(checkedUpkeeps))
+	}
+
+	// Select, verify, and build report
+	toPerform := make([]ktypes.UpkeepResult, 0, k.reportCapacity)
+	for _, checkedUpkeep := range checkedUpkeeps {
+		if checkedUpkeep.State == ktypes.Eligible {
+			k.logger.Printf("reporting %s to be performed: %s", checkedUpkeep.Key, lCtx.Short())
+			toPerform = append(toPerform, checkedUpkeep)
 		}
 
-		// No upkeeps found for the given key
-		if len(upkeeps) == 0 {
-			continue
-		}
-
-		if len(upkeeps) > 1 {
-			return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected 1 but given %d", key, len(upkeeps))
-		}
-
-		if upkeeps[0].State == ktypes.Eligible {
-			// only build a report from a single upkeep for now
-			k.logger.Printf("reporting %s to be performed: %s", upkeeps[0].Key, lCtx.Short())
-			toPerform = append(toPerform, upkeeps[0])
+		// Reduce the number of keys to the report capacity, so it won't exceed the gas limit
+		if len(toPerform) >= k.reportCapacity {
 			break
 		}
 	}

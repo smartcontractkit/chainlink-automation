@@ -219,3 +219,40 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 		}
 	})
 }
+
+func Test_getReportCapacity(t *testing.T) {
+	type args struct {
+		gasLimitPerUpkeep uint32
+		gasLimitPerReport uint32
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "one upkeep max",
+			args: args{
+				gasLimitPerUpkeep: 500000,
+				gasLimitPerReport: 900000,
+			},
+			want: 1,
+		},
+		{
+			name: "two upkeeps max",
+			args: args{
+				gasLimitPerUpkeep: 500000,
+				gasLimitPerReport: 1000000,
+			},
+			want: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getReportCapacity(tt.args.gasLimitPerUpkeep, tt.args.gasLimitPerReport)
+			assert.Equalf(t, tt.want, got, "getReportCapacity(%v, %v)", tt.args.gasLimitPerUpkeep, tt.args.gasLimitPerReport)
+		})
+	}
+}

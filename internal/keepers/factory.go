@@ -127,5 +127,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			offChainCfg.MinConfirmations,
 			d.logger,
 		),
+		reportCapacity: getReportCapacity(10000000, 500000), // TODO: Pass these params from config
 	}, info, nil
 }
