@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -22,8 +23,8 @@ func TestNewFilter(t *testing.T) {
 		logger:     l,
 		registry:   mr,
 		logs:       mp,
-		idBlocks:   newCache[bool](time.Second),
-		activeKeys: newCache[bool](time.Minute),
+		idBlocks:   util.NewCache[bool](time.Second),
+		activeKeys: util.NewCache[bool](time.Minute),
 		chStop:     make(chan struct{}),
 	}
 
