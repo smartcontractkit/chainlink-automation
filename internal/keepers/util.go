@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -50,7 +51,7 @@ type shuffler[T any] interface {
 type cryptoShuffler[T any] struct{}
 
 func (_ *cryptoShuffler[T]) Shuffle(a []T) []T {
-	r := rnd.New(newCryptoRandSource())
+	r := rnd.New(util.NewCryptoRandSource())
 	r.Shuffle(len(a), func(i, j int) {
 		a[i], a[j] = a[j], a[i]
 	})
@@ -138,7 +139,7 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}
 
-	src := newKeyedCryptoRandSource(key)
+	src := util.NewKeyedCryptoRandSource(key)
 	r := rnd.New(src)
 	r.Shuffle(len(keys), func(i, j int) {
 		keys[i], keys[j] = keys[j], keys[i]

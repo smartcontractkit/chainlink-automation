@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -20,30 +21,24 @@ type reportCoordinator struct {
 	registry     types.Registry
 	logs         types.PerformLogProvider
 	minConfs     int
-	idBlocks     *cache[bool] // should clear out when the next perform with this id occurs
-	activeKeys   *cache[bool]
-	cacheCleaner *intervalCacheCleaner[bool]
+	idBlocks     *util.Cache[bool] // should clear out when the next perform with this id occurs
+	activeKeys   *util.Cache[bool]
+	cacheCleaner *util.IntervalCacheCleaner[bool]
 	starter      sync.Once
 	chStop       chan struct{}
 }
 
 func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
-		logger:     logger,
-		registry:   r,
-		logs:       logs,
-		minConfs:   minConfs,
-		idBlocks:   newCache[bool](s),
-		activeKeys: newCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		chStop:     make(chan struct{}),
+		logger:       logger,
+		registry:     r,
+		logs:         logs,
+		minConfs:     minConfs,
+		idBlocks:     util.NewCache[bool](s),
+		activeKeys:   util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
+		cacheCleaner: util.NewIntervalCacheCleaner[bool](cacheClean),
+		chStop:       make(chan struct{}),
 	}
-
-	cl := &intervalCacheCleaner[bool]{
-		Interval: cacheClean,
-		stop:     make(chan struct{}),
-	}
-
-	c.cacheCleaner = cl
 
 	runtime.SetFinalizer(c, func(srv *reportCoordinator) { srv.stop() })
 
@@ -80,8 +75,8 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
-	rc.idBlocks.Set(string(id), true, defaultExpiration)
-	rc.activeKeys.Set(string(key), false, defaultExpiration)
+	rc.idBlocks.Set(string(id), true, util.DefaultCacheExpiration)
+	rc.activeKeys.Set(string(key), false, util.DefaultCacheExpiration)
 
 	return nil
 }
@@ -103,8 +98,8 @@ func (rc *reportCoordinator) start() {
 
 func (rc *reportCoordinator) stop() {
 	rc.chStop <- struct{}{}
-	rc.cacheCleaner.stop <- struct{}{}
-	rc.cacheCleaner.stop <- struct{}{}
+	rc.cacheCleaner.Stop()
+	rc.cacheCleaner.Stop()
 }
 
 func (rc *reportCoordinator) run() {
@@ -147,7 +142,7 @@ func (rc *reportCoordinator) run() {
 					// set state of key to indicate that the report was transmitted
 					// setting a key in this way also blocks it in Accept even if
 					// Accept was never called for on a single node for this key
-					rc.activeKeys.Set(string(log.Key), true, defaultExpiration)
+					rc.activeKeys.Set(string(log.Key), true, util.DefaultCacheExpiration)
 				}
 			}
 
