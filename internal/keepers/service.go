@@ -105,8 +105,9 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 	var (
 		wg                sync.WaitGroup
 		results           = make([]types.UpkeepResult, len(keys))
-		nonCachedKeysIdxs []int
-		nonCachedKeys     []types.UpkeepKey
+		nonCachedKeysLock sync.Mutex
+		nonCachedKeysIdxs = make([]int, 0, len(keys))
+		nonCachedKeys     = make([]types.UpkeepKey, 0, len(keys))
 	)
 
 	for i, key := range keys {
@@ -118,14 +119,21 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 			if result, cached := s.cache.Get(string(key)); cached {
 				results[i] = result
 			} else {
+				nonCachedKeysLock.Lock()
 				nonCachedKeysIdxs = append(nonCachedKeysIdxs, i)
 				nonCachedKeys = append(nonCachedKeys, key)
+				nonCachedKeysLock.Unlock()
 			}
 			wg.Done()
 		}(i, key)
 	}
 
 	wg.Wait()
+
+	// All keys are cached
+	if len(nonCachedKeys) == 0 {
+		return results, nil
+	}
 
 	// check upkeep at block number in key
 	// return result including performData

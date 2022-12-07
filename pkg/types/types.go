@@ -122,12 +122,12 @@ type OffchainConfig struct {
 	// GasLimitPerUpkeep is the max gas that could be spent per upkeep performance.
 	// This is needed for calculation of how many upkeeps could be within report:
 	//  GasLimitPerReport / GasLimitPerUpkeep
-	GasLimitPerUpkeep uint32
+	GasLimitPerUpkeep uint32 `json:"gasLimitPerUpkeep"`
 
 	// GasLimitPerReport is the max gas that could be spent per one report.
 	// This is needed for calculation of how many upkeeps could be within report:
 	//	GasLimitPerReport / GasLimitPerUpkeep
-	GasLimitPerReport uint32
+	GasLimitPerReport uint32 `json:"gasLimitPerReport"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
