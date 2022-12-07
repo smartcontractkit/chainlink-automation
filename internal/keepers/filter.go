@@ -32,29 +32,29 @@ var (
 )
 
 type reportCoordinator struct {
-	logger       *log.Logger
-	registry     types.Registry
-	logs         types.PerformLogProvider
-	minConfs     int
-	idBlocks     *util.Cache[bool] // should clear out when the next perform with this id occurs
-	activeKeys   *util.Cache[bool]
-	cacheCleaner *util.IntervalCacheCleaner[bool]
-  idCacheCleaner *util.IntervalCacheCleaner[types.BlockKey]
-	starter      sync.Once
-	chStop       chan struct{}
+	logger         *log.Logger
+	registry       types.Registry
+	logs           types.PerformLogProvider
+	minConfs       int
+	idBlocks       *util.Cache[types.BlockKey] // should clear out when the next perform with this id occurs
+	activeKeys     *util.Cache[bool]
+	cacheCleaner   *util.IntervalCacheCleaner[bool]
+	idCacheCleaner *util.IntervalCacheCleaner[types.BlockKey]
+	starter        sync.Once
+	chStop         chan struct{}
 }
 
 func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
-		logger:       logger,
-		registry:     r,
-		logs:         logs,
-		minConfs:     minConfs,
-		idBlocks:     util.NewCache[bool](s),
-		activeKeys:   util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-    idCacheCleaner: util.NewIntervalCacheCleaner[types.BlockKey](cacheClean),
-		cacheCleaner: util.NewIntervalCacheCleaner[bool](cacheClean),
-		chStop:       make(chan struct{}),
+		logger:         logger,
+		registry:       r,
+		logs:           logs,
+		minConfs:       minConfs,
+		idBlocks:       util.NewCache[types.BlockKey](s),
+		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
+		idCacheCleaner: util.NewIntervalCacheCleaner[types.BlockKey](cacheClean),
+		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
+		chStop:         make(chan struct{}),
 	}
 
 	runtime.SetFinalizer(c, func(srv *reportCoordinator) { srv.stop() })
@@ -139,12 +139,12 @@ func (rc *reportCoordinator) checkLogs() {
 			// if we detect a log, remove it from the observation filters
 			// to allow it to be reported on again at or after the block in
 			// which it was transmitted
-			rc.idBlocks.Set(string(id), l.TransmitBlock, defaultExpiration)
+			rc.idBlocks.Set(string(id), l.TransmitBlock, util.DefaultCacheExpiration)
 
 			// set state of key to indicate that the report was transmitted
 			// setting a key in this way also blocks it in Accept even if
 			// Accept was never called for on a single node for this key
-			rc.activeKeys.Set(string(l.Key), true, defaultExpiration)
+			rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
 		}
 	}
 }
