@@ -7,12 +7,14 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
+
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestStart(t *testing.T) {
 	t.Skip("service start throws nil pointer deference")
 	d, err := NewDelegate(DelegateConfig{
-		Logger: new(MockLogger),
+		Logger: ktypes.NewMockLogger(t),
 		LocalConfig: types.LocalConfig{
 			BlockchainTimeout:                  1 * time.Second,
 			ContractConfigTrackerPollInterval:  15 * time.Second,

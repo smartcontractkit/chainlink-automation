@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -22,8 +23,8 @@ func TestReportCoordinator(t *testing.T) {
 		logger:     l,
 		registry:   mr,
 		logs:       mp,
-		idBlocks:   newCache[types.BlockKey](time.Second),
-		activeKeys: newCache[bool](time.Minute),
+		idBlocks:   util.NewCache[types.BlockKey](time.Second),
+		activeKeys: util.NewCache[bool](time.Minute),
 		minConfs:   1,
 		chStop:     make(chan struct{}),
 	}

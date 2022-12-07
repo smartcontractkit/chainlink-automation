@@ -11,6 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+// Generate types from third-party repos:
+//
+//go:generate mockery --name Logger --structname MockLogger --srcpkg "github.com/smartcontractkit/libocr/commontypes" --outpkg types --output . --case=underscore --filename logger.generated.go
+
 // HeadSubscriber represents head subscriber behaviour; used for evm chains;
 //
 //go:generate mockery --name HeadSubscriber --inpackage --output . --case=underscore --filename head_subscribed.generated.go

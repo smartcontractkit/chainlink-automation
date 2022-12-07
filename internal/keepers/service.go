@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -20,8 +21,8 @@ type onDemandUpkeepService struct {
 	headSubscriber   types.HeadSubscriber
 	registry         types.Registry
 	shuffler         shuffler[types.UpkeepKey]
-	cache            *cache[types.UpkeepResult]
-	cacheCleaner     *intervalCacheCleaner[types.UpkeepResult]
+	cache            *util.Cache[types.UpkeepResult]
+	cacheCleaner     *util.IntervalCacheCleaner[types.UpkeepResult]
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
 	workers          *workerGroup[types.UpkeepResults]
@@ -51,17 +52,11 @@ func newOnDemandUpkeepService(
 		registry:         registry,
 		samplingDuration: samplingDuration,
 		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
-		cache:            newCache[types.UpkeepResult](cacheExpire),
+		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
+		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		workers:          newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		stopProcs:        make(chan struct{}),
 	}
-
-	cl := &intervalCacheCleaner[types.UpkeepResult]{
-		Interval: cacheClean,
-		stop:     make(chan struct{}),
-	}
-
-	s.cacheCleaner = cl
 
 	// stop the cleaner go-routine once the upkeep service is no longer reachable
 	runtime.SetFinalizer(s, func(srv *onDemandUpkeepService) { srv.stop() })
@@ -136,7 +131,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 
 	// Cache results
 	for i, u := range checkResults {
-		s.cache.Set(string(keys[nonCachedKeysIdxs[i]]), u, defaultExpiration)
+		s.cache.Set(string(keys[nonCachedKeysIdxs[i]]), u, util.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
@@ -155,18 +150,18 @@ func (s *onDemandUpkeepService) start() {
 
 func (s *onDemandUpkeepService) stop() {
 	close(s.stopProcs)
-	close(s.cacheCleaner.stop)
+	s.cacheCleaner.Stop()
 }
 
 func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	heads := make(chan types.BlockKey, 1)
-	defer close(heads)
+	headTriggerCh := make(chan struct{}, 1)
+	defer close(headTriggerCh)
 
 	// Start the sampling upkeep process for heads
 	go func() {
-		for range heads {
+		for range headTriggerCh {
 			s.processLatestHead(ctx)
 		}
 	}()
@@ -177,12 +172,12 @@ func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
 		cancel()
 	}()
 
-	return s.headSubscriber.OnNewHead(ctx, func(blockKey types.BlockKey) {
+	return s.headSubscriber.OnNewHead(ctx, func(_ types.BlockKey) {
 		// This is needed in order to do not block the process when a new head comes in.
 		// The running upkeep sampling process should be finished first before starting
 		// sampling for the next head.
 		select {
-		case heads <- blockKey:
+		case headTriggerCh <- struct{}{}:
 		default:
 		}
 	})
@@ -337,7 +332,7 @@ Outer:
 				// Cache results
 				for i := range result.Data {
 					res := result.Data[i]
-					s.cache.Set(string(res.Key), res, defaultExpiration)
+					s.cache.Set(string(res.Key), res, util.DefaultCacheExpiration)
 					if res.State == types.Eligible {
 						sa.Append(res)
 					}

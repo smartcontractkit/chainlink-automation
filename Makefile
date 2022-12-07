@@ -6,6 +6,9 @@ GOPACKAGES = $(shell go list ./...)
 dependencies:
 	go mod download
 
+generate:
+	go generate
+
 test: dependencies
 	@go test -v $(GOPACKAGES)
 

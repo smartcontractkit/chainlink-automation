@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -31,35 +32,29 @@ var (
 )
 
 type reportCoordinator struct {
-	logger         *log.Logger
-	registry       types.Registry
-	logs           types.PerformLogProvider
-	minConfs       int
-	idBlocks       *cache[types.BlockKey]
-	activeKeys     *cache[bool]
-	idCacheCleaner *intervalCacheCleaner[types.BlockKey]
-	cacheCleaner   *intervalCacheCleaner[bool]
-	starter        sync.Once
-	chStop         chan struct{}
+	logger       *log.Logger
+	registry     types.Registry
+	logs         types.PerformLogProvider
+	minConfs     int
+	idBlocks     *util.Cache[bool] // should clear out when the next perform with this id occurs
+	activeKeys   *util.Cache[bool]
+	cacheCleaner *util.IntervalCacheCleaner[bool]
+  idCacheCleaner *util.IntervalCacheCleaner[types.BlockKey]
+	starter      sync.Once
+	chStop       chan struct{}
 }
 
 func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
-		logger:     logger,
-		registry:   r,
-		logs:       logs,
-		minConfs:   minConfs,
-		idBlocks:   newCache[types.BlockKey](s),
-		activeKeys: newCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		chStop:     make(chan struct{}),
-		idCacheCleaner: &intervalCacheCleaner[types.BlockKey]{
-			Interval: cacheClean,
-			stop:     make(chan struct{}),
-		},
-		cacheCleaner: &intervalCacheCleaner[bool]{
-			Interval: cacheClean,
-			stop:     make(chan struct{}),
-		},
+		logger:       logger,
+		registry:     r,
+		logs:         logs,
+		minConfs:     minConfs,
+		idBlocks:     util.NewCache[bool](s),
+		activeKeys:   util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
+    idCacheCleaner: util.NewIntervalCacheCleaner[types.BlockKey](cacheClean),
+		cacheCleaner: util.NewIntervalCacheCleaner[bool](cacheClean),
+		chStop:       make(chan struct{}),
 	}
 
 	runtime.SetFinalizer(c, func(srv *reportCoordinator) { srv.stop() })
@@ -104,8 +99,8 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
-	rc.idBlocks.Set(string(id), types.BlockKey([]byte{}), defaultExpiration)
-	rc.activeKeys.Set(string(key), false, defaultExpiration)
+	rc.idBlocks.Set(string(id), types.BlockKey([]byte{}), util.DefaultCacheExpiration)
+	rc.activeKeys.Set(string(key), false, util.DefaultCacheExpiration)
 
 	return nil
 }
@@ -164,8 +159,8 @@ func (rc *reportCoordinator) start() {
 
 func (rc *reportCoordinator) stop() {
 	rc.chStop <- struct{}{}
-	rc.idCacheCleaner.stop <- struct{}{}
-	rc.cacheCleaner.stop <- struct{}{}
+	rc.idCacheCleaner.Stop()
+	rc.cacheCleaner.Stop()
 }
 
 func (rc *reportCoordinator) run() {
@@ -178,6 +173,7 @@ func (rc *reportCoordinator) run() {
 		select {
 		case <-timer.C:
 			startTime := time.Now()
+
 			rc.checkLogs()
 
 			// attempt to ahere to a cadence of at least every second
