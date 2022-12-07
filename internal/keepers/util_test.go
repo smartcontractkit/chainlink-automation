@@ -230,7 +230,24 @@ func Test_getReportCapacity(t *testing.T) {
 		name string
 		args args
 		want int
+		err  error
 	}{
+		{
+			name: "zero value for gas limit per report",
+			args: args{
+				gasLimitPerUpkeep: 0,
+				gasLimitPerReport: 0,
+			},
+			err: ErrNegativeGasLimitPerReport,
+		},
+		{
+			name: "zero value for gas limit per upkeep",
+			args: args{
+				gasLimitPerUpkeep: 0,
+				gasLimitPerReport: 500000,
+			},
+			err: ErrNegativeGasLimitPerUpkeep,
+		},
 		{
 			name: "one upkeep max",
 			args: args{
@@ -251,8 +268,13 @@ func Test_getReportCapacity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getReportCapacity(tt.args.gasLimitPerUpkeep, tt.args.gasLimitPerReport)
-			assert.Equalf(t, tt.want, got, "getReportCapacity(%v, %v)", tt.args.gasLimitPerUpkeep, tt.args.gasLimitPerReport)
+			got, err := getReportCapacity(tt.args.gasLimitPerUpkeep, tt.args.gasLimitPerReport)
+			if tt.err != nil {
+				assert.EqualError(t, err, tt.err.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equalf(t, tt.want, got, "getReportCapacity(%v, %v)", tt.args.gasLimitPerUpkeep, tt.args.gasLimitPerReport)
+			}
 		})
 	}
 }

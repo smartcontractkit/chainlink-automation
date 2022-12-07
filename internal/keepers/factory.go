@@ -103,6 +103,11 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
 
+	reportCapacity, err := getReportCapacity(offChainCfg.GasLimitPerUpkeep, offChainCfg.GasLimitPerReport)
+	if err != nil {
+		return nil, info, fmt.Errorf("%w: failed to get report capacity", err)
+	}
+
 	service := newOnDemandUpkeepService(
 		sample,
 		d.headSubscriber,
@@ -112,7 +117,8 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.CacheExpiration,
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
-		d.config.ServiceQueueLength)
+		d.config.ServiceQueueLength,
+	)
 
 	return &keepers{
 		id:      c.OracleID,
@@ -127,6 +133,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			offChainCfg.MinConfirmations,
 			d.logger,
 		),
-		reportCapacity: getReportCapacity(10000000, 500000), // TODO: Pass these params from config
+		reportCapacity: reportCapacity,
 	}, info, nil
 }
