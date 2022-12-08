@@ -57,9 +57,11 @@ type PerformLogProvider interface {
 }
 
 type PerformLog struct {
-	Key           UpkeepKey
-	TransmitBlock BlockKey
-	Confirmations int64
+	Key             UpkeepKey
+	TransmitBlock   BlockKey
+	Confirmations   int64
+	TransactionHash string
+	BlockNumber     int64
 }
 
 type BlockKey string
