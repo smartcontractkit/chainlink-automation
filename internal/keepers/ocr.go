@@ -138,8 +138,6 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, nil
 	}
 
-	fmt.Println("eligibleUpkeeps", eligibleUpkeeps)
-
 	// Get upkeep gas limit
 	upkeepsInfo, err := k.service.GetUpkeep(ctx, eligibleUpkeeps...)
 	if err != nil {

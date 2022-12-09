@@ -48,18 +48,18 @@ func newOnDemandUpkeepService(
 	workerQueueLength int,
 ) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
-		logger:           logger,
-		ratio:            ratio,
-		headSubscriber:   headSubscriber,
-		registry:         registry,
-		samplingDuration: samplingDuration,
-		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
-		checkCache:       util.NewCache[types.UpkeepResult](cacheExpire),
+		logger:            logger,
+		ratio:             ratio,
+		headSubscriber:    headSubscriber,
+		registry:          registry,
+		samplingDuration:  samplingDuration,
+		shuffler:          new(cryptoShuffler[types.UpkeepKey]),
+		checkCache:        util.NewCache[types.UpkeepResult](cacheExpire),
 		checkCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
-		getCache: util.NewCache[types.UpkeepInfo](cacheExpire),
-		getCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepInfo](cacheClean),
-		workers:   newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		stopProcs: make(chan struct{}),
+		getCache:          util.NewCache[types.UpkeepInfo](cacheExpire),
+		getCacheCleaner:   util.NewIntervalCacheCleaner[types.UpkeepInfo](cacheClean),
+		workers:           newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		stopProcs:         make(chan struct{}),
 	}
 
 	// stop the cleaner go-routine once the upkeep service is no longer reachable
@@ -192,7 +192,7 @@ func (s *onDemandUpkeepService) GetUpkeep(ctx context.Context, keys ...types.Upk
 
 	// Cache results
 	for i, u := range getResults {
-		s.getCache.Set(string(keys[nonCachedKeysIdxs[i]]), u, defaultExpiration)
+		s.getCache.Set(string(keys[nonCachedKeysIdxs[i]]), u, util.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
