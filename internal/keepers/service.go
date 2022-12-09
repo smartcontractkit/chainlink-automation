@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -20,10 +21,10 @@ type onDemandUpkeepService struct {
 	headSubscriber    types.HeadSubscriber
 	registry          types.Registry
 	shuffler          shuffler[types.UpkeepKey]
-	checkCache        *cache[types.UpkeepResult]
-	checkCacheCleaner *intervalCacheCleaner[types.UpkeepResult]
-	getCache          *cache[types.UpkeepInfo]
-	getCacheCleaner   *intervalCacheCleaner[types.UpkeepInfo]
+	checkCache        *util.Cache[types.UpkeepResult]
+	checkCacheCleaner *util.IntervalCacheCleaner[types.UpkeepResult]
+	getCache          *util.Cache[types.UpkeepInfo]
+	getCacheCleaner   *util.IntervalCacheCleaner[types.UpkeepInfo]
 	samplingResults   samplingUpkeepsResults
 	samplingDuration  time.Duration
 	workers           *workerGroup[types.UpkeepResults]
@@ -53,16 +54,10 @@ func newOnDemandUpkeepService(
 		registry:         registry,
 		samplingDuration: samplingDuration,
 		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
-		checkCache:       newCache[types.UpkeepResult](cacheExpire),
-		checkCacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
-			Interval: cacheClean,
-			stop:     make(chan struct{}),
-		},
-		getCache: newCache[types.UpkeepInfo](cacheExpire),
-		getCacheCleaner: &intervalCacheCleaner[types.UpkeepInfo]{
-			Interval: cacheClean,
-			stop:     make(chan struct{}),
-		},
+		checkCache:       util.NewCache[types.UpkeepResult](cacheExpire),
+		checkCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
+		getCache: util.NewCache[types.UpkeepInfo](cacheExpire),
+		getCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepInfo](cacheClean),
 		workers:   newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		stopProcs: make(chan struct{}),
 	}
@@ -148,7 +143,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 
 	// Cache results
 	for i, u := range checkResults {
-		s.checkCache.Set(string(keys[nonCachedKeysIdxs[i]]), u, defaultExpiration)
+		s.checkCache.Set(string(keys[nonCachedKeysIdxs[i]]), u, util.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
@@ -217,8 +212,8 @@ func (s *onDemandUpkeepService) start() {
 
 func (s *onDemandUpkeepService) stop() {
 	close(s.stopProcs)
-	close(s.checkCacheCleaner.stop)
-	close(s.getCacheCleaner.stop)
+	s.checkCacheCleaner.Stop()
+	s.getCacheCleaner.Stop()
 }
 
 func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
@@ -400,7 +395,7 @@ Outer:
 				// Cache results
 				for i := range result.Data {
 					res := result.Data[i]
-					s.checkCache.Set(string(res.Key), res, defaultExpiration)
+					s.checkCache.Set(string(res.Key), res, util.DefaultCacheExpiration)
 					if res.State == types.Eligible {
 						sa.Append(res)
 					}

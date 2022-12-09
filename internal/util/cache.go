@@ -1,4 +1,4 @@
-package keepers
+package util
 
 import (
 	"sync"
@@ -7,30 +7,37 @@ import (
 
 const (
 	// convenience value for setting expiration to the default value
-	defaultExpiration time.Duration = 0
+	DefaultCacheExpiration time.Duration = 0
 )
 
-type cacheItem[T any] struct {
+func NewIntervalCacheCleaner[T any](interval time.Duration) *IntervalCacheCleaner[T] {
+	return &IntervalCacheCleaner[T]{
+		interval: interval,
+		stop:     make(chan struct{}),
+	}
+}
+
+func NewCache[T any](expiration time.Duration) *Cache[T] {
+	return &Cache[T]{
+		defaultExpiration: expiration,
+		data:              make(map[string]CacheItem[T]),
+	}
+}
+
+type CacheItem[T any] struct {
 	Item    T
 	Expires int64
 }
 
-type cache[T any] struct {
+type Cache[T any] struct {
 	defaultExpiration time.Duration
 	mu                sync.RWMutex
-	data              map[string]cacheItem[T]
+	data              map[string]CacheItem[T]
 }
 
-func newCache[T any](expiration time.Duration) *cache[T] {
-	return &cache[T]{
-		defaultExpiration: expiration,
-		data:              make(map[string]cacheItem[T]),
-	}
-}
-
-func (c *cache[T]) Set(key string, value T, expire time.Duration) {
+func (c *Cache[T]) Set(key string, value T, expire time.Duration) {
 	var exp int64
-	if expire == defaultExpiration {
+	if expire == DefaultCacheExpiration {
 		expire = c.defaultExpiration
 	}
 
@@ -39,14 +46,14 @@ func (c *cache[T]) Set(key string, value T, expire time.Duration) {
 	}
 
 	c.mu.Lock()
-	c.data[key] = cacheItem[T]{
+	c.data[key] = CacheItem[T]{
 		Item:    value,
 		Expires: exp,
 	}
 	c.mu.Unlock()
 }
 
-func (c *cache[T]) Get(key string) (T, bool) {
+func (c *Cache[T]) Get(key string) (T, bool) {
 	c.mu.RLock()
 	value, found := c.data[key]
 	if !found {
@@ -65,7 +72,7 @@ func (c *cache[T]) Get(key string) (T, bool) {
 	return value.Item, true
 }
 
-func (c *cache[T]) Keys() []string {
+func (c *Cache[T]) Keys() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -77,7 +84,7 @@ func (c *cache[T]) Keys() []string {
 	return keys
 }
 
-func (c *cache[T]) Delete(key string) {
+func (c *Cache[T]) Delete(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.data, key)
@@ -87,7 +94,7 @@ func (c *cache[T]) Delete(key string) {
 // expire time. If an item is expired, it is removed from the
 // cache. This function places a read lock on the data set and
 // only obtains a write lock if needed.
-func (c *cache[T]) ClearExpired() {
+func (c *Cache[T]) ClearExpired() {
 	now := time.Now().UnixNano()
 	c.mu.RLock()
 	toclear := make([]string, 0, len(c.data))
@@ -112,13 +119,14 @@ func getZero[T any]() T {
 	return result
 }
 
-type intervalCacheCleaner[T any] struct {
-	Interval time.Duration
+type IntervalCacheCleaner[T any] struct {
+	interval time.Duration
+	stopper  sync.Once
 	stop     chan struct{}
 }
 
-func (ic *intervalCacheCleaner[T]) Run(c *cache[T]) {
-	ticker := time.NewTicker(ic.Interval)
+func (ic *IntervalCacheCleaner[T]) Run(c *Cache[T]) {
+	ticker := time.NewTicker(ic.interval)
 	for {
 		select {
 		case <-ticker.C:
@@ -128,4 +136,10 @@ func (ic *intervalCacheCleaner[T]) Run(c *cache[T]) {
 			return
 		}
 	}
+}
+
+func (ic *IntervalCacheCleaner[T]) Stop() {
+	ic.stopper.Do(func() {
+		close(ic.stop)
+	})
 }

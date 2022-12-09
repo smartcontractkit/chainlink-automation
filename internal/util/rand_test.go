@@ -1,4 +1,4 @@
-package keepers
+package util
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestCryptoRandSource(t *testing.T) {
-	s := newCryptoRandSource()
+	s := NewCryptoRandSource()
 	i := s.Int63()
 	assert.NotEqual(t, 0, i)
 }

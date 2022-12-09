@@ -1,17 +1,18 @@
-package keepers
+package util
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
+	crand "crypto/rand"
 	"encoding/binary"
+	"math/rand"
 )
 
 type keyedCryptoRandSource struct {
 	stream cipher.Stream
 }
 
-func newKeyedCryptoRandSource(key [16]byte) *keyedCryptoRandSource {
+func NewKeyedCryptoRandSource(key [16]byte) rand.Source {
 	var iv [16]byte // zero IV is fine here
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
@@ -35,13 +36,13 @@ func (crs *keyedCryptoRandSource) Seed(seed int64) {
 
 type cryptoRandSource struct{}
 
-func newCryptoRandSource() cryptoRandSource {
+func NewCryptoRandSource() rand.Source {
 	return cryptoRandSource{}
 }
 
 func (_ cryptoRandSource) Int63() int64 {
 	var b [8]byte
-	_, err := rand.Read(b[:])
+	_, err := crand.Read(b[:])
 	if err != nil {
 		panic(err)
 	}
