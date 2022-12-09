@@ -184,6 +184,18 @@ func BenchmarkObservation(b *testing.B) {
 }
 
 func TestReport(t *testing.T) {
+	type checks struct {
+		K []ktypes.UpkeepKey
+		R ktypes.UpkeepResults
+		E error
+	}
+
+	type infos struct {
+		K []ktypes.UpkeepKey
+		I []ktypes.UpkeepInfo
+		E error
+	}
+
 	tests := []struct {
 		Name           string
 		Description    string
@@ -191,11 +203,8 @@ func TestReport(t *testing.T) {
 		Ctx            func() (context.Context, func())
 		Observations   []types.AttributedObservation
 		FilterOut      []ktypes.UpkeepKey
-		Checks         struct {
-			K []ktypes.UpkeepKey
-			R ktypes.UpkeepResults
-			E error
-		}
+		Checks         checks
+		Infos          infos
 		Perform        []int
 		EncodeErr      error
 		ExpectedReport []byte
@@ -212,13 +221,21 @@ func TestReport(t *testing.T) {
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
-				K: []ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")},
-				R: ktypes.UpkeepResults{{State: ktypes.Eligible, PerformData: []byte("abcd")}},
+			Checks: checks{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|1"),
+				},
+				R: ktypes.UpkeepResults{
+					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+				},
+			},
+			Infos: infos{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|1"),
+				},
+				I: []ktypes.UpkeepInfo{
+					{ExecuteGas: 500000},
+				},
 			},
 			Perform:        []int{0},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
@@ -233,13 +250,21 @@ func TestReport(t *testing.T) {
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
-				K: []ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")},
-				R: ktypes.UpkeepResults{{State: ktypes.Eligible, PerformData: []byte("abcd")}},
+			Checks: checks{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|1"),
+				},
+				R: ktypes.UpkeepResults{
+					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+				},
+			},
+			Infos: infos{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|1"),
+				},
+				I: []ktypes.UpkeepInfo{
+					{ExecuteGas: 500000},
+				},
 			},
 			Perform:        []int{0},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 1, []byte("abcd"))),
@@ -254,11 +279,7 @@ func TestReport(t *testing.T) {
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
+			Checks: checks{
 				K: []ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")},
 				R: ktypes.UpkeepResults{{}},
 				E: ErrMockTestError,
@@ -276,24 +297,30 @@ func TestReport(t *testing.T) {
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|2"), ktypes.UpkeepKey("1|1")}))},
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
+			Checks: checks{
 				K: []ktypes.UpkeepKey{
 					ktypes.UpkeepKey("1|1"),
 					ktypes.UpkeepKey("1|2"),
 				},
 				R: ktypes.UpkeepResults{
 					{
+						Key:         ktypes.UpkeepKey("1|1"),
 						State:       ktypes.Eligible,
 						PerformData: []byte("abcd"),
 					},
 					{
+						Key:         ktypes.UpkeepKey("1|2"),
 						State:       ktypes.NotEligible,
 						PerformData: []byte("abcd"),
 					},
+				},
+			},
+			Infos: infos{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|1"),
+				},
+				I: []ktypes.UpkeepInfo{
+					{ExecuteGas: 500000},
 				},
 			},
 			Perform:        []int{0},
@@ -313,13 +340,22 @@ func TestReport(t *testing.T) {
 			FilterOut: []ktypes.UpkeepKey{
 				ktypes.UpkeepKey("1|1"),
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
-				K: []ktypes.UpkeepKey{ktypes.UpkeepKey("1|2")},
-				R: ktypes.UpkeepResults{{State: ktypes.Eligible, PerformData: []byte("abcd")}},
+			Checks: checks{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|2"),
+				},
+				R: ktypes.UpkeepResults{
+					{Key: ktypes.UpkeepKey("1|2"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+				},
+			},
+
+			Infos: infos{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|2"),
+				},
+				I: []ktypes.UpkeepInfo{
+					{ExecuteGas: 500000},
+				},
 			},
 			Perform:        []int{0},
 			ExpectedReport: []byte(fmt.Sprintf("%d+%s", 2, []byte("abcd"))),
@@ -334,18 +370,14 @@ func TestReport(t *testing.T) {
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1"), ktypes.UpkeepKey("1|2")}))},
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|2")}))},
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
+			Checks: checks{
 				K: []ktypes.UpkeepKey{
 					ktypes.UpkeepKey("1|2"),
 					ktypes.UpkeepKey("1|1"),
 				},
 				R: ktypes.UpkeepResults{
-					{State: ktypes.NotEligible, PerformData: []byte("abcd")},
-					{State: ktypes.NotEligible, PerformData: []byte("abcd")},
+					{Key: ktypes.UpkeepKey("1|2"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
+					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
 				},
 			},
 			ExpectedBool: false,
@@ -359,11 +391,7 @@ func TestReport(t *testing.T) {
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
+			Checks: checks{
 				K: []ktypes.UpkeepKey{},
 				R: ktypes.UpkeepResults{},
 			},
@@ -386,13 +414,21 @@ func TestReport(t *testing.T) {
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
 			},
-			Checks: struct {
-				K []ktypes.UpkeepKey
-				R ktypes.UpkeepResults
-				E error
-			}{
-				K: []ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")},
-				R: ktypes.UpkeepResults{{State: ktypes.Eligible, PerformData: []byte("abcd")}},
+			Checks: checks{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|1"),
+				},
+				R: ktypes.UpkeepResults{
+					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+				},
+			},
+			Infos: infos{
+				K: []ktypes.UpkeepKey{
+					ktypes.UpkeepKey("1|1"),
+				},
+				I: []ktypes.UpkeepInfo{
+					{ExecuteGas: 500000},
+				},
 			},
 			Perform:      []int{0},
 			EncodeErr:    ErrMockTestError,
@@ -428,6 +464,10 @@ func TestReport(t *testing.T) {
 			// set up upkeep checks with the mocked service
 			if len(test.Checks.K) > 0 {
 				ms.Mock.On("CheckUpkeep", mock.Anything, test.Checks.K).Return(test.Checks.R, test.Checks.E)
+			}
+
+			if len(test.Infos.K) > 0 {
+				ms.Mock.On("GetUpkeep", mock.Anything, test.Infos.K).Return(test.Infos.I, test.Infos.E)
 			}
 
 			if len(test.Perform) > 0 {

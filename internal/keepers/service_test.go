@@ -215,6 +215,11 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
+			getCache: newCache[ktypes.UpkeepInfo](1 * time.Second),
+			getCacheCleaner: &intervalCacheCleaner[types.UpkeepInfo]{
+				Interval: time.Second,
+				stop:     make(chan struct{}),
+			},
 			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			stopProcs:        stopProcs,
@@ -275,6 +280,11 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			headSubscriber: hs,
 			checkCache:     newCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			checkCacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
+				Interval: time.Second,
+				stop:     make(chan struct{}),
+			},
+			getCache: newCache[ktypes.UpkeepInfo](1 * time.Second),
+			getCacheCleaner: &intervalCacheCleaner[types.UpkeepInfo]{
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
@@ -343,6 +353,11 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			shuffler:       new(noShuffleShuffler[ktypes.UpkeepKey]),
 			checkCache:     newCache[ktypes.UpkeepResult](1 * time.Second),
 			checkCacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
+				Interval: time.Second,
+				stop:     make(chan struct{}),
+			},
+			getCache: newCache[ktypes.UpkeepInfo](1 * time.Second),
+			getCacheCleaner: &intervalCacheCleaner[types.UpkeepInfo]{
 				Interval: time.Second,
 				stop:     make(chan struct{}),
 			},
