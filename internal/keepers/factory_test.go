@@ -61,7 +61,6 @@ func TestNewReportingPlugin(t *testing.T) {
 	copy(digest[:], []byte(digestStr)[:32])
 
 	offchainConfig, err := json.Marshal(ktypes.OffchainConfig{
-		GasLimitPerUpkeep: 500000,
 		GasLimitPerReport: 500000,
 	})
 	require.NoError(t, err)

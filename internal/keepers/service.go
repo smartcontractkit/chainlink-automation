@@ -15,17 +15,19 @@ import (
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
 type onDemandUpkeepService struct {
-	logger           *log.Logger
-	ratio            sampleRatio
-	headSubscriber   types.HeadSubscriber
-	registry         types.Registry
-	shuffler         shuffler[types.UpkeepKey]
-	cache            *cache[types.UpkeepResult]
-	cacheCleaner     *intervalCacheCleaner[types.UpkeepResult]
-	samplingResults  samplingUpkeepsResults
-	samplingDuration time.Duration
-	workers          *workerGroup[types.UpkeepResults]
-	stopProcs        chan struct{}
+	logger            *log.Logger
+	ratio             sampleRatio
+	headSubscriber    types.HeadSubscriber
+	registry          types.Registry
+	shuffler          shuffler[types.UpkeepKey]
+	checkCache        *cache[types.UpkeepResult]
+	checkCacheCleaner *intervalCacheCleaner[types.UpkeepResult]
+	getCache          *cache[types.UpkeepInfo]
+	getCacheCleaner   *intervalCacheCleaner[types.UpkeepInfo]
+	samplingResults   samplingUpkeepsResults
+	samplingDuration  time.Duration
+	workers           *workerGroup[types.UpkeepResults]
+	stopProcs         chan struct{}
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -51,17 +53,19 @@ func newOnDemandUpkeepService(
 		registry:         registry,
 		samplingDuration: samplingDuration,
 		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
-		cache:            newCache[types.UpkeepResult](cacheExpire),
-		workers:          newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		stopProcs:        make(chan struct{}),
+		checkCache:       newCache[types.UpkeepResult](cacheExpire),
+		checkCacheCleaner: &intervalCacheCleaner[types.UpkeepResult]{
+			Interval: cacheClean,
+			stop:     make(chan struct{}),
+		},
+		getCache: newCache[types.UpkeepInfo](cacheExpire),
+		getCacheCleaner: &intervalCacheCleaner[types.UpkeepInfo]{
+			Interval: cacheClean,
+			stop:     make(chan struct{}),
+		},
+		workers:   newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		stopProcs: make(chan struct{}),
 	}
-
-	cl := &intervalCacheCleaner[types.UpkeepResult]{
-		Interval: cacheClean,
-		stop:     make(chan struct{}),
-	}
-
-	s.cacheCleaner = cl
 
 	// stop the cleaner go-routine once the upkeep service is no longer reachable
 	runtime.SetFinalizer(s, func(srv *onDemandUpkeepService) { srv.stop() })
@@ -116,7 +120,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 			// the cache is a collection of keys (block & id) that map to cached
 			// results. if the same upkeep is checked at a block that has already been
 			// checked, return the cached result
-			if result, cached := s.cache.Get(string(key)); cached {
+			if result, cached := s.checkCache.Get(string(key)); cached {
 				results[i] = result
 			} else {
 				nonCachedKeysLock.Lock()
@@ -144,7 +148,56 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 
 	// Cache results
 	for i, u := range checkResults {
-		s.cache.Set(string(keys[nonCachedKeysIdxs[i]]), u, defaultExpiration)
+		s.checkCache.Set(string(keys[nonCachedKeysIdxs[i]]), u, defaultExpiration)
+		results[nonCachedKeysIdxs[i]] = u
+	}
+
+	return results, nil
+}
+
+func (s *onDemandUpkeepService) GetUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepInfo, error) {
+	var (
+		wg                sync.WaitGroup
+		results           = make([]types.UpkeepInfo, len(keys))
+		nonCachedKeysLock sync.Mutex
+		nonCachedKeysIdxs = make([]int, 0, len(keys))
+		nonCachedKeys     = make([]types.UpkeepKey, 0, len(keys))
+	)
+
+	for i, key := range keys {
+		wg.Add(1)
+		go func(i int, key types.UpkeepKey) {
+			// the cache is a collection of keys (block & id) that map to cached
+			// results. if the same upkeep is checked at a block that has already been
+			// checked, return the cached result
+			if result, cached := s.getCache.Get(string(key)); cached {
+				results[i] = result
+			} else {
+				nonCachedKeysLock.Lock()
+				nonCachedKeysIdxs = append(nonCachedKeysIdxs, i)
+				nonCachedKeys = append(nonCachedKeys, key)
+				nonCachedKeysLock.Unlock()
+			}
+			wg.Done()
+		}(i, key)
+	}
+
+	wg.Wait()
+
+	// All keys are cached
+	if len(nonCachedKeys) == 0 {
+		return results, nil
+	}
+
+	// get upkeep info at block number in key
+	getResults, err := s.registry.GetUpkeep(ctx, nonCachedKeys...)
+	if err != nil {
+		return nil, fmt.Errorf("%w: service failed to get upkeep from registry", err)
+	}
+
+	// Cache results
+	for i, u := range getResults {
+		s.getCache.Set(string(keys[nonCachedKeysIdxs[i]]), u, defaultExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
@@ -153,7 +206,8 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 
 func (s *onDemandUpkeepService) start() {
 	// TODO: if this process panics, restart it
-	go s.cacheCleaner.Run(s.cache)
+	go s.checkCacheCleaner.Run(s.checkCache)
+	go s.getCacheCleaner.Run(s.getCache)
 	go func() {
 		if err := s.runSamplingUpkeeps(); err != nil {
 			s.logger.Fatal(err)
@@ -163,7 +217,8 @@ func (s *onDemandUpkeepService) start() {
 
 func (s *onDemandUpkeepService) stop() {
 	close(s.stopProcs)
-	close(s.cacheCleaner.stop)
+	close(s.checkCacheCleaner.stop)
+	close(s.getCacheCleaner.stop)
 }
 
 func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
@@ -267,7 +322,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 			defer wg.Done()
 
 			// no RPC lookups need to be done if a result has already been cached
-			result, cached := s.cache.Get(string(key))
+			result, cached := s.checkCache.Get(string(key))
 			if cached {
 				cacheHits++
 				if result.State == types.Eligible {
@@ -345,7 +400,7 @@ Outer:
 				// Cache results
 				for i := range result.Data {
 					res := result.Data[i]
-					s.cache.Set(string(res.Key), res, defaultExpiration)
+					s.checkCache.Set(string(res.Key), res, defaultExpiration)
 					if res.State == types.Eligible {
 						sa.Append(res)
 					}

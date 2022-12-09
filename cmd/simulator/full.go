@@ -222,8 +222,7 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 	pLogs := &mockPerfLogs{}
 
 	offchainConfig, err := json.Marshal(ktypes.OffchainConfig{
-		GasLimitPerUpkeep: 1000000,
-		GasLimitPerReport: 500000,
+		GasLimitPerReport: 1000000,
 	})
 	if err != nil {
 		panic(err)

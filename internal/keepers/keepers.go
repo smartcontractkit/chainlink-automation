@@ -14,5 +14,5 @@ type keepers struct {
 	encoder        types.ReportEncoder
 	logger         *log.Logger
 	filter         filterer
-	reportCapacity int
+	reportGasLimit uint32
 }

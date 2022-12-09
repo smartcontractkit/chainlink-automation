@@ -284,6 +284,73 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 	}
 }
 
+func (r *evmRegistryv2_0) GetUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepInfo, error) {
+	var (
+		getReqs    = make([]rpc.BatchElem, len(keys))
+		getResults = make([]*string, len(keys))
+	)
+
+	for i, key := range keys {
+		block, upkeepId, err := BlockAndIdFromKey(key)
+		if err != nil {
+			return nil, err
+		}
+
+		opts, err := r.buildCallOpts(ctx, block)
+		if err != nil {
+			return nil, err
+		}
+
+		payload, err := keeperRegistryABI.Pack("getUpkeep", upkeepId)
+		if err != nil {
+			return nil, err
+		}
+
+		var result string
+		getReqs[i] = rpc.BatchElem{
+			Method: "eth_call",
+			Args: []interface{}{
+				map[string]interface{}{
+					"to":   r.address.Hex(),
+					"data": hexutil.Bytes(payload),
+				},
+				hexutil.EncodeBig(opts.BlockNumber),
+			},
+			Result: &result,
+		}
+
+		getResults[i] = &result
+	}
+
+	if err := r.client.BatchCallContext(ctx, getReqs); err != nil {
+		return nil, err
+	}
+
+	var (
+		err     error
+		results = make([]types.UpkeepInfo, len(keys))
+	)
+
+	for i, req := range getReqs {
+		if req.Error != nil {
+			if strings.Contains(req.Error.Error(), "reverted") {
+				// subscription was canceled
+				// NOTE: would we want to publish the fact that it is inactive?
+				continue
+			}
+			// some other error
+			multierr.AppendInto(&err, req.Error)
+		} else {
+			results[i], err = unmarshalGetUpkeepResult(*getResults[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return results, err
+}
+
 func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
 	_, id, err := BlockAndIdFromKey(key)
 	if err != nil {

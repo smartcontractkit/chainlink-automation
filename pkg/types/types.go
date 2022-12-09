@@ -38,6 +38,7 @@ type EVMClient interface {
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
+	GetUpkeep(ctx context.Context, keys ...UpkeepKey) ([]UpkeepInfo, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 
@@ -94,6 +95,17 @@ const (
 	Eligible
 )
 
+type UpkeepInfo struct {
+	ExecuteGas             uint32
+	CheckData              []byte
+	Balance                *big.Int
+	MaxValidBlocknumber    uint64
+	LastPerformBlockNumber uint32
+	AmountSpent            *big.Int
+	Paused                 bool
+	OffchainConfig         []byte
+}
+
 type OffchainConfig struct {
 	// PerformLockoutWindow is the window in which a single upkeep cannot be
 	// performed again while waiting for a confirmation. Standard setting is
@@ -119,14 +131,8 @@ type OffchainConfig struct {
 	// the provided number of confirmations.
 	MinConfirmations int `json:"minConfirmations"`
 
-	// GasLimitPerUpkeep is the max gas that could be spent per upkeep performance.
-	// This is needed for calculation of how many upkeeps could be within report:
-	//  GasLimitPerReport / GasLimitPerUpkeep
-	GasLimitPerUpkeep uint32 `json:"gasLimitPerUpkeep"`
-
 	// GasLimitPerReport is the max gas that could be spent per one report.
 	// This is needed for calculation of how many upkeeps could be within report:
-	//	GasLimitPerReport / GasLimitPerUpkeep
 	GasLimitPerReport uint32 `json:"gasLimitPerReport"`
 }
 

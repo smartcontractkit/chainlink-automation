@@ -187,7 +187,7 @@ func TestReport(t *testing.T) {
 	tests := []struct {
 		Name           string
 		Description    string
-		ReportCapacity int
+		ReportGasLimit uint32
 		Ctx            func() (context.Context, func())
 		Observations   []types.AttributedObservation
 		FilterOut      []ktypes.UpkeepKey
@@ -205,7 +205,7 @@ func TestReport(t *testing.T) {
 		{
 			Name:           "Single Common Upkeep",
 			Description:    "A single report should be created when all observations match",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
@@ -226,7 +226,7 @@ func TestReport(t *testing.T) {
 		},
 		{
 			Name:           "Forward Context",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
@@ -247,7 +247,7 @@ func TestReport(t *testing.T) {
 		},
 		{
 			Name:           "Wrap Error",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
@@ -269,7 +269,7 @@ func TestReport(t *testing.T) {
 		{
 			Name:           "Unsorted Observations",
 			Description:    "A single report should be created from the id of the earliest block number and sorting of keys should take place in this step",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
@@ -303,7 +303,7 @@ func TestReport(t *testing.T) {
 		{
 			Name:           "Skip Already Performed",
 			Description:    "Observations that had already been added to the filter should not be checked nor should they be performed",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
@@ -327,7 +327,7 @@ func TestReport(t *testing.T) {
 		},
 		{
 			Name:           "Nothing to Report",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|2")}))},
@@ -352,7 +352,7 @@ func TestReport(t *testing.T) {
 		},
 		{
 			Name:           "Empty Observations",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
@@ -371,7 +371,7 @@ func TestReport(t *testing.T) {
 		},
 		{
 			Name:           "No Observations",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations:   []types.AttributedObservation{},
 			ExpectedBool:   false,
@@ -379,7 +379,7 @@ func TestReport(t *testing.T) {
 		},
 		{
 			Name:           "Encoding Error",
-			ReportCapacity: 2,
+			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
 				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
@@ -412,7 +412,7 @@ func TestReport(t *testing.T) {
 				encoder:        me,
 				logger:         log.New(io.Discard, "", 0),
 				filter:         mf,
-				reportCapacity: test.ReportCapacity,
+				reportGasLimit: test.ReportGasLimit,
 			}
 			ctx, cancel := test.Ctx()
 
@@ -746,6 +746,21 @@ func (_m *MockedUpkeepService) CheckUpkeep(ctx context.Context, keys ...ktypes.U
 	return r0, ret.Error(1)
 }
 
+func (_m *MockedUpkeepService) GetUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepInfo, error) {
+	ret := _m.Mock.Called(ctx, keys)
+
+	var r0 []ktypes.UpkeepInfo
+	if rf, ok := ret.Get(0).(func() []ktypes.UpkeepInfo); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ktypes.UpkeepInfo)
+		}
+	}
+
+	return r0, ret.Error(1)
+}
+
 func (_m *MockedUpkeepService) LockoutUpkeep(ctx context.Context, key ktypes.UpkeepIdentifier) error {
 	return _m.Mock.Called(ctx, key).Error(0)
 }
@@ -775,6 +790,10 @@ func (_m *BenchmarkMockUpkeepService) SampleUpkeeps(ctx context.Context, filters
 
 func (_m *BenchmarkMockUpkeepService) CheckUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) (ktypes.UpkeepResults, error) {
 	return _m.rtnCheck, nil
+}
+
+func (_m *BenchmarkMockUpkeepService) GetUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepInfo, error) {
+	return nil, nil
 }
 
 func (_m *BenchmarkMockUpkeepService) LockoutUpkeep(ctx context.Context, key ktypes.UpkeepIdentifier) error {

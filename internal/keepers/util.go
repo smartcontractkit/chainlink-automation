@@ -15,11 +15,7 @@ import (
 )
 
 var (
-	ErrEncoding                  = fmt.Errorf("error encountered while encoding")
-	ErrNotEnoughInputs           = fmt.Errorf("not enough inputs")
-	ErrNegativeGasLimitPerReport = fmt.Errorf("gas limit per report must be positive value")
-	ErrNegativeGasLimitPerUpkeep = fmt.Errorf("gas limit per upkeep must be positive value")
-	ErrInvalidGasLimitPerReport  = fmt.Errorf("gas limit per report must be higher than gas limit per upkeep")
+	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
 
 func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState) ktypes.UpkeepResults {
@@ -318,20 +314,4 @@ func (s *buffer) String() string {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return s.buffer.String()
-}
-
-func getReportCapacity(gasLimitPerUpkeep, gasLimitPerReport uint32) (int, error) {
-	if gasLimitPerReport <= 0 {
-		return 0, ErrNegativeGasLimitPerReport
-	}
-
-	if gasLimitPerUpkeep <= 0 {
-		return 0, ErrNegativeGasLimitPerUpkeep
-	}
-
-	if gasLimitPerReport < gasLimitPerUpkeep {
-		return 0, ErrInvalidGasLimitPerReport
-	}
-
-	return int(gasLimitPerReport / gasLimitPerUpkeep), nil
 }

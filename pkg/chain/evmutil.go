@@ -50,6 +50,27 @@ func mustGetABI(json string) abi.ABI {
 	return abi
 }
 
+func unmarshalGetUpkeepResult(raw string) (types.UpkeepInfo, error) {
+	out, err := keeperRegistryABI.Methods["getUpkeep"].
+		Outputs.UnpackValues(hexutil.MustDecode(raw))
+	if err != nil {
+		return types.UpkeepInfo{}, errors.Wrapf(err, "unpack checkUpkeep return: %s", raw)
+	}
+
+	var result types.UpkeepInfo
+
+	result.ExecuteGas = *abi.ConvertType(out[1], new(uint32)).(*uint32)
+	result.CheckData = *abi.ConvertType(out[2], new([]byte)).(*[]byte)
+	result.Balance = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
+	result.MaxValidBlocknumber = *abi.ConvertType(out[5], new(uint64)).(*uint64)
+	result.LastPerformBlockNumber = *abi.ConvertType(out[6], new(uint32)).(*uint32)
+	result.AmountSpent = *abi.ConvertType(out[7], new(*big.Int)).(**big.Int)
+	result.Paused = *abi.ConvertType(out[8], new(bool)).(*bool)
+	result.OffchainConfig = *abi.ConvertType(out[9], new([]byte)).(*[]byte)
+
+	return result, nil
+}
+
 func unmarshalCheckUpkeepResult(key types.UpkeepKey, raw string) (types.UpkeepResult, error) {
 	out, err := keeperRegistryABI.Methods["checkUpkeep"].
 		Outputs.UnpackValues(hexutil.MustDecode(raw))

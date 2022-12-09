@@ -149,6 +149,18 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 	return results, nil
 }
 
+func (ct *SimulatedContract) GetUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepInfo, error) {
+	results := make([]types.UpkeepInfo, len(keys))
+
+	for i := range keys {
+		results[i] = types.UpkeepInfo{
+			ExecuteGas: 500_000,
+		}
+	}
+
+	return results, nil
+}
+
 func (ct *SimulatedContract) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
 	parts := strings.Split(string(key), "|")
 	if len(parts) != 2 {
