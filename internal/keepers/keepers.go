@@ -9,10 +9,11 @@ import (
 )
 
 type keepers struct {
-	id             commontypes.OracleID
-	service        upkeepService
-	encoder        types.ReportEncoder
-	logger         *log.Logger
-	filter         filterer
-	reportGasLimit uint32
+	id                commontypes.OracleID
+	service           upkeepService
+	encoder           types.ReportEncoder
+	logger            *log.Logger
+	filter            filterer
+	reportGasLimit    uint32
+	upkeepGasOverhead uint32
 }

@@ -121,8 +121,11 @@ type OffchainConfig struct {
 	MinConfirmations int `json:"minConfirmations"`
 
 	// GasLimitPerReport is the max gas that could be spent per one report.
-	// This is needed for calculation of how many upkeeps could be within report:
+	// This is needed for calculation of how many upkeeps could be within report.
 	GasLimitPerReport uint32 `json:"gasLimitPerReport"`
+
+	// GasOverheadPerUpkeep is gas overhead per upkeep taken place in the report.
+	GasOverheadPerUpkeep uint32 `json:"gasOverheadPerUpkeep"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {

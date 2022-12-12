@@ -128,6 +128,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			offChainCfg.MinConfirmations,
 			d.logger,
 		),
-		reportGasLimit: offChainCfg.GasLimitPerReport,
+		reportGasLimit:    offChainCfg.GasLimitPerReport,
+		upkeepGasOverhead: offChainCfg.GasOverheadPerUpkeep,
 	}, info, nil
 }
