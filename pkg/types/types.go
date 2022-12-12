@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 )
 
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
-	CheckUpkeep(context.Context, UpkeepKey) (bool, UpkeepResult, error)
+	CheckUpkeep(context.Context, UpkeepKey, *log.Logger) (bool, UpkeepResult, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 

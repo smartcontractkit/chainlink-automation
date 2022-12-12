@@ -100,7 +100,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, key types.Upkee
 
 	// check upkeep at block number in key
 	// return result including performData
-	_, u, err := s.registry.CheckUpkeep(ctx, key)
+	_, u, err := s.registry.CheckUpkeep(ctx, key, s.logger)
 	if err != nil {
 		return types.UpkeepResult{}, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
@@ -258,7 +258,7 @@ func makeWorkerFunc(logger *log.Logger, registry types.Registry, key types.Upkee
 
 		start := time.Now()
 		// perform check and update cache with result
-		ok, u, err := registry.CheckUpkeep(c, key)
+		ok, u, err := registry.CheckUpkeep(c, key, logger)
 		logger.Printf("check upkeep took %dms to perform", time.Since(start)/time.Millisecond)
 		if ok {
 			logger.Printf("upkeep ready to perform for key %s", key)

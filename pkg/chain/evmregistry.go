@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
 	"strings"
@@ -120,7 +121,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 	return keys, nil
 }
 
-func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch chan outStruct) {
+func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch chan outStruct, logger *log.Logger) {
 	block, upkeepId, err := BlockAndIdFromKey(key)
 	if err != nil {
 		ch <- outStruct{
@@ -183,7 +184,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			// function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData);
 			payload, err = r.abiAutomationCompatibleInterface.Pack("checkUpkeep", upkeepInfo.CheckData)
 			if err != nil {
-				fmt.Println(err)
+				logger.Println(err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -201,7 +202,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 
 			resp, err := r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
 			if err != nil {
-				fmt.Println(err)
+				logger.Println(err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -213,7 +214,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			offchainLookup := OffchainLookup{}
 			unpack, err := r.abiUpkeep3668.Unpack("OffchainLookup", resp)
 			if err != nil {
-				fmt.Println(err)
+				logger.Println(err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -225,11 +226,11 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			offchainLookup.callData = *abi.ConvertType(unpack[2], new([]byte)).(*[]byte)
 			offchainLookup.callbackFunction = *abi.ConvertType(unpack[3], new([4]byte)).(*[4]byte)
 			offchainLookup.extraData = *abi.ConvertType(unpack[4], new([]byte)).(*[]byte)
-			fmt.Printf("\n%+v\n", offchainLookup)
+			logger.Printf("\n%+v\n", offchainLookup)
 
 			// If the sender field does not match the address of the contract that was called, stop.
 			if offchainLookup.sender != upkeepInfo.Target {
-				fmt.Println("sender != target")
+				logger.Println("sender != target")
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -240,20 +241,20 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			// 	do the http calls
 			offchainResp, err := offchainLookup.Query()
 			if err != nil {
-				fmt.Println(err)
+				logger.Println(err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
 				}
 				return
 			}
-			fmt.Println(string(offchainResp))
+			logger.Println(string(offchainResp))
 
 			// 	do callback
 			// call to the contract function specified by the 4-byte selector callbackFunction, supplying the data returned and extraData
 			typ, err := abi.NewType("bytes", "", nil)
 			if err != nil {
-				fmt.Println(err)
+				logger.Println(err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -266,7 +267,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			}
 			pack, err := callbackArgs.Pack()
 			if err != nil {
-				fmt.Println(err)
+				logger.Println(err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -287,7 +288,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 
 			callbackResp, err := r.evmClient.CallContract(context.Background(), callbackMsg, opts.BlockNumber)
 			if err != nil {
-				fmt.Println(err)
+				logger.Println(err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -508,9 +509,9 @@ func (o *OffchainLookup) doRequest(url string, senderString string, callDataStri
 // 	return vs[0].(string), nil
 // }
 
-func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey) (bool, types.UpkeepResult, error) {
+func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey, logger *log.Logger) (bool, types.UpkeepResult, error) {
 	chResult := make(chan outStruct, 1)
-	go r.check(ctx, key, chResult)
+	go r.check(ctx, key, chResult, logger)
 
 	select {
 	case rs := <-chResult:

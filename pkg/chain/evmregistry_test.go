@@ -76,7 +76,7 @@ func TestCheckUpkeep(t *testing.T) {
 			t.FailNow()
 		}
 
-		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")), nil)
 		assert.NoError(t, err)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, types.Eligible, upkeep.State)
@@ -102,7 +102,7 @@ func TestCheckUpkeep(t *testing.T) {
 			t.FailNow()
 		}
 
-		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")), nil)
 		assert.NoError(t, err)
 		assert.Equal(t, false, ok)
 		assert.Equal(t, types.NotEligible, upkeep.State)
@@ -122,7 +122,7 @@ func TestCheckUpkeep(t *testing.T) {
 			t.FailNow()
 		}
 
-		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		ok, upkeep, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")), nil)
 		assert.NoError(t, err)
 		assert.Equal(t, false, ok)
 		assert.Equal(t, types.NotEligible, upkeep.State)
@@ -141,7 +141,7 @@ func TestCheckUpkeep(t *testing.T) {
 		}
 
 		start := time.Now()
-		ok, _, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")))
+		ok, _, err := reg.CheckUpkeep(ctx, types.UpkeepKey([]byte("1|1234")), nil)
 
 		assert.LessOrEqual(t, time.Since(start), 60*time.Millisecond)
 

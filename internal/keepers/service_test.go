@@ -354,7 +354,7 @@ func (_m *MockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key ktypes.Bl
 	return r0, ret.Error(1)
 }
 
-func (_m *MockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey) (bool, ktypes.UpkeepResult, error) {
+func (_m *MockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey, logger *log.Logger) (bool, ktypes.UpkeepResult, error) {
 	ret := _m.Mock.Called(ctx, key)
 
 	var r1 ktypes.UpkeepResult

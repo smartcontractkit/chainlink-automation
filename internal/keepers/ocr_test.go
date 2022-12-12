@@ -887,7 +887,7 @@ func (_m *BenchmarkMockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key 
 	return _m.rtnKeys, nil
 }
 
-func (_m *BenchmarkMockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey) (bool, ktypes.UpkeepResult, error) {
+func (_m *BenchmarkMockedRegistry) CheckUpkeep(ctx context.Context, key ktypes.UpkeepKey, logger *log.Logger) (bool, ktypes.UpkeepResult, error) {
 	return true, _m.rtnRes, nil
 }
 
