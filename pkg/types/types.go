@@ -38,7 +38,6 @@ type EVMClient interface {
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
-	GetUpkeep(ctx context.Context, keys ...UpkeepKey) ([]UpkeepInfo, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 
@@ -86,6 +85,7 @@ type UpkeepResult struct {
 	LinkNative       *big.Int
 	CheckBlockNumber uint32
 	CheckBlockHash   [32]byte
+	ExecuteGas       uint32
 }
 
 type UpkeepState uint
@@ -94,17 +94,6 @@ const (
 	NotEligible UpkeepState = iota
 	Eligible
 )
-
-type UpkeepInfo struct {
-	ExecuteGas             uint32
-	CheckData              []byte
-	Balance                *big.Int
-	MaxValidBlocknumber    uint64
-	LastPerformBlockNumber uint32
-	AmountSpent            *big.Int
-	Paused                 bool
-	OffchainConfig         []byte
-}
 
 type OffchainConfig struct {
 	// PerformLockoutWindow is the window in which a single upkeep cannot be

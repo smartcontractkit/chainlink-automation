@@ -80,7 +80,7 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
 			logger:           l,
-			checkCache:       util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			registry:         rg,
 			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
@@ -116,14 +116,14 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 
 	l := log.New(io.Discard, "", 0)
 	svc := &onDemandUpkeepService{
-		logger:            l,
-		ratio:             sampleRatio(0.5),
-		registry:          rg,
-		shuffler:          new(noShuffleShuffler[ktypes.UpkeepKey]),
-		checkCache:        util.NewCache[ktypes.UpkeepResult](1 * time.Second),
-		checkCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-		workers:           newWorkerGroup[ktypes.UpkeepResults](2, 10),
-		samplingDuration:  time.Second * 5,
+		logger:           l,
+		ratio:            sampleRatio(0.5),
+		registry:         rg,
+		shuffler:         new(noShuffleShuffler[ktypes.UpkeepKey]),
+		cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
+		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+		workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+		samplingDuration: time.Second * 5,
 	}
 
 	svc.samplingResults.set(returnResults)
@@ -203,18 +203,16 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		l := log.New(io.Discard, "", 0)
 		svc := &onDemandUpkeepService{
-			logger:            l,
-			headSubscriber:    hs,
-			ratio:             sampleRatio(0.5),
-			registry:          rg,
-			shuffler:          new(noShuffleShuffler[ktypes.UpkeepKey]),
-			checkCache:        util.NewCache[ktypes.UpkeepResult](1 * time.Second),
-			checkCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			getCache:          util.NewCache[ktypes.UpkeepInfo](1 * time.Second),
-			getCacheCleaner:   util.NewIntervalCacheCleaner[types.UpkeepInfo](time.Second),
-			workers:           newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			samplingDuration:  time.Second * 5,
-			stopProcs:         stopProcs,
+			logger:           l,
+			headSubscriber:   hs,
+			ratio:            sampleRatio(0.5),
+			registry:         rg,
+			shuffler:         new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
+			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			samplingDuration: time.Second * 5,
+			stopProcs:        stopProcs,
 		}
 
 		// Start all required processes
@@ -267,16 +265,14 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		var logWriter buffer
 		l := log.New(&logWriter, "", 0)
 		svc := &onDemandUpkeepService{
-			logger:            l,
-			registry:          rg,
-			headSubscriber:    hs,
-			checkCache:        util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
-			checkCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			getCache:          util.NewCache[ktypes.UpkeepInfo](1 * time.Second),
-			getCacheCleaner:   util.NewIntervalCacheCleaner[types.UpkeepInfo](time.Second),
-			workers:           newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			samplingDuration:  time.Second * 5,
-			stopProcs:         stopProcs,
+			logger:           l,
+			registry:         rg,
+			headSubscriber:   hs,
+			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			samplingDuration: time.Second * 5,
+			stopProcs:        stopProcs,
 		}
 
 		// Start background processes
@@ -332,18 +328,16 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		var logWriter buffer
 		l := log.New(&logWriter, "", 0)
 		svc := &onDemandUpkeepService{
-			logger:            l,
-			headSubscriber:    hs,
-			ratio:             sampleRatio(0.5),
-			registry:          rg,
-			shuffler:          new(noShuffleShuffler[ktypes.UpkeepKey]),
-			checkCache:        util.NewCache[ktypes.UpkeepResult](1 * time.Second),
-			checkCacheCleaner: util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			getCache:          util.NewCache[ktypes.UpkeepInfo](1 * time.Second),
-			getCacheCleaner:   util.NewIntervalCacheCleaner[types.UpkeepInfo](time.Second),
-			workers:           newWorkerGroup[ktypes.UpkeepResults](2, 10),
-			samplingDuration:  time.Second * 5,
-			stopProcs:         stopProcs,
+			logger:           l,
+			headSubscriber:   hs,
+			ratio:            sampleRatio(0.5),
+			registry:         rg,
+			shuffler:         new(noShuffleShuffler[ktypes.UpkeepKey]),
+			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
+			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
+			samplingDuration: time.Second * 5,
+			stopProcs:        stopProcs,
 		}
 
 		// Start background processes

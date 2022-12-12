@@ -67,36 +67,6 @@ func (_m *MockRegistry) GetActiveUpkeepKeys(_a0 context.Context, _a1 BlockKey) (
 	return r0, r1
 }
 
-// GetUpkeep provides a mock function with given fields: ctx, keys
-func (_m *MockRegistry) GetUpkeep(ctx context.Context, keys ...UpkeepKey) ([]UpkeepInfo, error) {
-	_va := make([]interface{}, len(keys))
-	for _i := range keys {
-		_va[_i] = keys[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 []UpkeepInfo
-	if rf, ok := ret.Get(0).(func(context.Context, ...UpkeepKey) []UpkeepInfo); ok {
-		r0 = rf(ctx, keys...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]UpkeepInfo)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...UpkeepKey) error); ok {
-		r1 = rf(ctx, keys...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // IdentifierFromKey provides a mock function with given fields: _a0
 func (_m *MockRegistry) IdentifierFromKey(_a0 UpkeepKey) (UpkeepIdentifier, error) {
 	ret := _m.Called(_a0)

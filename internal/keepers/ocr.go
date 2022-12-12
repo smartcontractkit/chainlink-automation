@@ -123,42 +123,27 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	}
 
 	// Collect eligible upkeeps
-	keyToUpkeep := make(map[string]ktypes.UpkeepResult)
-	eligibleUpkeeps := make([]ktypes.UpkeepKey, 0, len(checkedUpkeeps))
-	for _, checkedUpkeep := range checkedUpkeeps {
-		if checkedUpkeep.State == ktypes.Eligible {
-			eligibleUpkeeps = append(eligibleUpkeeps, checkedUpkeep.Key)
-			keyToUpkeep[string(checkedUpkeep.Key)] = checkedUpkeep
-		}
-	}
-
-	// if nothing to report, return false with no error
-	if len(eligibleUpkeeps) == 0 {
-		k.logger.Printf("OCR report completed successfully with no eligible upkeeps: %s", lCtx)
-		return false, nil, nil
-	}
-
-	// Get upkeep gas limit
-	upkeepsInfo, err := k.service.GetUpkeep(ctx, eligibleUpkeeps...)
-	if err != nil {
-		return false, nil, fmt.Errorf("%w: failed to get upkeeps info: %s", err, lCtx)
-	}
-
-	// Prepare upkeeps to build report
 	var reportCapacity uint32
-	toPerform := make([]ktypes.UpkeepResult, 0, len(upkeepsInfo))
-	for i, upkeepInfo := range upkeepsInfo {
-		upkeepResult, ok := keyToUpkeep[string(eligibleUpkeeps[i])]
-		if !ok {
-			return false, nil, fmt.Errorf("upkeep with key %s not found in the info list", string(eligibleUpkeeps[i]))
+	toPerform := make([]ktypes.UpkeepResult, 0, len(checkedUpkeeps))
+	for _, checkedUpkeep := range checkedUpkeeps {
+		if checkedUpkeep.State != ktypes.Eligible {
+			continue
 		}
 
-		if reportCapacity+upkeepInfo.ExecuteGas > k.reportGasLimit {
+		if reportCapacity+checkedUpkeep.ExecuteGas > k.reportGasLimit {
 			break
 		}
 
-		toPerform = append(toPerform, upkeepResult)
-		reportCapacity += upkeepInfo.ExecuteGas
+		k.logger.Printf("reporting %s to be performed: %s", checkedUpkeep.Key, lCtx.Short())
+
+		toPerform = append(toPerform, checkedUpkeep)
+		reportCapacity += checkedUpkeep.ExecuteGas
+	}
+
+	// if nothing to report, return false with no error
+	if len(toPerform) == 0 {
+		k.logger.Printf("OCR report completed successfully with no eligible upkeeps: %s", lCtx)
+		return false, nil, nil
 	}
 
 	b, err := k.encoder.EncodeReport(toPerform)
