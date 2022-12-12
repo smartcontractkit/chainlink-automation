@@ -172,6 +172,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 	if !upkeepNeeded {
 		upkeepInfo, err := r.registry.GetUpkeep(opts, upkeepId)
 		if err != nil {
+			logger.Println(err)
 			ch <- outStruct{
 				ur:  types.UpkeepResult{},
 				err: err,
@@ -212,7 +213,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 
 			// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
 			offchainLookup := OffchainLookup{}
-			unpack, err := r.abiUpkeep3668.Unpack("OffchainLookup", resp)
+			e := r.abiUpkeep3668.Errors["OffchainLookup"]
+			unpack, err := e.Unpack(resp)
 			if err != nil {
 				logger.Println(err)
 				ch <- outStruct{
@@ -221,11 +223,15 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				}
 				return
 			}
-			offchainLookup.sender = *abi.ConvertType(unpack[0], new(common.Address)).(*common.Address)
-			offchainLookup.urls = *abi.ConvertType(unpack[1], new([]string)).(*[]string)
-			offchainLookup.callData = *abi.ConvertType(unpack[2], new([]byte)).(*[]byte)
-			offchainLookup.callbackFunction = *abi.ConvertType(unpack[3], new([4]byte)).(*[4]byte)
-			offchainLookup.extraData = *abi.ConvertType(unpack[4], new([]byte)).(*[]byte)
+			logger.Printf("unpack:: %+v\n", unpack)
+			errorParameters := unpack.([]interface{})
+			logger.Printf("unpacked inputs:: %+v\n", unpack)
+
+			offchainLookup.sender = *abi.ConvertType(errorParameters[0], new(common.Address)).(*common.Address)
+			offchainLookup.urls = *abi.ConvertType(errorParameters[1], new([]string)).(*[]string)
+			offchainLookup.callData = *abi.ConvertType(errorParameters[2], new([]byte)).(*[]byte)
+			offchainLookup.callbackFunction = *abi.ConvertType(errorParameters[3], new([4]byte)).(*[4]byte)
+			offchainLookup.extraData = *abi.ConvertType(errorParameters[4], new([]byte)).(*[]byte)
 			logger.Printf("\n%+v\n", offchainLookup)
 
 			// If the sender field does not match the address of the contract that was called, stop.
