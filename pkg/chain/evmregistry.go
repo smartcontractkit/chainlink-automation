@@ -204,11 +204,11 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			resp, err := r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
 			if err != nil {
 				logger.Println(err)
-				ch <- outStruct{
-					ur:  types.UpkeepResult{},
-					err: err,
-				}
-				return
+				// ch <- outStruct{
+				// 	ur:  types.UpkeepResult{},
+				// 	err: err,
+				// }
+				// return
 			}
 
 			// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
