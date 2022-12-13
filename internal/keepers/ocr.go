@@ -100,35 +100,52 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
-	// TODO: Generate multiple reports
-	// select, verify, and build report
-	toPerform := make([]ktypes.UpkeepResult, 0, 1)
-	for _, key := range keys {
-		upkeeps, err := k.service.CheckUpkeep(ctx, key)
-		if err != nil {
-			return false, nil, fmt.Errorf("%w: failed to check upkeep from attributed observation: %s", err, lCtx)
-		}
+	// No keys found for the given keys
+	if len(keys) == 0 {
+		k.logger.Printf("OCR report completed successfully with no eligible keys: %s", lCtx)
+		return false, nil, nil
+	}
 
-		// No upkeeps found for the given key
-		if len(upkeeps) == 0 {
+	// Check all upkeeps from the given observation
+	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keys...)
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
+	}
+
+	// No upkeeps found for the given keys
+	if len(checkedUpkeeps) == 0 {
+		k.logger.Printf("OCR report completed successfully with no successfully checked upkeeps: %s", lCtx)
+		return false, nil, nil
+	}
+
+	if len(checkedUpkeeps) > len(keys) {
+		return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected max %d but given %d", key, len(keys), len(checkedUpkeeps))
+	}
+
+	// Collect eligible upkeeps
+	var reportCapacity uint32
+	toPerform := make([]ktypes.UpkeepResult, 0, len(checkedUpkeeps))
+	for _, checkedUpkeep := range checkedUpkeeps {
+		if checkedUpkeep.State != ktypes.Eligible {
 			continue
 		}
 
-		if len(upkeeps) > 1 {
-			return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected 1 but given %d", key, len(upkeeps))
+		upkeepMaxGas := checkedUpkeep.ExecuteGas + k.upkeepGasOverhead
+		if reportCapacity+upkeepMaxGas > k.reportGasLimit {
+			// We don't break here since there could be an upkeep with the lower
+			// gas limit so there could be a spece for it in the report.
+			continue
 		}
 
-		if upkeeps[0].State == ktypes.Eligible {
-			// only build a report from a single upkeep for now
-			k.logger.Printf("reporting %s to be performed: %s", upkeeps[0].Key, lCtx.Short())
-			toPerform = append(toPerform, upkeeps[0])
-			break
-		}
+		k.logger.Printf("reporting %s to be performed: %s", checkedUpkeep.Key, lCtx.Short())
+
+		toPerform = append(toPerform, checkedUpkeep)
+		reportCapacity += upkeepMaxGas
 	}
 
 	// if nothing to report, return false with no error
 	if len(toPerform) == 0 {
-		k.logger.Printf("OCR report completed successfully with no upkeeps added to the report: %s", lCtx)
+		k.logger.Printf("OCR report completed successfully with no eligible upkeeps: %s", lCtx)
 		return false, nil, nil
 	}
 
@@ -165,8 +182,7 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, rt types.Report
 
 	for _, r := range results {
 		// indicate to the filter that the key has been accepted for transmit
-		err = k.filter.Accept(r.Key)
-		if err != nil {
+		if err = k.filter.Accept(r.Key); err != nil {
 			if errors.Is(err, ErrKeyAlreadySet) {
 				k.logger.Printf("%s: key already set: %s", r.Key, lCtx.Short())
 				return false, nil

@@ -16,7 +16,6 @@ import (
 )
 
 var (
-	ErrEncoding        = fmt.Errorf("error encountered while encoding")
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
 
@@ -61,7 +60,7 @@ func (_ *cryptoShuffler[T]) Shuffle(a []T) []T {
 type sortUpkeepKeys []ktypes.UpkeepKey
 
 func (s sortUpkeepKeys) Less(i, j int) bool {
-	return string([]byte(s[i])) < string([]byte(s[j]))
+	return string(s[i]) < string(s[j])
 }
 
 func (s sortUpkeepKeys) Swap(i, j int) {
@@ -163,9 +162,9 @@ func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio,
 		return ratio, fmt.Errorf("probability must be less than 1 and greater than 0")
 	}
 
-	var r complex128 = complex(float64(rounds), 0)
-	var n complex128 = complex(float64(nodes), 0)
-	var p complex128 = complex(float64(probability), 0)
+	r := complex(float64(rounds), 0)
+	n := complex(float64(nodes), 0)
+	p := complex(float64(probability), 0)
 
 	g := -1.0 * (p - 1.0)
 	x := cmplx.Pow(cmplx.Pow(g, 1.0/r), 1.0/n)

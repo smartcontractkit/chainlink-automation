@@ -87,6 +87,7 @@ type UpkeepResult struct {
 	LinkNative       *big.Int
 	CheckBlockNumber uint32
 	CheckBlockHash   [32]byte
+	ExecuteGas       uint32
 }
 
 type UpkeepState uint
@@ -101,20 +102,32 @@ type OffchainConfig struct {
 	// performed again while waiting for a confirmation. Standard setting is
 	// 100 blocks * average block time. Units are in milliseconds
 	PerformLockoutWindow int64 `json:"performLockoutWindow"`
+
 	// UniqueReports sets quorum requirements for the OCR process
 	UniqueReports bool `json:"uniqueReports"`
+
 	// TargetProbability is the probability that all upkeeps will be checked
 	// within the provided number rounds
 	TargetProbability string `json:"targetProbability"`
+
 	// TargetInRounds is the number of rounds for the above probability to be
 	// calculated
 	TargetInRounds int `json:"targetInRounds"`
+
 	// SamplingJobDuration is the time allowed for a sampling run to complete
 	// before forcing a new job on the latest block. Units are in milliseconds.
 	SamplingJobDuration int64 `json:"samplingJobDuration"`
+
 	// MinConfirmations limits registered log events to only those that have
 	// the provided number of confirmations.
 	MinConfirmations int `json:"minConfirmations"`
+
+	// GasLimitPerReport is the max gas that could be spent per one report.
+	// This is needed for calculation of how many upkeeps could be within report.
+	GasLimitPerReport uint32 `json:"gasLimitPerReport"`
+
+	// GasOverheadPerUpkeep is gas overhead per upkeep taken place in the report.
+	GasOverheadPerUpkeep uint32 `json:"gasOverheadPerUpkeep"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {

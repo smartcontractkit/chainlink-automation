@@ -11,7 +11,6 @@ import (
 var (
 	ErrProcessStopped   = fmt.Errorf("worker process has stopped")
 	ErrContextCancelled = fmt.Errorf("worker context cancelled")
-	ErrQueueFull        = fmt.Errorf("worker queue full")
 )
 
 type workResult[T any] struct {

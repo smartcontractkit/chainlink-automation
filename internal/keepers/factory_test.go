@@ -1,6 +1,7 @@
 package keepers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -58,12 +60,18 @@ func TestNewReportingPlugin(t *testing.T) {
 	digestStr := fmt.Sprintf("%32s", "test")
 	copy(digest[:], []byte(digestStr)[:32])
 
+	offchainConfig, err := json.Marshal(ktypes.OffchainConfig{
+		GasLimitPerReport:    500000,
+		GasOverheadPerUpkeep: 300000,
+	})
+	require.NoError(t, err)
+
 	p, i, err := f.NewReportingPlugin(types.ReportingPluginConfig{
 		ConfigDigest:   digest,
 		OracleID:       1,
 		N:              5,
 		F:              2,
-		OffchainConfig: []byte{},
+		OffchainConfig: offchainConfig,
 	})
 
 	<-subscribed

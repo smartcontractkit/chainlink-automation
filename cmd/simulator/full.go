@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -220,6 +221,14 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 
 	pLogs := &mockPerfLogs{}
 
+	offchainConfig, err := json.Marshal(ktypes.OffchainConfig{
+		GasLimitPerReport:    1000000,
+		GasOverheadPerUpkeep: 300000,
+	})
+	if err != nil {
+		panic(err)
+	}
+
 	config := keepers.ReportingFactoryConfig{
 		CacheExpiration:       20 * time.Minute,
 		CacheEvictionInterval: 30 * time.Second,
@@ -229,10 +238,11 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 
 	factory := keepers.NewReportingPluginFactory(client, reg, pLogs, chain.NewEVMReportEncoder(), logger, config)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{
-		ConfigDigest: [32]byte{},
-		OracleID:     commontypes.OracleID(i),
-		N:            n,
-		F:            0,
+		ConfigDigest:   [32]byte{},
+		OracleID:       commontypes.OracleID(i),
+		N:              n,
+		F:              0,
+		OffchainConfig: offchainConfig,
 	})
 	if err != nil {
 		panic(err)

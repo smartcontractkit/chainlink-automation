@@ -112,7 +112,8 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.CacheExpiration,
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
-		d.config.ServiceQueueLength)
+		d.config.ServiceQueueLength,
+	)
 
 	return &keepers{
 		id:      c.OracleID,
@@ -127,5 +128,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			offChainCfg.MinConfirmations,
 			d.logger,
 		),
+		reportGasLimit:    offChainCfg.GasLimitPerReport,
+		upkeepGasOverhead: offChainCfg.GasOverheadPerUpkeep,
 	}, info, nil
 }
