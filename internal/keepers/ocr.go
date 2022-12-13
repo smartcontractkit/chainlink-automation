@@ -182,8 +182,7 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, rt types.Report
 
 	for _, r := range results {
 		// indicate to the filter that the key has been accepted for transmit
-		err = k.filter.Accept(r.Key)
-		if err != nil {
+		if err = k.filter.Accept(r.Key); err != nil {
 			if errors.Is(err, ErrKeyAlreadySet) {
 				k.logger.Printf("%s: key already set: %s", r.Key, lCtx.Short())
 				return false, nil
