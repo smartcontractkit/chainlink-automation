@@ -32,6 +32,7 @@ func TestReportCoordinator(t *testing.T) {
 	// set up the mocks and mock data
 	key1Block1 := types.UpkeepKey("1|1")
 	key1Block2 := types.UpkeepKey("2|1")
+	key1Block3 := types.UpkeepKey("3|1")
 	id1 := types.UpkeepIdentifier("1")
 	bk2 := types.BlockKey("2")
 	filter := rc.Filter()
@@ -106,7 +107,10 @@ func TestReportCoordinator(t *testing.T) {
 		assert.Equal(t, false, filter(key1Block1), "filter should return false to indicate key should be filtered out at block 1")
 
 		mr.Mock.On("IdentifierFromKey", key1Block2).Return(id1, nil)
-		assert.Equal(t, true, filter(key1Block2), "filter should return true to indicate key should not be filtered out at block 2")
+		assert.Equal(t, false, filter(key1Block2), "filter should return false to indicate key should be filtered out at block 2")
+
+		mr.Mock.On("IdentifierFromKey", key1Block3).Return(id1, nil)
+		assert.Equal(t, true, filter(key1Block3), "filter should return true to indicate key should not be filtered out at block 3")
 
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "transmit should be confirmed")
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "transmit should be confirmed: key was not set for block 2")
