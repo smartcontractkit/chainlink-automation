@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,8 +77,16 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 
 		// only apply filter if key id is registered in the cache
 		if bl, ok := rc.idBlocks.Get(string(id)); ok {
+			// TODO: the key is constructed in the registry. splitting out the
+			// block number here is a hack solution that should be fixed asap.
+			var blKey string
+			parts := strings.Split(string(key), "|")
+			if len(parts) == 2 {
+				blKey = parts[0]
+			}
+
 			// only apply filter if key block is after block in cache
-			if len(bl) > 0 && string(key) >= string(bl) {
+			if len(bl) > 0 && blKey > string(bl) {
 				return true
 			}
 
