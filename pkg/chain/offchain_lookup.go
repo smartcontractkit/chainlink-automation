@@ -74,7 +74,7 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 	}
 
 	if _, ok := err.(JsonError); !ok {
-		return OffchainLookup{}, errors.Wrapf(err, "err is not JsonError:")
+		return OffchainLookup{}, errors.Wrapf(err, "err is type %T no JsonError:", err)
 	}
 
 	// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
@@ -166,7 +166,7 @@ func (o *OffchainLookup) query() ([]byte, error) {
 		}
 		if statusCode <= 299 {
 			// success a 2XX response
-			fmt.Printf("succesful offchain lookup on index %d with urls: %v", i, o.urls)
+			fmt.Printf("succesful offchain lookup on index %d with urls: %v\n", i, o.urls)
 			return resp, nil
 		}
 		// continue trying next url
@@ -201,8 +201,9 @@ func (o *OffchainLookup) query() ([]byte, error) {
 //	   }
 //	}.
 func (o *OffchainLookup) doRequest(url string, senderString string, callDataString string) ([]byte, int, error) {
-	queryUrl := strings.Replace(url, "{sender}", senderString, 1)
 	isGET := strings.Contains(url, "{data}")
+	queryUrl := strings.Replace(url, "{sender}", senderString, 1)
+	queryUrl = strings.Replace(queryUrl, "{data}", callDataString, 1)
 	fmt.Println("url: ", queryUrl)
 
 	// Construct a request URL by replacing sender with the lowercase 0x-prefixed hexadecimal formatted sender parameter, and replacing data with the 0x-prefixed hexadecimal formatted callData parameter.

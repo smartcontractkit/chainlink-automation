@@ -25,25 +25,24 @@ func TestOffchainLookup(t *testing.T) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	r, err := NewEVMRegistryV2_0(common.HexToAddress("0x41b1f563029bb5DDfe2f190C3beD9Eda331B296e"), evmClient)
+	r, err := NewEVMRegistryV2_0(common.HexToAddress("0xC7722bA5a056204FfB29aE112477Bbd88a6E1cCF"), evmClient)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	upkeepInfo := keeper_registry_wrapper2_0.UpkeepInfo{
-		Target:     common.HexToAddress("0x6F1C310F2F23A7431fAB9d3ed5e40F90870DA883"),
+		Target:     common.HexToAddress("0xbcD714254B4c2b56178F17440182a7CfEF66fCa9"),
 		ExecuteGas: uint32(6500000),
 		CheckData:  []byte{},
 	}
-	header, err := r.evmClient.HeaderByNumber(context.Background(), nil)
+	ctx := context.Background()
+	header, err := r.evmClient.HeaderByNumber(ctx, nil)
 	if err != nil {
 		fmt.Println("header: ", err)
 	}
 
 	opts := bind.CallOpts{
-		Pending:     false,
-		From:        common.Address{},
 		BlockNumber: header.Number,
-		Context:     nil,
+		Context:     ctx,
 	}
 	offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, &opts)
 	if err != nil {
