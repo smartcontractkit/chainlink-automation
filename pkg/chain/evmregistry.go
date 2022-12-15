@@ -192,7 +192,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			}
 			logger.Println(string(offchainResp))
 
-			needed, performData, err := r.offchainLookupCallback(offchainLookup, upkeepInfo, opts)
+			needed, performData, err := r.offchainLookupCallback(offchainLookup, offchainResp, upkeepInfo, opts)
 			if !needed {
 				logger.Println(err)
 				result.State = types.NotEligible

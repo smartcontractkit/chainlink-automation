@@ -57,7 +57,7 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 	// function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData);
 	payload, err := r.abiAutomationCompatibleInterface.Pack("checkUpkeep", upkeepInfo.CheckData)
 	if err != nil {
-		return OffchainLookup{}, err
+		return OffchainLookup{}, errors.Wrapf(err, "checkUpkeep pack error:")
 	}
 	checkUpkeepGasLimit := uint32(200000) + uint32(6500000) + uint32(300000) + upkeepInfo.ExecuteGas
 
@@ -70,7 +70,7 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 
 	_, err = r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
 	if err == nil {
-		return OffchainLookup{}, err
+		return OffchainLookup{}, errors.Wrapf(err, "call contract error:")
 	}
 
 	// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
@@ -78,11 +78,11 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 	e := r.abiUpkeep3668.Errors["OffchainLookup"]
 	decode, err := hexutil.Decode(err.(JsonError).ErrorData().(string))
 	if err != nil {
-		return OffchainLookup{}, err
+		return OffchainLookup{}, errors.Wrapf(err, "decode jsonError error:")
 	}
 	unpack, err := e.Unpack(decode)
 	if err != nil {
-		return OffchainLookup{}, err
+		return OffchainLookup{}, errors.Wrapf(err, "unpack error:")
 	}
 	errorParameters := unpack.([]interface{})
 
@@ -94,19 +94,19 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 	return offchainLookup, nil
 }
 
-func (r *evmRegistryv2_0) offchainLookupCallback(offchainLookup OffchainLookup, upkeepInfo keeper_registry_wrapper2_0.UpkeepInfo, opts *bind.CallOpts) (bool, []byte, error) {
+func (r *evmRegistryv2_0) offchainLookupCallback(offchainLookup OffchainLookup, offchainResp []byte, upkeepInfo keeper_registry_wrapper2_0.UpkeepInfo, opts *bind.CallOpts) (bool, []byte, error) {
 	// call to the contract function specified by the 4-byte selector callbackFunction, supplying the data returned and extraData
 	typ, err := abi.NewType("bytes", "", nil)
 	if err != nil {
-		return false, nil, err
+		return false, nil, errors.Wrapf(err, "abi new type error:")
 	}
 	callbackArgs := abi.Arguments{
 		{Name: "response", Type: typ},
 		{Name: "extraData", Type: typ},
 	}
-	pack, err := callbackArgs.Pack()
+	pack, err := callbackArgs.Pack(offchainResp, offchainLookup.extraData)
 	if err != nil {
-		return false, nil, err
+		return false, nil, errors.Wrapf(err, "callback args pack error:")
 	}
 
 	var callbackPayload []byte
@@ -123,7 +123,7 @@ func (r *evmRegistryv2_0) offchainLookupCallback(offchainLookup OffchainLookup, 
 
 	callbackResp, err := r.evmClient.CallContract(context.Background(), callbackMsg, opts.BlockNumber)
 	if err != nil {
-		return false, nil, err
+		return false, nil, errors.Wrapf(err, "call contract callback error:")
 	}
 
 	boolTyp, err := abi.NewType("bool", "", nil)
@@ -133,7 +133,7 @@ func (r *evmRegistryv2_0) offchainLookupCallback(offchainLookup OffchainLookup, 
 	}
 	values, err := callbackOutput.Unpack(callbackResp)
 	if err != nil {
-		return false, nil, err
+		return false, nil, errors.Wrapf(err, "callback ouput unpack error:")
 	}
 
 	upkeepNeeded := *abi.ConvertType(values[0], new(bool)).(*bool)
@@ -153,7 +153,7 @@ func (o *OffchainLookup) query() ([]byte, error) {
 	senderString := strings.ToLower(o.sender.Hex())
 	callDataString := hex.EncodeToString(o.callData)
 
-	for _, url := range o.urls {
+	for i, url := range o.urls {
 		resp, statusCode, err := o.doRequest(url, senderString, callDataString)
 		if err != nil {
 			// either an error or a 4XX response
@@ -162,14 +162,14 @@ func (o *OffchainLookup) query() ([]byte, error) {
 		}
 		if statusCode <= 299 {
 			// success a 2XX response
+			fmt.Printf("succesful offchain lookup on index %d with urls: %v", i, o.urls)
 			return resp, nil
 		}
 		// continue trying next url
-		fmt.Println("didnt work - ", url)
 	}
 
 	// If no successful response was received, return an error
-	return nil, errors.New("offchain lookup failed")
+	return nil, errors.Errorf("offchain lookup failed: %v", o.urls)
 }
 
 // Given a URL template returned in an OffchainLookup, the URL to query is composed by replacing sender with the lowercase 0x-prefixed hexadecimal formatted sender parameter, and replacing data with the the 0x-prefixed hexadecimal formatted callData parameter.
@@ -209,7 +209,7 @@ func (o *OffchainLookup) doRequest(url string, senderString string, callDataStri
 		queryUrl = strings.Replace(url, "{data}", callDataString, 1)
 		req, err = http.NewRequest("GET", queryUrl, nil)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, errors.Wrapf(err, "get request error:")
 		}
 
 	} else {
@@ -220,19 +220,19 @@ func (o *OffchainLookup) doRequest(url string, senderString string, callDataStri
 		jsonBody, _ := json.Marshal(body)
 		req, err = http.NewRequest("POST", queryUrl, bytes.NewBuffer(jsonBody))
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, errors.Wrapf(err, "post request error:")
 		}
 	}
 	// Make an HTTP GET request to the request URL.
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.Wrapf(err, "do request error:")
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.Wrapf(err, "read body error:")
 	}
 
 	// If the response code is in the range 400-499, return an error to the caller and stop.

@@ -3,12 +3,15 @@ package chain
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -16,6 +19,61 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
+
+func TestOffchainLookup(t *testing.T) {
+	evmClient, err := ethclient.Dial("wss://goerli.infura.io/ws/v3/ae1fbbb2a1d34b32b586791054436a14")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	r, err := NewEVMRegistryV2_0(common.HexToAddress("0x41b1f563029bb5DDfe2f190C3beD9Eda331B296e"), evmClient)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	upkeepInfo := keeper_registry_wrapper2_0.UpkeepInfo{
+		Target:     common.HexToAddress("0x6F1C310F2F23A7431fAB9d3ed5e40F90870DA883"),
+		ExecuteGas: uint32(6500000),
+		CheckData:  []byte{},
+	}
+	header, err := r.evmClient.HeaderByNumber(context.Background(), nil)
+	if err != nil {
+		fmt.Println("header: ", err)
+	}
+
+	opts := bind.CallOpts{
+		Pending:     false,
+		From:        common.Address{},
+		BlockNumber: header.Number,
+		Context:     nil,
+	}
+	offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, &opts)
+	if err != nil {
+		fmt.Println("calltagregt: ", err)
+		return
+	}
+	fmt.Printf("\n%+v\n", offchainLookup)
+
+	// If the sender field does not match the address of the contract that was called, stop.
+	if offchainLookup.sender != upkeepInfo.Target {
+		fmt.Println("sender != target")
+		return
+	}
+
+	// 	do the http calls
+	offchainResp, err := offchainLookup.query()
+	if err != nil {
+		fmt.Println("offchainlookup: ", err)
+		return
+	}
+	fmt.Println(string(offchainResp))
+
+	needed, performData, err := r.offchainLookupCallback(offchainLookup, offchainResp, upkeepInfo, &opts)
+	if !needed {
+		fmt.Println("callback: ", err)
+		return
+	}
+
+	fmt.Println("OffchainLookup Success!!", needed, performData)
+}
 
 func TestGetActiveUpkeepKeys(t *testing.T) {
 	mockClient := new(mocks.Client)
