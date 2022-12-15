@@ -1,22 +1,15 @@
 package chain
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"math/big"
-	"net/http"
 	"strings"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0"
@@ -33,19 +26,6 @@ var (
 	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
 	ErrContextCancelled      = fmt.Errorf("context was cancelled")
 )
-
-type OffchainLookup struct {
-	sender           common.Address
-	urls             []string
-	callData         []byte
-	callbackFunction [4]byte
-	extraData        []byte
-}
-
-type OffchainLookupBody struct {
-	sender string
-	data   string
-}
 
 type outStruct struct {
 	ok  bool
@@ -168,7 +148,6 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 	// if reverts plus flag that eip3668, for now we can assume eip3668 for POC
 	// so then we need to call the contract directly
 	// should pass thru to avoid extra rpc call
-	var performData []byte
 	if !upkeepNeeded {
 		upkeepInfo, err := r.registry.GetUpkeep(opts, upkeepId)
 		if err != nil {
@@ -180,10 +159,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			return
 		} else {
 
-			var payload []byte
-
-			// function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData);
-			payload, err = r.abiAutomationCompatibleInterface.Pack("checkUpkeep", upkeepInfo.CheckData)
+			offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, opts)
 			if err != nil {
 				logger.Println(err)
 				ch <- outStruct{
@@ -192,46 +168,6 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				}
 				return
 			}
-			checkUpkeepGasLimit := uint32(200000) + uint32(6500000) + uint32(300000) + upkeepInfo.ExecuteGas
-
-			callMsg := ethereum.CallMsg{
-				From: r.address,          // registry addr
-				To:   &upkeepInfo.Target, // upkeep addr
-				Gas:  uint64(checkUpkeepGasLimit),
-				Data: hexutil.Bytes(payload), // checkUpkeep(checkData)
-			}
-
-			resp, err := r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
-			if err != nil {
-				logger.Println(err)
-				// ch <- outStruct{
-				// 	ur:  types.UpkeepResult{},
-				// 	err: err,
-				// }
-				// return
-			}
-
-			// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
-			offchainLookup := OffchainLookup{}
-			e := r.abiUpkeep3668.Errors["OffchainLookup"]
-			unpack, err := e.Unpack(resp)
-			if err != nil {
-				logger.Println(err)
-				ch <- outStruct{
-					ur:  types.UpkeepResult{},
-					err: err,
-				}
-				return
-			}
-			logger.Printf("unpack:: %+v\n", unpack)
-			errorParameters := unpack.([]interface{})
-			logger.Printf("unpacked inputs:: %+v\n", unpack)
-
-			offchainLookup.sender = *abi.ConvertType(errorParameters[0], new(common.Address)).(*common.Address)
-			offchainLookup.urls = *abi.ConvertType(errorParameters[1], new([]string)).(*[]string)
-			offchainLookup.callData = *abi.ConvertType(errorParameters[2], new([]byte)).(*[]byte)
-			offchainLookup.callbackFunction = *abi.ConvertType(errorParameters[3], new([4]byte)).(*[4]byte)
-			offchainLookup.extraData = *abi.ConvertType(errorParameters[4], new([]byte)).(*[]byte)
 			logger.Printf("\n%+v\n", offchainLookup)
 
 			// If the sender field does not match the address of the contract that was called, stop.
@@ -239,13 +175,13 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				logger.Println("sender != target")
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
-					err: err,
+					err: errors.New("OffchainLookup sender != target"),
 				}
 				return
 			}
 
 			// 	do the http calls
-			offchainResp, err := offchainLookup.Query()
+			offchainResp, err := offchainLookup.query()
 			if err != nil {
 				logger.Println(err)
 				ch <- outStruct{
@@ -256,74 +192,30 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			}
 			logger.Println(string(offchainResp))
 
-			// 	do callback
-			// call to the contract function specified by the 4-byte selector callbackFunction, supplying the data returned and extraData
-			typ, err := abi.NewType("bytes", "", nil)
-			if err != nil {
+			needed, performData, err := r.offchainLookupCallback(offchainLookup, upkeepInfo, opts)
+			if !needed {
 				logger.Println(err)
-				ch <- outStruct{
-					ur:  types.UpkeepResult{},
-					err: err,
-				}
-				return
-			}
-			callbackArgs := abi.Arguments{
-				{Name: "extraData", Type: typ},
-				{Name: "response", Type: typ},
-			}
-			pack, err := callbackArgs.Pack()
-			if err != nil {
-				logger.Println(err)
-				ch <- outStruct{
-					ur:  types.UpkeepResult{},
-					err: err,
-				}
-				return
-			}
-
-			var callbackPayload []byte
-			callbackPayload = append(callbackPayload, offchainLookup.callbackFunction[:]...)
-			callbackPayload = append(callbackPayload, pack...)
-
-			callbackMsg := ethereum.CallMsg{
-				From: r.address,          // registry addr
-				To:   &upkeepInfo.Target, // upkeep addr
-				Gas:  uint64(checkUpkeepGasLimit),
-				Data: hexutil.Bytes(callbackPayload), // callbackFunc(response, extraData)
-			}
-
-			callbackResp, err := r.evmClient.CallContract(context.Background(), callbackMsg, opts.BlockNumber)
-			if err != nil {
-				logger.Println(err)
-				ch <- outStruct{
-					ur:  types.UpkeepResult{},
-					err: err,
-				}
-				return
-			}
-
-			upkeepNeeded = *abi.ConvertType(callbackResp[0], new(bool)).(*bool)
-			if !upkeepNeeded {
 				result.State = types.NotEligible
 				ch <- outStruct{
 					ur: result,
 				}
 				return
 			}
-			performData = *abi.ConvertType(callbackResp[1], new([]byte)).(*[]byte)
+			upkeepNeeded = needed
 			result.PerformData = performData
 			rawPerformData = performData
+			logger.Println("OffchainLookup Success!!")
 		}
 	}
 
-	// // TODO: not sure it it's best to short circuit here
-	// if !upkeepNeeded {
-	// 	result.State = types.NotEligible
-	// 	ch <- outStruct{
-	// 		ur: result,
-	// 	}
-	// 	return
-	// }
+	// TODO: not sure it it's best to short circuit here
+	if !upkeepNeeded {
+		result.State = types.NotEligible
+		ch <- outStruct{
+			ur: result,
+		}
+		return
+	}
 
 	type performDataStruct struct {
 		CheckBlockNumber uint32   `abi:"checkBlockNumber"`
@@ -390,130 +282,6 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 		ur: result,
 	}
 }
-
-// Query - do off chain lookup query. section from eip-3668
-// 4 - Construct a request URL by replacing sender with the lowercase 0x-prefixed hexadecimal formatted sender parameter, and replacing data with the the 0x-prefixed hexadecimal formatted callData parameter. The client may choose which URLs to try in which order, but SHOULD prioritise URLs earlier in the list over those later in the list.
-// 5 - Make an HTTP GET request to the request URL.
-// 6 - If the response code from step (5) is in the range 400-499, return an error to the caller and stop.
-// 7 - If the response code from step (5) is in the range 500-599, go back to step (5) and pick a different URL, or stop if there are no further URLs to try.
-func (o *OffchainLookup) Query() ([]byte, error) {
-	senderString := strings.ToLower(o.sender.Hex())
-	callDataString := hex.EncodeToString(o.callData)
-
-	for _, url := range o.urls {
-		resp, statusCode, err := o.doRequest(url, senderString, callDataString)
-		if err != nil {
-			// either an error or a 4XX response
-			err = errors.Wrapf(err, "error with query. statusCode: %d ;url: %s ;sender: %s ;callData: %s", statusCode, url, senderString, callDataString)
-			return nil, err
-		}
-		if statusCode <= 299 {
-			// success a 2XX response
-			return resp, nil
-		}
-		// continue trying next url
-		fmt.Println("didnt work - ", url)
-	}
-
-	// If no successful response was received, return an error
-	return nil, errors.New("offchain lookup failed")
-}
-
-// Given a URL template returned in an OffchainLookup, the URL to query is composed by replacing sender with the lowercase 0x-prefixed hexadecimal formatted sender parameter, and replacing data with the the 0x-prefixed hexadecimal formatted callData parameter.
-//
-// For example, if a contract returns the following data in an OffchainLookup:
-// urls = ["https://example.com/gateway/{sender}/{data}.json"]
-// sender = "0xaabbccddeeaabbccddeeaabbccddeeaabbccddee"
-// callData = "0x00112233"
-// The request URL to query is https://example.com/gateway/0xaabbccddeeaabbccddeeaabbccddeeaabbccddee/0x00112233.json.
-//
-// If the URL template contains the {data} substitution parameter, the client MUST send a GET request after replacing the substitution parameters as described above.
-// If the URL template does not contain the {data} substitution parameter, the client MUST send a POST request after replacing the substitution parameters as described above. The POST request MUST be sent with a Content-Type of application/json, and a payload matching the following schema:
-//
-//	{
-//	   "type": "object",
-//	   "properties": {
-//	       "data": {
-//	           "type": "string",
-//	           "description": "0x-prefixed hex string containing the `callData` from the contract"
-//	       },
-//	       "sender": {
-//	           "type": "string",
-//	           "description": "0x-prefixed hex string containing the `sender` parameter from the contract"
-//	       }
-//	   }
-//	}.
-func (o *OffchainLookup) doRequest(url string, senderString string, callDataString string) ([]byte, int, error) {
-	queryUrl := strings.Replace(url, "{sender}", senderString, 1)
-	isGET := strings.Contains(url, "{data}")
-	fmt.Println("url: ", queryUrl)
-
-	// Construct a request URL by replacing sender with the lowercase 0x-prefixed hexadecimal formatted sender parameter, and replacing data with the 0x-prefixed hexadecimal formatted callData parameter.
-	client := http.Client{}
-	var req *http.Request
-	var err error
-	if isGET {
-		queryUrl = strings.Replace(url, "{data}", callDataString, 1)
-		req, err = http.NewRequest("GET", queryUrl, nil)
-		if err != nil {
-			return nil, 0, err
-		}
-
-	} else {
-		body := OffchainLookupBody{
-			sender: senderString,
-			data:   callDataString,
-		}
-		jsonBody, _ := json.Marshal(body)
-		req, err = http.NewRequest("POST", queryUrl, bytes.NewBuffer(jsonBody))
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-	// Make an HTTP GET request to the request URL.
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// If the response code is in the range 400-499, return an error to the caller and stop.
-	if resp.StatusCode >= 400 && resp.StatusCode <= 499 {
-		return nil, resp.StatusCode, errors.Errorf("status code %d recieved, stopping offchain lookup", resp.StatusCode)
-	}
-	// If the response code is in the range 500-599, go back and pick a different URL, or stop if there are no further URLs to try.
-	if resp.StatusCode >= 500 && resp.StatusCode <= 599 {
-		return nil, resp.StatusCode, nil
-	}
-	// Return the response body if the status code is between 200 and 299
-	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		return body, resp.StatusCode, nil
-	}
-
-	return nil, resp.StatusCode, nil
-}
-
-// maybe
-// var (
-// 	errorSig     = []byte{0x08, 0xc3, 0x79, 0xa0} // Keccak256("Error(string)")[:4]
-// 	abiString, _ = abi.NewType("string", "", nil)
-// )
-//
-// func unpackError(result []byte) (string, error) {
-// 	if !bytes.Equal(result[:4], errorSig) {
-// 		return "<tx result not Error(string)>", errors.New("TX result not of type Error(string)")
-// 	}
-// 	vs, err := abi.Arguments{{Type: abiString}}.UnpackValues(result[4:])
-// 	if err != nil {
-// 		return "<invalid tx result>", errors.Wrap(err, "unpacking revert reason")
-// 	}
-// 	return vs[0].(string), nil
-// }
 
 func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, key types.UpkeepKey, logger *log.Logger) (bool, types.UpkeepResult, error) {
 	chResult := make(chan outStruct, 1)
