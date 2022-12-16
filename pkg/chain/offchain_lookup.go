@@ -36,7 +36,6 @@ type OffchainLookupBody struct {
 // JsonError is a rpc.jsonError interface
 type JsonError interface {
 	Error() string
-	// ErrorCode() int
 	ErrorData() interface{}
 }
 
@@ -68,19 +67,19 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 		Data: hexutil.Bytes(payload), // checkUpkeep(checkData)
 	}
 
-	_, err = r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
-	if err == nil {
+	_, jsonErr := r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
+	if jsonErr == nil {
 		return OffchainLookup{}, errors.Wrapf(err, "call contract error:")
 	}
 
-	if _, ok := err.(JsonError); !ok {
+	if _, ok := jsonErr.(JsonError); !ok {
 		return OffchainLookup{}, errors.Wrapf(err, "err is type %T no JsonError:", err)
 	}
 
 	// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
 	offchainLookup := OffchainLookup{}
 	e := r.abiUpkeep3668.Errors["OffchainLookup"]
-	decode, err := hexutil.Decode(err.(JsonError).ErrorData().(string))
+	decode, err := hexutil.Decode(jsonErr.(JsonError).ErrorData().(string))
 	if err != nil {
 		return OffchainLookup{}, errors.Wrapf(err, "decode jsonError error:")
 	}
