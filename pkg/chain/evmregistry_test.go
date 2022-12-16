@@ -44,7 +44,7 @@ func TestOffchainLookup(t *testing.T) {
 		BlockNumber: header.Number,
 		Context:     ctx,
 	}
-	offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, &opts)
+	offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, &opts, nil)
 	if err != nil {
 		fmt.Println("calltagregt: ", err)
 		return
