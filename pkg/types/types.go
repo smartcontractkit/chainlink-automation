@@ -146,10 +146,6 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		config.SamplingJobDuration = 3000 // default of 3 seconds if not set
 	}
 
-	if config.MinConfirmations == 0 {
-		config.MinConfirmations = 1
-	}
-
 	if config.GasLimitPerReport == 0 {
 		config.GasLimitPerReport = 5_300_000
 	}
