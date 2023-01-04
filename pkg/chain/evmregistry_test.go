@@ -30,7 +30,7 @@ func TestOffchainLookup(t *testing.T) {
 		log.Fatalln(err)
 	}
 	upkeepInfo := keeper_registry_wrapper2_0.UpkeepInfo{
-		Target:     common.HexToAddress("0xbcD714254B4c2b56178F17440182a7CfEF66fCa9"),
+		Target:     common.HexToAddress("0xD568f9C90b15904fd69128f0b830dFDd4B1f9D1F"),
 		ExecuteGas: uint32(6500000),
 		CheckData:  []byte{},
 	}

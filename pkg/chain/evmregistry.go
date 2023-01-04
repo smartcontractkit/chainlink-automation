@@ -158,10 +158,12 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			}
 			return
 		} else {
+			logger.Printf("upkeepInfo: %+v", upkeepInfo)
+			logger.Printf("opts: %+v", opts)
 
 			offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, opts, logger)
 			if err != nil {
-				logger.Println(err)
+				logger.Println("callTargetCheckUpkeep", err)
 				ch <- outStruct{
 					ur:  types.UpkeepResult{},
 					err: err,
@@ -172,7 +174,6 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 
 			// If the sender field does not match the address of the contract that was called, stop.
 			if offchainLookup.sender != upkeepInfo.Target {
-				// evmregistry.go:175: 0x0000000000000000000000000000000000000000  !=  0xbcD714254B4c2b56178F17440182a7CfEF66fCa9
 				logger.Println(offchainLookup.sender, " != ", upkeepInfo.Target)
 				// ch <- outStruct{
 				// 	ur:  types.UpkeepResult{},

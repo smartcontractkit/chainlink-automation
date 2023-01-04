@@ -72,12 +72,10 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 	if jsonErr == nil {
 		return OffchainLookup{}, errors.Wrapf(err, "call contract error:")
 	}
-	logger.Printf("jsonErr: %v\n", jsonErr)
 
 	if _, ok := jsonErr.(JsonError); !ok {
 		return OffchainLookup{}, errors.Wrapf(err, "err is type %T no JsonError:", err)
 	}
-	logger.Printf("jsonErr: %v\n", jsonErr.(JsonError).ErrorData())
 
 	// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
 	offchainLookup := OffchainLookup{}
@@ -86,12 +84,10 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 	if err != nil {
 		return OffchainLookup{}, errors.Wrapf(err, "decode jsonError error:")
 	}
-	logger.Printf("decode: %v\n", decode)
 	unpack, err := e.Unpack(decode)
 	if err != nil {
 		return OffchainLookup{}, errors.Wrapf(err, "unpack error:")
 	}
-	logger.Printf("unpack: %v\n", unpack)
 	errorParameters := unpack.([]interface{})
 
 	offchainLookup.sender = *abi.ConvertType(errorParameters[0], new(common.Address)).(*common.Address)
@@ -99,7 +95,6 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 	offchainLookup.callData = *abi.ConvertType(errorParameters[2], new([]byte)).(*[]byte)
 	offchainLookup.callbackFunction = *abi.ConvertType(errorParameters[3], new([4]byte)).(*[4]byte)
 	offchainLookup.extraData = *abi.ConvertType(errorParameters[4], new([]byte)).(*[]byte)
-	logger.Printf("offchainLookup: %v\n", offchainLookup)
 	return offchainLookup, nil
 }
 
