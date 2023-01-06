@@ -25,14 +25,24 @@ func TestOffchainLookup(t *testing.T) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	r, err := NewEVMRegistryV2_0(common.HexToAddress("0xC7722bA5a056204FfB29aE112477Bbd88a6E1cCF"), evmClient)
+	r, err := NewEVMRegistryV2_0(common.HexToAddress("0xE9f2b0a7b59D2B2ed2B7ac5e2580c7b06bADAFd3"), evmClient)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	// [keepers-plugin] evmregistry.go:161: upkeepInfo: {Target:0xD568f9C90b15904fd69128f0b830dFDd4B1f9D1F
+	// ExecuteGas:500000
+	// CheckData:[48 120 48 48]
+	// Balance:+10000000000000000000
+	// Admin:0x00894C8b2B1a5635d2014287D2762a751Be0DcBe
+	// MaxValidBlocknumber:4294967295
+	// LastPerformBlockNumber:0
+	// AmountSpent:+0
+	// Paused:false
+	// OffchainConfig:[]}
 	upkeepInfo := keeper_registry_wrapper2_0.UpkeepInfo{
 		Target:     common.HexToAddress("0xD568f9C90b15904fd69128f0b830dFDd4B1f9D1F"),
-		ExecuteGas: uint32(6500000),
-		CheckData:  []byte{},
+		ExecuteGas: uint32(500000),
+		CheckData:  []byte{48, 120, 48, 48},
 	}
 	ctx := context.Background()
 	header, err := r.evmClient.HeaderByNumber(ctx, nil)
@@ -40,7 +50,10 @@ func TestOffchainLookup(t *testing.T) {
 		fmt.Println("header: ", err)
 	}
 
+	// from node {Pending:false From:0x0000000000000000000000000000000000000000 BlockNumber:+8267266 Context:context.Background.WithCancel}
 	opts := bind.CallOpts{
+		Pending:     false,
+		From:        common.Address{},
 		BlockNumber: header.Number,
 		Context:     ctx,
 	}
