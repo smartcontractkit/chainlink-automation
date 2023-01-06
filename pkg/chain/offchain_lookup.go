@@ -70,12 +70,11 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 
 	d, jsonErr := r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
 	if jsonErr == nil {
-		data := fmt.Sprintf("call contract: %s:", d)
-		return OffchainLookup{}, errors.Wrapf(jsonErr, data)
+		return OffchainLookup{}, errors.Wrapf(jsonErr, fmt.Sprintf("call contract: %s:", d))
 	}
 
 	if _, ok := jsonErr.(JsonError); !ok {
-		return OffchainLookup{}, errors.Wrapf(jsonErr, "err is type %T no JsonError:", err)
+		return OffchainLookup{}, errors.Wrapf(jsonErr, "err is type %T no JsonError:", jsonErr)
 	}
 
 	// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
