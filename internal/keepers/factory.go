@@ -60,6 +60,8 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
 	}
 
+	d.logger.Printf("successfully decoded offchain config when creating plugin: %s", string(c.OffchainConfig))
+
 	info := types.ReportingPluginInfo{
 		Name: fmt.Sprintf("Oracle %d: Keepers Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: types.ReportingPluginLimits{
