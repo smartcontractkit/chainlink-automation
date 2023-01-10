@@ -146,7 +146,7 @@ func (rc *reportCoordinator) checkLogs() {
 		// Process log if the key hasn't been confirmed yet
 		confirmed, ok := rc.activeKeys.Get(string(l.Key))
 		if ok && !confirmed {
-			rc.logger.Printf("Perform log found for key %s in transaction %s at block %d, with confirmations %d", l.Key, l.TransactionHash, l.BlockNumber, l.Confirmations)
+			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 			// if we detect a log, remove it from the observation filters
 			// to allow it to be reported on again at or after the block in
 			// which it was transmitted
