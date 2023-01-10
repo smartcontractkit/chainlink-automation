@@ -134,6 +134,7 @@ func (rc *reportCoordinator) checkLogs() {
 	// ensure no other nodes attempt to transmit again.
 	for _, l := range logs {
 		if l.Confirmations < int64(rc.minConfs) {
+			rc.logger.Printf("Skipping log in transaction %s as confirmations (%d) is less than min confirmations (%d)", l.TransactionHash, l.Confirmations, rc.minConfs)
 			continue
 		}
 
@@ -145,7 +146,7 @@ func (rc *reportCoordinator) checkLogs() {
 		// Process log if the key hasn't been confirmed yet
 		confirmed, ok := rc.activeKeys.Get(string(l.Key))
 		if ok && !confirmed {
-			rc.logger.Printf("Perform log found for key %s in transaction %s at block %d", l.Key, l.TransactionHash, l.BlockNumber)
+			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 			// if we detect a log, remove it from the observation filters
 			// to allow it to be reported on again at or after the block in
 			// which it was transmitted

@@ -133,11 +133,12 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		upkeepMaxGas := checkedUpkeep.ExecuteGas + k.upkeepGasOverhead
 		if reportCapacity+upkeepMaxGas > k.reportGasLimit {
 			// We don't break here since there could be an upkeep with the lower
-			// gas limit so there could be a spece for it in the report.
+			// gas limit so there could be a space for it in the report.
+			k.logger.Printf("skipping upkeep %s due to report limit, current capacity is %d, upkeep gas is %d with %d overhead", checkedUpkeep.Key, reportCapacity, checkedUpkeep.ExecuteGas, k.upkeepGasOverhead)
 			continue
 		}
 
-		k.logger.Printf("reporting %s to be performed: %s", checkedUpkeep.Key, lCtx.Short())
+		k.logger.Printf("reporting %s to be performed with gas limit %d and %d overhead: %s", checkedUpkeep.Key, checkedUpkeep.ExecuteGas, k.upkeepGasOverhead, lCtx.Short())
 
 		toPerform = append(toPerform, checkedUpkeep)
 		reportCapacity += upkeepMaxGas
