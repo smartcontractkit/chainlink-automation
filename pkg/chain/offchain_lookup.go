@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
@@ -54,6 +55,7 @@ POC NOTES:
 */
 
 func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapper2_0.UpkeepInfo, opts *bind.CallOpts, logger *log.Logger) (OffchainLookup, error) {
+	fmt.Println("~~~", "starting callTargetCheckUpkeep")
 	// function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData);
 	payload, err := r.abiAutomationCompatibleInterface.Pack("checkUpkeep", upkeepInfo.CheckData)
 	if err != nil {
@@ -68,18 +70,24 @@ func (r *evmRegistryv2_0) callTargetCheckUpkeep(upkeepInfo keeper_registry_wrapp
 		Data: hexutil.Bytes(payload), // checkUpkeep(checkData)
 	}
 
+	fmt.Println("~~~", "calling upkeep contract directly")
 	_, jsonErr := r.evmClient.CallContract(context.Background(), callMsg, opts.BlockNumber)
 	if jsonErr == nil {
+		fmt.Println("~~~", "jsonErr == nil")
 		return OffchainLookup{}, errors.Wrapf(err, "call contract error:")
 	}
+	fmt.Println("~~~", "done calling upkeep contract directly")
 
 	if _, ok := jsonErr.(JsonError); !ok {
+		fmt.Println("~~~", "err was not json error")
+		fmt.Println("~~~", "type of err is.....", reflect.TypeOf(jsonErr).Elem())
 		return OffchainLookup{}, errors.Wrapf(err, "err is type %T no JsonError:", err)
 	}
 
 	// error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData);
 	offchainLookup := OffchainLookup{}
 	e := r.abiUpkeep3668.Errors["OffchainLookup"]
+	fmt.Println("~~~", "error data", jsonErr.(JsonError).ErrorData().(string))
 	decode, err := hexutil.Decode(jsonErr.(JsonError).ErrorData().(string))
 	if err != nil {
 		return OffchainLookup{}, errors.Wrapf(err, "decode jsonError error:")
@@ -157,7 +165,10 @@ func (o *OffchainLookup) query() ([]byte, error) {
 	senderString := strings.ToLower(o.sender.Hex())
 	callDataString := hex.EncodeToString(o.callData)
 
+	fmt.Println("~~~", "len(o.urls)", len(o.urls))
+
 	for i, url := range o.urls {
+		fmt.Println("~~~", "url", url)
 		resp, statusCode, err := o.doRequest(url, senderString, callDataString)
 		if err != nil {
 			// either an error or a 4XX response

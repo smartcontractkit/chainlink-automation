@@ -102,6 +102,8 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 }
 
 func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch chan outStruct, logger *log.Logger) {
+	logger.Println("~~~", "starting check", string(key))
+
 	block, upkeepId, err := BlockAndIdFromKey(key)
 	if err != nil {
 		ch <- outStruct{
@@ -123,6 +125,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 	rawCall := &keeper_registry_wrapper2_0.KeeperRegistryCallerRaw{Contract: r.registry}
 
 	var out []interface{}
+	logger.Println("~~~", "checkUpkeep call to registry")
+
 	err = rawCall.Call(opts, &out, "checkUpkeep", upkeepId)
 	if err != nil {
 		ch <- outStruct{
@@ -131,6 +135,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 		}
 		return
 	}
+	logger.Println("~~~", "finished checkUpkeep call to registry")
 
 	result := types.UpkeepResult{
 		Key:   key,
@@ -162,6 +167,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			logger.Printf("opts: %+v", opts)
 
 			offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, opts, logger)
+			logger.Println("~~~", "finished callTargetCheckUpkeep")
 			if err != nil {
 				logger.Println("callTargetCheckUpkeep", err)
 				ch <- outStruct{
@@ -171,6 +177,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				return
 			}
 			logger.Printf("\n%+v\n", offchainLookup)
+			logger.Println("~~~", "offchainLookup.urls", offchainLookup.urls)
 
 			// If the sender field does not match the address of the contract that was called, stop.
 			if offchainLookup.sender != upkeepInfo.Target {
