@@ -60,7 +60,11 @@ func (_ *cryptoShuffler[T]) Shuffle(a []T) []T {
 type sortUpkeepKeys []ktypes.UpkeepKey
 
 func (s sortUpkeepKeys) Less(i, j int) bool {
-	return string(s[i]) < string(s[j])
+	// TODO: hacky string split assuming separator
+	iK := strings.Split(string(s[i]), "|")
+	jK := strings.Split(string(s[j]), "|")
+
+	return iK[0] < jK[0] && iK[1] < jK[1]
 }
 
 func (s sortUpkeepKeys) Swap(i, j int) {
@@ -137,6 +141,29 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 	if err != nil {
 		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}
+
+	// TODO: another hacky solution assuming upkeep key structure
+	// removes duplicate upkeep ids in preferance of ids at higher blocks
+	// needs to be refactored
+	sort.Sort(sortUpkeepKeys(keys))
+	idxMap := make(map[string]int)
+	out := make([]ktypes.UpkeepKey, 0, len(keys))
+	for i := 0; i < len(keys); i++ {
+		spl := strings.Split(string(keys[i]), "|")
+
+		idx, ok := idxMap[spl[1]]
+		if !ok {
+			idxMap[spl[1]] = len(out)
+			out = append(out, keys[i])
+			continue
+		}
+
+		saved := strings.Split(string(out[idx]), "|")
+		if spl[0] > saved[0] {
+			out[idx] = keys[i]
+		}
+	}
+	keys = out
 
 	src := util.NewKeyedCryptoRandSource(key)
 	r := rnd.New(src)
