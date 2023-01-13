@@ -13,6 +13,9 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
+// maxWorkersBatchSize is the value of max workers batch size
+const maxWorkersBatchSize = 10
+
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
 type onDemandUpkeepService struct {
@@ -26,7 +29,6 @@ type onDemandUpkeepService struct {
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
 	workers          *workerGroup[types.UpkeepResults]
-	reportBatchSize  int
 	stopProcs        chan struct{}
 }
 
@@ -45,7 +47,6 @@ func newOnDemandUpkeepService(
 	cacheClean time.Duration,
 	workers int,
 	workerQueueLength int,
-	reportBatchSize int,
 ) *onDemandUpkeepService {
 	s := &onDemandUpkeepService{
 		logger:           logger,
@@ -57,7 +58,6 @@ func newOnDemandUpkeepService(
 		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		workers:          newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		reportBatchSize:  reportBatchSize,
 		stopProcs:        make(chan struct{}),
 	}
 
@@ -284,7 +284,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 
 	// Create batches from the given keys.
 	// Max keyBatchSize items in the batch.
-	keysBatches := createBatches(keysToSend, s.reportBatchSize)
+	keysBatches := createBatches(keysToSend, maxWorkersBatchSize)
 	for _, batch := range keysBatches {
 		// for every job added to the worker queue, add to the wait group
 		// all jobs should complete before completing the function

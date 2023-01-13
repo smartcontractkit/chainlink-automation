@@ -115,7 +115,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
 		d.config.ServiceQueueLength,
-		offChainCfg.ReportBatchSize,
 	)
 
 	return &keepers{
@@ -131,7 +130,8 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			offChainCfg.MinConfirmations,
 			d.logger,
 		),
-		reportGasLimit:    offChainCfg.GasLimitPerReport,
-		upkeepGasOverhead: offChainCfg.GasOverheadPerUpkeep,
+		reportGasLimit:     offChainCfg.GasLimitPerReport,
+		upkeepGasOverhead:  offChainCfg.GasOverheadPerUpkeep,
+		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,
 	}, info, nil
 }
