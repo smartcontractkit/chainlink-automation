@@ -3,7 +3,6 @@ package keepers
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"time"
 
@@ -178,29 +177,25 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, rt types.Report
 
 	results, err := k.encoder.DecodeReport(r)
 	if err != nil {
-		return false, fmt.Errorf("%w: failed to encode report: %s", err, lCtx)
+		return false, fmt.Errorf("%w: failed to decode report: %s", err, lCtx)
 	}
 
 	if len(results) == 0 {
 		k.logger.Printf("no upkeeps in report; not accepting: %s", lCtx)
-		return false, nil
+		return false, fmt.Errorf("no ids in report: %s", lCtx)
 	}
 
 	for _, r := range results {
-		// check whether the key can get accepted
-		if _, err = k.filter.Check(r.Key); err != nil {
-			if errors.Is(err, ErrKeyAlreadySet) {
-				k.logger.Printf("%s: key already set: %s", r.Key, lCtx.Short())
-				return false, nil
-			}
-			return false, fmt.Errorf("%w: failed to accept key: %s", err, lCtx)
+		// check whether the key is already accepted
+		if k.filter.CheckAlreadyAccepted(r.Key) {
+			k.logger.Printf("%s: key already accepted: %s", r.Key, lCtx.Short())
+			return false, fmt.Errorf("failed to accept key %s as it was already accepted", r.Key)
 		}
 	}
 
 	for _, r := range results {
 		// indicate to the filter that the key has been accepted for transmit
 		if err = k.filter.Accept(r.Key); err != nil {
-			// shouldn't happen since we already checked above
 			return false, fmt.Errorf("%w: failed to accept key: %s", err, lCtx)
 		}
 		k.logger.Printf("accepting key %s: %s", r.Key, lCtx.Short())
