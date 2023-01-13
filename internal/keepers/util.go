@@ -60,12 +60,7 @@ func (_ *cryptoShuffler[T]) Shuffle(a []T) []T {
 type sortUpkeepKeys []ktypes.UpkeepKey
 
 func (s sortUpkeepKeys) Less(i, j int) bool {
-	// TODO: hacky string split assuming separator
-	// AUTO-1480
-	iK := strings.Split(string(s[i]), "|")
-	jK := strings.Split(string(s[j]), "|")
-
-	return iK[0] < jK[0] && iK[1] < jK[1]
+	return string(s[i]) < string(s[j])
 }
 
 func (s sortUpkeepKeys) Swap(i, j int) {
@@ -143,11 +138,10 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}
 
-	// TODO: another hacky solution assuming upkeep key structure
-	// removes duplicate upkeep ids in preferance of ids at higher blocks
+	// TODO: a hacky solution assuming upkeep key structure
+	// removes duplicate upkeep ids in preference of ids at higher blocks
 	// needs to be refactored
 	// AUTO-1480
-	sort.Sort(sortUpkeepKeys(keys))
 	idxMap := make(map[string]int)
 	out := make([]ktypes.UpkeepKey, 0, len(keys))
 	for i := 0; i < len(keys); i++ {
