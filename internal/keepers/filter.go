@@ -97,13 +97,19 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 	}
 }
 
-func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
+func (rc *reportCoordinator) Check(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
+	var id types.UpkeepIdentifier
+
 	_, ok := rc.activeKeys.Get(string(key))
 	if ok {
-		return fmt.Errorf("%w: %s", ErrKeyAlreadySet, key)
+		return id, fmt.Errorf("%w: %s", ErrKeyAlreadySet, key)
 	}
 
-	id, err := rc.registry.IdentifierFromKey(key)
+	return rc.registry.IdentifierFromKey(key)
+}
+
+func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
+	id, err := rc.Check(key)
 	if err != nil {
 		return err
 	}

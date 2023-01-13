@@ -793,6 +793,17 @@ func (_m *MockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	return r0
 }
 
+func (_m *MockedFilterer) Check(key ktypes.UpkeepKey) (ktypes.UpkeepIdentifier, error) {
+	ret := _m.Mock.Called(key)
+
+	var r0 ktypes.UpkeepIdentifier
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(ktypes.UpkeepIdentifier)
+	}
+
+	return r0, ret.Error(1)
+}
+
 func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) error {
 	return _m.Mock.Called(key).Error(0)
 }
@@ -845,6 +856,10 @@ func (_m *BenchmarkMockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	return func(ktypes.UpkeepKey) bool {
 		return true
 	}
+}
+
+func (_m *BenchmarkMockedFilterer) Check(key ktypes.UpkeepKey) (ktypes.UpkeepIdentifier, error) {
+	return ktypes.UpkeepIdentifier(""), nil
 }
 
 func (_m *BenchmarkMockedFilterer) Accept(key ktypes.UpkeepKey) error {
