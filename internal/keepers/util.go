@@ -61,6 +61,7 @@ type sortUpkeepKeys []ktypes.UpkeepKey
 
 func (s sortUpkeepKeys) Less(i, j int) bool {
 	// TODO: hacky string split assuming separator
+	// AUTO-1480
 	iK := strings.Split(string(s[i]), "|")
 	jK := strings.Split(string(s[j]), "|")
 
@@ -145,6 +146,7 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 	// TODO: another hacky solution assuming upkeep key structure
 	// removes duplicate upkeep ids in preferance of ids at higher blocks
 	// needs to be refactored
+	// AUTO-1480
 	sort.Sort(sortUpkeepKeys(keys))
 	idxMap := make(map[string]int)
 	out := make([]ktypes.UpkeepKey, 0, len(keys))
