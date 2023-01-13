@@ -13,8 +13,8 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-// keyBatchSize is the value of max items in the eth_call batch
-const keyBatchSize = 10
+// maxWorkersBatchSize is the value of max workers batch size
+const maxWorkersBatchSize = 10
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
@@ -284,7 +284,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 
 	// Create batches from the given keys.
 	// Max keyBatchSize items in the batch.
-	keysBatches := createBatches(keysToSend, keyBatchSize)
+	keysBatches := createBatches(keysToSend, maxWorkersBatchSize)
 	for _, batch := range keysBatches {
 		// for every job added to the worker queue, add to the wait group
 		// all jobs should complete before completing the function

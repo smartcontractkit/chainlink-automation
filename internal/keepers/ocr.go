@@ -142,6 +142,11 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 		toPerform = append(toPerform, checkedUpkeep)
 		reportCapacity += upkeepMaxGas
+
+		// Don't exceed specified maxUpkeepBatchSize value in offchain config
+		if len(toPerform) >= k.maxUpkeepBatchSize {
+			break
+		}
 	}
 
 	// if nothing to report, return false with no error
