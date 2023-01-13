@@ -37,10 +37,10 @@ type reportCoordinator struct {
 	registry       types.Registry
 	logs           types.PerformLogProvider
 	minConfs       int
-	idBlocks       *util.Cache[types.BlockKey] // should clear out when the next perform with this id occurs
+	idBlocks       *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
 	activeKeys     *util.Cache[bool]
 	cacheCleaner   *util.IntervalCacheCleaner[bool]
-	idCacheCleaner *util.IntervalCacheCleaner[types.BlockKey]
+	idCacheCleaner *util.IntervalCacheCleaner[idBlocker]
 	starter        sync.Once
 	chStop         chan struct{}
 }
@@ -51,9 +51,9 @@ func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Dur
 		registry:       r,
 		logs:           logs,
 		minConfs:       minConfs,
-		idBlocks:       util.NewCache[types.BlockKey](s),
+		idBlocks:       util.NewCache[idBlocker](s),
 		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		idCacheCleaner: util.NewIntervalCacheCleaner[types.BlockKey](cacheClean),
+		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
 		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
 		chStop:         make(chan struct{}),
 	}
@@ -87,7 +87,7 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 			}
 
 			// only apply filter if key block is after block in cache
-			if len(bl) > 0 && blKey > string(bl) {
+			if len(bl.TransmitBlockNumber) > 0 && blKey > string(bl.TransmitBlockNumber) {
 				return true
 			}
 
@@ -112,8 +112,19 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
-	rc.idBlocks.Set(string(id), types.BlockKey([]byte{}), util.DefaultCacheExpiration)
 	rc.activeKeys.Set(string(key), false, util.DefaultCacheExpiration)
+
+	// TODO: the key is constructed in the registry. splitting out the
+	// block number here is a hack solution that should be fixed asap.
+	parts := strings.Split(string(key), "|")
+	bk := parts[0]
+	if bl, ok := rc.idBlocks.Get(string(id)); ok && string(bl.KeyBlockNumber) > bk {
+		return nil
+	}
+
+	rc.idBlocks.Set(string(id), idBlocker{
+		KeyBlockNumber: types.BlockKey(bk),
+	}, util.DefaultCacheExpiration)
 
 	return nil
 }
@@ -151,17 +162,37 @@ func (rc *reportCoordinator) checkLogs() {
 		confirmed, ok := rc.activeKeys.Get(string(l.Key))
 		if ok && !confirmed {
 			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
-			// if we detect a log, remove it from the observation filters
-			// to allow it to be reported on again at or after the block in
-			// which it was transmitted
-			rc.idBlocks.Set(string(id), l.TransmitBlock, util.DefaultCacheExpiration)
 
 			// set state of key to indicate that the report was transmitted
 			// setting a key in this way also blocks it in Accept even if
 			// Accept was never called for on a single node for this key
+			// update the active key to indicate a log was detected
 			rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
+
+			// if an id already exists for a higher block number, don't update it
+			// TODO: the key is constructed in the registry. splitting out the
+			// block number here is a hack solution that should be fixed asap.
+			parts := strings.Split(string(l.Key), "|")
+			bk := parts[0]
+			bl, ok := rc.idBlocks.Get(string(id))
+			if ok && bk < string(bl.KeyBlockNumber) {
+				continue
+			}
+
+			bl.TransmitBlockNumber = l.TransmitBlock
+
+			// if we detect a log, remove it from the observation filters
+			// to allow it to be reported on again at or after the block in
+			// which it was transmitted
+			rc.idBlocks.Set(string(id), bl, util.DefaultCacheExpiration)
+
 		}
 	}
+}
+
+type idBlocker struct {
+	KeyBlockNumber      types.BlockKey
+	TransmitBlockNumber types.BlockKey
 }
 
 func (rc *reportCoordinator) start() {
