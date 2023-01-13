@@ -20,7 +20,7 @@
         {
             "triggerBlockNumber": 128943863,
             "maxFaultyNodes": 2,
-            "offchainConfigJSON": "{\"targetProbability\":\"0.999\",\"targetInRounds\":2,\"uniqueReports\":false,\"gasLimitPerReport\":1000000,\"gasOverheadPerUpkeep\":300000}",
+            "offchainConfigJSON": "{\"targetProbability\":\"0.999\",\"targetInRounds\":2,\"uniqueReports\":false,\"gasLimitPerReport\":1000000,\"gasOverheadPerUpkeep\":300000,\"reportBatchSize\":10}",
             "maxRoundsPerEpoch": 7,
             "deltaProgress": "5s",
             "deltaResend": "10s",

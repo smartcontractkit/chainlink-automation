@@ -115,6 +115,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
 		d.config.ServiceQueueLength,
+		offChainCfg.ReportBatchSize,
 	)
 
 	return &keepers{
