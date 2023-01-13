@@ -543,6 +543,64 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 			ExpectedBool:   false,
 			Err:            fmt.Errorf("failed to decode report"),
 		},
+		{
+			Name:        "Already accepted keys",
+			Description: "Should not accept report if calls were previously accepted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+			},
+			AlreadyAccepted: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: true},
+			},
+			ExpectedBool: false,
+			Err:          fmt.Errorf("failed to accept key"),
+		},
+		{
+			Name:        "Already accepted partial keys",
+			Description: "Should not accept report if calls were previously accepted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+				{
+					Key: ktypes.UpkeepKey("1|2"),
+				},
+			},
+			AlreadyAccepted: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: false},
+				{K: ktypes.UpkeepKey("1|2"), B: true},
+			},
+			ExpectedBool: false,
+			Err:          fmt.Errorf("failed to accept key"),
+		},
+		{
+			Name:        "Accept successfully",
+			Description: "Should not accept report if calls were previously accepted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+				{
+					Key: ktypes.UpkeepKey("1|2"),
+				},
+			},
+			AlreadyAccepted: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: false},
+				{K: ktypes.UpkeepKey("1|2"), B: false},
+			},
+			ExpectedBool: true,
+		},
 	}
 
 	for _, test := range tests {
@@ -562,6 +620,13 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 		// set the transmit filters before calling the function in test
 		for _, a := range test.AlreadyAccepted {
 			mf.Mock.On("CheckAlreadyAccepted", a.K).Return(a.B)
+		}
+
+		if test.ExpectedBool {
+			// If shouldAccept is successful then Accept will be called on report which needs to be mocked
+			for _, a := range test.ReportContents {
+				mf.Mock.On("Accept", a.Key).Return(nil)
+			}
 		}
 
 		ctx := context.Background()
