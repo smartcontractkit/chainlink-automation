@@ -138,6 +138,29 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		return nil, fmt.Errorf("%w: observation dedupe", err)
 	}
 
+	// TODO: a hacky solution assuming upkeep key structure
+	// removes duplicate upkeep ids in preference of ids at higher blocks
+	// needs to be refactored
+	// AUTO-1480
+	idxMap := make(map[string]int)
+	out := make([]ktypes.UpkeepKey, 0, len(keys))
+	for i := 0; i < len(keys); i++ {
+		spl := strings.Split(string(keys[i]), "|")
+
+		idx, ok := idxMap[spl[1]]
+		if !ok {
+			idxMap[spl[1]] = len(out)
+			out = append(out, keys[i])
+			continue
+		}
+
+		saved := strings.Split(string(out[idx]), "|")
+		if spl[0] > saved[0] {
+			out[idx] = keys[i]
+		}
+	}
+	keys = out
+
 	src := util.NewKeyedCryptoRandSource(key)
 	r := rnd.New(src)
 	r.Shuffle(len(keys), func(i, j int) {

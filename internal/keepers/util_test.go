@@ -62,6 +62,57 @@ func TestDedupe(t *testing.T) {
 	}
 }
 
+func TestShuffledDedupedKeyList(t *testing.T) {
+	var attr []types.AttributedObservation
+	var k [16]byte
+	f := func(ktypes.UpkeepKey) bool {
+		return true
+	}
+
+	obs := [][]ktypes.UpkeepKey{
+		{
+			ktypes.UpkeepKey("1|1"),
+			ktypes.UpkeepKey("2|1"),
+		},
+		{
+			ktypes.UpkeepKey("3|1"),
+			ktypes.UpkeepKey("1|2"),
+		},
+		{
+			ktypes.UpkeepKey("1|2"),
+			ktypes.UpkeepKey("1|3"),
+		},
+		{
+			ktypes.UpkeepKey("1|3"),
+			ktypes.UpkeepKey("2|3"),
+		},
+		{
+			ktypes.UpkeepKey("1|1"),
+			ktypes.UpkeepKey("2|1"),
+		},
+	}
+
+	attr = make([]types.AttributedObservation, len(obs))
+	for i, o := range obs {
+		b, _ := limitedLengthEncode(o, maxObservationLength)
+		attr[i] = types.AttributedObservation{
+			Observation: types.Observation(b),
+		}
+	}
+
+	// shuffling is deterministic based on the provided key
+	// should probably add some more tests for other keys
+	expected := []ktypes.UpkeepKey{
+		ktypes.UpkeepKey("2|3"),
+		ktypes.UpkeepKey("3|1"),
+		ktypes.UpkeepKey("1|2"),
+	}
+	result, err := shuffledDedupedKeyList(attr, k, f)
+
+	assert.Equal(t, expected, result)
+	assert.NoError(t, err)
+}
+
 func TestSortedDedup_Error(t *testing.T) {
 	obs := []types.AttributedObservation{{Observation: types.Observation([]byte("incorrectly encoded"))}}
 	_, err := shuffledDedupedKeyList(obs, [16]byte{})

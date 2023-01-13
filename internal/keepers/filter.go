@@ -79,6 +79,7 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 		if bl, ok := rc.idBlocks.Get(string(id)); ok {
 			// TODO: the key is constructed in the registry. splitting out the
 			// block number here is a hack solution that should be fixed asap.
+			// AUTO-1480
 			var blKey string
 			parts := strings.Split(string(key), "|")
 			if len(parts) == 2 {
