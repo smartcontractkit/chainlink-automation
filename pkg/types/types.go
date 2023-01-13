@@ -128,6 +128,9 @@ type OffchainConfig struct {
 
 	// GasOverheadPerUpkeep is gas overhead per upkeep taken place in the report.
 	GasOverheadPerUpkeep uint32 `json:"gasOverheadPerUpkeep"`
+
+	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
+	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
@@ -152,6 +155,10 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 
 	if config.GasOverheadPerUpkeep == 0 {
 		config.GasOverheadPerUpkeep = 300_000
+	}
+
+	if config.MaxUpkeepBatchSize == 0 {
+		config.MaxUpkeepBatchSize = 1
 	}
 
 	return config, err
