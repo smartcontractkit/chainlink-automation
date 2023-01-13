@@ -55,7 +55,7 @@ func TestReportCoordinator(t *testing.T) {
 	t.Run("Accept", func(t *testing.T) {
 		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		assert.NoError(t, rc.Accept(key1Block1), "no error expected from accepting the key")
-		assert.ErrorIs(t, rc.Accept(key1Block1), ErrKeyAlreadySet, "key should not be accepted again and should return an error")
+		assert.ErrorIs(t, rc.Accept(key1Block1), ErrKeyAlreadyAccepted, "key should not be accepted again and should return an error")
 	})
 
 	t.Run("FilterAfterAccept", func(t *testing.T) {
@@ -115,7 +115,7 @@ func TestReportCoordinator(t *testing.T) {
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "transmit should be confirmed")
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "transmit should be confirmed: key was not set for block 2")
 
-		assert.ErrorIs(t, rc.Accept(key1Block1), ErrKeyAlreadySet, "key should not be accepted after transmit confirmed and should return an error")
+		assert.ErrorIs(t, rc.Accept(key1Block1), ErrKeyAlreadyAccepted, "key should not be accepted after transmit confirmed and should return an error")
 	})
 
 	mp.AssertExpectations(t)

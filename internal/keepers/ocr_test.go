@@ -516,13 +516,129 @@ func BenchmarkReport(b *testing.B) {
 }
 
 func TestShouldAcceptFinalizedReport(t *testing.T) {
-	plugin := &keepers{
-		logger: log.New(io.Discard, "", 0),
+	tests := []struct {
+		Name            string
+		Description     string
+		ReportContents  []ktypes.UpkeepResult
+		AlreadyAccepted []struct {
+			K ktypes.UpkeepKey
+			B bool
+		}
+		DecodeErr    error
+		ExpectedBool bool
+		Err          error
+	}{
+		{
+			Name:           "No upkeeps in report",
+			Description:    "Should accept should return false and a wrapped error when report is empty",
+			ReportContents: nil,
+			ExpectedBool:   false,
+			Err:            fmt.Errorf("no ids in report"),
+		},
+		{
+			Name:           "Decode Error",
+			Description:    "Should accept should return false with an error when report does not decode",
+			ReportContents: nil,
+			DecodeErr:      fmt.Errorf("wrapped error"),
+			ExpectedBool:   false,
+			Err:            fmt.Errorf("failed to decode report"),
+		},
+		{
+			Name:        "Already accepted keys",
+			Description: "Should not accept report if calls were previously accepted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+			},
+			AlreadyAccepted: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: true},
+			},
+			ExpectedBool: false,
+			Err:          fmt.Errorf("failed to accept key"),
+		},
+		{
+			Name:        "Already accepted partial keys",
+			Description: "Should not accept report if calls were previously accepted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+				{
+					Key: ktypes.UpkeepKey("1|2"),
+				},
+			},
+			AlreadyAccepted: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: false},
+				{K: ktypes.UpkeepKey("1|2"), B: true},
+			},
+			ExpectedBool: false,
+			Err:          fmt.Errorf("failed to accept key"),
+		},
+		{
+			Name:        "Accept successfully",
+			Description: "Should not accept report if calls were previously accepted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: ktypes.UpkeepKey("1|1"),
+				},
+				{
+					Key: ktypes.UpkeepKey("1|2"),
+				},
+			},
+			AlreadyAccepted: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: ktypes.UpkeepKey("1|1"), B: false},
+				{K: ktypes.UpkeepKey("1|2"), B: false},
+			},
+			ExpectedBool: true,
+		},
 	}
-	ok, err := plugin.ShouldAcceptFinalizedReport(context.Background(), types.ReportTimestamp{}, types.Report{})
 
-	assert.Equal(t, false, ok)
-	assert.NoError(t, err)
+	for _, test := range tests {
+		ms := new(MockedUpkeepService)
+		me := ktypes.NewMockReportEncoder(t)
+		mf := new(MockedFilterer)
+
+		plugin := &keepers{
+			logger:  log.New(io.Discard, "", 0),
+			encoder: me,
+			filter:  mf,
+			service: ms,
+		}
+
+		me.Mock.On("DecodeReport", []byte("abc")).Return(test.ReportContents, test.DecodeErr)
+
+		// set the transmit filters before calling the function in test
+		for _, a := range test.AlreadyAccepted {
+			mf.Mock.On("CheckAlreadyAccepted", a.K).Return(a.B)
+		}
+
+		if test.ExpectedBool {
+			// If shouldAccept is successful then Accept will be called on report which needs to be mocked
+			for _, a := range test.ReportContents {
+				mf.Mock.On("Accept", a.Key).Return(nil)
+			}
+		}
+
+		ctx := context.Background()
+		ok, err := plugin.ShouldAcceptFinalizedReport(ctx, types.ReportTimestamp{Epoch: 5, Round: 2}, []byte("abc"))
+		fmt.Println(ok, err)
+		assert.Equal(t, test.ExpectedBool, ok)
+		if test.Err != nil {
+			assert.Contains(t, err.Error(), test.Err.Error())
+		} else {
+			assert.NoError(t, err)
+		}
+	}
 }
 
 func BenchmarkShouldAcceptFinalizedReport(b *testing.B) {
@@ -793,6 +909,17 @@ func (_m *MockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	return r0
 }
 
+func (_m *MockedFilterer) CheckAlreadyAccepted(key ktypes.UpkeepKey) bool {
+	ret := _m.Mock.Called(key)
+
+	var r0 bool
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) error {
 	return _m.Mock.Called(key).Error(0)
 }
@@ -845,6 +972,10 @@ func (_m *BenchmarkMockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	return func(ktypes.UpkeepKey) bool {
 		return true
 	}
+}
+
+func (_m *BenchmarkMockedFilterer) CheckAlreadyAccepted(key ktypes.UpkeepKey) bool {
+	return false
 }
 
 func (_m *BenchmarkMockedFilterer) Accept(key ktypes.UpkeepKey) error {

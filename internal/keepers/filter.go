@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	ErrKeyAlreadySet = fmt.Errorf("key alredy set")
+	ErrKeyAlreadyAccepted = fmt.Errorf("key alredy accepted")
 )
 
 type reportCoordinator struct {
@@ -98,12 +98,15 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 	}
 }
 
-func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
+func (rc *reportCoordinator) CheckAlreadyAccepted(key types.UpkeepKey) bool {
 	_, ok := rc.activeKeys.Get(string(key))
-	if ok {
-		return fmt.Errorf("%w: %s", ErrKeyAlreadySet, key)
-	}
+	return ok
+}
 
+func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
+	if rc.CheckAlreadyAccepted(key) {
+		return fmt.Errorf("%w: %s", ErrKeyAlreadyAccepted, key)
+	}
 	id, err := rc.registry.IdentifierFromKey(key)
 	if err != nil {
 		return err
