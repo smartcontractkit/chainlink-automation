@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0"
@@ -161,7 +162,16 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			logger.Printf("upkeepInfo: %+v", upkeepInfo)
 			logger.Printf("opts: %+v", opts)
 
-			offchainLookup, err := r.callTargetCheckUpkeep(upkeepInfo, opts, logger)
+			evmClient, err := ethclient.Dial("wss://goerli.infura.io/ws/v3/ae1fbbb2a1d34b32b586791054436a14")
+			if err != nil {
+				log.Fatalln(err)
+			}
+			eClient, err := NewEVMRegistryV2_0(common.HexToAddress(r.address.Hex()), evmClient)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			offchainLookup, err := eClient.callTargetCheckUpkeep(upkeepInfo, opts, logger)
 			if err != nil {
 				logger.Println("callTargetCheckUpkeep", err)
 				ch <- outStruct{

@@ -25,7 +25,7 @@ func TestOffchainLookup(t *testing.T) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	r, err := NewEVMRegistryV2_0(common.HexToAddress("0xC7722bA5a056204FfB29aE112477Bbd88a6E1cCF"), evmClient)
+	r, err := NewEVMRegistryV2_0(common.HexToAddress("0xE9f2b0a7b59D2B2ed2B7ac5e2580c7b06bADAFd3"), evmClient)
 	if err != nil {
 		log.Fatalln(err)
 	}

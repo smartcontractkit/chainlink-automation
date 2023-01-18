@@ -6,6 +6,7 @@ import (
 	"log"
 
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
+
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 )
 
@@ -21,6 +22,7 @@ type Delegate struct {
 // The plugin uses a *log.Logger by default so all log output from the
 // built-in logger are written to the provided logger as Debug logs prefaced
 // with '[keepers-plugin] ' and a short file name.
+// This is the entrypoint for the core node
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	wrapper := &logWriter{l: c.Logger}
 	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
