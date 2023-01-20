@@ -291,6 +291,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				ok: true,
 				ur: result,
 			}
+			// done
+			return
 		}
 	}
 
