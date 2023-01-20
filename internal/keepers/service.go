@@ -418,42 +418,29 @@ type workerResults struct {
 	success int
 	failure int
 	lastErr error
-	mu      sync.RWMutex
 }
 
 func (wr *workerResults) AddSuccess(amt int) {
-	wr.mu.Lock()
-	defer wr.mu.Unlock()
 	wr.success = wr.success + amt
 }
 
 func (wr *workerResults) Failures() int {
-	wr.mu.RLock()
-	defer wr.mu.RUnlock()
 	return wr.failure
 }
 
 func (wr *workerResults) LastErr() error {
-	wr.mu.RLock()
-	defer wr.mu.RUnlock()
 	return wr.lastErr
 }
 
 func (wr *workerResults) AddFailure(amt int) {
-	wr.mu.Lock()
-	defer wr.mu.Unlock()
 	wr.failure = wr.failure + amt
 }
 
 func (wr *workerResults) SetLastErr(err error) {
-	wr.mu.Lock()
-	defer wr.mu.Unlock()
 	wr.lastErr = err
 }
 
 func (wr *workerResults) Total() int {
-	wr.mu.RLock()
-	defer wr.mu.RUnlock()
 	return wr.total()
 }
 
@@ -462,14 +449,10 @@ func (wr *workerResults) total() int {
 }
 
 func (wr *workerResults) SuccessRate() float64 {
-	wr.mu.RLock()
-	defer wr.mu.RUnlock()
 	return float64(wr.success) / float64(wr.total())
 }
 
 func (wr *workerResults) FailureRate() float64 {
-	wr.mu.RLock()
-	defer wr.mu.RUnlock()
 	return float64(wr.failure) / float64(wr.total())
 }
 
