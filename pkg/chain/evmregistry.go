@@ -215,9 +215,10 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				return
 			}
 			upkeepNeeded = needed
-			result.PerformData = performData
-			rawPerformData = performData
+			// result.PerformData = performData
+			// rawPerformData = performData
 			logger.Println("OffchainLookup Success!!")
+			logger.Println(string(performData))
 		}
 	}
 
