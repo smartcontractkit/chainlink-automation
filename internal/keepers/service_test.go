@@ -78,12 +78,15 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 			Return(test.RegResult, test.Err)
 
 		l := log.New(io.Discard, "", 0)
+		svcCtx, svcCancel := context.WithCancel(context.Background())
 		svc := &onDemandUpkeepService{
 			logger:           l,
 			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			registry:         rg,
 			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
+			ctx:              svcCtx,
+			cancel:           svcCancel,
 		}
 
 		result, err := svc.CheckUpkeep(ctx, test.Key)
@@ -115,6 +118,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	}
 
 	l := log.New(io.Discard, "", 0)
+	svcCtx, svcCancel := context.WithCancel(context.Background())
 	svc := &onDemandUpkeepService{
 		logger:           l,
 		ratio:            sampleRatio(0.5),
@@ -124,6 +128,8 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
 		workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
 		samplingDuration: time.Second * 5,
+		ctx:              svcCtx,
+		cancel:           svcCancel,
 	}
 
 	svc.samplingResults.set(returnResults)
@@ -155,7 +161,6 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
 		header := types.BlockKey("1")
-		stopProcs := make(chan struct{})
 
 		chHeads := make(chan ktypes.BlockKey, 1)
 		chHeads <- header
@@ -198,6 +203,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			Return(returnResults, nil)
 
 		l := log.New(io.Discard, "", 0)
+		svcCtx, svcCancel := context.WithCancel(context.Background())
 		svc := &onDemandUpkeepService{
 			logger:           l,
 			headSubscriber:   hs,
@@ -208,7 +214,8 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
 			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
-			stopProcs:        stopProcs,
+			ctx:              svcCtx,
+			cancel:           svcCancel,
 		}
 
 		// Start all required processes
@@ -242,7 +249,6 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
 		header := types.BlockKey("1")
-		stopProcs := make(chan struct{})
 
 		chHeads := make(chan ktypes.BlockKey, 1)
 		chHeads <- header
@@ -256,6 +262,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		var logWriter buffer
 		l := log.New(&logWriter, "", 0)
+		svcCtx, svcCancel := context.WithCancel(context.Background())
 		svc := &onDemandUpkeepService{
 			logger:           l,
 			registry:         rg,
@@ -264,7 +271,8 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
 			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
-			stopProcs:        stopProcs,
+			ctx:              svcCtx,
+			cancel:           svcCancel,
 		}
 
 		// Start background processes
@@ -286,7 +294,6 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
 		header := types.BlockKey("1")
-		stopProcs := make(chan struct{})
 
 		chHeads := make(chan ktypes.BlockKey, 1)
 		chHeads <- header
@@ -315,6 +322,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		var logWriter buffer
 		l := log.New(&logWriter, "", 0)
+		svcCtx, svcCancel := context.WithCancel(context.Background())
 		svc := &onDemandUpkeepService{
 			logger:           l,
 			headSubscriber:   hs,
@@ -325,7 +333,8 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
 			workers:          newWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
-			stopProcs:        stopProcs,
+			ctx:              svcCtx,
+			cancel:           svcCancel,
 		}
 
 		// Start background processes
