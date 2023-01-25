@@ -83,8 +83,11 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 			// AUTO-1480
 			var blKey int
 			parts := strings.Split(string(key), "|")
-			if len(parts) == 2 {
-				blKey, _ = strconv.Atoi(parts[0])
+			if len(parts) == 2 && parts[0] != "" {
+				blKey, err = strconv.Atoi(parts[0])
+				if err != nil {
+					return false
+				}
 			}
 
 			// Return false if empty
@@ -92,7 +95,10 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 				return false
 			}
 
-			transmitBlockNumber, _ := strconv.Atoi(string(bl.TransmitBlockNumber))
+			transmitBlockNumber, err := strconv.Atoi(string(bl.TransmitBlockNumber))
+			if err != nil {
+				return false
+			}
 
 			// only apply filter if key block is after block in cache
 			return blKey > transmitBlockNumber
