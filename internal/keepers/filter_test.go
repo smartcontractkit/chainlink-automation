@@ -36,6 +36,7 @@ func TestReportCoordinator(t *testing.T) {
 	id1 := types.UpkeepIdentifier("1")
 	bk2 := types.BlockKey("2")
 	bk3 := types.BlockKey("3")
+	bk15 := types.BlockKey("15")
 
 	t.Run("FilterBeforeAccept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
@@ -237,6 +238,19 @@ func TestReportCoordinator(t *testing.T) {
 		mr.AssertExpectations(t)
 	})
 
+	t.Run("Filter", func(t *testing.T) {
+		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		rc.idBlocks.Set(string(id1), idBlocker{
+			TransmitBlockNumber: bk15,
+		}, util.DefaultCacheExpiration)
+
+		mr.Mock.On("IdentifierFromKey", key1Block4).Return(id1, nil)
+		assert.False(t, filter(key1Block4))
+
+		mr.AssertExpectations(t)
+	})
 }
 
 func assertFilter(t *testing.T, reg *types.MockRegistry, key types.UpkeepKey, id types.UpkeepIdentifier, exp bool, f func(types.UpkeepKey) bool) {
