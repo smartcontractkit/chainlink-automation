@@ -153,8 +153,17 @@ func (s *onDemandUpkeepService) start() {
 	// TODO: if this process panics, restart it
 	go s.cacheCleaner.Run(s.cache)
 	go func() {
-		if err := s.runSamplingUpkeeps(); err != nil {
-			s.logger.Fatal(err)
+		ch := s.headSubscriber.HeadTicker()
+		ctx, cancel := context.WithCancel(context.Background())
+		for {
+			select {
+			case <-ch:
+				// run with new head
+				s.processLatestHead(ctx)
+			case <-s.stopProcs:
+				cancel()
+				return
+			}
 		}
 	}()
 }
@@ -162,36 +171,6 @@ func (s *onDemandUpkeepService) start() {
 func (s *onDemandUpkeepService) stop() {
 	close(s.stopProcs)
 	s.cacheCleaner.Stop()
-}
-
-func (s *onDemandUpkeepService) runSamplingUpkeeps() error {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	headTriggerCh := make(chan struct{}, 1)
-	defer close(headTriggerCh)
-
-	// Start the sampling upkeep process for heads
-	go func() {
-		for range headTriggerCh {
-			s.processLatestHead(ctx)
-		}
-	}()
-
-	// Cancel context when receiving the stop signal
-	go func() {
-		<-s.stopProcs
-		cancel()
-	}()
-
-	return s.headSubscriber.OnNewHead(ctx, func(_ types.BlockKey) {
-		// This is needed in order to do not block the process when a new head comes in.
-		// The running upkeep sampling process should be finished first before starting
-		// sampling for the next head.
-		select {
-		case headTriggerCh <- struct{}{}:
-		default:
-		}
-	})
 }
 
 // processLatestHead performs checking upkeep logic for all eligible keys of the given head

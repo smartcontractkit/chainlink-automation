@@ -19,17 +19,23 @@ import (
 // evmClient expends the base EVM client by splitting batch calls into sub-batches
 type evmClient struct {
 	*ethclient.Client
+	chHead    chan types.BlockKey
 	rpcClient *rpc.Client
 	batchSize int
 }
 
 // NewEVMClient is the constructor of evmClient
 func NewEVMClient(client *rpc.Client, batchSize int) types.EVMClient {
-	return &evmClient{
+	c := &evmClient{
 		Client:    ethclient.NewClient(client),
+		chHead:    make(chan types.BlockKey, 1000),
 		rpcClient: client,
 		batchSize: batchSize,
 	}
+
+	c.subscribe(context.Background())
+
+	return c
 }
 
 // HeaderByNumber returns a block header from the current canonical chain. If number is
@@ -61,23 +67,27 @@ func (ec *evmClient) BatchCallContext(ctx context.Context, b []rpc.BatchElem) er
 	return errors.Wrap(multierr.Combine(errs...), "batch call error")
 }
 
-func (ec *evmClient) OnNewHead(ctx context.Context, cb func(blockKey types.BlockKey)) error {
+func (ec *evmClient) HeadTicker() chan types.BlockKey {
+	return ec.chHead
+}
+
+func (ec *evmClient) subscribe(ctx context.Context) {
 	ch := make(chan *ethtypes.Header, 1)
 	sub, err := ec.SubscribeNewHead(ctx, ch)
 	if err != nil {
-		return err
+		return
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		case <-sub.Err():
 			if sub, err = ec.SubscribeNewHead(ctx, ch); err != nil {
-				return err
+				return
 			}
 		case head := <-ch:
-			cb(types.BlockKey(head.Number.String()))
+			ec.chHead <- types.BlockKey(head.Number.String())
 		}
 	}
 }

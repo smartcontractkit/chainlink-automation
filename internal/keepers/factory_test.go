@@ -31,7 +31,6 @@ func TestNewReportingPluginFactory(t *testing.T) {
 func TestNewReportingPlugin(t *testing.T) {
 	mp := ktypes.NewMockPerformLogProvider(t)
 	hs := ktypes.NewMockHeadSubscriber(t)
-	subscribed := make(chan struct{})
 
 	f := &keepersReportingFactory{
 		registry:       ktypes.NewMockRegistry(t),
@@ -47,11 +46,6 @@ func TestNewReportingPlugin(t *testing.T) {
 		},
 	}
 
-	hs.On("OnNewHead", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			subscribed <- struct{}{}
-		}).Return(nil)
-
 	mp.Mock.On("PerformLogs", mock.Anything).
 		Return([]ktypes.PerformLog{}, nil).
 		Maybe()
@@ -66,6 +60,9 @@ func TestNewReportingPlugin(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	chHeads := make(chan ktypes.BlockKey, 1)
+	hs.Mock.On("HeadTicker").Return(chHeads)
+
 	p, i, err := f.NewReportingPlugin(types.ReportingPluginConfig{
 		ConfigDigest:   digest,
 		OracleID:       1,
@@ -74,9 +71,13 @@ func TestNewReportingPlugin(t *testing.T) {
 		OffchainConfig: offchainConfig,
 	})
 
-	<-subscribed
+	// provide enough time for all start functions to be called
+	<-time.After(100 * time.Millisecond)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "Oracle 1: Keepers Plugin Instance w/ Digest '2020202020202020202020202020202020202020202020202020202074657374'", i.Name)
 	assert.NotNil(t, p)
+
+	hs.AssertExpectations(t)
+	mp.AssertExpectations(t)
 }

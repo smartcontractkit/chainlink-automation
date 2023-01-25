@@ -6,18 +6,30 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-func (ct *SimulatedContract) OnNewHead(ctx context.Context, cb func(header ktypes.BlockKey)) error {
+func (ct *SimulatedContract) HeadTicker() chan ktypes.BlockKey {
+	return ct.chHeads
+}
+
+func (ct *SimulatedContract) forwardHeads(ctx context.Context) {
 	sub, blocksCh := ct.src.Subscribe(false)
 	defer ct.src.Unsubscribe(sub)
 
 	for {
 		select {
 		case <-ct.done:
-			return nil
+			return
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		case block := <-blocksCh:
-			cb(ktypes.BlockKey(block.BlockNumber.String()))
+			send(ct.chHeads, ktypes.BlockKey(block.BlockNumber.String()))
 		}
+	}
+}
+
+// send does a non-blocking send of the key on c.
+func send(c chan ktypes.BlockKey, k ktypes.BlockKey) {
+	select {
+	case c <- k:
+	default:
 	}
 }

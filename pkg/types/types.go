@@ -19,7 +19,7 @@ import (
 //
 //go:generate mockery --name HeadSubscriber --inpackage --output . --case=underscore --filename head_subscribed.generated.go
 type HeadSubscriber interface {
-	OnNewHead(ctx context.Context, cb func(blockKey BlockKey)) error
+	HeadTicker() chan BlockKey
 }
 
 // EVMClient represents evm client's behavior

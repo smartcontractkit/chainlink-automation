@@ -9,7 +9,6 @@ require (
 	github.com/ethereum/go-ethereum v1.10.17
 	github.com/go-echarts/go-echarts/v2 v2.2.4
 	github.com/google/uuid v1.2.0
-	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/smartcontractkit/libocr v0.0.0-20221209172631-568a30f68407
 	github.com/spf13/pflag v1.0.3
@@ -29,6 +28,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
