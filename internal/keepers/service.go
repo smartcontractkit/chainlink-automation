@@ -29,7 +29,8 @@ type onDemandUpkeepService struct {
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
 	workers          *workerGroup[types.UpkeepResults]
-	stopProcs        chan struct{}
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -48,6 +49,7 @@ func newOnDemandUpkeepService(
 	workers int,
 	workerQueueLength int,
 ) *onDemandUpkeepService {
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &onDemandUpkeepService{
 		logger:           logger,
 		ratio:            ratio,
@@ -58,7 +60,8 @@ func newOnDemandUpkeepService(
 		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		workers:          newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		stopProcs:        make(chan struct{}),
+		ctx:              ctx,
+		cancel:           cancel,
 	}
 
 	// stop the cleaner go-routine once the upkeep service is no longer reachable
@@ -73,10 +76,6 @@ func newOnDemandUpkeepService(
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
 func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.UpkeepResults, error) {
-	if s.workers == nil {
-		panic("cannot sample upkeeps without runner")
-	}
-
 	results := s.samplingResults.get()
 	if len(results) == 0 {
 		return nil, nil
@@ -154,14 +153,12 @@ func (s *onDemandUpkeepService) start() {
 	go s.cacheCleaner.Run(s.cache)
 	go func() {
 		ch := s.headSubscriber.HeadTicker()
-		ctx, cancel := context.WithCancel(context.Background())
 		for {
 			select {
 			case <-ch:
 				// run with new head
-				s.processLatestHead(ctx)
-			case <-s.stopProcs:
-				cancel()
+				s.processLatestHead(s.ctx)
+			case <-s.ctx.Done():
 				return
 			}
 		}
@@ -169,7 +166,7 @@ func (s *onDemandUpkeepService) start() {
 }
 
 func (s *onDemandUpkeepService) stop() {
-	close(s.stopProcs)
+	s.cancel()
 	s.cacheCleaner.Stop()
 }
 

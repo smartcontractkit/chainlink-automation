@@ -28,6 +28,7 @@ type keepersReportingFactory struct {
 	perfLogs       ktypes.PerformLogProvider
 	logger         *log.Logger
 	config         ReportingFactoryConfig
+	upkeepService  *onDemandUpkeepService
 }
 
 // NewReportingPluginFactory returns an OCR ReportingPluginFactory. When the plugin
@@ -105,7 +106,10 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
 
-	service := newOnDemandUpkeepService(
+	if d.upkeepService != nil {
+		d.upkeepService.stop()
+	}
+	d.upkeepService = newOnDemandUpkeepService(
 		sample,
 		d.headSubscriber,
 		d.registry,
@@ -119,7 +123,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 
 	return &keepers{
 		id:      c.OracleID,
-		service: service,
+		service: d.upkeepService,
 		encoder: d.encoder,
 		logger:  d.logger,
 		filter: newReportCoordinator(
