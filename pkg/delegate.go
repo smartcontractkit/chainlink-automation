@@ -82,6 +82,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 
 // Start starts the OCR oracle and any associated services
 func (d *Delegate) Start(_ context.Context) error {
+	fmt.Println("Starting....")
 	if err := d.keeper.Start(); err != nil {
 		return fmt.Errorf("%w: failed to start keeper oracle", err)
 	}
@@ -90,6 +91,7 @@ func (d *Delegate) Start(_ context.Context) error {
 
 // Close stops the OCR oracle and any associated services
 func (d *Delegate) Close() error {
+	fmt.Println("Ending....")
 	if err := d.keeper.Close(); err != nil {
 		return fmt.Errorf("%w: failed to close keeper oracle", err)
 	}
