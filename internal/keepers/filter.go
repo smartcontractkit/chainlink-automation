@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -80,18 +81,16 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 			// TODO: the key is constructed in the registry. splitting out the
 			// block number here is a hack solution that should be fixed asap.
 			// AUTO-1480
-			var blKey string
+			var blKey int
 			parts := strings.Split(string(key), "|")
 			if len(parts) == 2 {
-				blKey = parts[0]
+				blKey, _ = strconv.Atoi(parts[0])
 			}
+
+			transmitBlockNumber, _ := strconv.Atoi(string(bl.TransmitBlockNumber))
 
 			// only apply filter if key block is after block in cache
-			if len(bl.TransmitBlockNumber) > 0 && blKey > string(bl.TransmitBlockNumber) {
-				return true
-			}
-
-			return false
+			return blKey > transmitBlockNumber
 		}
 
 		return true
