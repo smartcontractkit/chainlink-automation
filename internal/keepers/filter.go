@@ -87,6 +87,11 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 				blKey, _ = strconv.Atoi(parts[0])
 			}
 
+			// Return false if empty
+			if bl.TransmitBlockNumber == "" {
+				return false
+			}
+
 			transmitBlockNumber, _ := strconv.Atoi(string(bl.TransmitBlockNumber))
 
 			// only apply filter if key block is after block in cache
