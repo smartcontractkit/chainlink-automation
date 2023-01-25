@@ -399,10 +399,8 @@ func makeWorkerFunc(jobCtx context.Context, logger *log.Logger, registry types.R
 			for _, result := range checkResults {
 				if result.State == types.Eligible {
 					logger.Printf("upkeep ready to perform for key %s", result.Key)
-				}
-
-				if result.FailureReason != 0 {
-					logger.Printf("upkeep '%s' had a non-zero failure reason: %d", result.Key, result.FailureReason)
+				} else {
+					logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
 				}
 			}
 		}
