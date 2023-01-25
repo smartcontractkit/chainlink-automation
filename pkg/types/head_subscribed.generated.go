@@ -3,7 +3,6 @@
 package types
 
 import (
-	context "context"
 	testing "testing"
 
 	mock "github.com/stretchr/testify/mock"
@@ -14,15 +13,15 @@ type MockHeadSubscriber struct {
 	mock.Mock
 }
 
-// OnNewHead provides a mock function with given fields: ctx, cb
-func (_m *MockHeadSubscriber) OnNewHead(ctx context.Context, cb func(BlockKey)) error {
-	ret := _m.Called(ctx, cb)
+// HeadTicker provides a mock function
+func (_m *MockHeadSubscriber) HeadTicker() chan BlockKey {
+	ret := _m.Called()
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, func(BlockKey)) error); ok {
-		r0 = rf(ctx, cb)
+	var r0 chan BlockKey
+	if rf, ok := ret.Get(0).(func() chan BlockKey); ok {
+		r0 = rf()
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(chan BlockKey)
 	}
 
 	return r0

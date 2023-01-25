@@ -3,10 +3,24 @@ package chain
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+)
+
+const (
+	ActiveUpkeepIDBatchSize int64  = 10000
+	separator               string = "|"
+)
+
+var (
+	ErrRegistryCallFailure   = fmt.Errorf("registry chain call failure")
+	ErrBlockKeyNotParsable   = fmt.Errorf("block identifier not parsable")
+	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
+	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
+	ErrContextCancelled      = fmt.Errorf("context was cancelled")
 )
 
 type evmReportEncoder struct{}
@@ -151,4 +165,23 @@ type wrappedPerform struct {
 	CheckBlockNumber uint32   `abi:"checkBlockNumber"`
 	CheckBlockhash   [32]byte `abi:"checkBlockhash"`
 	PerformData      []byte   `abi:"performData"`
+}
+
+func BlockAndIdFromKey(key ktypes.UpkeepKey) (ktypes.BlockKey, *big.Int, error) {
+	parts := strings.Split(string(key), separator)
+	if len(parts) != 2 {
+		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+	}
+
+	id := new(big.Int)
+	_, ok := id.SetString(parts[1], 10)
+	if !ok {
+		return "", nil, fmt.Errorf("%w: must be big int", ErrUpkeepKeyNotParsable)
+	}
+
+	return ktypes.BlockKey(parts[0]), id, nil
+}
+
+func BlockAndIdToKey(block *big.Int, id *big.Int) ktypes.UpkeepKey {
+	return ktypes.UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
 }

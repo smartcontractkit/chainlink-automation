@@ -157,13 +157,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		header := types.BlockKey("1")
 		stopProcs := make(chan struct{})
 
-		hs.On("OnNewHead", mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				cb, ok := args.Get(1).(func(blockKey types.BlockKey))
-				assert.True(t, ok)
-				cb(header)
-				<-stopProcs
-			}).Return(nil)
+		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads <- header
+		hs.Mock.On("HeadTicker").Return(chHeads)
 
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
@@ -248,13 +244,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		header := types.BlockKey("1")
 		stopProcs := make(chan struct{})
 
-		hs.On("OnNewHead", mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				cb, ok := args.Get(1).(func(blockKey types.BlockKey))
-				assert.True(t, ok)
-				cb(header)
-				<-stopProcs
-			}).Return(nil)
+		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads <- header
+		hs.Mock.On("HeadTicker").Return(chHeads)
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
 			Run(func(args mock.Arguments) {
@@ -296,13 +288,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		header := types.BlockKey("1")
 		stopProcs := make(chan struct{})
 
-		hs.On("OnNewHead", mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				cb, ok := args.Get(1).(func(blockKey types.BlockKey))
-				assert.True(t, ok)
-				cb(header)
-				<-stopProcs
-			}).Return(nil)
+		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads <- header
+		hs.Mock.On("HeadTicker").Return(chHeads)
 
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {

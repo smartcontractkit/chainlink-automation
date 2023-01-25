@@ -17,18 +17,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-const (
-	ActiveUpkeepIDBatchSize int64  = 10000
-	separator               string = "|"
-)
-
 var (
-	ErrRegistryCallFailure   = fmt.Errorf("registry chain call failure")
-	ErrBlockKeyNotParsable   = fmt.Errorf("block identifier not parsable")
-	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
-	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
-	ErrContextCancelled      = fmt.Errorf("context was cancelled")
-
 	keeperRegistryABI = mustGetABI(keeper_registry_wrapper2_0.KeeperRegistryABI)
 )
 
@@ -315,23 +304,4 @@ func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKe
 		Context:     ctx,
 		BlockNumber: b,
 	}, nil
-}
-
-func BlockAndIdFromKey(key types.UpkeepKey) (types.BlockKey, *big.Int, error) {
-	parts := strings.Split(string(key), separator)
-	if len(parts) != 2 {
-		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
-	}
-
-	id := new(big.Int)
-	_, ok := id.SetString(parts[1], 10)
-	if !ok {
-		return "", nil, fmt.Errorf("%w: must be big int", ErrUpkeepKeyNotParsable)
-	}
-
-	return types.BlockKey(parts[0]), id, nil
-}
-
-func BlockAndIdToKey(block *big.Int, id *big.Int) types.UpkeepKey {
-	return types.UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
 }

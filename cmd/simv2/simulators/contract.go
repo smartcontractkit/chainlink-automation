@@ -61,6 +61,7 @@ type SimulatedContract struct {
 	upkeeps    map[string]SimulatedUpkeep
 	perLogs    *sortedKeyMap[[]ktypes.PerformLog]
 	avgLatency int
+	chHeads    chan ktypes.BlockKey
 
 	telemetry ContractTelemetry
 
@@ -106,6 +107,7 @@ func NewSimulatedContract(
 		blocks:      make(map[string]config.SymBlock),
 		perLogs:     newSortedKeyMap[[]ktypes.PerformLog](),
 		upkeeps:     upkeeps,
+		chHeads:     make(chan ktypes.BlockKey, 1),
 		telemetry:   telemetry,
 		rpc:         rpc,
 		notify:      make(chan struct{}, 1000),
@@ -193,6 +195,7 @@ func (ct *SimulatedContract) run() {
 func (ct *SimulatedContract) Start() {
 	ct.start.Do(func() {
 		go ct.run()
+		go ct.forwardHeads(context.Background())
 	})
 }
 
