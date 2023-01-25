@@ -76,10 +76,6 @@ func newOnDemandUpkeepService(
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
 func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.UpkeepResults, error) {
-	if s.workers == nil {
-		panic("cannot sample upkeeps without runner")
-	}
-
 	results := s.samplingResults.get()
 	if len(results) == 0 {
 		return nil, nil
