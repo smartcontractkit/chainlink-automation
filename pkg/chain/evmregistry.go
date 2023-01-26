@@ -144,6 +144,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 	result.GasUsed = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
+	logger.Printf("result: %+v\n", result)
+	logger.Printf("rawPerformData: %+v\n", rawPerformData)
 
 	// ccip read
 	// if reverts plus flag that eip3668, for now we can assume eip3668 for POC
@@ -159,8 +161,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			}
 			return
 		} else {
-			logger.Printf("upkeepInfo: %+v", upkeepInfo)
-			logger.Printf("opts: %+v", opts)
+			logger.Printf("upkeepInfo: %+v\n", upkeepInfo)
+			logger.Printf("opts: %+v\n", opts)
 
 			evmClient, err := ethclient.Dial("wss://goerli.infura.io/ws/v3/ae1fbbb2a1d34b32b586791054436a14")
 			if err != nil {
@@ -180,7 +182,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				}
 				return
 			}
-			logger.Printf("\n%+v\n", offchainLookup)
+			logger.Printf("\noffchainLookup: %+v\n", offchainLookup)
 
 			// If the sender field does not match the address of the contract that was called, stop.
 			if offchainLookup.sender != upkeepInfo.Target {
@@ -214,33 +216,47 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				return
 			}
 			upkeepNeeded = needed
-			result.PerformData = performData
+			rawPerformData = performData
 			logger.Println("OffchainLookup Success!!")
+
+			bk, err := evmClient.BlockByNumber(ctx, opts.BlockNumber)
+			if err != nil {
+				logger.Println(err)
+				result.State = types.NotEligible
+				ch <- outStruct{
+					ur: result,
+				}
+				return
+			}
+			result.CheckBlockNumber = uint32(bk.NumberU64())
+			result.CheckBlockHash = bk.Hash()
+			result.PerformData = performData
+			logger.Printf("OffchainLookup result: %+v\n", result)
 		}
-	}
+	} else {
 
-	// TODO: not sure it it's best to short circuit here
-	if !upkeepNeeded {
-		result.State = types.NotEligible
-		ch <- outStruct{
-			ur: result,
+		// TODO: not sure it it's best to short circuit here
+		if !upkeepNeeded {
+			result.State = types.NotEligible
+			ch <- outStruct{
+				ur: result,
+			}
+			return
 		}
-		return
-	}
 
-	type performDataStruct struct {
-		CheckBlockNumber uint32   `abi:"checkBlockNumber"`
-		CheckBlockhash   [32]byte `abi:"checkBlockhash"`
-		PerformData      []byte   `abi:"performData"`
-	}
+		type performDataStruct struct {
+			CheckBlockNumber uint32   `abi:"checkBlockNumber"`
+			CheckBlockhash   [32]byte `abi:"checkBlockhash"`
+			PerformData      []byte   `abi:"performData"`
+		}
 
-	type res struct {
-		Result performDataStruct
-	}
+		type res struct {
+			Result performDataStruct
+		}
 
-	// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
-	// function which returns this tuple in order to decode the bytes
-	pdataABI, _ := abi.JSON(strings.NewReader(`[{
+		// rawPerformData is abi encoded tuple(uint32, bytes32, bytes). We create an ABI with dummy
+		// function which returns this tuple in order to decode the bytes
+		pdataABI, _ := abi.JSON(strings.NewReader(`[{
 			"name":"check",
 			"type":"function",
 			"outputs":[{
@@ -253,26 +269,27 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 					]
 				}]
 			}]`,
-	))
+		))
 
-	var ret0 = new(res)
-	err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
-	if err != nil {
-		ch <- outStruct{
-			ur:  types.UpkeepResult{},
-			err: fmt.Errorf("%w", err),
+		var ret0 = new(res)
+		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
+		if err != nil {
+			ch <- outStruct{
+				ur:  types.UpkeepResult{},
+				err: fmt.Errorf("%w", err),
+			}
+			return
 		}
-		return
+		result.CheckBlockNumber = ret0.Result.CheckBlockNumber
+		result.CheckBlockHash = ret0.Result.CheckBlockhash
+		result.PerformData = ret0.Result.PerformData
 	}
-
-	result.CheckBlockNumber = ret0.Result.CheckBlockNumber
-	result.CheckBlockHash = ret0.Result.CheckBlockhash
-	result.PerformData = ret0.Result.PerformData
 
 	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
 	var out2 []interface{}
 	err = rawCall.Call(opts, &out2, "simulatePerformUpkeep", upkeepId, result.PerformData)
 	if err != nil {
+		logger.Println(err)
 		ch <- outStruct{
 			ur:  types.UpkeepResult{},
 			err: fmt.Errorf("%w: simulate perform upkeep returned result: %s", ErrRegistryCallFailure, err),
