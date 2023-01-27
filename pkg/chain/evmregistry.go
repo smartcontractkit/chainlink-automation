@@ -229,6 +229,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				}
 				return
 			}
+			result.FailureReason = 0
 			result.CheckBlockNumber = uint32(bk.NumberU64())
 			result.CheckBlockHash = bk.Hash()
 			result.PerformData = performData
@@ -288,6 +289,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 
 	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
 	var out2 []interface{}
+	opts.Context = context.Background()
 	err = rawCall.Call(opts, &out2, "simulatePerformUpkeep", upkeepId, result.PerformData)
 	if err != nil {
 		logger.Println(err)
