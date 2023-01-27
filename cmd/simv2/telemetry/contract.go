@@ -1,8 +1,8 @@
 package telemetry
 
 import (
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"io"
-	"strings"
 	"sync"
 )
 
@@ -92,12 +92,13 @@ type WrappedContractCollector struct {
 	keyIDLookup map[string][]string
 }
 
-func (wc *WrappedContractCollector) CheckKey(key []byte) {
+func (wc *WrappedContractCollector) CheckKey(key types.UpkeepKey) {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
-	k := string(key)
-	parts := strings.Split(k, "|")
+	k := key.String()
+
+	blockKey, upkeepID := key.BlockKeyAndUpkeepID()
 
 	_, ok := wc.keyChecks[k]
 	if !ok {
@@ -105,19 +106,19 @@ func (wc *WrappedContractCollector) CheckKey(key []byte) {
 	}
 	wc.keyChecks[k]++
 
-	val, ok := wc.keyIDLookup[parts[1]]
+	val, ok := wc.keyIDLookup[string(upkeepID)]
 	if !ok {
-		wc.keyIDLookup[parts[1]] = []string{parts[0]}
+		wc.keyIDLookup[string(upkeepID)] = []string{string(blockKey)}
 	} else {
 		var found bool
 		for _, v := range val {
-			if v == parts[0] {
+			if v == string(blockKey) {
 				found = true
 			}
 		}
 
 		if !found {
-			wc.keyIDLookup[parts[1]] = append(val, parts[0])
+			wc.keyIDLookup[string(upkeepID)] = append(val, string(blockKey))
 		}
 	}
 }

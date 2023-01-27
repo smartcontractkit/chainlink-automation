@@ -3,6 +3,7 @@ package keepers
 import (
 	"bytes"
 	"fmt"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"math"
 	"math/cmplx"
 	rnd "math/rand"
@@ -60,7 +61,7 @@ func (_ *cryptoShuffler[T]) Shuffle(a []T) []T {
 type sortUpkeepKeys []ktypes.UpkeepKey
 
 func (s sortUpkeepKeys) Less(i, j int) bool {
-	return string(s[i]) < string(s[j])
+	return s[i].String() < s[j].String()
 }
 
 func (s sortUpkeepKeys) Swap(i, j int) {
@@ -124,9 +125,15 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		}
 
 		var ob []ktypes.UpkeepKey
-		err = decode(b, &ob)
+
+		var ob2 []chain.UpkeepKey
+		err = decode(b, &ob2)
 		if err != nil {
 			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
+		}
+
+		for _, o := range ob2 {
+			ob = append(ob, o)
 		}
 
 		sort.Sort(sortUpkeepKeys(ob))
@@ -145,17 +152,20 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 	idxMap := make(map[string]int)
 	out := make([]ktypes.UpkeepKey, 0, len(keys))
 	for i := 0; i < len(keys); i++ {
-		spl := strings.Split(string(keys[i]), "|")
 
-		idx, ok := idxMap[spl[1]]
+		blockKey, upkeepID := keys[i].BlockKeyAndUpkeepID()
+
+		//spl := strings.Split(string(keys[i]), "|")
+
+		idx, ok := idxMap[string(upkeepID)]
 		if !ok {
-			idxMap[spl[1]] = len(out)
+			idxMap[string(upkeepID)] = len(out)
 			out = append(out, keys[i])
 			continue
 		}
 
-		saved := strings.Split(string(out[idx]), "|")
-		if spl[0] > saved[0] {
+		savedBlockKey, _ := out[idx].BlockKeyAndUpkeepID()
+		if string(blockKey) > string(savedBlockKey) {
 			out[idx] = keys[i]
 		}
 	}
@@ -255,7 +265,7 @@ func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
 	// key can be included
 	c := true
 	for c && idx < len(keys) {
-		tot += len(keys[idx])
+		tot += len(keys[idx].String())
 
 		// because we are encoding an array of byte arrays, some bytes are added
 		// per byte array and all byte arrays could be different lengths.
@@ -301,7 +311,7 @@ func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
 func upkeepKeysToString(keys []ktypes.UpkeepKey) string {
 	keysStr := make([]string, len(keys))
 	for i, key := range keys {
-		keysStr[i] = string(key)
+		keysStr[i] = key.String()
 	}
 
 	return strings.Join(keysStr, ", ")

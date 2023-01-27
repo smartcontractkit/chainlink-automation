@@ -20,7 +20,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		input := []ktypes.UpkeepResult{
 			{
-				Key:              ktypes.UpkeepKey("42|18"),
+				Key:              UpkeepKey("42|18"),
 				PerformData:      []byte("hello"),
 				FastGasWei:       big.NewInt(16),
 				LinkNative:       big.NewInt(8),
@@ -28,7 +28,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 				CheckBlockHash:   [32]byte{1},
 			},
 			{
-				Key:              ktypes.UpkeepKey("43|23"),
+				Key:              UpkeepKey("43|23"),
 				PerformData:      []byte("long perform data that takes up more than 32 bytes to show how byte arrays are abi encoded. this should take up multiple slots."),
 				FastGasWei:       big.NewInt(8),
 				LinkNative:       big.NewInt(16),
@@ -75,7 +75,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 
 	t.Run("Key Parse Error", func(t *testing.T) {
 		input := []ktypes.UpkeepResult{
-			{Key: ktypes.UpkeepKey([]byte("1")), PerformData: []byte("hello")},
+			{Key: UpkeepKey([]byte("1")), PerformData: []byte("hello")},
 		}
 
 		encoder := &evmReportEncoder{}
@@ -89,7 +89,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 func TestEncodeReport_EmptyPerformData(t *testing.T) {
 	input := []ktypes.UpkeepResult{
 		{
-			Key:              ktypes.UpkeepKey([]byte("43|18")),
+			Key:              UpkeepKey([]byte("43|18")),
 			PerformData:      []byte{},
 			FastGasWei:       big.NewInt(8),
 			LinkNative:       big.NewInt(16),
@@ -125,7 +125,7 @@ func TestEncodeReport_EmptyPerformData(t *testing.T) {
 func TestDecodeReport(t *testing.T) {
 	expected := []ktypes.UpkeepResult{
 		{
-			Key:              ktypes.UpkeepKey([]byte("43|18")),
+			Key:              UpkeepKey([]byte("43|18")),
 			State:            ktypes.Eligible, // it is assumed that all items in a report were eligible
 			PerformData:      []byte{},
 			FastGasWei:       big.NewInt(8),
@@ -159,9 +159,9 @@ func TestDecodeReport(t *testing.T) {
 }
 
 func BenchmarkEncodeReport(b *testing.B) {
-	key1 := ktypes.UpkeepKey([]byte("1239428374|187689279234987"))
-	key2 := ktypes.UpkeepKey([]byte("1239428374|187689279234989"))
-	key3 := ktypes.UpkeepKey([]byte("1239428375|187689279234987"))
+	key1 := UpkeepKey([]byte("1239428374|187689279234987"))
+	key2 := UpkeepKey([]byte("1239428374|187689279234989"))
+	key3 := UpkeepKey([]byte("1239428375|187689279234987"))
 
 	noData := []byte{}
 	smallData := make([]byte, 12)
