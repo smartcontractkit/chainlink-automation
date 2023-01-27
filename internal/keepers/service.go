@@ -28,7 +28,7 @@ type onDemandUpkeepService struct {
 	cacheCleaner     *util.IntervalCacheCleaner[types.UpkeepResult]
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
-	workers          *workerGroup[types.UpkeepResults]
+	workers          *util.WorkerGroup[types.UpkeepResults]
 	ctx              context.Context
 	cancel           context.CancelFunc
 }
@@ -59,7 +59,7 @@ func newOnDemandUpkeepService(
 		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
 		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
-		workers:          newWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		workers:          util.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		ctx:              ctx,
 		cancel:           cancel,
 	}
@@ -267,7 +267,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 		s.logger.Printf("attempting to send keys to worker group")
 		wg.Add(1)
 		if err := s.workers.Do(ctx, makeWorkerFunc(ctx, s.logger, s.registry, batch)); err != nil {
-			if !errors.Is(err, ErrContextCancelled) {
+			if !errors.Is(err, util.ErrContextCancelled) {
 				// the worker process has probably stopped so the function
 				// should terminate with an error
 				close(done)
@@ -312,7 +312,7 @@ func (s *onDemandUpkeepService) aggregateWorkerResults(w *sync.WaitGroup, r *wor
 Outer:
 	for {
 		select {
-		case result := <-s.workers.results:
+		case result := <-s.workers.Results:
 			if result.Err == nil {
 				r.AddSuccess(1)
 
@@ -337,7 +337,7 @@ Outer:
 	}
 }
 
-func makeWorkerFunc(jobCtx context.Context, logger *log.Logger, registry types.Registry, keys []types.UpkeepKey) work[types.UpkeepResults] {
+func makeWorkerFunc(jobCtx context.Context, logger *log.Logger, registry types.Registry, keys []types.UpkeepKey) util.WorkItem[types.UpkeepResults] {
 	keysStr := upkeepKeysToString(keys)
 	logger.Printf("check upkeep job created for keys: %s", keysStr)
 	return func(serviceCtx context.Context) (types.UpkeepResults, error) {

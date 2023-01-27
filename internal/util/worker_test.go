@@ -1,4 +1,4 @@
-package keepers
+package util
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func TestWorker(t *testing.T) {
 		}
 
 		// channel for work results to be added
-		results := make(chan workResult[int], 1)
+		results := make(chan WorkItemResult[int], 1)
 
 		f := func(_ context.Context) (int, error) {
 			return 10, fmt.Errorf("error")
@@ -51,7 +51,7 @@ func TestWorker(t *testing.T) {
 		}
 
 		// channel for work results to be added; unbuffered to block
-		results := make(chan workResult[int])
+		results := make(chan WorkItemResult[int])
 
 		f := func(_ context.Context) (int, error) {
 			return 10, fmt.Errorf("error")
@@ -79,16 +79,16 @@ func TestWorker(t *testing.T) {
 func TestWorkerGroup(t *testing.T) {
 
 	t.Run("All Work Done", func(t *testing.T) {
-		wg := newWorkerGroup[bool](8, 1000)
+		wg := NewWorkerGroup[bool](8, 1000)
 		ctx := context.Background()
 
 		closed := make(chan struct{})
 		var done int
-		go func(w *workerGroup[bool], c context.Context) {
+		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				tmr := time.NewTimer(50 * time.Millisecond)
 				select {
-				case <-w.results:
+				case <-w.Results:
 					tmr.Stop()
 					done++
 					continue
@@ -117,18 +117,18 @@ func TestWorkerGroup(t *testing.T) {
 		// the worker group destroys workers when nothing is in the queue
 		// for longer than 1 second. this test ensures that total number of
 		// workers doesn't go below 0 causing the worker group to lock.
-		wg := newWorkerGroup[bool](8, 1000)
+		wg := NewWorkerGroup[bool](8, 1000)
 		ctx := context.Background()
 
 		<-time.After(1500 * time.Millisecond)
 
 		closed := make(chan struct{})
 		var done int
-		go func(w *workerGroup[bool], c context.Context) {
+		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				tmr := time.NewTimer(50 * time.Millisecond)
 				select {
-				case <-w.results:
+				case <-w.Results:
 					tmr.Stop()
 					done++
 					continue
@@ -154,8 +154,8 @@ func TestWorkerGroup(t *testing.T) {
 	})
 
 	t.Run("Error on Cancel and Full Queue", func(t *testing.T) {
-		wg := &workerGroup[int]{
-			queue: make(chan work[int]), // unbuffered to block
+		wg := &WorkerGroup[int]{
+			queue: make(chan WorkItem[int]), // unbuffered to block
 			stop:  make(chan struct{}),
 		}
 		ctx, cancel := context.WithCancel(context.Background())
@@ -185,8 +185,8 @@ func TestWorkerGroup(t *testing.T) {
 	})
 
 	t.Run("Error on Stop and Full Queue", func(t *testing.T) {
-		wg := &workerGroup[int]{
-			queue: make(chan work[int]), // unbuffered to block
+		wg := &WorkerGroup[int]{
+			queue: make(chan WorkItem[int]), // unbuffered to block
 			stop:  make(chan struct{}),
 		}
 
@@ -215,8 +215,8 @@ func TestWorkerGroup(t *testing.T) {
 	})
 
 	t.Run("Error on Context Already Cancelled", func(t *testing.T) {
-		wg := &workerGroup[int]{
-			queue: make(chan work[int]), // unbuffered to block
+		wg := &WorkerGroup[int]{
+			queue: make(chan WorkItem[int]), // unbuffered to block
 			stop:  make(chan struct{}),
 		}
 		ctx, cancel := context.WithCancel(context.Background())
@@ -243,7 +243,7 @@ func TestWorkerGroup(t *testing.T) {
 	})
 
 	t.Run("Stop Closes Queue and Ends Run Context", func(t *testing.T) {
-		wg := newWorkerGroup[int](1, 1)
+		wg := NewWorkerGroup[int](1, 1)
 
 		go func() {
 			err := wg.Do(context.Background(), func(ctx context.Context) (int, error) {
@@ -270,7 +270,7 @@ func TestWorkerGroup(t *testing.T) {
 		// may not have results, which is expected behavior
 		tmr := time.NewTimer(150 * time.Millisecond)
 		select {
-		case r := <-wg.results:
+		case r := <-wg.Results:
 			tmr.Stop()
 			// should have a result
 			assert.Equal(t, 0, r.Data, "data from work result should match")
@@ -294,14 +294,14 @@ func BenchmarkWorkerGroup(b *testing.B) {
 	procs := runtime.GOMAXPROCS(0)
 
 	b.Run("MaxProcs", func(b *testing.B) {
-		wg := newWorkerGroup[bool](procs, 10)
+		wg := NewWorkerGroup[bool](procs, 10)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 
 		var count int
-		go func(w *workerGroup[bool], c context.Context) {
+		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				select {
-				case r := <-w.results:
+				case r := <-w.Results:
 					if r.Data {
 						count++
 					}
@@ -332,14 +332,14 @@ func BenchmarkWorkerGroup(b *testing.B) {
 	})
 
 	b.Run("2x_MaxProcs", func(b *testing.B) {
-		wg := newWorkerGroup[bool](2*procs, 10)
+		wg := NewWorkerGroup[bool](2*procs, 10)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 
 		var count int
-		go func(w *workerGroup[bool], c context.Context) {
+		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				select {
-				case r := <-w.results:
+				case r := <-w.Results:
 					if r.Data {
 						count++
 					}
@@ -370,14 +370,14 @@ func BenchmarkWorkerGroup(b *testing.B) {
 	})
 
 	b.Run("10x_MaxProcs", func(b *testing.B) {
-		wg := newWorkerGroup[bool](10*procs, 10)
+		wg := NewWorkerGroup[bool](10*procs, 10)
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 
 		var count int
-		go func(w *workerGroup[bool], c context.Context) {
+		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				select {
-				case r := <-w.results:
+				case r := <-w.Results:
 					if r.Data {
 						count++
 					}
