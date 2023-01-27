@@ -144,8 +144,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 	result.GasUsed = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
-	logger.Printf("result: %+v\n", result)
-	logger.Printf("rawPerformData: %+v\n", rawPerformData)
+	logger.Printf("Pre-OffchainLookup result: %+v\n", result)
+	logger.Printf("Pre-OffchainLookup rawPerformData: %+v\n", rawPerformData)
 
 	// ccip read
 	// if reverts plus flag that eip3668, for now we can assume eip3668 for POC
@@ -161,8 +161,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			}
 			return
 		} else {
-			logger.Printf("upkeepInfo: %+v\n", upkeepInfo)
-			logger.Printf("opts: %+v\n", opts)
+			logger.Printf("OffchainLookup upkeepInfo: %+v\n", upkeepInfo)
+			logger.Printf("OffchainLookup opts: %+v\n", opts)
 
 			evmClient, err := ethclient.Dial("wss://goerli.infura.io/ws/v3/ae1fbbb2a1d34b32b586791054436a14")
 			if err != nil {
@@ -182,7 +182,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				}
 				return
 			}
-			logger.Printf("\noffchainLookup: %+v\n", offchainLookup)
+			logger.Printf("\nOffchainLookup: %+v\n", offchainLookup)
 
 			// If the sender field does not match the address of the contract that was called, stop.
 			if offchainLookup.sender != upkeepInfo.Target {
@@ -204,7 +204,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 				}
 				return
 			}
-			logger.Println(string(offchainResp))
+			logger.Printf("OffchainLookup Resp: %s\n", string(offchainResp))
 
 			needed, performData, err := r.offchainLookupCallback(offchainLookup, offchainResp, upkeepInfo, opts)
 			if !needed {
@@ -219,7 +219,8 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			rawPerformData = performData
 			logger.Println("OffchainLookup Success!!")
 
-			bk, err := evmClient.BlockByNumber(ctx, opts.BlockNumber)
+			logger.Printf("%+v\n", ctx)
+			bk, err := evmClient.BlockByNumber(context.Background(), opts.BlockNumber)
 			if err != nil {
 				logger.Println(err)
 				result.State = types.NotEligible
