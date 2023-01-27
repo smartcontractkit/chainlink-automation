@@ -70,7 +70,10 @@ type Address []byte
 
 // UpkeepKey is an identifier of an upkeep at a moment in time, typically an
 // upkeep at a block number
-type UpkeepKey []byte
+type UpkeepKey interface {
+	BlockKeyAndUpkeepID() (BlockKey, UpkeepIdentifier, error)
+	fmt.Stringer
+}
 
 // UpkeepIdentifier is an identifier for an active upkeep, typically a big int
 type UpkeepIdentifier []byte

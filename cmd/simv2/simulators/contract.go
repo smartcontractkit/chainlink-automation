@@ -28,7 +28,7 @@ type Digester interface {
 }
 
 type ContractTelemetry interface {
-	CheckKey([]byte)
+	CheckKey(ktypes.UpkeepKey)
 }
 
 type RPCTelemetry interface {

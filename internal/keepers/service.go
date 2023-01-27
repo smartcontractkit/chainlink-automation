@@ -113,7 +113,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 			// the cache is a collection of keys (block & id) that map to cached
 			// results. if the same upkeep is checked at a block that has already been
 			// checked, return the cached result
-			if result, cached := s.cache.Get(string(key)); cached {
+			if result, cached := s.cache.Get(key.String()); cached {
 				results[i] = result
 			} else {
 				nonCachedKeysLock.Lock()
@@ -141,7 +141,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 
 	// Cache results
 	for i, u := range checkResults {
-		s.cache.Set(string(keys[nonCachedKeysIdxs[i]]), u, util.DefaultCacheExpiration)
+		s.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, util.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
@@ -241,7 +241,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 			defer wg.Done()
 
 			// no RPC lookups need to be done if a result has already been cached
-			result, cached := s.cache.Get(string(key))
+			result, cached := s.cache.Get(key.String())
 			if cached {
 				cacheHits++
 				if result.State == types.Eligible {
@@ -319,7 +319,7 @@ Outer:
 				// Cache results
 				for i := range result.Data {
 					res := result.Data[i]
-					s.cache.Set(string(res.Key), res, util.DefaultCacheExpiration)
+					s.cache.Set(res.Key.String(), res, util.DefaultCacheExpiration)
 					if res.State == types.Eligible {
 						sa.Append(res)
 					}
