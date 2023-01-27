@@ -219,8 +219,7 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 			rawPerformData = performData
 			logger.Println("OffchainLookup Success!!")
 
-			logger.Printf("%+v\n", ctx)
-			bk, err := evmClient.BlockByNumber(context.Background(), opts.BlockNumber)
+			bk, err := evmClient.BlockByNumber(ctx, opts.BlockNumber)
 			if err != nil {
 				logger.Println(err)
 				result.State = types.NotEligible
@@ -289,7 +288,6 @@ func (r *evmRegistryv2_0) check(ctx context.Context, key types.UpkeepKey, ch cha
 
 	// Since checkUpkeep is true, simulate the perform upkeep to ensure it doesn't revert
 	var out2 []interface{}
-	opts.Context = context.Background()
 	err = rawCall.Call(opts, &out2, "simulatePerformUpkeep", upkeepId, result.PerformData)
 	if err != nil {
 		logger.Println(err)
