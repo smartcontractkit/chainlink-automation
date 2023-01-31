@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -145,4 +146,56 @@ func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T]) error {
 
 func (wg *WorkerGroup[T]) Stop() {
 	close(wg.stop)
+}
+
+type JobFunc[T, K any] func(context.Context, T) (K, error)
+type JobResultFunc[T any] func(T, error)
+
+func RunJobs[T, K any](ctx context.Context, wg *WorkerGroup[T], jobs []K, jobFunc JobFunc[K, T], resFunc JobResultFunc[T]) {
+	var wait sync.WaitGroup
+	end := make(chan struct{})
+
+	go func(g *WorkerGroup[T], w *sync.WaitGroup, ch chan struct{}) {
+		for {
+			select {
+			case r := <-g.Results:
+				resFunc(r.Data, r.Err)
+				w.Done()
+			case <-ch:
+				return
+			}
+		}
+	}(wg, &wait, end)
+
+	for _, job := range jobs {
+		wait.Add(1)
+
+		if err := wg.Do(ctx, makeJobFunc(ctx, job, jobFunc)); err != nil {
+			if !errors.Is(err, ErrContextCancelled) {
+				// the worker group process has probably stopped so the job runner
+				// should close outstanding resources and terminate
+				close(end)
+				return
+			}
+
+			// the makeJobFunc will exit early if the context passed to it has
+			// already completed.
+			wait.Done()
+		}
+	}
+
+	wait.Wait()
+	close(end)
+}
+
+func makeJobFunc[T, K any](jobCtx context.Context, value T, jobFunc JobFunc[T, K]) WorkItem[K] {
+	return func(svcCtx context.Context) (K, error) {
+		// the jobFunc should exit in the case that either the job context
+		// cancels or the worker service context cancels. To ensure we don't end
+		// up with memory leaks, cancel the merged context to release resources.
+		ctx, cancel := MergeContextsWithCancel(svcCtx, jobCtx)
+		v, err := jobFunc(ctx, value)
+		cancel()
+		return v, err
+	}
 }

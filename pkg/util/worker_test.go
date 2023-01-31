@@ -290,6 +290,32 @@ func TestWorkerGroup(t *testing.T) {
 	})
 }
 
+func TestRunJobs(t *testing.T) {
+	wg := NewWorkerGroup[int](10, 100)
+
+	jobCount := 100
+	jobs := make([]uint, jobCount)
+	for i := 0; i < jobCount; i++ {
+		jobs[i] = 1
+	}
+
+	var result int
+
+	f := func(ctx context.Context, v uint) (int, error) {
+		return int(v), nil
+	}
+
+	r := func(i int, err error) {
+		result += i
+	}
+
+	RunJobs(context.Background(), wg, jobs, f, r)
+
+	wg.Stop()
+
+	assert.Equal(t, jobCount, result)
+}
+
 func BenchmarkWorkerGroup(b *testing.B) {
 	procs := runtime.GOMAXPROCS(0)
 
