@@ -116,6 +116,10 @@ func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
 	var err error
 
+	if len(attributed) == 0 {
+		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
+	}
+
 	var parseErrors int
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
 	for i, attr := range attributed {
