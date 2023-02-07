@@ -13,6 +13,7 @@ type mergedContext struct {
 	ctx     context.Context
 	done    chan struct{}
 	doneExt chan struct{}
+	once    sync.Once
 	err     error
 }
 
@@ -33,12 +34,15 @@ func (c *mergedContext) Done() <-chan struct{} {
 }
 
 func (c *mergedContext) Err() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.err
 }
 
 func (c *mergedContext) Deadline() (deadline time.Time, ok bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	var d time.Time
 	d1, ok1 := c.ctx.Deadline()
 	d2, ok2 := c.mainCtx.Deadline()
@@ -51,24 +55,30 @@ func (c *mergedContext) Deadline() (deadline time.Time, ok bool) {
 }
 
 func (c *mergedContext) Value(key interface{}) interface{} {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	return c.ctx.Value(key)
 }
 
 func (c *mergedContext) cancel() {
-	c.mu.Lock()
+	c.mu.RLock()
 	if c.err != nil {
-		c.mu.Unlock()
+		c.mu.RUnlock()
 		return
 	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
 	c.err = fmt.Errorf("context canceled")
 	c.mu.Unlock()
-	close(c.done)
-	close(c.doneExt)
+
+	c.once.Do(c.closeChannels)
 }
 
 func (c *mergedContext) run() {
 	var doneCtx context.Context
-	c.mu.RLock()
+
 	select {
 	case <-c.mainCtx.Done():
 		doneCtx = c.mainCtx
@@ -77,15 +87,22 @@ func (c *mergedContext) run() {
 	case <-c.done:
 		break
 	}
+
+	c.mu.RLock()
+	if c.err != nil {
+		c.mu.RUnlock()
+		return
+	}
 	c.mu.RUnlock()
 
 	c.mu.Lock()
-	if c.err != nil {
-		c.mu.Unlock()
-		return
-	}
 	c.err = doneCtx.Err()
 	c.mu.Unlock()
+
+	c.once.Do(c.closeChannels)
+}
+
+func (c *mergedContext) closeChannels() {
 	close(c.done)
 	close(c.doneExt)
 }
