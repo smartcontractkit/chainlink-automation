@@ -167,6 +167,7 @@ func (s *onDemandUpkeepService) start() {
 
 func (s *onDemandUpkeepService) stop() {
 	s.cancel()
+	s.workers.Stop()
 	s.cacheCleaner.Stop()
 }
 

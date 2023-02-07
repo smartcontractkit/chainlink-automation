@@ -193,7 +193,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				checkKeys(t, actives[:5], []ktypes.UpkeepKey{
+				a := make([]ktypes.UpkeepKey, 5)
+				copy(a, actives[:5])
+				checkKeys(t, a, []ktypes.UpkeepKey{
 					args.Get(1).(ktypes.UpkeepKey),
 					args.Get(2).(ktypes.UpkeepKey),
 					args.Get(3).(ktypes.UpkeepKey),
@@ -214,7 +216,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			shuffler:         new(noShuffleShuffler[ktypes.UpkeepKey]),
 			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](1, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
@@ -223,7 +225,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		// Start all required processes
 		svc.start()
 
-		// Wait until upkees are checked
+		// Wait until upkeeps are checked
 		<-subscribed
 
 		svc.stop()
@@ -311,7 +313,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				checkKeys(t, actives[:5], []ktypes.UpkeepKey{
+				a := make([]ktypes.UpkeepKey, 5)
+				copy(a, actives[:5])
+				checkKeys(t, a, []ktypes.UpkeepKey{
 					args.Get(1).(ktypes.UpkeepKey),
 					args.Get(2).(ktypes.UpkeepKey),
 					args.Get(3).(ktypes.UpkeepKey),

@@ -8,7 +8,7 @@ import (
 )
 
 type mergedContext struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	mainCtx context.Context
 	ctx     context.Context
 	done    chan struct{}
@@ -68,6 +68,7 @@ func (c *mergedContext) cancel() {
 
 func (c *mergedContext) run() {
 	var doneCtx context.Context
+	c.mu.RLock()
 	select {
 	case <-c.mainCtx.Done():
 		doneCtx = c.mainCtx
@@ -76,6 +77,7 @@ func (c *mergedContext) run() {
 	case <-c.done:
 		break
 	}
+	c.mu.RUnlock()
 
 	c.mu.Lock()
 	if c.err != nil {

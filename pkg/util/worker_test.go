@@ -291,29 +291,59 @@ func TestWorkerGroup(t *testing.T) {
 }
 
 func TestRunJobs(t *testing.T) {
-	wg := NewWorkerGroup[int](10, 100)
 
-	jobCount := 100
-	jobs := make([]uint, jobCount)
-	for i := 0; i < jobCount; i++ {
-		jobs[i] = 1
-	}
-
-	var result int
-
-	f := func(ctx context.Context, v uint) (int, error) {
+	var jobFunc = func(ctx context.Context, v uint) (int, error) {
+		<-time.After(100 * time.Millisecond)
 		return int(v), nil
 	}
 
-	r := func(i int, err error) {
-		result += i
+	var resultFuncWrapper = func(result *int) func(i int, err error) {
+		return func(i int, err error) {
+			o := *result + i
+			*result = o
+		}
 	}
 
-	RunJobs(context.Background(), wg, jobs, f, r)
+	t.Run("ToCompletion", func(t *testing.T) {
+		wg := NewWorkerGroup[int](10, 100)
 
-	wg.Stop()
+		jobCount := 100
+		jobs := make([]uint, jobCount)
+		for i := 0; i < jobCount; i++ {
+			jobs[i] = 1
+		}
 
-	assert.Equal(t, jobCount, result)
+		var result int
+
+		RunJobs(context.Background(), wg, jobs, jobFunc, resultFuncWrapper(&result))
+
+		wg.Stop()
+
+		assert.Equal(t, jobCount, result)
+	})
+
+	t.Run("CancelBeforeComplete", func(t *testing.T) {
+		wg := NewWorkerGroup[int](10, 100)
+
+		jobCount := 100
+		jobs := make([]uint, jobCount)
+		for i := 0; i < jobCount; i++ {
+			jobs[i] = 1
+		}
+
+		var result int
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			<-time.After(200 * time.Millisecond)
+			cancel()
+		}()
+
+		RunJobs(ctx, wg, jobs, jobFunc, resultFuncWrapper(&result))
+
+		wg.Stop()
+
+		assert.Equal(t, jobCount, result)
+	})
 }
 
 func BenchmarkWorkerGroup(b *testing.B) {
