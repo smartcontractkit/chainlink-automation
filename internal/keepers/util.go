@@ -116,6 +116,11 @@ func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
 	var err error
 
+	if len(attributed) == 0 {
+		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
+	}
+
+	var parseErrors int
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
 	for i, attr := range attributed {
 		b := []byte(attr.Observation)
@@ -125,12 +130,21 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 
 		var ob []ktypes.UpkeepKey
 		err = decode(b, &ob)
+
+		// a single observation returning an error here can void all other
+		// good observations. ensure this loop continues on error, but collect
+		// them and throw an error if ALL observations fail at this point.
 		if err != nil {
-			return nil, fmt.Errorf("%w: cannot prepare sorted key list; observation not properly encoded", err)
+			parseErrors++
+			continue
 		}
 
 		sort.Sort(sortUpkeepKeys(ob))
 		kys[i] = ob
+	}
+
+	if parseErrors == len(attributed) {
+		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", err)
 	}
 
 	keys, err := dedupe(kys, filters...)
