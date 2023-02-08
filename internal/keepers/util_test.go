@@ -7,9 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
