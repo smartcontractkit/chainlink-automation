@@ -2,10 +2,12 @@ package keepers
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"math/rand"
 	"sort"
+	"strings"
 	"testing"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -253,7 +255,8 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 
 		keys := make([]ktypes.UpkeepKey, a)
 		for i := 0; i < a; i++ {
-			k := make([]byte, rand.Intn(b))
+			k := strings.Repeat("1", rand.Intn(b)+3)
+			k = k[:1] + "|" + k[2:]
 			keys[i] = chain.UpkeepKey(k)
 		}
 
@@ -266,10 +269,11 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 			output := make([]ktypes.UpkeepKey, 0)
 			outputKeys := make([]chain.UpkeepKey, 0)
 			err = decode(bt, &outputKeys)
+			assert.NoError(t, err)
+
 			for _, o := range outputKeys {
 				output = append(output, o)
 			}
-			assert.NoError(t, err)
 
 			assert.Greater(t, len(bt), 0, "length of bytes :: keys: %d; length: %d", a, b)
 			assert.Greater(t, len(output), 0, "min number of keys :: keys: %d; length: %d", a, b)

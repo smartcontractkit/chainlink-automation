@@ -135,6 +135,7 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		// a single observation returning an error here can void all other
 		// good observations. ensure this loop continues on error, but collect
 		// them and throw an error if ALL observations fail at this point.
+		// TODO we can't rely on this concrete type for decoding/encoding
 		var keys []chain.UpkeepKey
 		err = decode(b, &keys)
 		if err != nil {
