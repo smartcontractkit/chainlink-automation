@@ -2,11 +2,11 @@ package simulators
 
 import (
 	"context"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

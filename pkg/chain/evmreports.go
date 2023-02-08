@@ -2,8 +2,9 @@ package chain
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )

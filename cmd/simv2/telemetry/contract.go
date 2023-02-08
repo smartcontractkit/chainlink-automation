@@ -1,9 +1,10 @@
 package telemetry
 
 import (
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"io"
 	"sync"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type ContractEventCollector struct {

@@ -6,12 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 

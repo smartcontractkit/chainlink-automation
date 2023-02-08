@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"io"
 	"log"
 	"testing"
@@ -14,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )

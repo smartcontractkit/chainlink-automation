@@ -1,9 +1,9 @@
 package keepers
 
 import (
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"testing"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 

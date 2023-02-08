@@ -3,12 +3,12 @@ package simulators
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"math/big"
 	"sync"
 
 	"go.uber.org/multierr"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
