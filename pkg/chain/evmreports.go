@@ -3,7 +3,6 @@ package chain
 import (
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
@@ -168,20 +167,20 @@ type wrappedPerform struct {
 }
 
 func BlockAndIdFromKey(key ktypes.UpkeepKey) (ktypes.BlockKey, *big.Int, error) {
-	parts := strings.Split(string(key), separator)
-	if len(parts) != 2 {
-		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+	blockKey, upkeepID, err := key.BlockKeyAndUpkeepID()
+	if err != nil {
+		return "", nil, err
 	}
 
 	id := new(big.Int)
-	_, ok := id.SetString(parts[1], 10)
+	_, ok := id.SetString(string(upkeepID), 10)
 	if !ok {
 		return "", nil, fmt.Errorf("%w: must be big int", ErrUpkeepKeyNotParsable)
 	}
 
-	return ktypes.BlockKey(parts[0]), id, nil
+	return blockKey, id, nil
 }
 
 func BlockAndIdToKey(block *big.Int, id *big.Int) ktypes.UpkeepKey {
-	return ktypes.UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
+	return UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -28,7 +29,7 @@ func TestCheckUpkeep(t *testing.T) {
 				},
 				Performs: map[string]types.PerformLog{
 					"7": {
-						Key: types.UpkeepKey([]byte("4|20")),
+						Key: chain.UpkeepKey([]byte("4|20")),
 					},
 				},
 			},
@@ -44,7 +45,7 @@ func TestCheckUpkeep(t *testing.T) {
 
 	mct.On("CheckKey", mock.Anything)
 
-	checkKey := types.UpkeepKey([]byte("8|201"))
+	checkKey := chain.UpkeepKey([]byte("8|201"))
 	res, err := contract.CheckUpkeep(context.Background(), checkKey)
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
@@ -52,7 +53,7 @@ func TestCheckUpkeep(t *testing.T) {
 	assert.Equal(t, types.NotEligible, res[0].State)
 
 	tel.On("RegisterCall", "checkUpkeep", mock.Anything, nil)
-	checkKey2 := types.UpkeepKey([]byte("11|201"))
+	checkKey2 := chain.UpkeepKey([]byte("11|201"))
 	res, err = contract.CheckUpkeep(context.Background(), checkKey2)
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
@@ -76,6 +77,6 @@ type MockContractTelemetry struct {
 	mock.Mock
 }
 
-func (_m *MockContractTelemetry) CheckKey(key []byte) {
+func (_m *MockContractTelemetry) CheckKey(key types.UpkeepKey) {
 	_m.Mock.Called(key)
 }

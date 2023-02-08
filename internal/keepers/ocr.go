@@ -227,7 +227,7 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.Repor
 		// (while others may not have), don't try to transmit again
 		// TODO: reevaluate this assumption
 		if transmitConfirmed {
-			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted: %s", string(id.Key), lCtx)
+			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted: %s", id.Key, lCtx)
 			return false, nil
 		}
 

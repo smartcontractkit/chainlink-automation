@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"math/big"
-	"sort"
-	"strings"
-
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/blocks"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+	"math/big"
+	"sort"
 )
 
 type upkeepStatsBuilder struct {
@@ -54,9 +52,9 @@ func newUpkeepStatsBuilder(
 
 		// tr.SendingAddress
 		for _, trResult := range reported {
-			parts := strings.Split(string(trResult.Key), "|")
-			performsByID[parts[1]] = append(performsByID[parts[1]], block.String())
-			trsByID[parts[1]] = append(trsByID[parts[1]], tr)
+			_, upkeepID, _ := trResult.Key.BlockKeyAndUpkeepID()
+			performsByID[string(upkeepID)] = append(performsByID[string(upkeepID)], block.String())
+			trsByID[string(upkeepID)] = append(trsByID[string(upkeepID)], tr)
 		}
 	}
 

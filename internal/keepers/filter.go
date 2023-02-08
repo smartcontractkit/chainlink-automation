@@ -21,7 +21,6 @@ import (
 	"log"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -82,12 +81,15 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 			// block number here is a hack solution that should be fixed asap.
 			// AUTO-1480
 			var blKey int
-			parts := strings.Split(string(key), "|")
-			if len(parts) == 2 && parts[0] != "" {
-				blKey, err = strconv.Atoi(parts[0])
-				if err != nil {
-					return false
-				}
+
+			blockKey, _, err := key.BlockKeyAndUpkeepID()
+			if err != nil {
+				return false
+			}
+
+			blKey, err = strconv.Atoi(string(blockKey))
+			if err != nil {
+				return false
 			}
 
 			// Return false if empty
@@ -109,7 +111,7 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 }
 
 func (rc *reportCoordinator) CheckAlreadyAccepted(key types.UpkeepKey) bool {
-	_, ok := rc.activeKeys.Get(string(key))
+	_, ok := rc.activeKeys.Get(key.String())
 	return ok
 }
 
@@ -122,18 +124,21 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
-	rc.activeKeys.Set(string(key), false, util.DefaultCacheExpiration)
+	rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
 	// TODO: the key is constructed in the registry. splitting out the
 	// block number here is a hack solution that should be fixed asap.
-	parts := strings.Split(string(key), "|")
-	bk := parts[0]
-	if bl, ok := rc.idBlocks.Get(string(id)); ok && string(bl.KeyBlockNumber) > bk {
+	blockKey, _, err := key.BlockKeyAndUpkeepID()
+	if err != nil {
+		return err
+	}
+
+	if bl, ok := rc.idBlocks.Get(string(id)); ok && string(bl.KeyBlockNumber) > string(blockKey) {
 		return nil
 	}
 
 	rc.idBlocks.Set(string(id), idBlocker{
-		KeyBlockNumber: types.BlockKey(bk),
+		KeyBlockNumber: blockKey,
 	}, util.DefaultCacheExpiration)
 
 	return nil
@@ -142,7 +147,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 func (rc *reportCoordinator) IsTransmissionConfirmed(key types.UpkeepKey) bool {
 	// key is confirmed if it both exists and has been confirmed by the log
 	// poller
-	confirmed, ok := rc.activeKeys.Get(string(key))
+	confirmed, ok := rc.activeKeys.Get(key.String())
 	return !ok || (ok && confirmed)
 }
 
@@ -169,7 +174,7 @@ func (rc *reportCoordinator) checkLogs() {
 		}
 
 		// Process log if the key hasn't been confirmed yet
-		confirmed, ok := rc.activeKeys.Get(string(l.Key))
+		confirmed, ok := rc.activeKeys.Get(l.Key.String())
 		if ok && !confirmed {
 			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
@@ -177,15 +182,15 @@ func (rc *reportCoordinator) checkLogs() {
 			// setting a key in this way also blocks it in Accept even if
 			// Accept was never called for on a single node for this key
 			// update the active key to indicate a log was detected
-			rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
+			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
 			// if an id already exists for a higher block number, don't update it
 			// TODO: the key is constructed in the registry. splitting out the
 			// block number here is a hack solution that should be fixed asap.
-			parts := strings.Split(string(l.Key), "|")
-			bk := parts[0]
+			blockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
+
 			bl, ok := rc.idBlocks.Get(string(id))
-			if ok && bk < string(bl.KeyBlockNumber) {
+			if ok && string(blockKey) < string(bl.KeyBlockNumber) {
 				continue
 			}
 

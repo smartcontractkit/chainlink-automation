@@ -56,7 +56,7 @@ func TestCheckUpkeep(t *testing.T) {
 	err := pdataABI.UnpackIntoInterface(ret0, "check", wrappedPerformData)
 	require.NoError(t, err)
 
-	upkeepKey := types.UpkeepKey("1|1234")
+	upkeepKey := UpkeepKey("1|1234")
 	_, expectedUpkeep, err := BlockAndIdFromKey(upkeepKey)
 	require.NoError(t, err)
 

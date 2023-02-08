@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -71,24 +73,24 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 
 	obs := [][]ktypes.UpkeepKey{
 		{
-			ktypes.UpkeepKey("1|1"),
-			ktypes.UpkeepKey("2|1"),
+			chain.UpkeepKey("1|1"),
+			chain.UpkeepKey("2|1"),
 		},
 		{
-			ktypes.UpkeepKey("3|1"),
-			ktypes.UpkeepKey("1|2"),
+			chain.UpkeepKey("3|1"),
+			chain.UpkeepKey("1|2"),
 		},
 		{
-			ktypes.UpkeepKey("1|2"),
-			ktypes.UpkeepKey("1|3"),
+			chain.UpkeepKey("1|2"),
+			chain.UpkeepKey("1|3"),
 		},
 		{
-			ktypes.UpkeepKey("1|3"),
-			ktypes.UpkeepKey("2|3"),
+			chain.UpkeepKey("1|3"),
+			chain.UpkeepKey("2|3"),
 		},
 		{
-			ktypes.UpkeepKey("1|1"),
-			ktypes.UpkeepKey("2|1"),
+			chain.UpkeepKey("1|1"),
+			chain.UpkeepKey("2|1"),
 		},
 	}
 
@@ -103,9 +105,9 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 	// shuffling is deterministic based on the provided key
 	// should probably add some more tests for other keys
 	expected := []ktypes.UpkeepKey{
-		ktypes.UpkeepKey("2|3"),
-		ktypes.UpkeepKey("3|1"),
-		ktypes.UpkeepKey("1|2"),
+		chain.UpkeepKey("2|3"),
+		chain.UpkeepKey("3|1"),
+		chain.UpkeepKey("1|2"),
 	}
 	result, err := shuffledDedupedKeyList(attr, k, f)
 
@@ -120,9 +122,9 @@ func TestSortedDedup_Error(t *testing.T) {
 }
 
 func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
-	key1 := ktypes.UpkeepKey([]byte("1|1"))
-	key2 := ktypes.UpkeepKey([]byte("1|2"))
-	key3 := ktypes.UpkeepKey([]byte("2|1"))
+	key1 := chain.UpkeepKey([]byte("1|1"))
+	key2 := chain.UpkeepKey([]byte("1|2"))
+	key3 := chain.UpkeepKey([]byte("2|1"))
 
 	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
 
@@ -225,7 +227,8 @@ func TestLimitedLengthEncode(t *testing.T) {
 	for _, test := range tests {
 		keys := make([]ktypes.UpkeepKey, test.KeyCount)
 		for i := 0; i < test.KeyCount; i++ {
-			keys[i] = make([]byte, test.KeyLength)
+			byt := make([]byte, test.KeyLength)
+			keys[i] = chain.UpkeepKey(byt)
 		}
 
 		b, err := limitedLengthEncode(keys, test.MaxLength)
@@ -251,7 +254,9 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 
 		keys := make([]ktypes.UpkeepKey, a)
 		for i := 0; i < a; i++ {
-			keys[i] = ktypes.UpkeepKey(make([]byte, rand.Intn(b)))
+			k := strings.Repeat("1", rand.Intn(b)+3)
+			k = k[:1] + "|" + k[2:]
+			keys[i] = chain.UpkeepKey(k)
 		}
 
 		bt, err := limitedLengthEncode(keys, 1000)
@@ -261,8 +266,13 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 
 		if a > 0 {
 			output := make([]ktypes.UpkeepKey, 0)
-			err = decode(bt, &output)
+			outputKeys := make([]chain.UpkeepKey, 0)
+			err = decode(bt, &outputKeys)
 			assert.NoError(t, err)
+
+			for _, o := range outputKeys {
+				output = append(output, o)
+			}
 
 			assert.Greater(t, len(bt), 0, "length of bytes :: keys: %d; length: %d", a, b)
 			assert.Greater(t, len(output), 0, "min number of keys :: keys: %d; length: %d", a, b)

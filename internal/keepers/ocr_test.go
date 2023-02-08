@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestQuery(t *testing.T) {
@@ -72,8 +72,8 @@ func TestObservation(t *testing.T) {
 			Name: "Filter to Empty Set",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet: ktypes.UpkeepResults{
-				{Key: ktypes.UpkeepKey("1|1"), State: ktypes.NotEligible},
-				{Key: ktypes.UpkeepKey("1|2"), State: ktypes.NotEligible},
+				{Key: chain.UpkeepKey("1|1"), State: ktypes.NotEligible},
+				{Key: chain.UpkeepKey("1|2"), State: ktypes.NotEligible},
 			},
 			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{})),
 		},
@@ -81,34 +81,34 @@ func TestObservation(t *testing.T) {
 			Name: "Filter to Non-empty Set",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet: ktypes.UpkeepResults{
-				{Key: ktypes.UpkeepKey([]byte("1|1")), State: ktypes.NotEligible},
-				{Key: ktypes.UpkeepKey([]byte("1|2")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("1|1")), State: ktypes.NotEligible},
+				{Key: chain.UpkeepKey([]byte("1|2")), State: ktypes.Eligible},
 			},
-			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{[]byte("1|2")})),
+			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|2")})),
 		},
 		{
 			Name: "Reduce Key List to Observation Limit",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet: ktypes.UpkeepResults{
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000001")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000002")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000003")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000004")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000005")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000006")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000007")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000008")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000009")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000010")), State: ktypes.Eligible},
-				{Key: ktypes.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000011")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000001")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000002")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000003")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000004")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000005")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000006")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000007")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000008")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000009")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000010")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000011")), State: ktypes.Eligible},
 			},
 			ExpectedObservation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{
-				[]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000001"),
-				[]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000002"),
-				[]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000003"),
-				[]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000004"),
-				[]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000005"),
-				[]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000006"),
+				chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000001")),
+				chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000002")),
+				chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000003")),
+				chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000004")),
+				chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000005")),
+				chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000006")),
 			})),
 		},
 	}
@@ -160,11 +160,11 @@ func BenchmarkObservation(b *testing.B) {
 	}
 
 	set := make(ktypes.UpkeepResults, 2, 100)
-	set[0] = ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible}
-	set[1] = ktypes.UpkeepResult{Key: ktypes.UpkeepKey("1|2"), State: ktypes.Eligible}
+	set[0] = ktypes.UpkeepResult{Key: chain.UpkeepKey("1|1"), State: ktypes.Eligible}
+	set[1] = ktypes.UpkeepResult{Key: chain.UpkeepKey("1|2"), State: ktypes.Eligible}
 
 	for i := 2; i < 100; i++ {
-		set = append(set, ktypes.UpkeepResult{Key: ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1)), State: ktypes.NotEligible})
+		set = append(set, ktypes.UpkeepResult{Key: chain.UpkeepKey(fmt.Sprintf("1|%d", i+1)), State: ktypes.NotEligible})
 	}
 
 	b.ResetTimer()
@@ -210,16 +210,16 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
-					ktypes.UpkeepKey("1|1"),
+					chain.UpkeepKey("1|1"),
 				},
 				R: ktypes.UpkeepResults{
-					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+					{Key: chain.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
 				},
 			},
 			Perform:        []int{0},
@@ -231,16 +231,16 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
-					ktypes.UpkeepKey("1|1"),
+					chain.UpkeepKey("1|1"),
 				},
 				R: ktypes.UpkeepResults{
-					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+					{Key: chain.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
 				},
 			},
 			Perform:        []int{0},
@@ -252,12 +252,12 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
 			},
 			Checks: checks{
-				K: []ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")},
+				K: []ktypes.UpkeepKey{chain.UpkeepKey("1|1")},
 				R: ktypes.UpkeepResults{{}},
 				E: ErrMockTestError,
 			},
@@ -270,23 +270,23 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|2"), ktypes.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|2"), chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
-					ktypes.UpkeepKey("1|1"),
-					ktypes.UpkeepKey("1|2"),
+					chain.UpkeepKey("1|1"),
+					chain.UpkeepKey("1|2"),
 				},
 				R: ktypes.UpkeepResults{
 					{
-						Key:         ktypes.UpkeepKey("1|1"),
+						Key:         chain.UpkeepKey("1|1"),
 						State:       ktypes.Eligible,
 						PerformData: []byte("abcd"),
 					},
 					{
-						Key:         ktypes.UpkeepKey("1|2"),
+						Key:         chain.UpkeepKey("1|2"),
 						State:       ktypes.NotEligible,
 						PerformData: []byte("abcd"),
 					},
@@ -302,19 +302,19 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1")), ktypes.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1")), chain.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|2"))}))},
 			},
 			FilterOut: []ktypes.UpkeepKey{
-				ktypes.UpkeepKey("1|1"),
+				chain.UpkeepKey("1|1"),
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
-					ktypes.UpkeepKey("1|2"),
+					chain.UpkeepKey("1|2"),
 				},
 				R: ktypes.UpkeepResults{
-					{Key: ktypes.UpkeepKey("1|2"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+					{Key: chain.UpkeepKey("1|2"), State: ktypes.Eligible, PerformData: []byte("abcd")},
 				},
 			},
 			Perform:        []int{0},
@@ -326,18 +326,18 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|2")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|1"), ktypes.UpkeepKey("1|2")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey("1|2")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|2")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1"), chain.UpkeepKey("1|2")}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|2")}))},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
-					ktypes.UpkeepKey("1|2"),
-					ktypes.UpkeepKey("1|1"),
+					chain.UpkeepKey("1|2"),
+					chain.UpkeepKey("1|1"),
 				},
 				R: ktypes.UpkeepResults{
-					{Key: ktypes.UpkeepKey("1|2"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
-					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
+					{Key: chain.UpkeepKey("1|2"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
+					{Key: chain.UpkeepKey("1|1"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
 				},
 			},
 			ExpectedBool: false,
@@ -370,16 +370,16 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{ktypes.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1"))}))},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
-					ktypes.UpkeepKey("1|1"),
+					chain.UpkeepKey("1|1"),
 				},
 				R: ktypes.UpkeepResults{
-					{Key: ktypes.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
+					{Key: chain.UpkeepKey("1|1"), State: ktypes.Eligible, PerformData: []byte("abcd")},
 				},
 			},
 			Perform:      []int{0},
@@ -406,7 +406,7 @@ func TestReport(t *testing.T) {
 
 			mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
 				for _, key := range test.FilterOut {
-					if string(k) == string(key) {
+					if k.String() == key.String() {
 						return false
 					}
 				}
@@ -460,9 +460,9 @@ func BenchmarkReport(b *testing.B) {
 		filter:  mf,
 	}
 
-	key1 := ktypes.UpkeepKey([]byte("1|1"))
-	key2 := ktypes.UpkeepKey([]byte("1|2"))
-	key3 := ktypes.UpkeepKey([]byte("2|1"))
+	key1 := chain.UpkeepKey([]byte("1|1"))
+	key2 := chain.UpkeepKey([]byte("1|2"))
+	key3 := chain.UpkeepKey([]byte("2|1"))
 	data := []byte("abcd")
 
 	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
@@ -548,14 +548,14 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 			Description: "Should not accept report if calls were previously accepted",
 			ReportContents: []ktypes.UpkeepResult{
 				{
-					Key: ktypes.UpkeepKey("1|1"),
+					Key: chain.UpkeepKey("1|1"),
 				},
 			},
 			AlreadyAccepted: []struct {
 				K ktypes.UpkeepKey
 				B bool
 			}{
-				{K: ktypes.UpkeepKey("1|1"), B: true},
+				{K: chain.UpkeepKey("1|1"), B: true},
 			},
 			ExpectedBool: false,
 			Err:          fmt.Errorf("failed to accept key"),
@@ -565,18 +565,18 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 			Description: "Should not accept report if calls were previously accepted",
 			ReportContents: []ktypes.UpkeepResult{
 				{
-					Key: ktypes.UpkeepKey("1|1"),
+					Key: chain.UpkeepKey("1|1"),
 				},
 				{
-					Key: ktypes.UpkeepKey("1|2"),
+					Key: chain.UpkeepKey("1|2"),
 				},
 			},
 			AlreadyAccepted: []struct {
 				K ktypes.UpkeepKey
 				B bool
 			}{
-				{K: ktypes.UpkeepKey("1|1"), B: false},
-				{K: ktypes.UpkeepKey("1|2"), B: true},
+				{K: chain.UpkeepKey("1|1"), B: false},
+				{K: chain.UpkeepKey("1|2"), B: true},
 			},
 			ExpectedBool: false,
 			Err:          fmt.Errorf("failed to accept key"),
@@ -586,18 +586,18 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 			Description: "Should not accept report if calls were previously accepted",
 			ReportContents: []ktypes.UpkeepResult{
 				{
-					Key: ktypes.UpkeepKey("1|1"),
+					Key: chain.UpkeepKey("1|1"),
 				},
 				{
-					Key: ktypes.UpkeepKey("1|2"),
+					Key: chain.UpkeepKey("1|2"),
 				},
 			},
 			AlreadyAccepted: []struct {
 				K ktypes.UpkeepKey
 				B bool
 			}{
-				{K: ktypes.UpkeepKey("1|1"), B: false},
-				{K: ktypes.UpkeepKey("1|2"), B: false},
+				{K: chain.UpkeepKey("1|1"), B: false},
+				{K: chain.UpkeepKey("1|2"), B: false},
 			},
 			ExpectedBool: true,
 		},
@@ -693,14 +693,14 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 			Description: "Should not transmit if call to filter transmitted returns true",
 			ReportContents: []ktypes.UpkeepResult{
 				{
-					Key: ktypes.UpkeepKey("1|1"),
+					Key: chain.UpkeepKey("1|1"),
 				},
 			},
 			TransmitChecks: []struct {
 				K ktypes.UpkeepKey
 				B bool
 			}{
-				{K: ktypes.UpkeepKey("1|1"), B: true},
+				{K: chain.UpkeepKey("1|1"), B: true},
 			},
 			ExpectedBool: false,
 			Err:          nil,
@@ -710,14 +710,14 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 			Description: "Should transmit if call to filter transmitted returns false",
 			ReportContents: []ktypes.UpkeepResult{
 				{
-					Key: ktypes.UpkeepKey("1|1"),
+					Key: chain.UpkeepKey("1|1"),
 				},
 			},
 			TransmitChecks: []struct {
 				K ktypes.UpkeepKey
 				B bool
 			}{
-				{K: ktypes.UpkeepKey("1|1"), B: false},
+				{K: chain.UpkeepKey("1|1"), B: false},
 			},
 			ExpectedBool: true,
 			Err:          nil,
@@ -727,18 +727,18 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 			Description: "Should not transmit if one key in report has been transmitted",
 			ReportContents: []ktypes.UpkeepResult{
 				{
-					Key: ktypes.UpkeepKey("1|1"),
+					Key: chain.UpkeepKey("1|1"),
 				},
 				{
-					Key: ktypes.UpkeepKey("1|2"),
+					Key: chain.UpkeepKey("1|2"),
 				},
 			},
 			TransmitChecks: []struct {
 				K ktypes.UpkeepKey
 				B bool
 			}{
-				{K: ktypes.UpkeepKey("1|1"), B: false},
-				{K: ktypes.UpkeepKey("1|2"), B: true},
+				{K: chain.UpkeepKey("1|1"), B: false},
+				{K: chain.UpkeepKey("1|2"), B: true},
 			},
 			ExpectedBool: false,
 			Err:          nil,
@@ -781,7 +781,7 @@ func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
 	mf := &BenchmarkMockedFilterer{}
 
 	me.rtnKeys = []ktypes.UpkeepResult{
-		{Key: ktypes.UpkeepKey([]byte("1|1"))},
+		{Key: chain.UpkeepKey([]byte("1|1"))},
 	}
 
 	plugin := &keepers{

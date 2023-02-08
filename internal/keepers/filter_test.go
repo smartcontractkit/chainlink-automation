@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -29,10 +30,10 @@ func TestReportCoordinator(t *testing.T) {
 	}
 
 	// set up the mocks and mock data
-	key1Block1 := types.UpkeepKey("1|1")
-	key1Block2 := types.UpkeepKey("2|1")
-	key1Block3 := types.UpkeepKey("3|1")
-	key1Block4 := types.UpkeepKey("4|1")
+	key1Block1 := chain.UpkeepKey("1|1")
+	key1Block2 := chain.UpkeepKey("2|1")
+	key1Block3 := chain.UpkeepKey("3|1")
+	key1Block4 := chain.UpkeepKey("4|1")
 	id1 := types.UpkeepIdentifier("1")
 	bk2 := types.BlockKey("2")
 	bk3 := types.BlockKey("3")
@@ -255,5 +256,5 @@ func TestReportCoordinator(t *testing.T) {
 
 func assertFilter(t *testing.T, reg *types.MockRegistry, key types.UpkeepKey, id types.UpkeepIdentifier, exp bool, f func(types.UpkeepKey) bool) {
 	reg.Mock.On("IdentifierFromKey", key).Return(id, nil)
-	assert.Equal(t, exp, f(key), "filter should return '%v' to indicate key should not be filtered out at block %s", exp, string(key))
+	assert.Equal(t, exp, f(key), "filter should return '%v' to indicate key should not be filtered out at block %s", exp, key)
 }

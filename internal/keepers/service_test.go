@@ -13,13 +13,14 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 	testId := ktypes.UpkeepIdentifier("1")
-	testKey := ktypes.UpkeepKey(fmt.Sprintf("1|%s", string(testId)))
+	testKey := chain.UpkeepKey(fmt.Sprintf("1|%s", string(testId)))
 
 	tests := []struct {
 		Name           string
@@ -111,7 +112,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	returnResults := make(ktypes.UpkeepResults, 5)
 	for i := 0; i < 5; i++ {
 		returnResults[i] = ktypes.UpkeepResult{
-			Key:         ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1)),
+			Key:         chain.UpkeepKey(fmt.Sprintf("1|%d", i+1)),
 			State:       types.NotEligible,
 			PerformData: []byte{},
 		}
@@ -147,7 +148,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		for _, key := range keys[:5] {
 			var found bool
 			for _, actualKey := range actualKeys {
-				if bytes.Equal(actualKey, key) {
+				if bytes.Equal([]byte(actualKey.String()), []byte(key.String())) {
 					found = true
 					break
 				}
@@ -168,7 +169,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
-			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
+			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, types.BlockKey("0")).
@@ -301,7 +302,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		actives := make([]ktypes.UpkeepKey, 10)
 		for i := 0; i < 10; i++ {
-			actives[i] = ktypes.UpkeepKey(fmt.Sprintf("1|%d", i+1))
+			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
