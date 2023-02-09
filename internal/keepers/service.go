@@ -222,7 +222,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 
 	// go through keys and check the cache first
 	// if an item doesn't exist on the cache, send the items to the worker threads
-	filteredKeys, cacheHits := filterFromCache(keys, s.cache, samples)
+	filteredKeys, cacheHits := s.filterFromCache(keys, samples)
 
 	// Create batches from the given keys.
 	// Max keyBatchSize items in the batch.
@@ -230,8 +230,8 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 		ctx,
 		s.workers,
 		createBatches(filteredKeys, maxWorkersBatchSize),
-		wrapWorkerFunc(s.logger, s.registry),
-		wrapAggregate(s.logger, s.cache, &wResults, samples),
+		s.wrapWorkerFunc(),
+		s.wrapAggregate(&wResults, samples),
 	)
 
 	if wResults.Total() == 0 {
@@ -252,13 +252,13 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 	return samples.Values(), nil
 }
 
-func filterFromCache(keys []types.UpkeepKey, cache *util.Cache[types.UpkeepResult], samples *syncedArray[types.UpkeepResult]) ([]types.UpkeepKey, int) {
+func (s *onDemandUpkeepService) filterFromCache(keys []types.UpkeepKey, samples *syncedArray[types.UpkeepResult]) ([]types.UpkeepKey, int) {
 	var keysToSend = make([]types.UpkeepKey, 0, len(keys))
 	var cacheHits int
 
 	for _, key := range keys {
 		// no RPC lookups need to be done if a result has already been cached
-		result, cached := cache.Get(key.String())
+		result, cached := s.cache.Get(key.String())
 		if cached {
 			cacheHits++
 			if result.State == types.Eligible {
@@ -274,7 +274,7 @@ func filterFromCache(keys []types.UpkeepKey, cache *util.Cache[types.UpkeepResul
 	return keysToSend, cacheHits
 }
 
-func wrapAggregate(logger *log.Logger, cache *util.Cache[types.UpkeepResult], r *workerResults, sa *syncedArray[types.UpkeepResult]) func(types.UpkeepResults, error) {
+func (s *onDemandUpkeepService) wrapAggregate(r *workerResults, sa *syncedArray[types.UpkeepResult]) func(types.UpkeepResults, error) {
 	return func(result types.UpkeepResults, err error) {
 		if err == nil {
 			r.AddSuccess(1)
@@ -282,36 +282,36 @@ func wrapAggregate(logger *log.Logger, cache *util.Cache[types.UpkeepResult], r 
 			// Cache results
 			for i := range result {
 				res := result[i]
-				cache.Set(string(res.Key.String()), res, util.DefaultCacheExpiration)
+				s.cache.Set(string(res.Key.String()), res, util.DefaultCacheExpiration)
 				if res.State == types.Eligible {
 					sa.Append(res)
 				}
 			}
 		} else {
 			r.SetLastErr(err)
-			logger.Printf("error received from worker result: %s", err)
+			s.logger.Printf("error received from worker result: %s", err)
 			r.AddFailure(1)
 		}
 	}
 }
 
-func wrapWorkerFunc(logger *log.Logger, registry types.Registry) func(context.Context, []types.UpkeepKey) (types.UpkeepResults, error) {
+func (s *onDemandUpkeepService) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (types.UpkeepResults, error) {
 	return func(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
 		keysStr := upkeepKeysToString(keys)
 		start := time.Now()
 
 		// perform check and update cache with result
-		checkResults, err := registry.CheckUpkeep(ctx, keys...)
+		checkResults, err := s.registry.CheckUpkeep(ctx, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keysStr)
 		} else {
-			logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
+			s.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
 
 			for _, result := range checkResults {
 				if result.State == types.Eligible {
-					logger.Printf("upkeep ready to perform for key %s", result.Key)
+					s.logger.Printf("upkeep ready to perform for key %s", result.Key)
 				} else {
-					logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
+					s.logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
 				}
 			}
 		}

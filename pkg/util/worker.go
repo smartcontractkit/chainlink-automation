@@ -194,8 +194,7 @@ func makeJobFunc[T, K any](jobCtx context.Context, value T, jobFunc JobFunc[T, K
 		// cancels or the worker service context cancels. To ensure we don't end
 		// up with memory leaks, cancel the merged context to release resources.
 		ctx, cancel := MergeContextsWithCancel(svcCtx, jobCtx)
-		v, err := jobFunc(ctx, value)
-		cancel()
-		return v, err
+		defer cancel()
+		return jobFunc(ctx, value)
 	}
 }
