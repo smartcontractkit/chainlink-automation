@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -10,12 +11,18 @@ import (
 
 type UpkeepKey []byte
 
+// NewUpkeepKey is the constructor of UpkeepKey
+func NewUpkeepKey(block, id *big.Int) UpkeepKey {
+	return UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
+}
+
 func (u UpkeepKey) BlockKeyAndUpkeepID() (types.BlockKey, types.UpkeepIdentifier, error) {
 	components := strings.Split(u.String(), "|")
-	if len(components) == 2 {
-		return types.BlockKey(components[0]), types.UpkeepIdentifier(components[1]), nil
+	if len(components) != 2 {
+		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
-	return types.BlockKey(""), types.UpkeepIdentifier(""), fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+
+	return types.BlockKey(components[0]), types.UpkeepIdentifier(components[1]), nil
 }
 
 func (u UpkeepKey) String() string {
@@ -33,6 +40,7 @@ func (u *UpkeepKey) UnmarshalJSON(b []byte) error {
 	}
 
 	*u = UpkeepKey(key)
+
 	return nil
 }
 
