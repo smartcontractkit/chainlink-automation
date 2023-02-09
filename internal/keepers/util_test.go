@@ -67,7 +67,7 @@ func TestDedupe(t *testing.T) {
 					stringMatches[i] = string(match)
 				}
 				sort.Strings(stringMatches)
-				assert.Equal(t, test.ExpectedResult, matches)
+				assert.Equal(t, test.ExpectedResult, stringMatches)
 			}
 		})
 	}
