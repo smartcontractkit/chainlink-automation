@@ -62,12 +62,10 @@ func TestDedupe(t *testing.T) {
 			if test.ExpectedError != nil {
 				assert.ErrorIs(t, err, test.ExpectedError)
 			} else {
-				stringMatches := make([]string, len(matches))
-				for i, match := range matches {
-					stringMatches[i] = string(match)
-				}
-				sort.Strings(stringMatches)
-				assert.Equal(t, test.ExpectedResult, stringMatches)
+				sort.Slice(matches, func(i, j int) bool {
+					return matches[i] < matches[j]
+				})
+				assert.Equal(t, test.ExpectedResult, matches)
 			}
 		})
 	}
