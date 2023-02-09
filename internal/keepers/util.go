@@ -72,7 +72,7 @@ func (s sortUpkeepKeys) Len() int {
 	return len(s)
 }
 
-func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
+func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	if len(inputs) == 0 {
 		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
 	}
@@ -87,7 +87,7 @@ func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	}
 
 	output := make([]T, 0, max)
-	matched := make(map[string]bool)
+	matched := make(map[string]struct{})
 	for _, input := range inputs {
 		for _, val := range input {
 			add := true
@@ -102,10 +102,10 @@ func dedupe[T any](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 				continue
 			}
 
-			key := fmt.Sprintf("%v", val)
+			key := val.String()
 			_, ok := matched[key]
 			if !ok {
-				matched[key] = true
+				matched[key] = struct{}{}
 				output = append(output, val)
 			}
 		}
