@@ -1,7 +1,8 @@
-package keepers
+package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -13,25 +14,25 @@ var (
 	ErrContextCancelled = fmt.Errorf("worker context cancelled")
 )
 
-type workResult[T any] struct {
+type WorkItemResult[T any] struct {
 	Worker string
 	Data   T
 	Err    error
 	Time   time.Duration
 }
 
-type work[T any] func(context.Context) (T, error)
+type WorkItem[T any] func(context.Context) (T, error)
 
 type worker[T any] struct {
 	Name  string
 	Queue chan *worker[T]
 }
 
-func (w *worker[T]) Do(ctx context.Context, r chan workResult[T], wrk work[T]) {
+func (w *worker[T]) Do(ctx context.Context, r chan WorkItemResult[T], wrk WorkItem[T]) {
 	start := time.Now()
 
 	data, err := wrk(ctx)
-	result := workResult[T]{
+	result := WorkItemResult[T]{
 		Worker: w.Name,
 		Data:   data,
 		Err:    err,
@@ -52,27 +53,27 @@ func (w *worker[T]) Do(ctx context.Context, r chan workResult[T], wrk work[T]) {
 	}
 }
 
-type workerGroup[T any] struct {
+type WorkerGroup[T any] struct {
 	maxWorkers    int
 	activeWorkers int
 	workers       chan *worker[T]
-	queue         chan work[T]
+	queue         chan WorkItem[T]
 	queueClosed   bool
 	stop          chan struct{}
-	results       chan workResult[T]
+	Results       chan WorkItemResult[T]
 	mu            sync.Mutex
 }
 
-func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
-	wg := &workerGroup[T]{
+func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
+	wg := &WorkerGroup[T]{
 		maxWorkers: workers,
 		workers:    make(chan *worker[T], workers),
-		queue:      make(chan work[T], queue),
+		queue:      make(chan WorkItem[T], queue),
 		stop:       make(chan struct{}, 1),
-		results:    make(chan workResult[T], queue),
+		Results:    make(chan WorkItemResult[T], queue),
 	}
 
-	go func(g *workerGroup[T]) {
+	go func(g *WorkerGroup[T]) {
 		// timer := time.NewTimer(5 * time.Second)
 		ctx, cancel := context.WithCancel(context.Background())
 		for {
@@ -92,7 +93,7 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 				}
 
 				// have worker do the work
-				go wkr.Do(ctx, g.results, item)
+				go wkr.Do(ctx, g.Results, item)
 
 				// timer.Reset(5 * time.Second)
 				/*
@@ -114,14 +115,14 @@ func newWorkerGroup[T any](workers int, queue int) *workerGroup[T] {
 		}
 	}(wg)
 
-	runtime.SetFinalizer(wg, func(g *workerGroup[T]) { close(g.stop) })
+	runtime.SetFinalizer(wg, func(g *WorkerGroup[T]) { close(g.stop) })
 
 	return wg
 }
 
 // Do adds a new work item onto the work queue. This function blocks until
 // the work queue clears up or the context is cancelled.
-func (wg *workerGroup[T]) Do(ctx context.Context, w work[T]) error {
+func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T]) error {
 	wg.mu.Lock()
 	defer wg.mu.Unlock()
 
@@ -143,6 +144,57 @@ func (wg *workerGroup[T]) Do(ctx context.Context, w work[T]) error {
 	}
 }
 
-func (wg *workerGroup[T]) Stop() {
+func (wg *WorkerGroup[T]) Stop() {
 	close(wg.stop)
+}
+
+type JobFunc[T, K any] func(context.Context, T) (K, error)
+type JobResultFunc[T any] func(T, error)
+
+func RunJobs[T, K any](ctx context.Context, wg *WorkerGroup[T], jobs []K, jobFunc JobFunc[K, T], resFunc JobResultFunc[T]) {
+	var wait sync.WaitGroup
+	end := make(chan struct{})
+
+	go func(g *WorkerGroup[T], w *sync.WaitGroup, ch chan struct{}) {
+		for {
+			select {
+			case r := <-g.Results:
+				resFunc(r.Data, r.Err)
+				w.Done()
+			case <-ch:
+				return
+			}
+		}
+	}(wg, &wait, end)
+
+	for _, job := range jobs {
+		wait.Add(1)
+
+		if err := wg.Do(ctx, makeJobFunc(ctx, job, jobFunc)); err != nil {
+			if !errors.Is(err, ErrContextCancelled) {
+				// the worker group process has probably stopped so the job runner
+				// should close outstanding resources and terminate
+				close(end)
+				return
+			}
+
+			// the makeJobFunc will exit early if the context passed to it has
+			// already completed.
+			wait.Done()
+		}
+	}
+
+	wait.Wait()
+	close(end)
+}
+
+func makeJobFunc[T, K any](jobCtx context.Context, value T, jobFunc JobFunc[T, K]) WorkItem[K] {
+	return func(svcCtx context.Context) (K, error) {
+		// the jobFunc should exit in the case that either the job context
+		// cancels or the worker service context cancels. To ensure we don't end
+		// up with memory leaks, cancel the merged context to release resources.
+		ctx, cancel := MergeContextsWithCancel(svcCtx, jobCtx)
+		defer cancel()
+		return jobFunc(ctx, value)
+	}
 }
