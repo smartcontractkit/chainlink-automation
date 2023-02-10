@@ -77,10 +77,6 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
 	}
 
-	if len(inputs) == 1 {
-		return inputs[0], nil
-	}
-
 	var max int
 	for _, input := range inputs {
 		max += len(input)
