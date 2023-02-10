@@ -72,54 +72,154 @@ func TestDedupe(t *testing.T) {
 }
 
 func TestShuffledDedupedKeyList(t *testing.T) {
-	var attr []types.AttributedObservation
-	var k [16]byte
-	f := func(ktypes.UpkeepKey) bool {
-		return true
-	}
+	for _, tc := range []struct {
+		observations [][]ktypes.UpkeepKey
+		expected     []ktypes.UpkeepKey
+		wantErr      bool
+	}{
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("1|1"),
+					chain.UpkeepKey("2|1"),
+				},
+				{
+					chain.UpkeepKey("3|1"),
+					chain.UpkeepKey("1|2"),
+				},
+				{
+					chain.UpkeepKey("1|2"),
+					chain.UpkeepKey("1|3"),
+				},
+				{
+					chain.UpkeepKey("1|3"),
+					chain.UpkeepKey("2|3"),
+				},
+				{
+					chain.UpkeepKey("1|1"),
+					chain.UpkeepKey("2|1"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("2|3"),
+				chain.UpkeepKey("3|1"),
+				chain.UpkeepKey("1|2"),
+			},
+		},
+		{
+			observations: nil,
+			expected:     nil,
+			wantErr:      true,
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{},
+			expected:     nil,
+			wantErr:      true,
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey(""),
+				},
+			},
+			expected: nil,
+			wantErr:  true,
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("2|1"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("2|1"),
+			},
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("2|1"),
+					chain.UpkeepKey("2|3"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("2|3"),
+				chain.UpkeepKey("2|1"),
+			},
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("2|1"),
+					chain.UpkeepKey("2|5"),
+					chain.UpkeepKey("2|3"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("2|5"),
+				chain.UpkeepKey("2|1"),
+				chain.UpkeepKey("2|3"),
+			},
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("1|1"),
+					chain.UpkeepKey("2|1"),
+					chain.UpkeepKey("3|2"),
+					chain.UpkeepKey("2|3"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("3|2"),
+				chain.UpkeepKey("2|1"),
+				chain.UpkeepKey("2|3"),
+			},
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("2|1"),
+				},
+				{
+					chain.UpkeepKey("2|5"),
+				},
+				{
+					chain.UpkeepKey("2|3"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("2|3"),
+				chain.UpkeepKey("2|1"),
+				chain.UpkeepKey("2|5"),
+			},
+		},
+	} {
+		var attr []types.AttributedObservation
+		for _, o := range tc.observations {
+			b, err := limitedLengthEncode(o, maxObservationLength)
+			assert.NoError(t, err)
 
-	obs := [][]ktypes.UpkeepKey{
-		{
-			chain.UpkeepKey("1|1"),
-			chain.UpkeepKey("2|1"),
-		},
-		{
-			chain.UpkeepKey("3|1"),
-			chain.UpkeepKey("1|2"),
-		},
-		{
-			chain.UpkeepKey("1|2"),
-			chain.UpkeepKey("1|3"),
-		},
-		{
-			chain.UpkeepKey("1|3"),
-			chain.UpkeepKey("2|3"),
-		},
-		{
-			chain.UpkeepKey("1|1"),
-			chain.UpkeepKey("2|1"),
-		},
-	}
+			attr = append(attr, types.AttributedObservation{
+				Observation: b,
+			})
+		}
 
-	attr = make([]types.AttributedObservation, len(obs))
-	for i, o := range obs {
-		b, _ := limitedLengthEncode(o, maxObservationLength)
-		attr[i] = types.AttributedObservation{
-			Observation: types.Observation(b),
+		var key [16]byte
+
+		filterFn := func(ktypes.UpkeepKey) bool {
+			return true
+		}
+
+		result, err := shuffledDedupedKeyList(attr, key, filterFn)
+		assert.Equal(t, tc.expected, result)
+
+		if tc.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 	}
-
-	// shuffling is deterministic based on the provided key
-	// should probably add some more tests for other keys
-	expected := []ktypes.UpkeepKey{
-		chain.UpkeepKey("2|3"),
-		chain.UpkeepKey("3|1"),
-		chain.UpkeepKey("1|2"),
-	}
-	result, err := shuffledDedupedKeyList(attr, k, f)
-
-	assert.Equal(t, expected, result)
-	assert.NoError(t, err)
 }
 
 func TestSortedDedup_Error(t *testing.T) {
