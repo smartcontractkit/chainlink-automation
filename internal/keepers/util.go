@@ -155,7 +155,7 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", err)
 	}
 
-	kys = medianBlock(kys)
+	kys = assignMedianBlockToKeys(kys)
 
 	keys, err := dedupe(kys, filters...)
 	if err != nil {
@@ -201,32 +201,25 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 	return keys, nil
 }
 
-func medianBlock(kys [][]ktypes.UpkeepKey) [][]ktypes.UpkeepKey {
-	blockKeys := []*big.Int{}
-	for _, ob := range kys {
-		for _, k := range ob {
-			blockKey, _, _ := k.BlockKeyAndUpkeepID()
-			bk := big.NewInt(0)
-			bk, ok := bk.SetString(string(blockKey), 10)
-			if !ok {
-				continue
-			}
-			blockKeys = append(blockKeys, bk)
+func assignMedianBlockToKeys(obs [][]ktypes.UpkeepKey) [][]ktypes.UpkeepKey {
+	var blockKeys []*big.Int
+	for _, ob := range obs {
+		for _, key := range ob {
+			blockKey, _, _ := key.BlockKeyAndUpkeepID()
+			blockKeyInt := big.NewInt(0)
+			blockKeyInt, _ = blockKeyInt.SetString(string(blockKey), 10)
+			blockKeys = append(blockKeys, blockKeyInt)
 		}
 	}
 
-	m := median(blockKeys)
+	medianBlock := calculateMedianBlock(blockKeys)
 
 	var res [][]ktypes.UpkeepKey
-	for _, ob := range kys {
+	for _, ob := range obs {
 		var ks []ktypes.UpkeepKey
 		for _, k := range ob {
-			blockKey, upkeepID, _ := k.BlockKeyAndUpkeepID()
-			if string(blockKey) == m.String() {
-				ks = append(ks, k)
-			} else {
-				ks = append(ks, chain.UpkeepKey(fmt.Sprintf("%s|%s", m, upkeepID)))
-			}
+			_, upkeepID, _ := k.BlockKeyAndUpkeepID()
+			ks = append(ks, chain.UpkeepKey(fmt.Sprintf("%s|%s", medianBlock.String(), upkeepID)))
 		}
 		res = append(res, ks)
 	}
@@ -234,7 +227,7 @@ func medianBlock(kys [][]ktypes.UpkeepKey) [][]ktypes.UpkeepKey {
 	return res
 }
 
-func median(data []*big.Int) *big.Int {
+func calculateMedianBlock(data []*big.Int) *big.Int {
 	dataCopy := make([]*big.Int, len(data))
 	copy(dataCopy, data)
 
@@ -242,17 +235,16 @@ func median(data []*big.Int) *big.Int {
 		return dataCopy[i].Cmp(dataCopy[j]) < 0
 	})
 
-	var m *big.Int
-	l := len(dataCopy)
-	if l == 0 {
-		m = big.NewInt(0)
+	var median *big.Int
+	if l := len(dataCopy); l == 0 {
+		median = big.NewInt(0)
 	} else if l%2 == 0 {
-		m = dataCopy[l/2-1]
+		median = dataCopy[l/2-1]
 	} else {
-		m = dataCopy[l/2]
+		median = dataCopy[l/2]
 	}
 
-	return m
+	return median
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {
