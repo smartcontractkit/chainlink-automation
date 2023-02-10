@@ -154,6 +154,8 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", err)
 	}
 
+	kys = medianBlock(kys)
+
 	keys, err := dedupe(kys, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: observation dedupe", err)
@@ -196,6 +198,54 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 	})
 
 	return keys, nil
+}
+
+func medianBlock(kys [][]ktypes.UpkeepKey) [][]ktypes.UpkeepKey {
+
+	blockKeys := []string{}
+	for _, ob := range kys {
+		for _, k := range ob {
+			blockKey, _, _ := k.BlockKeyAndUpkeepID()
+			blockKeys = append(blockKeys, string(blockKey))
+		}
+	}
+
+	m := median(blockKeys)
+
+	var res [][]ktypes.UpkeepKey
+	for _, ob := range kys {
+		var ks []ktypes.UpkeepKey
+		for _, k := range ob {
+			blockKey, upkeepID, _ := k.BlockKeyAndUpkeepID()
+			if string(blockKey) == m {
+				ks = append(ks, k)
+			} else {
+				ks = append(ks, chain.UpkeepKey(fmt.Sprintf("%s|%s", m, upkeepID)))
+			}
+		}
+		res = append(res, ks)
+	}
+
+	return res
+}
+
+func median(data []string) string {
+	dataCopy := make([]string, len(data))
+	copy(dataCopy, data)
+
+	sort.Strings(dataCopy)
+
+	var m string
+	l := len(dataCopy)
+	if l == 0 {
+		m = ""
+	} else if l%2 == 0 {
+		m = dataCopy[l/2-1]
+	} else {
+		m = dataCopy[l/2]
+	}
+
+	return m
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {

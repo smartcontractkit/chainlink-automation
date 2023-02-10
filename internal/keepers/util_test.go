@@ -101,8 +101,8 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 				},
 			},
 			expected: []ktypes.UpkeepKey{
-				chain.UpkeepKey("2|3"),
-				chain.UpkeepKey("3|1"),
+				chain.UpkeepKey("1|3"),
+				chain.UpkeepKey("1|1"),
 				chain.UpkeepKey("1|2"),
 			},
 		},
@@ -171,7 +171,7 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 				},
 			},
 			expected: []ktypes.UpkeepKey{
-				chain.UpkeepKey("3|2"),
+				chain.UpkeepKey("2|2"),
 				chain.UpkeepKey("2|1"),
 				chain.UpkeepKey("2|3"),
 			},
