@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"math/big"
 	"math/cmplx"
 	rnd "math/rand"
 	"sort"
@@ -201,12 +202,16 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 }
 
 func medianBlock(kys [][]ktypes.UpkeepKey) [][]ktypes.UpkeepKey {
-
-	blockKeys := []string{}
+	blockKeys := []*big.Int{}
 	for _, ob := range kys {
 		for _, k := range ob {
 			blockKey, _, _ := k.BlockKeyAndUpkeepID()
-			blockKeys = append(blockKeys, string(blockKey))
+			bk := big.NewInt(0)
+			bk, ok := bk.SetString(string(blockKey), 10)
+			if !ok {
+				continue
+			}
+			blockKeys = append(blockKeys, bk)
 		}
 	}
 
@@ -217,7 +222,7 @@ func medianBlock(kys [][]ktypes.UpkeepKey) [][]ktypes.UpkeepKey {
 		var ks []ktypes.UpkeepKey
 		for _, k := range ob {
 			blockKey, upkeepID, _ := k.BlockKeyAndUpkeepID()
-			if string(blockKey) == m {
+			if string(blockKey) == m.String() {
 				ks = append(ks, k)
 			} else {
 				ks = append(ks, chain.UpkeepKey(fmt.Sprintf("%s|%s", m, upkeepID)))
@@ -229,16 +234,18 @@ func medianBlock(kys [][]ktypes.UpkeepKey) [][]ktypes.UpkeepKey {
 	return res
 }
 
-func median(data []string) string {
-	dataCopy := make([]string, len(data))
+func median(data []*big.Int) *big.Int {
+	dataCopy := make([]*big.Int, len(data))
 	copy(dataCopy, data)
 
-	sort.Strings(dataCopy)
+	sort.Slice(dataCopy, func(i, j int) bool {
+		return dataCopy[i].Cmp(dataCopy[j]) < 0
+	})
 
-	var m string
+	var m *big.Int
 	l := len(dataCopy)
 	if l == 0 {
-		m = ""
+		m = big.NewInt(0)
 	} else if l%2 == 0 {
 		m = dataCopy[l/2-1]
 	} else {

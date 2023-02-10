@@ -194,6 +194,45 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 				chain.UpkeepKey("2|5"),
 			},
 		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("2|1"),
+				},
+				{
+					chain.UpkeepKey("20|5"),
+				},
+				{
+					chain.UpkeepKey("200|3"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("20|3"),
+				chain.UpkeepKey("20|1"),
+				chain.UpkeepKey("20|5"),
+			},
+		},
+		{
+			observations: [][]ktypes.UpkeepKey{
+				{
+					chain.UpkeepKey("2|1"),
+				},
+				{
+					chain.UpkeepKey("3|5"),
+				},
+				{
+					chain.UpkeepKey("20|5"),
+				},
+				{
+					chain.UpkeepKey("200|3"),
+				},
+			},
+			expected: []ktypes.UpkeepKey{
+				chain.UpkeepKey("3|3"),
+				chain.UpkeepKey("3|1"),
+				chain.UpkeepKey("3|5"),
+			},
+		},
 	} {
 		var attr []types.AttributedObservation
 		for _, o := range tc.observations {
