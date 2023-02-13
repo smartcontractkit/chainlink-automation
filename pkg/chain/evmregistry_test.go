@@ -39,7 +39,7 @@ func TestGetActiveUpkeepKeys(t *testing.T) {
 		t.FailNow()
 	}
 
-	b := types.BlockKey("0")
+	b := BlockKey("0")
 
 	blockKey, keys, err := reg.GetLatestActiveUpkeepKeys(ctx, b)
 	if err != nil {

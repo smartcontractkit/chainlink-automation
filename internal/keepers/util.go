@@ -151,7 +151,12 @@ func trimLowerBlocks(uniqueKeys []ktypes.UpkeepKey) ([]ktypes.UpkeepKey, error) 
 			return nil, err
 		}
 
-		if string(blockKey) > string(savedBlockKey) {
+		after, err := blockKey.After(savedBlockKey)
+		if err != nil {
+			return nil, err
+		}
+
+		if after {
 			out[idx] = uniqueKey
 		}
 	}

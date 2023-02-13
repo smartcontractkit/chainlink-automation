@@ -303,7 +303,7 @@ func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepId
 
 func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {
 	b := new(big.Int)
-	_, ok := b.SetString(string(block), 10)
+	_, ok := b.SetString(block.String(), 10)
 
 	if !ok {
 		return nil, fmt.Errorf("%w: requires big int", ErrBlockKeyNotParsable)

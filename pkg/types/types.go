@@ -64,7 +64,10 @@ type PerformLog struct {
 	BlockNumber     int64
 }
 
-type BlockKey string
+type BlockKey interface {
+	After(BlockKey) (bool, error)
+	fmt.Stringer
+}
 
 type Address []byte
 

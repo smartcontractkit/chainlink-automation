@@ -164,9 +164,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
-		header := types.BlockKey("1")
+		header := chain.BlockKey("1")
 
-		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads := make(chan types.BlockKey, 1)
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
@@ -175,7 +175,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
-		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, types.BlockKey("0")).
+		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, chain.BlockKey("0")).
 			Return(header, actives, nil)
 
 		returnResults := make(ktypes.UpkeepResults, 5)
@@ -259,13 +259,13 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
-		header := types.BlockKey("1")
+		header := chain.BlockKey("1")
 
-		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads := make(chan types.BlockKey, 1)
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
-		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
+		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, chain.BlockKey("0")).
 			Run(func(args mock.Arguments) {
 				close(subscribed)
 			}).
@@ -304,9 +304,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
-		header := types.BlockKey("1")
+		header := chain.BlockKey("1")
 
-		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads := make(chan types.BlockKey, 1)
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
@@ -315,7 +315,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
-		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
+		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, chain.BlockKey("0")).
 			Return(header, actives, nil)
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).

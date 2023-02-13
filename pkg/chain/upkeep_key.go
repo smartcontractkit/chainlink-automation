@@ -23,10 +23,10 @@ func NewUpkeepKeyFromBlockAndID(block types.BlockKey, id types.UpkeepIdentifier)
 func (u UpkeepKey) BlockKeyAndUpkeepID() (types.BlockKey, types.UpkeepIdentifier, error) {
 	components := strings.Split(u.String(), "|")
 	if len(components) != 2 {
-		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+		return nil, nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
 
-	return types.BlockKey(components[0]), types.UpkeepIdentifier(components[1]), nil
+	return BlockKey(components[0]), types.UpkeepIdentifier(components[1]), nil
 }
 
 func (u UpkeepKey) String() string {

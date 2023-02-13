@@ -109,17 +109,17 @@ func (wc *WrappedContractCollector) CheckKey(key types.UpkeepKey) {
 
 	val, ok := wc.keyIDLookup[string(upkeepID)]
 	if !ok {
-		wc.keyIDLookup[string(upkeepID)] = []string{string(blockKey)}
+		wc.keyIDLookup[string(upkeepID)] = []string{blockKey.String()}
 	} else {
 		var found bool
 		for _, v := range val {
-			if v == string(blockKey) {
+			if v == blockKey.String() {
 				found = true
 			}
 		}
 
 		if !found {
-			wc.keyIDLookup[string(upkeepID)] = append(val, string(blockKey))
+			wc.keyIDLookup[string(upkeepID)] = append(val, blockKey.String())
 		}
 	}
 }

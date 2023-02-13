@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -163,7 +164,7 @@ func (ct *SimulatedContract) run() {
 					for i, result := range results {
 						logs[i] = ktypes.PerformLog{
 							Key:           result.Key,
-							TransmitBlock: ktypes.BlockKey(block.BlockNumber.String()),
+							TransmitBlock: chain.BlockKey(block.BlockNumber.String()),
 							Confirmations: 0,
 						}
 

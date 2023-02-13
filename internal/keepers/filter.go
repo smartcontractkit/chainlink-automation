@@ -87,17 +87,17 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 				return false
 			}
 
-			blKey, err = strconv.Atoi(string(blockKey))
+			blKey, err = strconv.Atoi(blockKey.String())
 			if err != nil {
 				return false
 			}
 
 			// Return false if empty
-			if bl.TransmitBlockNumber == "" {
+			if bl.TransmitBlockNumber == nil || bl.TransmitBlockNumber.String() == "" {
 				return false
 			}
 
-			transmitBlockNumber, err := strconv.Atoi(string(bl.TransmitBlockNumber))
+			transmitBlockNumber, err := strconv.Atoi(bl.TransmitBlockNumber.String())
 			if err != nil {
 				return false
 			}
@@ -133,8 +133,16 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
-	if bl, ok := rc.idBlocks.Get(string(id)); ok && string(bl.KeyBlockNumber) > string(blockKey) {
-		return nil
+	bl, ok := rc.idBlocks.Get(string(id))
+	if ok {
+		isAfter, err := bl.KeyBlockNumber.After(blockKey)
+		if err != nil {
+			return err
+		}
+
+		if isAfter {
+			return nil
+		}
 	}
 
 	rc.idBlocks.Set(string(id), idBlocker{
@@ -190,7 +198,13 @@ func (rc *reportCoordinator) checkLogs() {
 			blockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
 
 			bl, ok := rc.idBlocks.Get(string(id))
-			if ok && string(blockKey) < string(bl.KeyBlockNumber) {
+
+			isBefore, err := bl.KeyBlockNumber.After(blockKey)
+			if err != nil {
+				continue
+			}
+
+			if ok && isBefore {
 				continue
 			}
 
