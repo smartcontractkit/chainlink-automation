@@ -144,23 +144,37 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		err = json.Unmarshal(b, &config)
 	}
 
-	if config.PerformLockoutWindow == 0 {
-		config.PerformLockoutWindow = 100 * 12 * 1000 // default of 100 blocks * 12 second blocks
+	if config.PerformLockoutWindow <= 0 {
+		config.PerformLockoutWindow = 20 * 60 * 1000 // default of 20 minutes (100 blocks on eth)
 	}
 
-	if config.SamplingJobDuration == 0 {
+	config.UniqueReports = false // hardcoded to false, TODO(AUTO-2029): remove this config alltogether
+
+	if len(config.TargetProbability) == 0 {
+		config.TargetProbability = "0.99999"
+	}
+
+	if config.TargetInRounds <= 0 {
+		config.TargetInRounds = 1
+	}
+
+	if config.SamplingJobDuration <= 0 {
 		config.SamplingJobDuration = 3000 // default of 3 seconds if not set
 	}
 
-	if config.GasLimitPerReport == 0 {
+	if config.MinConfirmations <= 0 {
+		config.MinConfirmations = 0 // default of 0
+	}
+
+	if config.GasLimitPerReport <= 0 {
 		config.GasLimitPerReport = 5_300_000
 	}
 
-	if config.GasOverheadPerUpkeep == 0 {
+	if config.GasOverheadPerUpkeep <= 0 {
 		config.GasOverheadPerUpkeep = 300_000
 	}
 
-	if config.MaxUpkeepBatchSize == 0 {
+	if config.MaxUpkeepBatchSize <= 0 {
 		config.MaxUpkeepBatchSize = 1
 	}
 

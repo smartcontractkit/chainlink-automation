@@ -87,18 +87,9 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	// performance of the nodes in real time. that is, start at 1 and increment
 	// after some blocks pass until a stable number is reached.
 	var p float64
-	if len(offChainCfg.TargetProbability) == 0 {
-		// TODO: Combine all default values in DecodeOffchainConfig
-		offChainCfg.TargetProbability = "0.99999"
-	}
-
 	p, err = strconv.ParseFloat(offChainCfg.TargetProbability, 32)
 	if err != nil {
 		return nil, info, fmt.Errorf("%w: failed to parse configured probability", err)
-	}
-
-	if offChainCfg.TargetInRounds <= 0 {
-		offChainCfg.TargetInRounds = 1
 	}
 
 	sample, err := sampleFromProbability(offChainCfg.TargetInRounds, c.N-c.F, float32(p))
