@@ -11,6 +11,11 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+const (
+	// maxObservationKeys is the max number of keys that Observation could return.
+	maxObservationKeys = 1
+)
+
 type ocrLogContextKey struct{}
 
 type ocrLogContext struct {
@@ -55,7 +60,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 
 	// keyList produces a sorted result so the following reduction of keys
 	// should be more uniform for all nodes
-	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
+	keys := keyList(filterUpkeeps(results, ktypes.Eligible, maxObservationKeys))
 
 	b, err := limitedLengthEncode(keys, maxObservationLength)
 	if err != nil {
