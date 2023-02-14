@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/big"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -22,6 +23,7 @@ func (r sampleRatio) String() string {
 type upkeepService interface {
 	SampleUpkeeps(context.Context, ...func(types.UpkeepKey) bool) (types.UpkeepResults, error)
 	CheckUpkeep(context.Context, ...types.UpkeepKey) (types.UpkeepResults, error)
+	LatestBlock(ctx context.Context) (*big.Int, error)
 }
 
 type filterer interface {

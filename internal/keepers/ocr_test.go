@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"testing"
 	"time"
 
@@ -40,35 +41,44 @@ func BenchmarkQuery(b *testing.B) {
 }
 
 func TestObservation(t *testing.T) {
+	bigBlockKey, _ := big.NewInt(0).SetString("100000000000100000000000100000000000100000000000100000000001", 10)
 	tests := []struct {
 		Name                string
 		Ctx                 func() (context.Context, func())
 		SampleSet           ktypes.UpkeepResults
+		LatestBlock         *big.Int
+		ServiceError        bool
 		SampleErr           error
 		ExpectedObservation types.Observation
 		ExpectedErr         error
 	}{
 		{
-			Name:      "Empty Set",
-			Ctx:       func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet: ktypes.UpkeepResults{},
+			Name:        "Empty Set",
+			Ctx:         func() (context.Context, func()) { return context.Background(), func() {} },
+			SampleSet:   ktypes.UpkeepResults{},
+			LatestBlock: big.NewInt(1),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
+				BlockKey:          ktypes.BlockKey("1"),
 				UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
 			})),
 		},
 		{
-			Name:      "Timer Context",
-			Ctx:       func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
-			SampleSet: ktypes.UpkeepResults{},
+			Name:        "Timer Context",
+			Ctx:         func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
+			SampleSet:   ktypes.UpkeepResults{},
+			LatestBlock: big.NewInt(2),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
+				BlockKey:          ktypes.BlockKey("2"),
 				UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
 			}))},
 		{
 			Name:                "Upkeep Service Error",
 			Ctx:                 func() (context.Context, func()) { return context.Background(), func() {} },
 			SampleSet:           ktypes.UpkeepResults{},
+			LatestBlock:         big.NewInt(3),
 			SampleErr:           fmt.Errorf("test error"),
 			ExpectedObservation: nil,
+			ServiceError:        true,
 			ExpectedErr:         fmt.Errorf("test error: failed to sample upkeeps for observation"),
 		},
 		{
@@ -78,7 +88,9 @@ func TestObservation(t *testing.T) {
 				{Key: chain.UpkeepKey("1|1"), State: ktypes.NotEligible},
 				{Key: chain.UpkeepKey("1|2"), State: ktypes.NotEligible},
 			},
+			LatestBlock: big.NewInt(1),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
+				BlockKey:          ktypes.BlockKey("1"),
 				UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
 			})),
 		},
@@ -89,6 +101,7 @@ func TestObservation(t *testing.T) {
 				{Key: chain.UpkeepKey([]byte("1|1")), State: ktypes.NotEligible},
 				{Key: chain.UpkeepKey([]byte("1|2")), State: ktypes.Eligible},
 			},
+			LatestBlock: big.NewInt(1),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
 				BlockKey: "1",
 				UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
@@ -116,6 +129,7 @@ func TestObservation(t *testing.T) {
 				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000014")), State: ktypes.Eligible},
 				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000015")), State: ktypes.Eligible},
 			},
+			LatestBlock: bigBlockKey,
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
 				BlockKey: "100000000000100000000000100000000000100000000000100000000001",
 				UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
@@ -153,6 +167,9 @@ func TestObservation(t *testing.T) {
 
 			ctx, cancel := test.Ctx()
 			ms.Mock.On("SampleUpkeeps", mock.Anything).Return(test.SampleSet, test.SampleErr)
+			if !test.ServiceError {
+				ms.Mock.On("LatestBlock", mock.Anything).Return(test.LatestBlock, nil)
+			}
 
 			b, err := plugin.Observation(ctx, types.ReportTimestamp{}, types.Query{})
 			cancel()
@@ -981,6 +998,28 @@ type MockedUpkeepService struct {
 	mock.Mock
 }
 
+func (_m *MockedUpkeepService) LatestBlock(ctx context.Context) (*big.Int, error) {
+	ret := _m.Called(ctx)
+
+	var r0 *big.Int
+	if rf, ok := ret.Get(0).(func(context.Context) *big.Int); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 func (_m *MockedUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(ktypes.UpkeepKey) bool) (ktypes.UpkeepResults, error) {
 	arguments := []interface{}{ctx}
 	if len(filters) > 0 {
@@ -1044,6 +1083,10 @@ func (_m *MockedUpkeepService) IsUpkeepLocked(ctx context.Context, key ktypes.Up
 
 type BenchmarkMockUpkeepService struct {
 	rtnCheck ktypes.UpkeepResults
+}
+
+func (_m *BenchmarkMockUpkeepService) LatestBlock(ctx context.Context) (*big.Int, error) {
+	return nil, nil
 }
 
 func (_m *BenchmarkMockUpkeepService) SampleUpkeeps(ctx context.Context, filters ...func(ktypes.UpkeepKey) bool) (ktypes.UpkeepResults, error) {

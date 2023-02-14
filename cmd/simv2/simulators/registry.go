@@ -18,6 +18,10 @@ type SimulatedUpkeep struct {
 	Performs   map[string]types.PerformLog // performs at block number
 }
 
+func (ct *SimulatedContract) LatestBlock(ctx context.Context) (*big.Int, error) {
+	return ct.lastBlock, nil
+}
+
 func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.BlockKey) ([]types.UpkeepKey, error) {
 
 	ct.mu.RLock()

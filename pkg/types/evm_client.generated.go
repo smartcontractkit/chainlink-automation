@@ -84,6 +84,22 @@ func (_m *MockEVMClient) CodeAt(ctx context.Context, contract common.Address, bl
 	return r0, r1
 }
 
+// HeadTicker provides a mock function with given fields:
+func (_m *MockEVMClient) HeadTicker() chan BlockKey {
+	ret := _m.Called()
+
+	var r0 chan BlockKey
+	if rf, ok := ret.Get(0).(func() chan BlockKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(chan BlockKey)
+		}
+	}
+
+	return r0
+}
+
 // HeaderByNumber provides a mock function with given fields: ctx, number
 func (_m *MockEVMClient) HeaderByNumber(ctx context.Context, number *big.Int) (*coretypes.Header, error) {
 	ret := _m.Called(ctx, number)
@@ -105,20 +121,6 @@ func (_m *MockEVMClient) HeaderByNumber(ctx context.Context, number *big.Int) (*
 	}
 
 	return r0, r1
-}
-
-// HeadTicker provides a mock function
-func (_m *MockEVMClient) HeadTicker() chan BlockKey {
-	ret := _m.Called()
-
-	var r0 chan BlockKey
-	if rf, ok := ret.Get(0).(func() chan BlockKey); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(chan BlockKey)
-	}
-
-	return r0
 }
 
 // NewMockEVMClient creates a new instance of MockEVMClient. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
