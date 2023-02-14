@@ -116,7 +116,7 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 		chain.UpkeepKey("3|1"),
 		chain.UpkeepKey("1|2"),
 	}
-	result, err := shuffledDedupedKeyList(attr, k, f)
+	result, err := shuffledDedupedKeyList(attr, k, 10, len(obs), f)
 
 	assert.Equal(t, expected, result)
 	assert.NoError(t, err)
@@ -124,7 +124,7 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 
 func TestSortedDedup_Error(t *testing.T) {
 	obs := []types.AttributedObservation{{Observation: types.Observation([]byte("incorrectly encoded"))}}
-	_, err := shuffledDedupedKeyList(obs, [16]byte{})
+	_, err := shuffledDedupedKeyList(obs, [16]byte{}, 10, 10)
 	assert.NotNil(t, err)
 }
 
@@ -164,7 +164,7 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 
 				b.StartTimer()
-				_, err := shuffledDedupedKeyList(ob, [16]byte{})
+				_, err := shuffledDedupedKeyList(ob, [16]byte{}, 100, 100)
 				b.StopTimer()
 
 				if err != nil {

@@ -20,8 +20,8 @@ var (
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
 
-func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState, number int) ktypes.UpkeepResults {
-	ret := make(ktypes.UpkeepResults, 0, number)
+func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState, limit int) ktypes.UpkeepResults {
+	ret := make(ktypes.UpkeepResults, 0, limit)
 
 	for _, up := range upkeeps {
 		if up.State == filter {
@@ -29,7 +29,7 @@ func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState, numb
 		}
 
 		// Here the number of upkeep results is limited to the given number
-		if len(ret) >= number {
+		if len(ret) >= limit {
 			break
 		}
 	}
@@ -115,7 +115,13 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 	return output, nil
 }
 
-func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+func shuffledDedupedKeyList(
+	attributed []types.AttributedObservation,
+	key [16]byte,
+	observationLimit int,
+	totalLimit int,
+	filters ...func(ktypes.UpkeepKey) bool,
+) ([]ktypes.UpkeepKey, error) {
 	var err error
 
 	if len(attributed) == 0 {
@@ -143,6 +149,11 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 			continue
 		}
 
+		// Limit the number of observation keys to "observationLimit" max
+		if len(keys) > observationLimit {
+			keys = keys[:observationLimit]
+		}
+
 		for _, o := range keys {
 			ob = append(ob, o)
 		}
@@ -153,6 +164,11 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 
 	if parseErrors == len(attributed) {
 		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", err)
+	}
+
+	// Limit number of total keys to "totalLimit" max
+	if len(kys) > totalLimit {
+		kys = kys[:totalLimit]
 	}
 
 	keys, err := dedupe(kys, filters...)

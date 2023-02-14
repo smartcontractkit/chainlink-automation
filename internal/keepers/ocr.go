@@ -12,8 +12,11 @@ import (
 )
 
 const (
-	// maxObservationKeys is the max number of keys that Observation could return.
-	maxObservationKeys = 1
+	// observationKeysLimit is the max number of keys that Observation could return.
+	observationKeysLimit = 1
+
+	// reportKeysLimit is the maximum number of upkeep keys returned by the report phase
+	reportKeysLimit = 1
 )
 
 type ocrLogContextKey struct{}
@@ -60,7 +63,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 
 	// keyList produces a sorted result so the following reduction of keys
 	// should be more uniform for all nodes
-	keys := keyList(filterUpkeeps(results, ktypes.Eligible, maxObservationKeys))
+	keys := keyList(filterUpkeeps(results, ktypes.Eligible, observationKeysLimit))
 
 	b, err := limitedLengthEncode(keys, maxObservationLength)
 	if err != nil {
@@ -99,7 +102,13 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keys, err := shuffledDedupedKeyList(attributed, key, k.filter.Filter())
+	keys, err := shuffledDedupedKeyList(
+		attributed,
+		key,
+		observationKeysLimit,
+		reportKeysLimit,
+		k.filter.Filter(),
+	)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}

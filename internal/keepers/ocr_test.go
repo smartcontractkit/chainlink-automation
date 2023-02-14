@@ -272,17 +272,11 @@ func TestReport(t *testing.T) {
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
 					chain.UpkeepKey("1|1"),
-					chain.UpkeepKey("1|2"),
 				},
 				R: ktypes.UpkeepResults{
 					{
 						Key:         chain.UpkeepKey("1|1"),
 						State:       ktypes.Eligible,
-						PerformData: []byte("abcd"),
-					},
-					{
-						Key:         chain.UpkeepKey("1|2"),
-						State:       ktypes.NotEligible,
 						PerformData: []byte("abcd"),
 					},
 				},
@@ -328,11 +322,9 @@ func TestReport(t *testing.T) {
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
 					chain.UpkeepKey("1|2"),
-					chain.UpkeepKey("1|1"),
 				},
 				R: ktypes.UpkeepResults{
 					{Key: chain.UpkeepKey("1|2"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
-					{Key: chain.UpkeepKey("1|1"), State: ktypes.NotEligible, PerformData: []byte("abcd")},
 				},
 			},
 			ExpectedBool: false,
