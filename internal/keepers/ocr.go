@@ -16,7 +16,7 @@ const (
 	observationKeysLimit = 1
 
 	// reportKeysLimit is the maximum number of upkeep keys returned by the report phase
-	reportKeysLimit = 1
+	reportKeysLimit = 10
 )
 
 type ocrLogContextKey struct{}
@@ -63,7 +63,12 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 
 	// keyList produces a sorted result so the following reduction of keys
 	// should be more uniform for all nodes
-	keys := keyList(filterUpkeeps(results, ktypes.Eligible, observationKeysLimit))
+	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
+
+	// Check limit
+	if len(keys) > observationKeysLimit {
+		keys = keys[:observationKeysLimit]
+	}
 
 	b, err := limitedLengthEncode(keys, maxObservationLength)
 	if err != nil {

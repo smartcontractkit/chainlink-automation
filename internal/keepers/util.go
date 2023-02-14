@@ -20,17 +20,12 @@ var (
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
 
-func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState, limit int) ktypes.UpkeepResults {
-	ret := make(ktypes.UpkeepResults, 0, limit)
+func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState) ktypes.UpkeepResults {
+	ret := make(ktypes.UpkeepResults, 0, len(upkeeps))
 
 	for _, up := range upkeeps {
 		if up.State == filter {
 			ret = append(ret, up)
-		}
-
-		// Here the number of upkeep results is limited to the given number
-		if len(ret) >= limit {
-			break
 		}
 	}
 
