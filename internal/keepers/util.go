@@ -111,7 +111,7 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 	return output, nil
 }
 
-func shuffleUniqueObservations(observations []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+func shuffleUniqueObservations(observations []types.AttributedObservation, key [16]byte, totalLimit int, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
 	if len(observations) == 0 {
 		return nil, fmt.Errorf("%w: must provide at least 1 observation", ErrNotEnoughInputs)
 	}
@@ -119,6 +119,10 @@ func shuffleUniqueObservations(observations []types.AttributedObservation, key [
 	upkeepKeys, err := observationsToUpkeepKeys(observations)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(upkeepKeys) > totalLimit {
+		upkeepKeys = upkeepKeys[:totalLimit]
 	}
 
 	uniqueKeys, err := dedupe(upkeepKeys, filters...)

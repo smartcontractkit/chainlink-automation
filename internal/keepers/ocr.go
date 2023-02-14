@@ -11,6 +11,14 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+const (
+	// observationKeysLimit is the max number of keys that Observation could return.
+	observationKeysLimit = 1
+
+	// reportKeysLimit is the maximum number of upkeep keys returned by the report phase
+	reportKeysLimit = 10
+)
+
 type ocrLogContextKey struct{}
 
 type ocrLogContext struct {
@@ -56,6 +64,11 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// keyList produces a sorted result so the following reduction of keys
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
+
+	// Check limit
+	if len(keys) > observationKeysLimit {
+		keys = keys[:observationKeysLimit]
+	}
 
 	latestBlock, err := k.service.LatestBlock(ctx)
 	if err != nil {
@@ -113,7 +126,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keys, err := shuffleUniqueObservations(attributed, key, k.filter.Filter())
+	keys, err := shuffleUniqueObservations(attributed, key, reportKeysLimit, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
