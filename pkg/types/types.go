@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -37,7 +38,7 @@ type EVMClient interface {
 //go:generate mockery --name Registry --inpackage --output . --case=underscore --filename registry.generated.go
 type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
-	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
+	CheckUpkeep(context.Context, *log.Logger, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 
@@ -98,6 +99,18 @@ type UpkeepState uint
 const (
 	NotEligible UpkeepState = iota
 	Eligible
+)
+
+// enum UpkeepFailureReason
+// https://github.com/smartcontractkit/chainlink/blob/d9dee8ea6af26bc82463510cb8786b951fa98585/contracts/src/v0.8/interfaces/AutomationRegistryInterface2_0.sol#L94
+const (
+	UPKEEP_FAILURE_REASON_NONE = iota
+	UPKEEP_FAILURE_REASON_UPKEEP_CANCELLED
+	UPKEEP_FAILURE_REASON_UPKEEP_PAUSED
+	UPKEEP_FAILURE_REASON_TARGET_CHECK_REVERTED
+	UPKEEP_FAILURE_REASON_UPKEEP_NOT_NEEDED
+	UPKEEP_FAILURE_REASON_PERFORM_DATA_EXCEEDS_LIMIT
+	UPKEEP_FAILURE_REASON_INSUFFICIENT_BALANCE
 )
 
 type OffchainConfig struct {

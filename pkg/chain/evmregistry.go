@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"strings"
 
@@ -234,13 +235,98 @@ func (r *evmRegistryv2_0) simulatePerformUpkeeps(ctx context.Context, checkResul
 	return checkResults, nil
 }
 
-func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch chan outStruct) {
+func (r *evmRegistryv2_0) check(ctx context.Context, logger *log.Logger, keys []types.UpkeepKey, ch chan outStruct) {
 	upkeepResults, err := r.checkUpkeeps(ctx, keys)
 	if err != nil {
 		ch <- outStruct{
 			err: err,
 		}
 		return
+	}
+
+	// check for offchainLookup
+	for i, upkeepResult := range upkeepResults {
+		logger.Printf("upkeepResult= %+v\n", upkeepResult)
+		if upkeepResult.FailureReason == types.UPKEEP_FAILURE_REASON_TARGET_CHECK_REVERTED {
+			offchainLookup, err := decodeOffchainLookup(upkeepResult.PerformData)
+			if err != nil {
+				// 	log
+			}
+			// 	do the http request
+			body, statusCode, err := offchainLookup.doRequest()
+			if err != nil {
+				logger.Println(err)
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+			logger.Printf("OffchainLookup StatusCode: %s\n", statusCode)
+			logger.Printf("OffchainLookup Body: %s\n", string(body))
+
+			// parse
+			values, err := offchainLookup.parseJson(body)
+			if err != nil {
+				logger.Println("parseJson=", err)
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+			logger.Printf("Parsed values: %v\n", values)
+			block, upkeepId, err := BlockAndIdFromKey(upkeepResult.Key)
+			if err != nil {
+				logger.Println("BlockAndIdFromKey=", err)
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+			opts, err := r.buildCallOpts(ctx, block)
+			if err != nil {
+				logger.Println("buildCallOpts=", err)
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+			upkeepInfo, err := r.registry.GetUpkeep(opts, upkeepId)
+			if err != nil {
+				logger.Println("GetUpkeep=", err)
+				ch <- outStruct{
+					err: err,
+				}
+				return
+			}
+			logger.Printf("GetUpkeep: %v\n", upkeepInfo)
+
+			needed, performData, err := r.offchainLookupCallback(offchainLookup, values, statusCode, upkeepInfo, opts)
+			if !needed {
+				logger.Println("offchainLookupCallback=", needed, performData, err)
+				upkeepResult.State = types.NotEligible
+				ch <- outStruct{
+					ur: []types.UpkeepResult{upkeepResult},
+				}
+				return
+			}
+			logger.Println("OffchainLookup Success!!", needed, performData, err)
+
+			// bk, err := evmClient.BlockByNumber(ctx, opts.BlockNumber)
+			// if err != nil {
+			// 	logger.Println(err)
+			// 	upkeepResult.State = types.NotEligible
+			// 	ch <- outStruct{
+			// 		ur: upkeepResult,
+			// 	}
+			// 	return
+			// }
+			upkeepResult.FailureReason = 0
+			// upkeepResult.CheckBlockNumber = uint32(bk.NumberU64())
+			// upkeepResult.CheckBlockHash = bk.Hash()
+			upkeepResult.PerformData = performData
+			logger.Printf("OffchainLookup upkeepResult= %+v\n", upkeepResult)
+			upkeepResults[i] = upkeepResult
+		}
 	}
 
 	upkeepResults, err = r.simulatePerformUpkeeps(ctx, upkeepResults)
@@ -256,9 +342,9 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 	}
 }
 
-func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
+func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, logger *log.Logger, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
 	chResult := make(chan outStruct, 1)
-	go r.check(ctx, keys, chResult)
+	go r.check(ctx, logger, keys, chResult)
 
 	select {
 	case rs := <-chResult:

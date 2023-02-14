@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"golang.org/x/crypto/sha3"
+
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type ocrLogContextKey struct{}
@@ -106,7 +107,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	}
 
 	// Check all upkeeps from the given observation
-	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keys...)
+	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, k.logger, keys...)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
 	}

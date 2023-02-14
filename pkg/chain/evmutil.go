@@ -69,20 +69,18 @@ func unmarshalCheckUpkeepResult(key types.UpkeepKey, raw string) (types.UpkeepRe
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
-	// TODO: not sure it it's best to short circuit here
 	if !upkeepNeeded {
 		result.State = types.NotEligible
-	} else {
-		var ret0 = new(res)
-		err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
-		if err != nil {
-			return types.UpkeepResult{}, err
-		}
-
-		result.CheckBlockNumber = ret0.Result.CheckBlockNumber
-		result.CheckBlockHash = ret0.Result.CheckBlockhash
-		result.PerformData = ret0.Result.PerformData
 	}
+	var ret0 = new(res)
+	err = pdataABI.UnpackIntoInterface(ret0, "check", rawPerformData)
+	if err != nil {
+		return types.UpkeepResult{}, err
+	}
+
+	result.CheckBlockNumber = ret0.Result.CheckBlockNumber
+	result.CheckBlockHash = ret0.Result.CheckBlockhash
+	result.PerformData = ret0.Result.PerformData
 
 	return result, nil
 }
