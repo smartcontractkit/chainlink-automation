@@ -78,26 +78,41 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 		return true
 	}
 
-	obs := [][]ktypes.UpkeepKey{
+	obs := []*ktypes.UpkeepObservation{
 		{
-			chain.UpkeepKey("1|1"),
-			chain.UpkeepKey("2|1"),
+			ktypes.BlockKey("2"),
+			[]ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("1"),
+			},
 		},
 		{
-			chain.UpkeepKey("3|1"),
-			chain.UpkeepKey("1|2"),
+			ktypes.BlockKey("3"),
+			[]ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("2"),
+			},
 		},
 		{
-			chain.UpkeepKey("1|2"),
-			chain.UpkeepKey("1|3"),
+			ktypes.BlockKey("1"),
+			[]ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
 		},
 		{
-			chain.UpkeepKey("1|3"),
-			chain.UpkeepKey("2|3"),
+			ktypes.BlockKey("2"),
+			[]ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("3"),
+				ktypes.UpkeepIdentifier("3"),
+			},
 		},
 		{
-			chain.UpkeepKey("1|1"),
-			chain.UpkeepKey("2|1"),
+			ktypes.BlockKey("2"),
+			[]ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("1"),
+			},
 		},
 	}
 
@@ -113,8 +128,8 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 	// should probably add some more tests for other keys
 	expected := []ktypes.UpkeepKey{
 		chain.UpkeepKey("2|3"),
-		chain.UpkeepKey("3|1"),
-		chain.UpkeepKey("1|2"),
+		chain.UpkeepKey("2|1"),
+		chain.UpkeepKey("2|2"),
 	}
 	result, err := shuffledDedupedKeyList(attr, k, f)
 
@@ -232,13 +247,15 @@ func TestLimitedLengthEncode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		keys := make([]ktypes.UpkeepKey, test.KeyCount)
+		obs := &ktypes.UpkeepObservation{}
+		keys := make([]ktypes.UpkeepIdentifier, test.KeyCount)
 		for i := 0; i < test.KeyCount; i++ {
 			byt := make([]byte, test.KeyLength)
-			keys[i] = chain.UpkeepKey(byt)
+			keys[i] = ktypes.UpkeepIdentifier(byt)
 		}
+		obs.UpkeepIdentifiers = keys
 
-		b, err := limitedLengthEncode(keys, test.MaxLength)
+		b, err := limitedLengthEncode(obs, test.MaxLength)
 		t.Logf("length: %d", len(b))
 
 		assert.NoError(t, err)
@@ -259,14 +276,16 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 			return
 		}
 
-		keys := make([]ktypes.UpkeepKey, a)
+		keys := make([]ktypes.UpkeepIdentifier, a)
 		for i := 0; i < a; i++ {
 			k := strings.Repeat("1", rand.Intn(b)+3)
 			k = k[:1] + "|" + k[2:]
-			keys[i] = chain.UpkeepKey(k)
+			keys[i] = ktypes.UpkeepIdentifier(k)
 		}
 
-		bt, err := limitedLengthEncode(keys, 1000)
+		ob := &ktypes.UpkeepObservation{}
+		ob.UpkeepIdentifiers = keys
+		bt, err := limitedLengthEncode(ob, 1000)
 
 		assert.NoError(t, err)
 		assert.LessOrEqual(t, len(bt), 1000, "keys: %d; length: %d", a, b)

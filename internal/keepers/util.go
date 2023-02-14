@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"math/big"
 	"math/cmplx"
 	rnd "math/rand"
 	"sort"
@@ -119,31 +120,46 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 
 	var parseErrors int
 	kys := make([][]ktypes.UpkeepKey, len(attributed))
+
+	var allBlockKeys []ktypes.BlockKey
 	for i, attr := range attributed {
 		b := []byte(attr.Observation)
 		if len(b) == 0 {
 			continue
 		}
 
-		var ob []ktypes.UpkeepKey
-
 		// a single observation returning an error here can void all other
 		// good observations. ensure this loop continues on error, but collect
 		// them and throw an error if ALL observations fail at this point.
 		// TODO we can't rely on this concrete type for decoding/encoding
-		var keys []chain.UpkeepKey
-		err = decode(b, &keys)
+		var upkeepObservation *ktypes.UpkeepObservation
+
+		err = decode(b, &upkeepObservation)
 		if err != nil {
 			parseErrors++
 			continue
 		}
 
-		for _, o := range keys {
-			ob = append(ob, o)
-		}
+		allBlockKeys = append(allBlockKeys, upkeepObservation.BlockKey)
 
-		sort.Sort(sortUpkeepKeys(ob))
-		kys[i] = ob
+		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
+			kys[i] = []ktypes.UpkeepKey{
+				chain.NewUpkeepKeyFromBlockAndID(upkeepObservation.BlockKey, upkeepObservation.UpkeepIdentifiers[0]),
+			}
+		}
+	}
+
+	medianBlock := calculateMedianBlock(allBlockKeys)
+	for i, ob := range kys {
+		var ks []ktypes.UpkeepKey
+		for _, k := range ob {
+			_, upkeepID, err := k.BlockKeyAndUpkeepID()
+			if err != nil {
+				return nil, err
+			}
+			ks = append(ks, chain.NewUpkeepKeyFromBlockAndID(medianBlock, upkeepID))
+		}
+		kys[i] = ks
 	}
 
 	if parseErrors == len(attributed) {
@@ -192,6 +208,35 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 	})
 
 	return keys, nil
+}
+
+func calculateMedianBlock(data []ktypes.BlockKey) ktypes.BlockKey {
+	var blockKeyInts []*big.Int
+
+	for _, d := range data {
+		blockKeyInt := big.NewInt(0)
+		blockKeyInt, _ = blockKeyInt.SetString(string(d), 10)
+		blockKeyInts = append(blockKeyInts, blockKeyInt)
+	}
+
+	sort.Slice(blockKeyInts, func(i, j int) bool {
+		return blockKeyInts[i].Cmp(blockKeyInts[j]) < 0
+	})
+
+	// this is a crude median calculation; for a list of an odd number of elements, e.g. [10, 20, 30], the center value
+	// is chosen as the median. for a list of an even number of elements, a true median calculation would average the
+	// two center elements, e.g. [10, 20, 30, 40] = (20 + 30) / 2 = 25, but we want to constrain our median block to
+	// one of the block numbers reported, e.g. either 20 or 30. right now we want to choose the higher block number, e.g.
+	// 30. for this reason, the logic for selecting the median value from an odd number of elements is the same as the
+	// logic for selecting the median value from an even number of elements
+	var median *big.Int
+	if l := len(blockKeyInts); l == 0 {
+		median = big.NewInt(0)
+	} else {
+		median = blockKeyInts[l/2]
+	}
+
+	return ktypes.BlockKey(median.String())
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {
@@ -259,10 +304,32 @@ func (a *syncedArray[T]) Values() []T {
 	return a.data
 }
 
-func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
-	if len(keys) == 0 {
-		return encode([]ktypes.UpkeepKey{})
+func limitedLengthEncode(obs *ktypes.UpkeepObservation, limit int) ([]byte, error) {
+	var b []byte
+	var err error
+
+	emptyObservation := &ktypes.UpkeepObservation{
+		BlockKey: obs.BlockKey,
 	}
+
+	b, err = encode(emptyObservation)
+	if err != nil {
+		return nil, err
+	}
+
+	// calculate how many bytes we have free for the upkeep identifiers by first calculating the size of an upkeep
+	// observation containing a block key and an empty list of upkeep identifiers
+	// an empty UpkeepObservation with only a block key will look like:
+	//   {"blockKey":123,"upkeepIdentifiers":[]}
+	// a populated UpkeepObservation with a block key and upkeep identifiers will look like:
+	//   {"blockKey":123,"upkeepIdentifiers":[234,567,890]}
+
+	// subtract the size of the "empty" upkeep observation to calculate the limit for the upkeep identifiers
+	limit -= len(b)
+
+	// add 2 to the limit since the "[]" brackets for the list of identifiers are included in both the empty and
+	// populated observation
+	limit += 2
 
 	// limit the number of keys that can be added to an observation
 	// OCR observation limit is set to 1_000 bytes so this should be under the
@@ -275,11 +342,12 @@ func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
 	// byte array length and y is the encoded length.
 	// eq: y = 1.32 * x + 7.31
 
+	keys := obs.UpkeepIdentifiers
 	// if the total plus padding for json encoding is less than the max, another
 	// key can be included
 	c := true
 	for c && idx < len(keys) {
-		tot += len(keys[idx].String())
+		tot += len(string(keys[idx]))
 
 		// because we are encoding an array of byte arrays, some bytes are added
 		// per byte array and all byte arrays could be different lengths.
@@ -293,12 +361,10 @@ func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
 		idx++
 	}
 
-	toEncode := keys[:idx]
+	limitedKeys := keys[:idx]
+	emptyObservation.UpkeepIdentifiers = limitedKeys
 
-	var b []byte
-	var err error
-
-	b, err = encode(toEncode)
+	b, err = encode(emptyObservation)
 	if err != nil {
 		return nil, err
 	}
@@ -308,12 +374,13 @@ func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
 	for len(b) > limit {
 		idx--
 		if idx == 0 {
-			return encode([]ktypes.UpkeepKey{})
+			return encode(&ktypes.UpkeepObservation{})
 		}
 
-		toEncode = keys[:idx]
+		limitedKeys = keys[:idx]
+		emptyObservation.UpkeepIdentifiers = limitedKeys
 
-		b, err = encode(toEncode)
+		b, err = encode(emptyObservation)
 		if err != nil {
 			return nil, err
 		}

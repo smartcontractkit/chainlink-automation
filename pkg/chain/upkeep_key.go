@@ -16,6 +16,10 @@ func NewUpkeepKey(block, id *big.Int) UpkeepKey {
 	return UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
 }
 
+func NewUpkeepKeyFromBlockAndID(block types.BlockKey, id types.UpkeepIdentifier) UpkeepKey {
+	return UpkeepKey(fmt.Sprintf("%s%s%s", string(block), separator, string(id)))
+}
+
 func (u UpkeepKey) BlockKeyAndUpkeepID() (types.BlockKey, types.UpkeepIdentifier, error) {
 	components := strings.Split(u.String(), "|")
 	if len(components) != 2 {

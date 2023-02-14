@@ -68,6 +68,11 @@ type BlockKey string
 
 type Address []byte
 
+type UpkeepObservation struct {
+	BlockKey          BlockKey           `json:"blockKey"`
+	UpkeepIdentifiers []UpkeepIdentifier `json:"upkeepIdentifiers"`
+}
+
 // UpkeepKey is an identifier of an upkeep at a moment in time, typically an
 // upkeep at a block number
 type UpkeepKey interface {

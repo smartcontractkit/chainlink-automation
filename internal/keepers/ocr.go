@@ -57,7 +57,20 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	b, err := limitedLengthEncode(keys, maxObservationLength)
+	obs := &ktypes.UpkeepObservation{}
+	// TODO get latest block from head ticker
+
+	if len(keys) > 0 {
+		var identifiers []ktypes.UpkeepIdentifier
+		for _, upkeepKey := range keys {
+			blockKey, upkeepID, _ := upkeepKey.BlockKeyAndUpkeepID()
+			identifiers = append(identifiers, upkeepID)
+			obs.BlockKey = blockKey
+		}
+		obs.UpkeepIdentifiers = identifiers
+	}
+
+	b, err := limitedLengthEncode(obs, maxObservationLength)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
 	}
