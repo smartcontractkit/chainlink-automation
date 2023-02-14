@@ -106,9 +106,6 @@ type OffchainConfig struct {
 	// 100 blocks * average block time. Units are in milliseconds
 	PerformLockoutWindow int64 `json:"performLockoutWindow"`
 
-	// UniqueReports sets quorum requirements for the OCR process
-	UniqueReports bool `json:"uniqueReports"`
-
 	// TargetProbability is the probability that all upkeeps will be checked
 	// within the provided number rounds
 	TargetProbability string `json:"targetProbability"`
@@ -148,8 +145,6 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		config.PerformLockoutWindow = 20 * 60 * 1000 // default of 20 minutes (100 blocks on eth)
 	}
 
-	config.UniqueReports = false // hardcoded to false, TODO(AUTO-2029): remove this config alltogether
-
 	if len(config.TargetProbability) == 0 {
 		config.TargetProbability = "0.99999"
 	}
@@ -166,11 +161,11 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		config.MinConfirmations = 0 // default of 0
 	}
 
-	if config.GasLimitPerReport <= 0 {
+	if config.GasLimitPerReport == 0 { // defined as uint so cannot be < 0
 		config.GasLimitPerReport = 5_300_000
 	}
 
-	if config.GasOverheadPerUpkeep <= 0 {
+	if config.GasOverheadPerUpkeep == 0 { // defined as uint so cannot be < 0
 		config.GasOverheadPerUpkeep = 300_000
 	}
 
