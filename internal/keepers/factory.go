@@ -77,6 +77,8 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			// with performData of arbitrary length
 			MaxReportLength: 10_000, // TODO (config): pick sane limit based on expected performData size. maybe set this to block size limit or 2/3 block size limit?
 		},
+		// UniqueReports increases the threshold of signatures needed for quorum to (n+f)/2 so that it's guaranteed a unique report is generated per round.
+		// Fixed to false for ocr2keepers, as we always expect f+1 signatures on a report on contract and do not support uniqueReports quorum
 		UniqueReports: false,
 	}
 
