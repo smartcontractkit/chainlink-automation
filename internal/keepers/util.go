@@ -111,74 +111,39 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 	return output, nil
 }
 
-func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
-	var err error
-
-	if len(attributed) == 0 {
-		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
+func shuffleUniqueObservations(observations []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+	if len(observations) == 0 {
+		return nil, fmt.Errorf("%w: must provide at least 1 observation", ErrNotEnoughInputs)
 	}
 
-	var parseErrors int
-	kys := make([][]ktypes.UpkeepKey, len(attributed))
-
-	var allBlockKeys []ktypes.BlockKey
-	for i, attr := range attributed {
-		b := []byte(attr.Observation)
-		if len(b) == 0 {
-			continue
-		}
-
-		// a single observation returning an error here can void all other
-		// good observations. ensure this loop continues on error, but collect
-		// them and throw an error if ALL observations fail at this point.
-		// TODO we can't rely on this concrete type for decoding/encoding
-		var upkeepObservation *ktypes.UpkeepObservation
-
-		err = decode(b, &upkeepObservation)
-		if err != nil {
-			parseErrors++
-			continue
-		}
-
-		allBlockKeys = append(allBlockKeys, upkeepObservation.BlockKey)
-
-		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
-			kys[i] = []ktypes.UpkeepKey{
-				chain.NewUpkeepKeyFromBlockAndID(upkeepObservation.BlockKey, upkeepObservation.UpkeepIdentifiers[0]),
-			}
-		}
-	}
-
-	medianBlock := calculateMedianBlock(allBlockKeys)
-	for i, ob := range kys {
-		var ks []ktypes.UpkeepKey
-		for _, k := range ob {
-			_, upkeepID, err := k.BlockKeyAndUpkeepID()
-			if err != nil {
-				return nil, err
-			}
-			ks = append(ks, chain.NewUpkeepKeyFromBlockAndID(medianBlock, upkeepID))
-		}
-		kys[i] = ks
-	}
-
-	if parseErrors == len(attributed) {
-		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", err)
-	}
-
-	keys, err := dedupe(kys, filters...)
+	upkeepKeys, err := observationsToUpkeepKeys(observations)
 	if err != nil {
-		return nil, fmt.Errorf("%w: observation dedupe", err)
+		return nil, err
 	}
 
-	// TODO: a hacky solution assuming upkeep key structure
-	// removes duplicate upkeep ids in preference of ids at higher blocks
-	// needs to be refactored
-	// AUTO-1480
+	uniqueKeys, err := dedupe(upkeepKeys, filters...)
+	if err != nil {
+		return nil, err
+	}
+
+	uniqueKeys, err = trimLowerBlocks(uniqueKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	rnd.New(util.NewKeyedCryptoRandSource(key)).Shuffle(len(uniqueKeys), func(i, j int) {
+		uniqueKeys[i], uniqueKeys[j] = uniqueKeys[j], uniqueKeys[i]
+	})
+
+	return uniqueKeys, nil
+}
+
+func trimLowerBlocks(uniqueKeys []ktypes.UpkeepKey) ([]ktypes.UpkeepKey, error) {
 	idxMap := make(map[string]int)
-	out := make([]ktypes.UpkeepKey, 0, len(keys))
-	for i := 0; i < len(keys); i++ {
-		blockKey, upkeepID, err := keys[i].BlockKeyAndUpkeepID()
+	out := make([]ktypes.UpkeepKey, 0, len(uniqueKeys))
+
+	for _, uniqueKey := range uniqueKeys {
+		blockKey, upkeepID, err := uniqueKey.BlockKeyAndUpkeepID()
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +151,7 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		idx, ok := idxMap[string(upkeepID)]
 		if !ok {
 			idxMap[string(upkeepID)] = len(out)
-			out = append(out, keys[i])
+			out = append(out, uniqueKey)
 			continue
 		}
 
@@ -196,18 +161,70 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 		}
 
 		if string(blockKey) > string(savedBlockKey) {
-			out[idx] = keys[i]
+			out[idx] = uniqueKey
 		}
 	}
-	keys = out
 
-	src := util.NewKeyedCryptoRandSource(key)
-	r := rnd.New(src)
-	r.Shuffle(len(keys), func(i, j int) {
-		keys[i], keys[j] = keys[j], keys[i]
-	})
+	return out, nil
+}
 
-	return keys, nil
+func observationsToUpkeepKeys(observations []types.AttributedObservation) ([][]ktypes.UpkeepKey, error) {
+	var parseErrors int
+
+	res := make([][]ktypes.UpkeepKey, len(observations))
+
+	var allBlockKeys []ktypes.BlockKey
+	for i, observation := range observations {
+		// a single observation returning an error here can void all other
+		// good observations. ensure this loop continues on error, but collect
+		// them and throw an error if ALL observations fail at this point.
+		// TODO we can't rely on this concrete type for decoding/encoding
+		var upkeepObservation *ktypes.UpkeepObservation
+		if err := decode(observation.Observation, &upkeepObservation); err != nil {
+			parseErrors++
+			continue
+		}
+
+		allBlockKeys = append(allBlockKeys, upkeepObservation.BlockKey)
+
+		// if we have a non-empty list of upkeep identifiers, use the zeroth upkeep identifier
+		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
+			res[i] = []ktypes.UpkeepKey{
+				chain.NewUpkeepKeyFromBlockAndID(upkeepObservation.BlockKey, upkeepObservation.UpkeepIdentifiers[0]),
+			}
+		}
+	}
+
+	if parseErrors == len(observations) {
+		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", ErrTooManyErrors)
+	}
+
+	medianBlock := calculateMedianBlock(allBlockKeys)
+
+	res, err := recreateKeysWithMedianBlock(medianBlock, res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func recreateKeysWithMedianBlock(medianBlock ktypes.BlockKey, upkeepKeyLists [][]ktypes.UpkeepKey) ([][]ktypes.UpkeepKey, error) {
+	var res = make([][]ktypes.UpkeepKey, len(upkeepKeyLists))
+
+	for i, upkeepKeys := range upkeepKeyLists {
+		var keys []ktypes.UpkeepKey
+		for _, upkeepKey := range upkeepKeys {
+			_, upkeepID, err := upkeepKey.BlockKeyAndUpkeepID()
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, chain.NewUpkeepKeyFromBlockAndID(medianBlock, upkeepID))
+		}
+		res[i] = keys
+	}
+
+	return res, nil
 }
 
 func calculateMedianBlock(data []ktypes.BlockKey) ktypes.BlockKey {
