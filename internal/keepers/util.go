@@ -111,7 +111,12 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 	return output, nil
 }
 
-func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+func shuffledDedupedKeyList(
+	attributed []types.AttributedObservation,
+	key [16]byte,
+	totalLimit int,
+	filters ...func(ktypes.UpkeepKey) bool,
+) ([]ktypes.UpkeepKey, error) {
 	var err error
 
 	if len(attributed) == 0 {
@@ -164,6 +169,11 @@ func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]by
 
 	if parseErrors == len(attributed) {
 		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", err)
+	}
+
+	// Limit number of total keys to "totalLimit" max
+	if len(kys) > totalLimit {
+		kys = kys[:totalLimit]
 	}
 
 	keys, err := dedupe(kys, filters...)
