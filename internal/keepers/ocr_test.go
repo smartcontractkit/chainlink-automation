@@ -233,9 +233,30 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
@@ -254,9 +275,30 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
@@ -275,9 +317,30 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{chain.UpkeepKey("1|1")},
@@ -293,9 +356,31 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|2"), chain.UpkeepKey("1|1")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1")}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("2"),
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
@@ -325,9 +410,31 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1")), chain.UpkeepKey([]byte("1|2"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|2"))}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("2"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+							ktypes.UpkeepIdentifier("2"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("2"),
+						},
+					})),
+				},
 			},
 			FilterOut: []ktypes.UpkeepKey{
 				chain.UpkeepKey("1|1"),
@@ -349,9 +456,31 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|2")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|1"), chain.UpkeepKey("1|2")}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey("1|2")}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("2"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+							ktypes.UpkeepIdentifier("2"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("2"),
+						},
+					})),
+				},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
@@ -370,9 +499,9 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{}))},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{},
@@ -393,9 +522,30 @@ func TestReport(t *testing.T) {
 			ReportGasLimit: 10000000,
 			Ctx:            func() (context.Context, func()) { return context.Background(), func() {} },
 			Observations: []types.AttributedObservation{
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1"))}))},
-				{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{chain.UpkeepKey([]byte("1|1"))}))},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
+				{Observation: types.Observation(mustEncodeUpkeepObservation(
+					&ktypes.UpkeepObservation{
+						BlockKey: ktypes.BlockKey("1"),
+						UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+							ktypes.UpkeepIdentifier("1"),
+						},
+					})),
+				},
 			},
 			Checks: checks{
 				K: []ktypes.UpkeepKey{
