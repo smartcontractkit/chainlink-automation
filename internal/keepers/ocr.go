@@ -57,7 +57,9 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	obs := &ktypes.UpkeepObservation{}
+	obs := &ktypes.UpkeepObservation{
+		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
+	}
 	// TODO get latest block from head ticker
 
 	if len(keys) > 0 {

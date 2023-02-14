@@ -309,7 +309,8 @@ func limitedLengthEncode(obs *ktypes.UpkeepObservation, limit int) ([]byte, erro
 	var err error
 
 	emptyObservation := &ktypes.UpkeepObservation{
-		BlockKey: obs.BlockKey,
+		BlockKey:          obs.BlockKey,
+		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
 	}
 
 	b, err = encode(emptyObservation)

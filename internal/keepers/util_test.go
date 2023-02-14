@@ -292,12 +292,12 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 
 		if a > 0 {
 			output := make([]ktypes.UpkeepKey, 0)
-			outputKeys := make([]chain.UpkeepKey, 0)
-			err = decode(bt, &outputKeys)
+			obs := &ktypes.UpkeepObservation{}
+			err = decode(bt, obs)
 			assert.NoError(t, err)
 
-			for _, o := range outputKeys {
-				output = append(output, o)
+			for _, o := range obs.UpkeepIdentifiers {
+				output = append(output, chain.NewUpkeepKeyFromBlockAndID(obs.BlockKey, o))
 			}
 
 			assert.Greater(t, len(bt), 0, "length of bytes :: keys: %d; length: %d", a, b)
