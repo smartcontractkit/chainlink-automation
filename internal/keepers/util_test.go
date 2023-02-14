@@ -80,36 +80,36 @@ func TestShuffledDedupedKeyList(t *testing.T) {
 
 	obs := []*ktypes.UpkeepObservation{
 		{
-			ktypes.BlockKey("2"),
-			[]ktypes.UpkeepIdentifier{
+			BlockKey: ktypes.BlockKey("2"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("1"),
 				ktypes.UpkeepIdentifier("1"),
 			},
 		},
 		{
-			ktypes.BlockKey("3"),
-			[]ktypes.UpkeepIdentifier{
+			BlockKey: ktypes.BlockKey("3"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("1"),
 				ktypes.UpkeepIdentifier("2"),
 			},
 		},
 		{
-			ktypes.BlockKey("1"),
-			[]ktypes.UpkeepIdentifier{
+			BlockKey: ktypes.BlockKey("1"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("2"),
 				ktypes.UpkeepIdentifier("3"),
 			},
 		},
 		{
-			ktypes.BlockKey("2"),
-			[]ktypes.UpkeepIdentifier{
+			BlockKey: ktypes.BlockKey("2"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("3"),
 				ktypes.UpkeepIdentifier("3"),
 			},
 		},
 		{
-			ktypes.BlockKey("2"),
-			[]ktypes.UpkeepIdentifier{
+			BlockKey: ktypes.BlockKey("2"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("1"),
 				ktypes.UpkeepIdentifier("1"),
 			},
