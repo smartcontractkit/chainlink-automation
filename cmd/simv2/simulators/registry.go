@@ -18,11 +18,7 @@ type SimulatedUpkeep struct {
 	Performs   map[string]types.PerformLog // performs at block number
 }
 
-func (ct *SimulatedContract) LatestBlock(ctx context.Context) (*big.Int, error) {
-	return ct.lastBlock, nil
-}
-
-func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.BlockKey) ([]types.UpkeepKey, error) {
+func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.BlockKey) (types.BlockKey, []types.UpkeepKey, error) {
 
 	ct.mu.RLock()
 	ct.logger.Printf("getting keys at block %s", ct.lastBlock)
@@ -40,17 +36,17 @@ func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.
 	// call to GetState
 	err := <-ct.rpc.Call(ctx, "getState")
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	// call to GetActiveIDs
 	// TODO: batch size is hard coded at 10_000, if the number of keys is more
 	// than this, simulate another rpc call
 	err = <-ct.rpc.Call(ctx, "getActiveIDs")
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return keys, nil
+	return types.BlockKey(block), keys, nil
 }
 
 func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {

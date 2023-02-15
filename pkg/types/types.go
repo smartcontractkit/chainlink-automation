@@ -39,7 +39,6 @@ type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) (BlockKey, []UpkeepKey, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
-	LatestBlock(ctx context.Context) (*big.Int, error)
 }
 
 // ReportEncoder represents the report encoder behaviour

@@ -110,10 +110,11 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	ctx := context.Background()
 	rg := ktypes.NewMockRegistry(t)
 
+	blockKey := ktypes.BlockKey("1")
 	returnResults := make(ktypes.UpkeepResults, 5)
 	for i := 0; i < 5; i++ {
 		returnResults[i] = ktypes.UpkeepResult{
-			Key:         chain.UpkeepKey(fmt.Sprintf("1|%d", i+1)),
+			Key:         chain.UpkeepKey(fmt.Sprintf("%s|%d", blockKey, i+1)),
 			State:       types.NotEligible,
 			PerformData: []byte{},
 		}
@@ -134,12 +135,13 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 		cancel:           svcCancel,
 	}
 
-	svc.samplingResults.set(returnResults)
+	svc.samplingResults.set(blockKey, returnResults)
 
 	// this test does not include the cache cleaner or log subscriber
-	result, err := svc.SampleUpkeeps(ctx)
+	bk, result, err := svc.SampleUpkeeps(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, returnResults, result)
+	assert.Equal(t, blockKey, bk)
 
 	rg.AssertExpectations(t)
 }
@@ -174,7 +176,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		}
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, types.BlockKey("0")).
-			Return(actives, nil)
+			Return(header, actives, nil)
 
 		returnResults := make(ktypes.UpkeepResults, 5)
 		for i := 0; i < 5; i++ {
@@ -233,9 +235,12 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		// TODO: Use gomega or something similar
 		var actualResults types.UpkeepResults
+		var blockKey types.BlockKey
+		var ok bool
 		for i := 0; i < 5; i++ {
 			time.Sleep(time.Second)
-			actualResults = svc.samplingResults.get()
+			blockKey, actualResults, ok = svc.samplingResults.get()
+			assert.True(t, ok)
 			if len(actualResults) > 0 {
 				break
 			}
@@ -244,6 +249,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		assert.Len(t, actualResults, 2)
 		assert.Equal(t, returnResults[0], actualResults[0])
 		assert.Equal(t, returnResults[3], actualResults[1])
+		assert.Equal(t, header, blockKey)
 
 		rg.AssertExpectations(t)
 		hs.AssertExpectations(t)
@@ -263,7 +269,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				close(subscribed)
 			}).
-			Return([]ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
+			Return(header, []ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
 
 		var logWriter buffer
 		l := log.New(&logWriter, "", 0)
@@ -310,7 +316,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		}
 
 		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
-			Return(actives, nil)
+			Return(header, actives, nil)
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {

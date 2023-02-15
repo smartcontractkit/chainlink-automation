@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/big"
 	"runtime"
 	"sync"
 	"time"
@@ -78,10 +77,6 @@ func newOnDemandUpkeepService(
 }
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
-
-func (s *onDemandUpkeepService) LatestBlock(ctx context.Context) (*big.Int, error) {
-	return s.registry.LatestBlock(ctx)
-}
 
 func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.BlockKey, types.UpkeepResults, error) {
 	blockKey, results, ok := s.samplingResults.get()
@@ -200,7 +195,7 @@ func (s *onDemandUpkeepService) processLatestHead(ctx context.Context) {
 
 	s.logger.Printf("%d results selected by provided ratio %s", sampleSize, s.ratio)
 	if sampleSize <= 0 {
-		s.logger.Printf("sample size is too small: %f", sampleSize)
+		s.logger.Printf("sample size is too small: %d", sampleSize)
 		return
 	}
 
