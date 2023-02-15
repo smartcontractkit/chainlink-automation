@@ -56,7 +56,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	lCtx := newOcrLogContext(rt)
 	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
 
-	results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
+	blockKey, results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 	}
@@ -70,13 +70,8 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 		keys = keys[:observationUpkeepLimit]
 	}
 
-	latestBlock, err := k.service.LatestBlock(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to get latest block", err)
-	}
-
 	obs := &ktypes.UpkeepObservation{
-		BlockKey:          ktypes.BlockKey(latestBlock.String()),
+		BlockKey:          blockKey,
 		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
 	}
 
