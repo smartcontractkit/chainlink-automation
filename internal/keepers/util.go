@@ -111,7 +111,7 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 	return output, nil
 }
 
-func shuffleUniqueObservations(upkeepKeys [][]ktypes.UpkeepKey, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+func shuffleDedupedObservations(upkeepKeys [][]ktypes.UpkeepKey, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
 	uniqueKeys, err := dedupe(upkeepKeys, filters...)
 	if err != nil {
 		return nil, err

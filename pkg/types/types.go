@@ -36,7 +36,7 @@ type EVMClient interface {
 //
 //go:generate mockery --name Registry --inpackage --output . --case=underscore --filename registry.generated.go
 type Registry interface {
-	GetActiveUpkeepKeys(context.Context, BlockKey) (BlockKey, []UpkeepKey, error)
+	GetLatestActiveUpkeepKeys(context.Context, BlockKey) (BlockKey, []UpkeepKey, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }

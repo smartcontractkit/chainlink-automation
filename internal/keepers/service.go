@@ -181,7 +181,7 @@ func (s *onDemandUpkeepService) processLatestHead(ctx context.Context) {
 
 	// Get only the active upkeeps from the contract. This should not include
 	// any cancelled upkeeps.
-	blockKey, keys, err := s.registry.GetActiveUpkeepKeys(ctx, "0")
+	blockKey, keys, err := s.registry.GetLatestActiveUpkeepKeys(ctx, "0")
 	if err != nil {
 		s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 		return

@@ -175,7 +175,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, types.BlockKey("0")).
+		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, types.BlockKey("0")).
 			Return(header, actives, nil)
 
 		returnResults := make(ktypes.UpkeepResults, 5)
@@ -265,7 +265,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
+		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
 			Run(func(args mock.Arguments) {
 				close(subscribed)
 			}).
@@ -289,7 +289,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		// Start background processes
 		svc.start()
 
-		// Wait until GetActiveUpkeepKeys is called
+		// Wait until GetLatestActiveUpkeepKeys is called
 		<-subscribed
 
 		svc.stop()
@@ -315,7 +315,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
 		}
 
-		rg.Mock.On("GetActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
+		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
 			Return(header, actives, nil)
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).

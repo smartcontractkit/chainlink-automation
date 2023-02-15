@@ -65,24 +65,22 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	// Check limit
-	if len(keys) > observationUpkeepLimit {
-		keys = keys[:observationUpkeepLimit]
-	}
-
 	obs := &ktypes.UpkeepObservation{
-		BlockKey:          blockKey,
-		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
+		BlockKey: blockKey,
 	}
 
-	if len(keys) > 0 {
-		var identifiers []ktypes.UpkeepIdentifier
-		for _, upkeepKey := range keys {
-			_, upkeepID, _ := upkeepKey.BlockKeyAndUpkeepID()
-			identifiers = append(identifiers, upkeepID)
-		}
-		obs.UpkeepIdentifiers = identifiers
+	identifiers := make([]ktypes.UpkeepIdentifier, 0)
+	for _, upkeepKey := range keys {
+		_, upkeepID, _ := upkeepKey.BlockKeyAndUpkeepID()
+		identifiers = append(identifiers, upkeepID)
 	}
+
+	// Check limit
+	if len(identifiers) > observationUpkeepLimit {
+		identifiers = identifiers[:observationUpkeepLimit]
+	}
+	
+	obs.UpkeepIdentifiers = identifiers
 
 	b, err := limitedLengthEncode(obs, maxObservationLength)
 	if err != nil {
@@ -130,16 +128,16 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, fmt.Errorf("%w: failed to build upkeep keys from the given observations", err)
 	}
 
+	// pass the filter to the dedupe function
+	// ensure no locked keys come through
+	keys, err := shuffleDedupedObservations(upkeepKeys, key, k.filter.Filter())
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
+	}
+
 	// Check the limit
 	if len(upkeepKeys) > reportKeysLimit {
 		upkeepKeys = upkeepKeys[:reportKeysLimit]
-	}
-
-	// pass the filter to the dedupe function
-	// ensure no locked keys come through
-	keys, err := shuffleUniqueObservations(upkeepKeys, key, k.filter.Filter())
-	if err != nil {
-		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
 	// No keys found for the given keys

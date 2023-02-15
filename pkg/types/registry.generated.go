@@ -44,8 +44,8 @@ func (_m *MockRegistry) CheckUpkeep(_a0 context.Context, _a1 ...UpkeepKey) (Upke
 	return r0, r1
 }
 
-// GetActiveUpkeepKeys provides a mock function with given fields: _a0, _a1
-func (_m *MockRegistry) GetActiveUpkeepKeys(_a0 context.Context, _a1 BlockKey) (BlockKey, []UpkeepKey, error) {
+// GetLatestActiveUpkeepKeys provides a mock function with given fields: _a0, _a1
+func (_m *MockRegistry) GetLatestActiveUpkeepKeys(_a0 context.Context, _a1 BlockKey) (BlockKey, []UpkeepKey, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 BlockKey
