@@ -62,6 +62,7 @@ type WorkerGroup[T any] struct {
 	stop          chan struct{}
 	Results       chan WorkItemResult[T]
 	mu            sync.Mutex
+	once          sync.Once
 }
 
 func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
@@ -106,8 +107,10 @@ func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
 				*/
 			case <-g.stop:
 				g.mu.Lock()
-				close(g.queue)
-				g.queueClosed = true
+				if !g.queueClosed {
+					close(g.queue)
+					g.queueClosed = true
+				}
 				g.mu.Unlock()
 				cancel()
 				return
@@ -115,7 +118,7 @@ func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
 		}
 	}(wg)
 
-	runtime.SetFinalizer(wg, func(g *WorkerGroup[T]) { close(g.stop) })
+	runtime.SetFinalizer(wg, func(g *WorkerGroup[T]) { g.Stop() })
 
 	return wg
 }
@@ -145,7 +148,9 @@ func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T]) error {
 }
 
 func (wg *WorkerGroup[T]) Stop() {
-	close(wg.stop)
+	wg.once.Do(func() {
+		close(wg.stop)
+	})
 }
 
 type JobFunc[T, K any] func(context.Context, T) (K, error)
