@@ -77,7 +77,9 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			// with performData of arbitrary length
 			MaxReportLength: 10_000, // TODO (config): pick sane limit based on expected performData size. maybe set this to block size limit or 2/3 block size limit?
 		},
-		UniqueReports: offChainCfg.UniqueReports,
+		// UniqueReports increases the threshold of signatures needed for quorum to (n+f)/2 so that it's guaranteed a unique report is generated per round.
+		// Fixed to false for ocr2keepers, as we always expect f+1 signatures on a report on contract and do not support uniqueReports quorum
+		UniqueReports: false,
 	}
 
 	// TODO (config): sample ratio is calculated with number of rounds, number
@@ -87,18 +89,9 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	// performance of the nodes in real time. that is, start at 1 and increment
 	// after some blocks pass until a stable number is reached.
 	var p float64
-	if len(offChainCfg.TargetProbability) == 0 {
-		// TODO: Combine all default values in DecodeOffchainConfig
-		offChainCfg.TargetProbability = "0.99999"
-	}
-
 	p, err = strconv.ParseFloat(offChainCfg.TargetProbability, 32)
 	if err != nil {
 		return nil, info, fmt.Errorf("%w: failed to parse configured probability", err)
-	}
-
-	if offChainCfg.TargetInRounds <= 0 {
-		offChainCfg.TargetInRounds = 1
 	}
 
 	sample, err := sampleFromProbability(offChainCfg.TargetInRounds, c.N-c.F, float32(p))
