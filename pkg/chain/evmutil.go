@@ -69,7 +69,6 @@ func unmarshalCheckUpkeepResult(key types.UpkeepKey, raw string) (types.UpkeepRe
 	result.FastGasWei = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 	result.LinkNative = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
 
-	// TODO: not sure it it's best to short circuit here
 	if !upkeepNeeded {
 		result.State = types.NotEligible
 	} else {
