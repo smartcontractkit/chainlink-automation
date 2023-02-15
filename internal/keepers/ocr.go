@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	// observationKeysLimit is the max number of keys that Observation could return.
-	observationKeysLimit = 1
+	// observationUpkeepLimit is the max number of upkeeps that Observation could return.
+	observationUpkeepLimit = 1
 
-	// reportKeysLimit is the maximum number of upkeep keys returned by the report phase
+	// reportKeysLimit is the maximum number of upkeep keys checked during the report phase
 	reportKeysLimit = 10
 )
 
@@ -66,8 +66,8 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
 	// Check limit
-	if len(keys) > observationKeysLimit {
-		keys = keys[:observationKeysLimit]
+	if len(keys) > observationUpkeepLimit {
+		keys = keys[:observationUpkeepLimit]
 	}
 
 	latestBlock, err := k.service.LatestBlock(ctx)
@@ -124,9 +124,25 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	var key [16]byte
 	copy(key[:], hash.Sum(nil))
 
+	// Must not be empty
+	if len(attributed) == 0 {
+		return false, nil, fmt.Errorf("%w: must provide at least 1 observation", ErrNotEnoughInputs)
+	}
+
+	// Build upkeep keys from the given observations
+	upkeepKeys, err := observationsToUpkeepKeys(attributed)
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: failed to build upkeep keys from the given observations", err)
+	}
+
+	// Check the limit
+	if len(upkeepKeys) > reportKeysLimit {
+		upkeepKeys = upkeepKeys[:reportKeysLimit]
+	}
+
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keys, err := shuffleUniqueObservations(attributed, key, reportKeysLimit, k.filter.Filter())
+	keys, err := shuffleUniqueObservations(upkeepKeys, key, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}

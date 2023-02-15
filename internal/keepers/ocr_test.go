@@ -584,14 +584,16 @@ func TestReport(t *testing.T) {
 			}
 			ctx, cancel := test.Ctx()
 
-			mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
-				for _, key := range test.FilterOut {
-					if k.String() == key.String() {
-						return false
+			if len(test.Observations) > 0 {
+				mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
+					for _, key := range test.FilterOut {
+						if k.String() == key.String() {
+							return false
+						}
 					}
-				}
-				return true
-			})
+					return true
+				})
+			}
 
 			// set up upkeep checks with the mocked service
 			if len(test.Checks.K) > 0 {
