@@ -11,6 +11,14 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+const (
+	// observationUpkeepLimit is the max number of upkeeps that Observation could return.
+	observationUpkeepLimit = 1
+
+	// reportKeysLimit is the maximum number of upkeep keys checked during the report phase
+	reportKeysLimit = 10
+)
+
 type ocrLogContextKey struct{}
 
 type ocrLogContext struct {
@@ -57,7 +65,31 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	b, err := limitedLengthEncode(keys, maxObservationLength)
+	// Check limit
+	if len(keys) > observationUpkeepLimit {
+		keys = keys[:observationUpkeepLimit]
+	}
+
+	latestBlock, err := k.service.LatestBlock(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to get latest block", err)
+	}
+
+	obs := &ktypes.UpkeepObservation{
+		BlockKey:          ktypes.BlockKey(latestBlock.String()),
+		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{},
+	}
+
+	if len(keys) > 0 {
+		var identifiers []ktypes.UpkeepIdentifier
+		for _, upkeepKey := range keys {
+			_, upkeepID, _ := upkeepKey.BlockKeyAndUpkeepID()
+			identifiers = append(identifiers, upkeepID)
+		}
+		obs.UpkeepIdentifiers = identifiers
+	}
+
+	b, err := limitedLengthEncode(obs, maxObservationLength)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
 	}
@@ -92,9 +124,25 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	var key [16]byte
 	copy(key[:], hash.Sum(nil))
 
+	// Must not be empty
+	if len(attributed) == 0 {
+		return false, nil, fmt.Errorf("%w: must provide at least 1 observation", ErrNotEnoughInputs)
+	}
+
+	// Build upkeep keys from the given observations
+	upkeepKeys, err := observationsToUpkeepKeys(attributed, k.reportBlockLag)
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: failed to build upkeep keys from the given observations", err)
+	}
+
+	// Check the limit
+	if len(upkeepKeys) > reportKeysLimit {
+		upkeepKeys = upkeepKeys[:reportKeysLimit]
+	}
+
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keys, err := shuffledDedupedKeyList(attributed, key, k.filter.Filter())
+	keys, err := shuffleUniqueObservations(upkeepKeys, key, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}

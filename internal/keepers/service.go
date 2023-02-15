@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/big"
 	"runtime"
 	"sync"
 	"time"
@@ -74,6 +75,10 @@ func newOnDemandUpkeepService(
 }
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
+
+func (s *onDemandUpkeepService) LatestBlock(ctx context.Context) (*big.Int, error) {
+	return s.registry.LatestBlock(ctx)
+}
 
 func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.UpkeepResults, error) {
 	results := s.samplingResults.get()

@@ -39,6 +39,7 @@ type Registry interface {
 	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
+	LatestBlock(ctx context.Context) (*big.Int, error)
 }
 
 // ReportEncoder represents the report encoder behaviour
@@ -67,6 +68,11 @@ type PerformLog struct {
 type BlockKey string
 
 type Address []byte
+
+type UpkeepObservation struct {
+	BlockKey          BlockKey           `json:"blockKey"`
+	UpkeepIdentifiers []UpkeepIdentifier `json:"upkeepIdentifiers"`
+}
 
 // UpkeepKey is an identifier of an upkeep at a moment in time, typically an
 // upkeep at a block number
@@ -131,6 +137,9 @@ type OffchainConfig struct {
 
 	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
 	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
+
+	// ReportBlockLag is the number to subtract from median block number during report phase.
+	ReportBlockLag int `json:"reportBlockLag"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
