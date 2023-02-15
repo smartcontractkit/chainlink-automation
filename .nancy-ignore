@@ -1,3 +1,13 @@
+# The go-libp2p dependency is not used directly in this plugin so the following
+# issue can be ignored within the scope of this repo. Container should consult
+# https://ossindex.sonatype.org/vulnerability/CVE-2022-23492?component-type=golang&component-name=github.com%2Flibp2p%2Fgo-libp2p&utm_source=nancy-client&utm_medium=integration&utm_content=1.0.42 
+# for more info on the following vulnerability.
+CVE-2022-23492
+
+# Replaced or removed dependencies to eliminate vulnerabilities
+CVE-2021-3121
+CVE-2022-36640
+
 # Skip indirect/transitive dependencies where code path not hit, or affected library features are not utilized.
 CVE-2022-23328
 sonatype-2021-0076
