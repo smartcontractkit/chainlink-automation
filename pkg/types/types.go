@@ -137,6 +137,9 @@ type OffchainConfig struct {
 
 	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
 	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
+
+	// ReportBlockLag is the number to subtract from median block number during report phase.
+	ReportBlockLag int `json:"reportBlockLag"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {

@@ -159,7 +159,7 @@ func trimLowerBlocks(uniqueKeys []ktypes.UpkeepKey) ([]ktypes.UpkeepKey, error) 
 	return out, nil
 }
 
-func observationsToUpkeepKeys(observations []types.AttributedObservation) ([][]ktypes.UpkeepKey, error) {
+func observationsToUpkeepKeys(observations []types.AttributedObservation, reportBlockLag int) ([][]ktypes.UpkeepKey, error) {
 	var parseErrors int
 
 	res := make([][]ktypes.UpkeepKey, len(observations))
@@ -191,7 +191,8 @@ func observationsToUpkeepKeys(observations []types.AttributedObservation) ([][]k
 		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", ErrTooManyErrors)
 	}
 
-	medianBlock := calculateMedianBlock(allBlockKeys)
+	// Here we calculate the median block that will be applied for all upkeep keys.
+	medianBlock := calculateMedianBlock(allBlockKeys, reportBlockLag)
 
 	res, err := recreateKeysWithMedianBlock(medianBlock, res)
 	if err != nil {
@@ -219,7 +220,7 @@ func recreateKeysWithMedianBlock(medianBlock ktypes.BlockKey, upkeepKeyLists [][
 	return res, nil
 }
 
-func calculateMedianBlock(data []ktypes.BlockKey) ktypes.BlockKey {
+func calculateMedianBlock(data []ktypes.BlockKey, reportBlockLag int) ktypes.BlockKey {
 	var blockKeyInts []*big.Int
 
 	for _, d := range data {
@@ -243,6 +244,10 @@ func calculateMedianBlock(data []ktypes.BlockKey) ktypes.BlockKey {
 		median = big.NewInt(0)
 	} else {
 		median = blockKeyInts[l/2]
+	}
+
+	if reportBlockLag > 0 {
+		median = median.Sub(median, big.NewInt(int64(reportBlockLag)))
 	}
 
 	return ktypes.BlockKey(median.String())

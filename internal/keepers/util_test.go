@@ -150,7 +150,7 @@ func Test_observationsToUpkeepKeys(t *testing.T) {
 		{chain.UpkeepKey("2|3")},
 		{chain.UpkeepKey("2|1")},
 	}
-	result, err := observationsToUpkeepKeys(attr)
+	result, err := observationsToUpkeepKeys(attr, 0)
 
 	assert.Equal(t, expected, result)
 	assert.NoError(t, err)
@@ -200,7 +200,7 @@ func Benchmark_observationsToUpkeepKeys(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 
 				b.StartTimer()
-				_, err := observationsToUpkeepKeys(ob)
+				_, err := observationsToUpkeepKeys(ob, 0)
 				b.StopTimer()
 
 				if err != nil {
