@@ -1,8 +1,3 @@
-# To get more detail locally run `go list -json -m all | nancy sleuth`
-# dcf6da03-f9dd-4a4e-b792-0262de36a0b1 is because of gogo/protobuf@1.3.1
-# which is used by go-libp2p-core, need them to upgrade to 1.3.2 before we can remove it.
-dcf6da03-f9dd-4a4e-b792-0262de36a0b1
-
 # Skip indirect/transitive dependencies where code path not hit, or affected library features are not utilized.
 CVE-2022-23328
 sonatype-2021-0076

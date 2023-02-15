@@ -2,7 +2,10 @@ module github.com/smartcontractkit/ocr2keepers
 
 go 1.19
 
-replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
+replace (
+	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
+	golang/github.com/gogo/protobuf => golang/github.com/gogo/protobuf v1.3.3
+)
 
 require (
 	github.com/Maldris/mathparse v0.0.0-20170508133428-f0d009a7a773
@@ -42,3 +45,5 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+exclude golang/github.com/influxdata/influxdb v1.8.3
