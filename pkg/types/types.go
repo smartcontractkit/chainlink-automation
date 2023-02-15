@@ -182,6 +182,10 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		config.MaxUpkeepBatchSize = 1
 	}
 
+	if config.ReportBlockLag < 0 {
+		config.ReportBlockLag = 0
+	}
+
 	return config, err
 }
 
