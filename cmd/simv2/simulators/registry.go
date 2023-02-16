@@ -66,7 +66,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 				panic(err.Error())
 			}
 
-			block, ok := new(big.Int).SetString(string(blockKey), 10)
+			block, ok := new(big.Int).SetString(blockKey.String(), 10)
 			if !ok {
 				mErr = multierr.Append(mErr, fmt.Errorf("block in key not parsable as big int"))
 				return

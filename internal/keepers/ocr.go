@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"golang.org/x/crypto/sha3"
 )
@@ -65,8 +66,8 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	obs := &ktypes.UpkeepObservation{
-		BlockKey: blockKey,
+	obs := &chain.UpkeepObservation{
+		BlockKey: chain.BlockKey(blockKey.String()),
 	}
 
 	identifiers := make([]ktypes.UpkeepIdentifier, 0)

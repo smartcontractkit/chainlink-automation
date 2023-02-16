@@ -17,16 +17,16 @@ func NewUpkeepKey(block, id *big.Int) UpkeepKey {
 }
 
 func NewUpkeepKeyFromBlockAndID(block types.BlockKey, id types.UpkeepIdentifier) UpkeepKey {
-	return UpkeepKey(fmt.Sprintf("%s%s%s", string(block), separator, string(id)))
+	return UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, string(id)))
 }
 
 func (u UpkeepKey) BlockKeyAndUpkeepID() (types.BlockKey, types.UpkeepIdentifier, error) {
 	components := strings.Split(u.String(), "|")
 	if len(components) != 2 {
-		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+		return nil, nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
 
-	return types.BlockKey(components[0]), types.UpkeepIdentifier(components[1]), nil
+	return BlockKey(components[0]), types.UpkeepIdentifier(components[1]), nil
 }
 
 func (u UpkeepKey) String() string {

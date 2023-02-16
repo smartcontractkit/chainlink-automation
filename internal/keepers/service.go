@@ -82,7 +82,7 @@ var _ upkeepService = (*onDemandUpkeepService)(nil)
 func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.BlockKey, types.UpkeepResults, error) {
 	blockKey, results, ok := s.samplingResults.get()
 	if !ok {
-		return "", nil, ErrSamplingNotInitialized
+		return nil, nil, ErrSamplingNotInitialized
 	}
 
 	filteredResults := make(types.UpkeepResults, 0, len(results))

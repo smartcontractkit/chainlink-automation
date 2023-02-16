@@ -3,6 +3,7 @@ package simulators
 import (
 	"context"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -21,7 +22,7 @@ func (ct *SimulatedContract) forwardHeads(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case block := <-blocksCh:
-			send(ct.chHeads, ktypes.BlockKey(block.BlockNumber.String()))
+			send(ct.chHeads, chain.BlockKey(block.BlockNumber.String()))
 		}
 	}
 }

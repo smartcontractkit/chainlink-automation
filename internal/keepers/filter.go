@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
@@ -77,30 +76,23 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 
 		// only apply filter if key id is registered in the cache
 		if bl, ok := rc.idBlocks.Get(string(id)); ok {
-			var blKey int
-
 			blockKey, _, err := key.BlockKeyAndUpkeepID()
 			if err != nil {
 				return false
 			}
 
-			blKey, err = strconv.Atoi(string(blockKey))
-			if err != nil {
-				return false
-			}
-
 			// Return false if empty
-			if bl.TransmitBlockNumber == "" {
+			if bl.TransmitBlockNumber == nil || bl.TransmitBlockNumber.String() == "" {
 				return false
 			}
 
-			transmitBlockNumber, err := strconv.Atoi(string(bl.TransmitBlockNumber))
+			isAfter, err := blockKey.After(bl.TransmitBlockNumber)
 			if err != nil {
 				return false
 			}
 
-			// only apply filter if key block is after block in cache
-			return blKey > transmitBlockNumber
+			// do not filter the key out if key block is after block in cache
+			return isAfter
 		}
 
 		return true
@@ -121,15 +113,25 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
+	// Set the key as accepted within activeKeys
 	rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
+	// Also apply an idBlock if the key is after an existing idBlock check key
 	blockKey, _, err := key.BlockKeyAndUpkeepID()
 	if err != nil {
 		return err
 	}
 
-	if bl, ok := rc.idBlocks.Get(string(id)); ok && string(bl.KeyBlockNumber) > string(blockKey) {
-		return nil
+	bl, ok := rc.idBlocks.Get(string(id))
+	if ok {
+		isAfter, err := bl.KeyBlockNumber.After(blockKey)
+		if err != nil {
+			return err
+		}
+
+		if isAfter {
+			return nil
+		}
 	}
 
 	rc.idBlocks.Set(string(id), idBlocker{
@@ -179,18 +181,24 @@ func (rc *reportCoordinator) checkLogs() {
 			// update the active key to indicate a log was detected
 			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
-			// if an id already exists for a higher block number, don't update it
-			blockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
-
+			// if an idBlock already exists for a higher check block number, don't update it
+			logCheckBlockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
 			bl, ok := rc.idBlocks.Get(string(id))
-			if ok && string(blockKey) < string(bl.KeyBlockNumber) {
-				continue
+
+			if ok {
+				isAfter, err := bl.KeyBlockNumber.After(logCheckBlockKey)
+				if err != nil {
+					continue
+				}
+				if isAfter {
+					continue
+				}
 			}
 
 			bl.TransmitBlockNumber = l.TransmitBlock
 
 			// if we detect a log, remove it from the observation filters
-			// to allow it to be reported on again at or after the block in
+			// to allow it to be reported on after the block in
 			// which it was transmitted
 			rc.idBlocks.Set(string(id), bl, util.DefaultCacheExpiration)
 

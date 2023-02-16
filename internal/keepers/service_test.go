@@ -110,7 +110,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	ctx := context.Background()
 	rg := ktypes.NewMockRegistry(t)
 
-	blockKey := ktypes.BlockKey("1")
+	blockKey := chain.BlockKey("1")
 	returnResults := make(ktypes.UpkeepResults, 5)
 	for i := 0; i < 5; i++ {
 		returnResults[i] = ktypes.UpkeepResult{
@@ -164,9 +164,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
-		header := types.BlockKey("1")
+		header := chain.BlockKey("1")
 
-		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads := make(chan types.BlockKey, 1)
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
@@ -260,9 +260,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
-		header := types.BlockKey("1")
+		header := chain.BlockKey("1")
 
-		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads := make(chan types.BlockKey, 1)
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
@@ -305,9 +305,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		rg := ktypes.NewMockRegistry(t)
 		hs := ktypes.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
-		header := types.BlockKey("1")
+		header := chain.BlockKey("1")
 
-		chHeads := make(chan ktypes.BlockKey, 1)
+		chHeads := make(chan types.BlockKey, 1)
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
