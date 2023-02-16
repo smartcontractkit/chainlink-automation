@@ -195,7 +195,7 @@ func (s *onDemandUpkeepService) processLatestHead(ctx context.Context, blockKey 
 	sampleSize := s.ratio.OfInt(len(keys))
 
 	s.logger.Printf("%d results selected by provided ratio %s", sampleSize, s.ratio)
-	if sampleSize <= 0 {
+	if sampleSize < 0 {
 		s.logger.Printf("sample size is too small: %d", sampleSize)
 		return
 	}
