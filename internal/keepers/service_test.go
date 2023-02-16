@@ -110,7 +110,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	ctx := context.Background()
 	rg := ktypes.NewMockRegistry(t)
 
-	blockKey := ktypes.BlockKey("1")
+	blockKey := chain.BlockKey("1")
 	returnResults := make(ktypes.UpkeepResults, 5)
 	for i := 0; i < 5; i++ {
 		returnResults[i] = ktypes.UpkeepResult{

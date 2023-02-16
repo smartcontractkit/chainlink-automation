@@ -230,7 +230,7 @@ func calculateMedianBlock(data []ktypes.BlockKey, reportBlockLag int) ktypes.Blo
 
 	for _, d := range data {
 		blockKeyInt := big.NewInt(0)
-		blockKeyInt, _ = blockKeyInt.SetString(string(d), 10)
+		blockKeyInt, _ = blockKeyInt.SetString(d.String(), 10)
 		blockKeyInts = append(blockKeyInts, blockKeyInt)
 	}
 
@@ -255,7 +255,7 @@ func calculateMedianBlock(data []ktypes.BlockKey, reportBlockLag int) ktypes.Blo
 		median = median.Sub(median, big.NewInt(int64(reportBlockLag)))
 	}
 
-	return ktypes.BlockKey(median.String())
+	return chain.BlockKey(median.String())
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {
