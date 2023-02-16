@@ -177,7 +177,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			upkeepIDs[i] = ktypes.UpkeepIdentifier(fmt.Sprintf("%d", i+1))
 		}
 
-		rg.Mock.On("GetActiveUpkeepIDs", mock.Anything, chain.BlockKey("0")).
+		rg.Mock.On("GetActiveUpkeepIDs", mock.Anything).
 			Return(upkeepIDs, nil)
 
 		returnResults := make(ktypes.UpkeepResults, 5)
