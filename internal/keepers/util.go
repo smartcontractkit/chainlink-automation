@@ -139,7 +139,7 @@ func observationsToUpkeepKeys(observations []types.AttributedObservation, report
 			continue
 		}
 
-		blockKeyInt, ok := big.NewInt(0).SetString(string(upkeepObservation.BlockKey), 10)
+		blockKeyInt, ok := big.NewInt(0).SetString(upkeepObservation.BlockKey.String(), 10)
 		if !ok {
 			parseErrors++
 			continue

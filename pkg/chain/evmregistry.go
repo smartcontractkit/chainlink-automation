@@ -57,7 +57,7 @@ func (r *evmRegistryv2_0) LatestBlock(ctx context.Context) (*big.Int, error) {
 }
 
 func (r *evmRegistryv2_0) GetActiveUpkeepIDs(ctx context.Context) ([]types.UpkeepIdentifier, error) {
-	opts, err := r.buildCallOpts(ctx, types.BlockKey("0"))
+	opts, err := r.buildCallOpts(ctx, BlockKey("0"))
 	if err != nil {
 		return nil, err
 	}

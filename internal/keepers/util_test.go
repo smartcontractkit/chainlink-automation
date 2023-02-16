@@ -96,35 +96,35 @@ func Test_filterDedupeShuffleObservations(t *testing.T) {
 func Test_observationsToUpkeepKeys(t *testing.T) {
 	obs := []*ktypes.UpkeepObservation{
 		{
-			BlockKey: ktypes.BlockKey("2"),
+			BlockKey: chain.BlockKey("2"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("1"),
 				ktypes.UpkeepIdentifier("1"),
 			},
 		},
 		{
-			BlockKey: ktypes.BlockKey("3"),
+			BlockKey: chain.BlockKey("3"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("1"),
 				ktypes.UpkeepIdentifier("2"),
 			},
 		},
 		{
-			BlockKey: ktypes.BlockKey("1"),
+			BlockKey: chain.BlockKey("1"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("2"),
 				ktypes.UpkeepIdentifier("3"),
 			},
 		},
 		{
-			BlockKey: ktypes.BlockKey("2"),
+			BlockKey: chain.BlockKey("2"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("3"),
 				ktypes.UpkeepIdentifier("3"),
 			},
 		},
 		{
-			BlockKey: ktypes.BlockKey("2"),
+			BlockKey: chain.BlockKey("2"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("1"),
 				ktypes.UpkeepIdentifier("1"),
@@ -157,7 +157,7 @@ func Test_observationsToUpkeepKeys(t *testing.T) {
 
 func Benchmark_observationsToUpkeepKeys(b *testing.B) {
 	encoded := mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
-		BlockKey: "1",
+		BlockKey: chain.BlockKey("1"),
 		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 			ktypes.UpkeepIdentifier("1"),
 			ktypes.UpkeepIdentifier("2"),
@@ -169,7 +169,7 @@ func Benchmark_observationsToUpkeepKeys(b *testing.B) {
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
-			BlockKey: "2",
+			BlockKey: chain.BlockKey("2"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("2"),
 				ktypes.UpkeepIdentifier("1"),

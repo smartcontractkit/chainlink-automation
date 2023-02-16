@@ -17,7 +17,7 @@ func NewUpkeepKey(block, id *big.Int) UpkeepKey {
 }
 
 func NewUpkeepKeyFromBlockAndID(block types.BlockKey, id types.UpkeepIdentifier) UpkeepKey {
-	return UpkeepKey(fmt.Sprintf("%s%s%s", string(block), separator, string(id)))
+	return UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, string(id)))
 }
 
 func (u UpkeepKey) BlockKeyAndUpkeepID() (types.BlockKey, types.UpkeepIdentifier, error) {

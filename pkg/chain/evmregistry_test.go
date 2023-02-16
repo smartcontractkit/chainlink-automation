@@ -39,9 +39,7 @@ func TestGetActiveUpkeepKeys(t *testing.T) {
 		t.FailNow()
 	}
 
-	b := BlockKey("0")
-
-	blockKey, keys, err := reg.GetActiveUpkeepIDs(ctx, b)
+	keys, err := reg.GetActiveUpkeepIDs(ctx)
 	if err != nil {
 		t.Logf("error: %s", err)
 		t.FailNow()
