@@ -113,10 +113,10 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
+	// Set the key as accepted within activeKeys
 	rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
-	// TODO: the key is constructed in the registry. splitting out the
-	// block number here is a hack solution that should be fixed asap.
+	// Also apply an idBlock if the key is after an existing idBlock check key
 	blockKey, _, err := key.BlockKeyAndUpkeepID()
 	if err != nil {
 		return err
@@ -181,26 +181,24 @@ func (rc *reportCoordinator) checkLogs() {
 			// update the active key to indicate a log was detected
 			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
-			// if an id already exists for a higher block number, don't update it
-			// TODO: the key is constructed in the registry. splitting out the
-			// block number here is a hack solution that should be fixed asap.
-			blockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
-
+			// if an idBlock already exists for a higher check block number, don't update it
+			logCheckBlockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
 			bl, ok := rc.idBlocks.Get(string(id))
 
-			isBefore, err := bl.KeyBlockNumber.After(blockKey)
-			if err != nil {
-				continue
-			}
-
-			if ok && isBefore {
-				continue
+			if ok {
+				isAfter, err := bl.KeyBlockNumber.After(logCheckBlockKey)
+				if err != nil {
+					continue
+				}
+				if isAfter {
+					continue
+				}
 			}
 
 			bl.TransmitBlockNumber = l.TransmitBlock
 
 			// if we detect a log, remove it from the observation filters
-			// to allow it to be reported on again at or after the block in
+			// to allow it to be reported on after the block in
 			// which it was transmitted
 			rc.idBlocks.Set(string(id), bl, util.DefaultCacheExpiration)
 
