@@ -146,7 +146,7 @@ func observationsToUpkeepKeys(logger *log.Logger, observations []types.Attribute
 		}
 		allBlockKeys = append(allBlockKeys, blockKeyInt)
 
-		// if we have a non-empty list of upkeep identifiers, use the zeroth upkeep identifier
+		// if we have a non-empty list of upkeep identifiers, limit the upkeeps we take to observationUpkeepsLimit
 		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
 			upkeepIDs[i] = upkeepObservation.UpkeepIdentifiers[:observationUpkeepsLimit]
 		}
