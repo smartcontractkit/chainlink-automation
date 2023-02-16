@@ -132,7 +132,7 @@ func observationsToUpkeepKeys(logger *log.Logger, observations []types.Attribute
 		// good observations. ensure this loop continues on error, but collect
 		// them and throw an error if ALL observations fail at this point.
 		// TODO we can't rely on this concrete type for decoding/encoding
-		var upkeepObservation *ktypes.UpkeepObservation
+		var upkeepObservation *chain.UpkeepObservation
 		if err := decode(observation.Observation, &upkeepObservation); err != nil {
 			logger.Printf("unable to decode observation: %s", err.Error())
 			parseErrors++
@@ -272,14 +272,14 @@ func (a *syncedArray[T]) Values() []T {
 	return a.data
 }
 
-func limitedLengthEncode(obs *ktypes.UpkeepObservation, limit int) ([]byte, error) {
+func limitedLengthEncode(obs *chain.UpkeepObservation, limit int) ([]byte, error) {
 	if len(obs.UpkeepIdentifiers) == 0 {
 		return encode(obs)
 	}
 
 	var res []byte
 	for i := range obs.UpkeepIdentifiers {
-		b, err := encode(&ktypes.UpkeepObservation{
+		b, err := encode(&chain.UpkeepObservation{
 			BlockKey:          obs.BlockKey,
 			UpkeepIdentifiers: obs.UpkeepIdentifiers[:i+1],
 		})

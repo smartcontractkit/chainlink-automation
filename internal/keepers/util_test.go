@@ -95,7 +95,7 @@ func Test_filterDedupeShuffleObservations(t *testing.T) {
 }
 
 func Test_observationsToUpkeepKeys(t *testing.T) {
-	obs := []*ktypes.UpkeepObservation{
+	obs := []*chain.UpkeepObservation{
 		{
 			BlockKey: chain.BlockKey("2"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
@@ -157,7 +157,7 @@ func Test_observationsToUpkeepKeys(t *testing.T) {
 }
 
 func Benchmark_observationsToUpkeepKeys(b *testing.B) {
-	encoded := mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
+	encoded := mustEncodeUpkeepObservation(&chain.UpkeepObservation{
 		BlockKey: chain.BlockKey("1"),
 		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 			ktypes.UpkeepIdentifier("1"),
@@ -169,7 +169,7 @@ func Benchmark_observationsToUpkeepKeys(b *testing.B) {
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
-		{Observation: types.Observation(mustEncodeUpkeepObservation(&ktypes.UpkeepObservation{
+		{Observation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
 			BlockKey: chain.BlockKey("2"),
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("2"),
@@ -287,7 +287,7 @@ func TestLimitedLengthEncode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		obs := &ktypes.UpkeepObservation{}
+		obs := &chain.UpkeepObservation{}
 		keys := make([]ktypes.UpkeepIdentifier, test.KeyCount)
 		for i := 0; i < test.KeyCount; i++ {
 			byt := make([]byte, test.KeyLength)
@@ -323,7 +323,7 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 			keys[i] = ktypes.UpkeepIdentifier(k)
 		}
 
-		ob := &ktypes.UpkeepObservation{}
+		ob := &chain.UpkeepObservation{}
 		ob.UpkeepIdentifiers = keys
 		bt, err := limitedLengthEncode(ob, 1000)
 
@@ -332,7 +332,7 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 
 		if a > 0 {
 			output := make([]ktypes.UpkeepKey, 0)
-			obs := &ktypes.UpkeepObservation{}
+			obs := &chain.UpkeepObservation{}
 			err = decode(bt, obs)
 			assert.NoError(t, err)
 
