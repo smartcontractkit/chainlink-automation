@@ -3,6 +3,7 @@ package keepers
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"math/cmplx"
@@ -120,7 +121,7 @@ func filterDedupeShuffleObservations(upkeepKeys [][]ktypes.UpkeepKey, keyRandSou
 	return uniqueKeys, nil
 }
 
-func observationsToUpkeepKeys(observations []types.AttributedObservation, reportBlockLag int) ([][]ktypes.UpkeepKey, error) {
+func observationsToUpkeepKeys(logger *log.Logger, observations []types.AttributedObservation, reportBlockLag int) ([][]ktypes.UpkeepKey, error) {
 	var parseErrors int
 
 	upkeepIDs := make([][]ktypes.UpkeepIdentifier, len(observations))
@@ -133,8 +134,7 @@ func observationsToUpkeepKeys(observations []types.AttributedObservation, report
 		// TODO we can't rely on this concrete type for decoding/encoding
 		var upkeepObservation *ktypes.UpkeepObservation
 		if err := decode(observation.Observation, &upkeepObservation); err != nil {
-			// TODO log this
-			//k.logger.Printf("%d results selected by provided ratio %s", sampleSize, s.ratio)
+			logger.Printf("unable to decode observation: %s", err.Error()g)
 			parseErrors++
 			continue
 		}

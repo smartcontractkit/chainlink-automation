@@ -123,7 +123,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	}
 
 	// Build upkeep keys from the given observations
-	upkeepKeys, err := observationsToUpkeepKeys(attributed, k.reportBlockLag)
+	upkeepKeys, err := observationsToUpkeepKeys(k.logger, attributed, k.reportBlockLag)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to build upkeep keys from the given observations", err)
 	}
