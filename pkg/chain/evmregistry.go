@@ -83,7 +83,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 
 		nextKeys := make([]types.UpkeepKey, len(nextRawKeys))
 		for i, next := range nextRawKeys {
-			nextKeys[i] = BlockAndIdToKey(opts.BlockNumber, next)
+			nextKeys[i] = NewUpkeepKey(opts.BlockNumber, next)
 		}
 
 		if len(nextKeys) == 0 {
@@ -106,9 +106,14 @@ func (r *evmRegistryv2_0) checkUpkeeps(ctx context.Context, keys []types.UpkeepK
 	)
 
 	for i, key := range keys {
-		block, upkeepId, err := BlockAndIdFromKey(key)
+		block, upkeepId, err := key.BlockKeyAndUpkeepID()
 		if err != nil {
 			return nil, err
+		}
+
+		upkeepIdInt, ok := upkeepId.BigInt()
+		if !ok {
+			return nil, ErrUpkeepKeyNotParsable
 		}
 
 		opts, err := r.buildCallOpts(ctx, block)
@@ -116,7 +121,7 @@ func (r *evmRegistryv2_0) checkUpkeeps(ctx context.Context, keys []types.UpkeepK
 			return nil, err
 		}
 
-		payload, err := keeperRegistryABI.Pack("checkUpkeep", upkeepId)
+		payload, err := keeperRegistryABI.Pack("checkUpkeep", upkeepIdInt)
 		if err != nil {
 			return nil, err
 		}
@@ -178,9 +183,14 @@ func (r *evmRegistryv2_0) simulatePerformUpkeeps(ctx context.Context, checkResul
 			continue
 		}
 
-		block, upkeepId, err := BlockAndIdFromKey(checkResult.Key)
+		block, upkeepId, err := checkResult.Key.BlockKeyAndUpkeepID()
 		if err != nil {
 			return nil, err
+		}
+
+		upkeepIdInt, ok := upkeepId.BigInt()
+		if !ok {
+			return nil, ErrUpkeepKeyNotParsable
 		}
 
 		opts, err := r.buildCallOpts(ctx, block)
@@ -189,7 +199,7 @@ func (r *evmRegistryv2_0) simulatePerformUpkeeps(ctx context.Context, checkResul
 		}
 
 		// Since checkUpkeep is true, simulate perform upkeep to ensure it doesn't revert
-		payload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepId, checkResult.PerformData)
+		payload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepIdInt, checkResult.PerformData)
 		if err != nil {
 			return nil, err
 		}
@@ -283,12 +293,12 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 }
 
 func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
-	_, id, err := BlockAndIdFromKey(key)
+	_, id, err := key.BlockKeyAndUpkeepID()
 	if err != nil {
 		return nil, err
 	}
 
-	return id.Bytes(), nil
+	return id, nil
 }
 
 func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {

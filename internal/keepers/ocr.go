@@ -137,6 +137,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 	// Check the limit
 	if len(upkeepKeys) > reportKeysLimit {
+		//nolint:staticcheck
 		upkeepKeys = upkeepKeys[:reportKeysLimit]
 	}
 

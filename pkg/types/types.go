@@ -84,6 +84,11 @@ type UpkeepKey interface {
 // UpkeepIdentifier is an identifier for an active upkeep, typically a big int
 type UpkeepIdentifier []byte
 
+// BigInt creates and returns big int from the given upkeep identifier
+func (ui UpkeepIdentifier) BigInt() (*big.Int, bool) {
+	return big.NewInt(0).SetString(string(ui), 10)
+}
+
 type UpkeepResults []UpkeepResult
 
 type UpkeepResult struct {

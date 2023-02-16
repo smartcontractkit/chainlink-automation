@@ -32,7 +32,7 @@ func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.
 
 	// TODO: filter out cancelled upkeeps
 	for key := range ct.upkeeps {
-		k := chain.UpkeepKey([]byte(fmt.Sprintf("%s|%s", block, key)))
+		k := chain.NewUpkeepKeyFromBlockAndID(types.BlockKey(block), types.UpkeepIdentifier(key))
 		keys = append(keys, k)
 	}
 	ct.mu.RUnlock()
