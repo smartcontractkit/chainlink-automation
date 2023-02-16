@@ -5,6 +5,6 @@ import (
 )
 
 type UpkeepObservation struct {
-	BlockKey          BlockKey                 `json:"blockKey"`
-	UpkeepIdentifiers []types.UpkeepIdentifier `json:"upkeepIdentifiers"`
+	BlockKey          BlockKey                 `json:"1"`
+	UpkeepIdentifiers []types.UpkeepIdentifier `json:"2"`
 }
