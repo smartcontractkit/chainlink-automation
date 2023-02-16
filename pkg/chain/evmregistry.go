@@ -47,15 +47,6 @@ func NewEVMRegistryV2_0(address common.Address, client types.EVMClient) (*evmReg
 	}, nil
 }
 
-func (r *evmRegistryv2_0) LatestBlock(ctx context.Context) (*big.Int, error) {
-	header, err := r.client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s: EVM failed to fetch block header", err, ErrRegistryCallFailure)
-	}
-
-	return header.Number, nil
-}
-
 func (r *evmRegistryv2_0) GetActiveUpkeepIDs(ctx context.Context) ([]types.UpkeepIdentifier, error) {
 	opts, err := r.buildCallOpts(ctx, BlockKey("0"))
 	if err != nil {
