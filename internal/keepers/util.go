@@ -134,7 +134,7 @@ func observationsToUpkeepKeys(logger *log.Logger, observations []types.Attribute
 		// TODO we can't rely on this concrete type for decoding/encoding
 		var upkeepObservation *ktypes.UpkeepObservation
 		if err := decode(observation.Observation, &upkeepObservation); err != nil {
-			logger.Printf("unable to decode observation: %s", err.Error()g)
+			logger.Printf("unable to decode observation: %s", err.Error())
 			parseErrors++
 			continue
 		}
