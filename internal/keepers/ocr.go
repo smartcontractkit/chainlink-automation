@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	// observationUpkeepLimit is the max number of upkeeps that Observation could return.
-	observationUpkeepLimit = 1
+	// observationUpkeepsLimit is the max number of upkeeps that Observation could return.
+	observationUpkeepsLimit = 1
 
 	// reportKeysLimit is the maximum number of upkeep keys checked during the report phase
 	reportKeysLimit = 10
@@ -76,10 +76,10 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	}
 
 	// Check limit
-	if len(identifiers) > observationUpkeepLimit {
-		identifiers = identifiers[:observationUpkeepLimit]
+	if len(identifiers) > observationUpkeepsLimit {
+		identifiers = identifiers[:observationUpkeepsLimit]
 	}
-	
+
 	obs.UpkeepIdentifiers = identifiers
 
 	b, err := limitedLengthEncode(obs, maxObservationLength)
@@ -90,7 +90,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// write the number of keys returned from sampling to the debug log
 	// this offers a record of the number of performs the node has visibility
 	// of for each epoch/round
-	k.logger.Printf("OCR observation completed successfully with %d eligible keys: %s", len(keys), lCtx)
+	k.logger.Printf("OCR observation completed successfully with block number %s and %d eligible upkeeps: %s", blockKey, len(identifiers), lCtx)
 
 	return b, nil
 }
