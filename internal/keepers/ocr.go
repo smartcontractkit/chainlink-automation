@@ -123,7 +123,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	}
 
 	// Build upkeep keys from the given observations
-	upkeepKeys, err := observationsToUpkeepKeys(attributed, k.reportBlockLag)
+	upkeepKeys, err := observationsToUpkeepKeys(k.logger, attributed, k.reportBlockLag)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to build upkeep keys from the given observations", err)
 	}
@@ -266,7 +266,6 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.Repor
 		transmitConfirmed := k.filter.IsTransmissionConfirmed(id.Key)
 		// multiple keys can be in a single report. if one has a confirmed transmission
 		// (while others may not have), don't try to transmit again
-		// TODO: reevaluate this assumption
 		if transmitConfirmed {
 			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted: %s", id.Key, lCtx)
 			return false, nil

@@ -235,7 +235,6 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		svc.stop()
 
-		// TODO: Use gomega or something similar
 		var actualResults types.UpkeepResults
 		var blockKey types.BlockKey
 		var ok bool
@@ -363,7 +362,6 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 
 		svc.stop()
 
-		// TODO: Get rid of this
 		time.Sleep(time.Second)
 
 		assert.Contains(t, logWriter.String(), "simulate RPC error: failed to check upkeep keys:")

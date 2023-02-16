@@ -82,12 +82,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		UniqueReports: false,
 	}
 
-	// TODO (config): sample ratio is calculated with number of rounds, number
-	// of nodes, and target probability for all upkeeps to be checked. each
-	// chain will have a different average number of rounds per block. this
-	// number needs to either come from a config, or be calculated on actual
-	// performance of the nodes in real time. that is, start at 1 and increment
-	// after some blocks pass until a stable number is reached.
 	var p float64
 	p, err = strconv.ParseFloat(offChainCfg.TargetProbability, 32)
 	if err != nil {
