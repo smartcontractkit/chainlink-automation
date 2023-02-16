@@ -266,7 +266,6 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.Repor
 		transmitConfirmed := k.filter.IsTransmissionConfirmed(id.Key)
 		// multiple keys can be in a single report. if one has a confirmed transmission
 		// (while others may not have), don't try to transmit again
-		// TODO: reevaluate this assumption
 		if transmitConfirmed {
 			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted: %s", id.Key, lCtx)
 			return false, nil

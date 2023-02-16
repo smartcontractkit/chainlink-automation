@@ -77,9 +77,6 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 
 		// only apply filter if key id is registered in the cache
 		if bl, ok := rc.idBlocks.Get(string(id)); ok {
-			// TODO: the key is constructed in the registry. splitting out the
-			// block number here is a hack solution that should be fixed asap.
-			// AUTO-1480
 			var blKey int
 
 			blockKey, _, err := key.BlockKeyAndUpkeepID()
@@ -126,8 +123,6 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 
 	rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
-	// TODO: the key is constructed in the registry. splitting out the
-	// block number here is a hack solution that should be fixed asap.
 	blockKey, _, err := key.BlockKeyAndUpkeepID()
 	if err != nil {
 		return err
@@ -185,8 +180,6 @@ func (rc *reportCoordinator) checkLogs() {
 			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
 			// if an id already exists for a higher block number, don't update it
-			// TODO: the key is constructed in the registry. splitting out the
-			// block number here is a hack solution that should be fixed asap.
 			blockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
 
 			bl, ok := rc.idBlocks.Get(string(id))
