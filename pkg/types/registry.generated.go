@@ -44,34 +44,27 @@ func (_m *MockRegistry) CheckUpkeep(_a0 context.Context, _a1 ...UpkeepKey) (Upke
 	return r0, r1
 }
 
-// GetLatestActiveUpkeepKeys provides a mock function with given fields: _a0, _a1
-func (_m *MockRegistry) GetLatestActiveUpkeepKeys(_a0 context.Context, _a1 BlockKey) (BlockKey, []UpkeepKey, error) {
-	ret := _m.Called(_a0, _a1)
+// GetActiveUpkeepIDs provides a mock function with given fields: _a0
+func (_m *MockRegistry) GetActiveUpkeepIDs(_a0 context.Context) ([]UpkeepIdentifier, error) {
+	ret := _m.Called(_a0)
 
-	var r0 BlockKey
-	if rf, ok := ret.Get(0).(func(context.Context, BlockKey) BlockKey); ok {
-		r0 = rf(_a0, _a1)
+	var r0 []UpkeepIdentifier
+	if rf, ok := ret.Get(0).(func(context.Context) []UpkeepIdentifier); ok {
+		r0 = rf(_a0)
 	} else {
-		r0 = ret.Get(0).(BlockKey)
-	}
-
-	var r1 []UpkeepKey
-	if rf, ok := ret.Get(1).(func(context.Context, BlockKey) []UpkeepKey); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]UpkeepKey)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]UpkeepIdentifier)
 		}
 	}
 
-	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context, BlockKey) error); ok {
-		r2 = rf(_a0, _a1)
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(_a0)
 	} else {
-		r2 = ret.Error(2)
+		r1 = ret.Error(1)
 	}
 
-	return r0, r1, r2
+	return r0, r1
 }
 
 // IdentifierFromKey provides a mock function with given fields: _a0

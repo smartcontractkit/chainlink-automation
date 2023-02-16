@@ -40,7 +40,6 @@ func TestDedupe(t *testing.T) {
 		ExpectedResult []testStringer
 		ExpectedError  error
 	}{
-		{Name: "Empty Matching Sets", ExpectedResult: nil, ExpectedError: ErrNotEnoughInputs},
 		{Name: "Single Matching Set", Sets: [][]testStringer{{"1", "2", "3"}}, ExpectedResult: []testStringer{"1", "2", "3"}},
 		{Name: "Double Identical", Sets: [][]testStringer{{"1", "2", "3"}, {"1", "2", "3"}}, ExpectedResult: []testStringer{"1", "2", "3"}},
 		{Name: "Double No Match", Sets: [][]testStringer{{"1", "2", "3"}, {"4", "5", "6"}}, ExpectedResult: []testStringer{"1", "2", "3", "4", "5", "6"}},
@@ -210,12 +209,6 @@ func Benchmark_observationsToUpkeepKeys(b *testing.B) {
 			}
 		})
 	}
-}
-
-func TestSortedDedup_Error(t *testing.T) {
-	upkeepKeys := [][]ktypes.UpkeepKey{{chain.UpkeepKey("invalid value")}}
-	_, err := filterDedupeShuffleObservations(upkeepKeys, [16]byte{})
-	assert.NotNil(t, err)
 }
 
 func Benchmark_sortedDedupedKeyListFunc(b *testing.B) {

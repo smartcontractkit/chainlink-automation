@@ -8,7 +8,6 @@ import (
 
 	"go.uber.org/multierr"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -18,35 +17,33 @@ type SimulatedUpkeep struct {
 	Performs   map[string]types.PerformLog // performs at block number
 }
 
-func (ct *SimulatedContract) GetLatestActiveUpkeepKeys(ctx context.Context, key types.BlockKey) (types.BlockKey, []types.UpkeepKey, error) {
+func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]types.UpkeepIdentifier, error) {
 
 	ct.mu.RLock()
 	ct.logger.Printf("getting keys at block %s", ct.lastBlock)
 
-	block := ct.lastBlock.String()
-	keys := []types.UpkeepKey{}
+	keys := []types.UpkeepIdentifier{}
 
 	// TODO: filter out cancelled upkeeps
 	for key := range ct.upkeeps {
-		k := chain.NewUpkeepKeyFromBlockAndID(types.BlockKey(block), types.UpkeepIdentifier(key))
-		keys = append(keys, k)
+		keys = append(keys, types.UpkeepIdentifier(key))
 	}
 	ct.mu.RUnlock()
 
 	// call to GetState
 	err := <-ct.rpc.Call(ctx, "getState")
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	// call to GetActiveIDs
 	// TODO: batch size is hard coded at 10_000, if the number of keys is more
 	// than this, simulate another rpc call
 	err = <-ct.rpc.Call(ctx, "getActiveIDs")
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	return types.BlockKey(block), keys, nil
+	return keys, nil
 }
 
 func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
