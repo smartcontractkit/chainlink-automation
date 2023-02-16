@@ -56,18 +56,18 @@ func (r *evmRegistryv2_0) LatestBlock(ctx context.Context) (*big.Int, error) {
 	return header.Number, nil
 }
 
-func (r *evmRegistryv2_0) GetLatestActiveUpkeepKeys(ctx context.Context, block types.BlockKey) (types.BlockKey, []types.UpkeepKey, error) {
-	opts, err := r.buildCallOpts(ctx, block)
+func (r *evmRegistryv2_0) GetActiveUpkeepIDs(ctx context.Context) ([]types.UpkeepIdentifier, error) {
+	opts, err := r.buildCallOpts(ctx, types.BlockKey("0"))
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	state, err := r.registry.GetState(opts)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "failed to get contract state at block number %d", opts.BlockNumber.Int64())
+		return nil, errors.Wrapf(err, "failed to get contract state at block number %d", opts.BlockNumber.Int64())
 	}
 
-	keys := make([]types.UpkeepKey, 0)
+	keys := make([]types.UpkeepIdentifier, 0)
 	for int64(len(keys)) < state.State.NumUpkeeps.Int64() {
 		startIndex := int64(len(keys))
 		maxCount := state.State.NumUpkeeps.Int64() - int64(len(keys))
@@ -78,25 +78,25 @@ func (r *evmRegistryv2_0) GetLatestActiveUpkeepKeys(ctx context.Context, block t
 
 		nextRawKeys, err := r.registry.GetActiveUpkeepIDs(opts, big.NewInt(startIndex), big.NewInt(maxCount))
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "failed to get active upkeep IDs from index %d to %d (both inclusive)", startIndex, startIndex+maxCount-1)
+			return nil, errors.Wrapf(err, "failed to get active upkeep IDs from index %d to %d (both inclusive)", startIndex, startIndex+maxCount-1)
 		}
 
-		nextKeys := make([]types.UpkeepKey, len(nextRawKeys))
+		nextKeys := make([]types.UpkeepIdentifier, len(nextRawKeys))
 		for i, next := range nextRawKeys {
-			nextKeys[i] = NewUpkeepKey(opts.BlockNumber, next)
+			nextKeys[i] = types.UpkeepIdentifier(next.String())
 		}
 
 		if len(nextKeys) == 0 {
 			break
 		}
 
-		buffer := make([]types.UpkeepKey, len(keys), len(keys)+len(nextKeys))
+		buffer := make([]types.UpkeepIdentifier, len(keys), len(keys)+len(nextKeys))
 		copy(keys, buffer)
 
 		keys = append(buffer, nextKeys...)
 	}
 
-	return block, keys, nil
+	return keys, nil
 }
 
 func (r *evmRegistryv2_0) checkUpkeeps(ctx context.Context, keys []types.UpkeepKey) ([]types.UpkeepResult, error) {

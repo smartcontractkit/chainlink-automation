@@ -39,16 +39,13 @@ func TestGetActiveUpkeepKeys(t *testing.T) {
 		t.FailNow()
 	}
 
-	b := types.BlockKey("0")
-
-	blockKey, keys, err := reg.GetLatestActiveUpkeepKeys(ctx, b)
+	keys, err := reg.GetActiveUpkeepIDs(ctx)
 	if err != nil {
 		t.Logf("error: %s", err)
 		t.FailNow()
 	}
 
 	assert.Len(t, keys, 4)
-	assert.Equal(t, b, blockKey)
 	mockClient.Mock.AssertExpectations(t)
 }
 

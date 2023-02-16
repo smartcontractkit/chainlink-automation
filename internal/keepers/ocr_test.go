@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -512,6 +513,7 @@ func TestReport(t *testing.T) {
 				R: ktypes.UpkeepResults{},
 			},
 			ExpectedBool: false,
+			ExpectedErr:  ErrTooManyErrors,
 		},
 		{
 			Name:           "No Observations",
@@ -581,7 +583,7 @@ func TestReport(t *testing.T) {
 			}
 			ctx, cancel := test.Ctx()
 
-			if len(test.Observations) > 0 {
+			if len(test.Observations) > 0 && !errors.Is(test.ExpectedErr, ErrTooManyErrors) {
 				mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
 					for _, key := range test.FilterOut {
 						if k.String() == key.String() {

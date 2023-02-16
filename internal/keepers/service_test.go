@@ -126,7 +126,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 		logger:           l,
 		ratio:            sampleRatio(0.5),
 		registry:         rg,
-		shuffler:         new(noShuffleShuffler[ktypes.UpkeepKey]),
+		shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 		cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
 		workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
@@ -171,12 +171,14 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
 		actives := make([]ktypes.UpkeepKey, 10)
+		upkeepIDs := make([]ktypes.UpkeepIdentifier, 10)
 		for i := 0; i < 10; i++ {
 			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
+			upkeepIDs[i] = ktypes.UpkeepIdentifier(fmt.Sprintf("%d", i+1))
 		}
 
-		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, types.BlockKey("0")).
-			Return(header, actives, nil)
+		rg.Mock.On("GetActiveUpkeepIDs", mock.Anything).
+			Return(upkeepIDs, nil)
 
 		returnResults := make(ktypes.UpkeepResults, 5)
 		for i := 0; i < 5; i++ {
@@ -216,7 +218,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			headSubscriber:   hs,
 			ratio:            sampleRatio(0.5),
 			registry:         rg,
-			shuffler:         new(noShuffleShuffler[ktypes.UpkeepKey]),
+			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
 			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
@@ -265,11 +267,11 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		chHeads <- header
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
-		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
+		rg.Mock.On("GetActiveUpkeepIDs", mock.Anything).
 			Run(func(args mock.Arguments) {
 				close(subscribed)
 			}).
-			Return(header, []ktypes.UpkeepKey{}, fmt.Errorf("contract error"))
+			Return([]ktypes.UpkeepIdentifier{}, fmt.Errorf("contract error"))
 
 		var logWriter buffer
 		l := log.New(&logWriter, "", 0)
@@ -311,12 +313,14 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		hs.Mock.On("HeadTicker").Return(chHeads)
 
 		actives := make([]ktypes.UpkeepKey, 10)
+		upkeepIDs := make([]ktypes.UpkeepIdentifier, 10)
 		for i := 0; i < 10; i++ {
 			actives[i] = chain.UpkeepKey(fmt.Sprintf("1|%d", i+1))
+			upkeepIDs[i] = ktypes.UpkeepIdentifier(fmt.Sprintf("%d", i+1))
 		}
 
-		rg.Mock.On("GetLatestActiveUpkeepKeys", mock.Anything, ktypes.BlockKey("0")).
-			Return(header, actives, nil)
+		rg.Mock.On("GetActiveUpkeepIDs", mock.Anything).
+			Return(upkeepIDs, nil)
 
 		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
@@ -342,7 +346,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			headSubscriber:   hs,
 			ratio:            sampleRatio(0.5),
 			registry:         rg,
-			shuffler:         new(noShuffleShuffler[ktypes.UpkeepKey]),
+			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
 			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),

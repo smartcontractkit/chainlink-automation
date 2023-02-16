@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -26,7 +27,7 @@ type onDemandUpkeepService struct {
 	ratio            sampleRatio
 	headSubscriber   types.HeadSubscriber
 	registry         types.Registry
-	shuffler         shuffler[types.UpkeepKey]
+	shuffler         shuffler[types.UpkeepIdentifier]
 	cache            *util.Cache[types.UpkeepResult]
 	cacheCleaner     *util.IntervalCacheCleaner[types.UpkeepResult]
 	samplingResults  samplingUpkeepsResults
@@ -59,7 +60,7 @@ func newOnDemandUpkeepService(
 		headSubscriber:   headSubscriber,
 		registry:         registry,
 		samplingDuration: samplingDuration,
-		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
+		shuffler:         new(cryptoShuffler[types.UpkeepIdentifier]),
 		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		workers:          pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
@@ -158,9 +159,9 @@ func (s *onDemandUpkeepService) start() {
 		ch := s.headSubscriber.HeadTicker()
 		for {
 			select {
-			case <-ch:
+			case head := <-ch:
 				// run with new head
-				s.processLatestHead(s.ctx)
+				s.processLatestHead(s.ctx, head)
 			case <-s.ctx.Done():
 				return
 			}
@@ -175,13 +176,13 @@ func (s *onDemandUpkeepService) stop() {
 }
 
 // processLatestHead performs checking upkeep logic for all eligible keys of the given head
-func (s *onDemandUpkeepService) processLatestHead(ctx context.Context) {
+func (s *onDemandUpkeepService) processLatestHead(ctx context.Context, blockKey types.BlockKey) {
 	ctx, cancel := context.WithTimeout(ctx, s.samplingDuration)
 	defer cancel()
 
 	// Get only the active upkeeps from the contract. This should not include
 	// any cancelled upkeeps.
-	blockKey, keys, err := s.registry.GetLatestActiveUpkeepKeys(ctx, "0")
+	keys, err := s.registry.GetActiveUpkeepIDs(ctx)
 	if err != nil {
 		s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 		return
@@ -199,7 +200,12 @@ func (s *onDemandUpkeepService) processLatestHead(ctx context.Context) {
 		return
 	}
 
-	upkeepResults, err := s.parallelCheck(ctx, keys[:sampleSize])
+	var upkeepKeys []types.UpkeepKey
+	for _, k := range keys {
+		upkeepKeys = append(upkeepKeys, chain.NewUpkeepKeyFromBlockAndID(blockKey, k))
+	}
+
+	upkeepResults, err := s.parallelCheck(ctx, upkeepKeys[:sampleSize])
 	if err != nil {
 		s.logger.Printf("%s: failed to parallel check upkeeps", err)
 		return

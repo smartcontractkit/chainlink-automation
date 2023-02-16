@@ -74,10 +74,6 @@ func (s sortUpkeepKeys) Len() int {
 }
 
 func filterAndDedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
-	if len(inputs) == 0 {
-		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
-	}
-
 	var max int
 	for _, input := range inputs {
 		max += len(input)
@@ -117,11 +113,6 @@ func filterDedupeShuffleObservations(upkeepKeys [][]ktypes.UpkeepKey, keyRandSou
 		return nil, err
 	}
 
-	uniqueKeys, err = trimLowerBlocks(uniqueKeys)
-	if err != nil {
-		return nil, err
-	}
-
 	rnd.New(util.NewKeyedCryptoRandSource(keyRandSource)).Shuffle(len(uniqueKeys), func(i, j int) {
 		uniqueKeys[i], uniqueKeys[j] = uniqueKeys[j], uniqueKeys[i]
 	})
@@ -129,42 +120,12 @@ func filterDedupeShuffleObservations(upkeepKeys [][]ktypes.UpkeepKey, keyRandSou
 	return uniqueKeys, nil
 }
 
-func trimLowerBlocks(uniqueKeys []ktypes.UpkeepKey) ([]ktypes.UpkeepKey, error) {
-	idxMap := make(map[string]int)
-	out := make([]ktypes.UpkeepKey, 0, len(uniqueKeys))
-
-	for _, uniqueKey := range uniqueKeys {
-		blockKey, upkeepID, err := uniqueKey.BlockKeyAndUpkeepID()
-		if err != nil {
-			return nil, err
-		}
-
-		idx, ok := idxMap[string(upkeepID)]
-		if !ok {
-			idxMap[string(upkeepID)] = len(out)
-			out = append(out, uniqueKey)
-			continue
-		}
-
-		savedBlockKey, _, err := out[idx].BlockKeyAndUpkeepID()
-		if err != nil {
-			return nil, err
-		}
-
-		if string(blockKey) > string(savedBlockKey) {
-			out[idx] = uniqueKey
-		}
-	}
-
-	return out, nil
-}
-
 func observationsToUpkeepKeys(observations []types.AttributedObservation, reportBlockLag int) ([][]ktypes.UpkeepKey, error) {
 	var parseErrors int
 
-	res := make([][]ktypes.UpkeepKey, len(observations))
+	upkeepIDs := make([][]ktypes.UpkeepIdentifier, len(observations))
 
-	var allBlockKeys []ktypes.BlockKey
+	var allBlockKeys []*big.Int
 	for i, observation := range observations {
 		// a single observation returning an error here can void all other
 		// good observations. ensure this loop continues on error, but collect
@@ -172,18 +133,22 @@ func observationsToUpkeepKeys(observations []types.AttributedObservation, report
 		// TODO we can't rely on this concrete type for decoding/encoding
 		var upkeepObservation *ktypes.UpkeepObservation
 		if err := decode(observation.Observation, &upkeepObservation); err != nil {
-			fmt.Println("err", err)
+			// TODO log this
+			//k.logger.Printf("%d results selected by provided ratio %s", sampleSize, s.ratio)
 			parseErrors++
 			continue
 		}
 
-		allBlockKeys = append(allBlockKeys, upkeepObservation.BlockKey)
+		blockKeyInt, ok := big.NewInt(0).SetString(string(upkeepObservation.BlockKey), 10)
+		if !ok {
+			parseErrors++
+			continue
+		}
+		allBlockKeys = append(allBlockKeys, blockKeyInt)
 
 		// if we have a non-empty list of upkeep identifiers, use the zeroth upkeep identifier
 		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
-			res[i] = []ktypes.UpkeepKey{
-				chain.NewUpkeepKeyFromBlockAndID(upkeepObservation.BlockKey, upkeepObservation.UpkeepIdentifiers[0]),
-			}
+			upkeepIDs[i] = upkeepObservation.UpkeepIdentifiers[:observationUpkeepsLimit]
 		}
 	}
 
@@ -192,26 +157,23 @@ func observationsToUpkeepKeys(observations []types.AttributedObservation, report
 	}
 
 	// Here we calculate the median block that will be applied for all upkeep keys.
+	// reportBlockLag is subtracted from the median block to ensure enough nodes have that block in their blockchain
 	medianBlock := calculateMedianBlock(allBlockKeys, reportBlockLag)
 
-	res, err := recreateKeysWithMedianBlock(medianBlock, res)
+	upkeepKeys, err := createKeysWithMedianBlock(medianBlock, upkeepIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return upkeepKeys, nil
 }
 
-func recreateKeysWithMedianBlock(medianBlock ktypes.BlockKey, upkeepKeyLists [][]ktypes.UpkeepKey) ([][]ktypes.UpkeepKey, error) {
-	var res = make([][]ktypes.UpkeepKey, len(upkeepKeyLists))
+func createKeysWithMedianBlock(medianBlock ktypes.BlockKey, upkeepIDLists [][]ktypes.UpkeepIdentifier) ([][]ktypes.UpkeepKey, error) {
+	var res = make([][]ktypes.UpkeepKey, len(upkeepIDLists))
 
-	for i, upkeepKeys := range upkeepKeyLists {
+	for i, upkeepIDs := range upkeepIDLists {
 		var keys []ktypes.UpkeepKey
-		for _, upkeepKey := range upkeepKeys {
-			_, upkeepID, err := upkeepKey.BlockKeyAndUpkeepID()
-			if err != nil {
-				return nil, err
-			}
+		for _, upkeepID := range upkeepIDs {
 			keys = append(keys, chain.NewUpkeepKeyFromBlockAndID(medianBlock, upkeepID))
 		}
 		res[i] = keys
@@ -220,17 +182,9 @@ func recreateKeysWithMedianBlock(medianBlock ktypes.BlockKey, upkeepKeyLists [][
 	return res, nil
 }
 
-func calculateMedianBlock(data []ktypes.BlockKey, reportBlockLag int) ktypes.BlockKey {
-	var blockKeyInts []*big.Int
-
-	for _, d := range data {
-		blockKeyInt := big.NewInt(0)
-		blockKeyInt, _ = blockKeyInt.SetString(string(d), 10)
-		blockKeyInts = append(blockKeyInts, blockKeyInt)
-	}
-
-	sort.Slice(blockKeyInts, func(i, j int) bool {
-		return blockKeyInts[i].Cmp(blockKeyInts[j]) < 0
+func calculateMedianBlock(blockNumbers []*big.Int, reportBlockLag int) ktypes.BlockKey {
+	sort.Slice(blockNumbers, func(i, j int) bool {
+		return blockNumbers[i].Cmp(blockNumbers[j]) < 0
 	})
 
 	// this is a crude median calculation; for a list of an odd number of elements, e.g. [10, 20, 30], the center value
@@ -240,10 +194,10 @@ func calculateMedianBlock(data []ktypes.BlockKey, reportBlockLag int) ktypes.Blo
 	// 30. for this reason, the logic for selecting the median value from an odd number of elements is the same as the
 	// logic for selecting the median value from an even number of elements
 	var median *big.Int
-	if l := len(blockKeyInts); l == 0 {
+	if l := len(blockNumbers); l == 0 {
 		median = big.NewInt(0)
 	} else {
-		median = blockKeyInts[l/2]
+		median = blockNumbers[l/2]
 	}
 
 	if reportBlockLag > 0 {
