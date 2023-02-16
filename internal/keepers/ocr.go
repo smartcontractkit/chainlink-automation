@@ -114,8 +114,8 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	binary.LittleEndian.PutUint64(temp, uint64(rt.Round))
 	hash.Write(temp)
 
-	var key [16]byte
-	copy(key[:], hash.Sum(nil))
+	var keyRandSource [16]byte
+	copy(keyRandSource[:], hash.Sum(nil))
 
 	// Must not be empty
 	if len(attributed) == 0 {
@@ -130,7 +130,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keysToCheck, err := shuffleDedupedObservations(upkeepKeys, key, k.filter.Filter())
+	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
@@ -159,7 +159,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	}
 
 	if len(checkedUpkeeps) > len(keysToCheck) {
-		return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected max %d but given %d", key, len(keysToCheck), len(checkedUpkeeps))
+		return false, nil, fmt.Errorf("unexpected number of upkeeps returned expected max %d but given %d", len(keysToCheck), len(checkedUpkeeps))
 	}
 
 	// Collect eligible upkeeps

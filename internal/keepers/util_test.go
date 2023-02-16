@@ -58,7 +58,7 @@ func TestDedupe(t *testing.T) {
 			var matches []testStringer
 			var err error
 
-			matches, err = dedupe(test.Sets)
+			matches, err = filterAndDedupe(test.Sets)
 			if test.ExpectedError != nil {
 				assert.ErrorIs(t, err, test.ExpectedError)
 			} else {
@@ -71,7 +71,7 @@ func TestDedupe(t *testing.T) {
 	}
 }
 
-func Test_shuffledDedupedKeyList(t *testing.T) {
+func Test_filterDedupeShuffleObservations(t *testing.T) {
 	var k [16]byte
 	f := func(ktypes.UpkeepKey) bool {
 		return true
@@ -88,7 +88,7 @@ func Test_shuffledDedupedKeyList(t *testing.T) {
 		chain.UpkeepKey("2|2"),
 		chain.UpkeepKey("2|1"),
 	}
-	result, err := shuffleDedupedObservations(given, k, f)
+	result, err := filterDedupeShuffleObservations(given, k, f)
 
 	assert.Equal(t, expected, result)
 	assert.NoError(t, err)
@@ -214,7 +214,7 @@ func Benchmark_observationsToUpkeepKeys(b *testing.B) {
 
 func TestSortedDedup_Error(t *testing.T) {
 	upkeepKeys := [][]ktypes.UpkeepKey{{chain.UpkeepKey("invalid value")}}
-	_, err := shuffleDedupedObservations(upkeepKeys, [16]byte{})
+	_, err := filterDedupeShuffleObservations(upkeepKeys, [16]byte{})
 	assert.NotNil(t, err)
 }
 
@@ -227,7 +227,7 @@ func Benchmark_sortedDedupedKeyListFunc(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		b.StartTimer()
-		_, err := shuffleDedupedObservations(keys, [16]byte{})
+		_, err := filterDedupeShuffleObservations(keys, [16]byte{})
 		b.StopTimer()
 
 		if err != nil {
