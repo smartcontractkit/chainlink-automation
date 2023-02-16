@@ -124,7 +124,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 
 	bl, ok := rc.idBlocks.Get(string(id))
 	if ok {
-		isAfter, err := bl.KeyBlockNumber.After(blockKey)
+		isAfter, err := bl.CheckBlockNumber.After(blockKey)
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 	}
 
 	rc.idBlocks.Set(string(id), idBlocker{
-		KeyBlockNumber: blockKey,
+		CheckBlockNumber: blockKey,
 	}, util.DefaultCacheExpiration)
 
 	return nil
@@ -186,7 +186,7 @@ func (rc *reportCoordinator) checkLogs() {
 			bl, ok := rc.idBlocks.Get(string(id))
 
 			if ok {
-				isAfter, err := bl.KeyBlockNumber.After(logCheckBlockKey)
+				isAfter, err := bl.CheckBlockNumber.After(logCheckBlockKey)
 				if err != nil {
 					continue
 				}
@@ -207,7 +207,7 @@ func (rc *reportCoordinator) checkLogs() {
 }
 
 type idBlocker struct {
-	KeyBlockNumber      types.BlockKey
+	CheckBlockNumber    types.BlockKey
 	TransmitBlockNumber types.BlockKey
 }
 
