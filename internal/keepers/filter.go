@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
@@ -77,17 +76,7 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 
 		// only apply filter if key id is registered in the cache
 		if bl, ok := rc.idBlocks.Get(string(id)); ok {
-			// TODO: the key is constructed in the registry. splitting out the
-			// block number here is a hack solution that should be fixed asap.
-			// AUTO-1480
-			var blKey int
-
 			blockKey, _, err := key.BlockKeyAndUpkeepID()
-			if err != nil {
-				return false
-			}
-
-			blKey, err = strconv.Atoi(blockKey.String())
 			if err != nil {
 				return false
 			}
@@ -97,13 +86,13 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 				return false
 			}
 
-			transmitBlockNumber, err := strconv.Atoi(bl.TransmitBlockNumber.String())
+			isAfter, err := blockKey.After(bl.TransmitBlockNumber)
 			if err != nil {
 				return false
 			}
 
-			// only apply filter if key block is after block in cache
-			return blKey > transmitBlockNumber
+			// do not filter the key out if key block is after block in cache
+			return isAfter
 		}
 
 		return true
