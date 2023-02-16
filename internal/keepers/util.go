@@ -73,7 +73,7 @@ func (s sortUpkeepKeys) Len() int {
 	return len(s)
 }
 
-func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
+func filterAndDedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	if len(inputs) == 0 {
 		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
 	}
@@ -111,8 +111,8 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 	return output, nil
 }
 
-func shuffleUniqueObservations(upkeepKeys [][]ktypes.UpkeepKey, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
-	uniqueKeys, err := dedupe(upkeepKeys, filters...)
+func filterDedupeShuffleObservations(upkeepKeys [][]ktypes.UpkeepKey, keyRandSource [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+	uniqueKeys, err := filterAndDedupe(upkeepKeys, filters...)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func shuffleUniqueObservations(upkeepKeys [][]ktypes.UpkeepKey, key [16]byte, fi
 		return nil, err
 	}
 
-	rnd.New(util.NewKeyedCryptoRandSource(key)).Shuffle(len(uniqueKeys), func(i, j int) {
+	rnd.New(util.NewKeyedCryptoRandSource(keyRandSource)).Shuffle(len(uniqueKeys), func(i, j int) {
 		uniqueKeys[i], uniqueKeys[j] = uniqueKeys[j], uniqueKeys[i]
 	})
 

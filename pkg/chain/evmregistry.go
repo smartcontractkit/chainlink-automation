@@ -56,15 +56,15 @@ func (r *evmRegistryv2_0) LatestBlock(ctx context.Context) (*big.Int, error) {
 	return header.Number, nil
 }
 
-func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.BlockKey) ([]types.UpkeepKey, error) {
+func (r *evmRegistryv2_0) GetLatestActiveUpkeepKeys(ctx context.Context, block types.BlockKey) (types.BlockKey, []types.UpkeepKey, error) {
 	opts, err := r.buildCallOpts(ctx, block)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	state, err := r.registry.GetState(opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get contract state at block number %d", opts.BlockNumber.Int64())
+		return "", nil, errors.Wrapf(err, "failed to get contract state at block number %d", opts.BlockNumber.Int64())
 	}
 
 	keys := make([]types.UpkeepKey, 0)
@@ -78,7 +78,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 
 		nextRawKeys, err := r.registry.GetActiveUpkeepIDs(opts, big.NewInt(startIndex), big.NewInt(maxCount))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get active upkeep IDs from index %d to %d (both inclusive)", startIndex, startIndex+maxCount-1)
+			return "", nil, errors.Wrapf(err, "failed to get active upkeep IDs from index %d to %d (both inclusive)", startIndex, startIndex+maxCount-1)
 		}
 
 		nextKeys := make([]types.UpkeepKey, len(nextRawKeys))
@@ -96,7 +96,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 		keys = append(buffer, nextKeys...)
 	}
 
-	return keys, nil
+	return block, keys, nil
 }
 
 func (r *evmRegistryv2_0) checkUpkeeps(ctx context.Context, keys []types.UpkeepKey) ([]types.UpkeepResult, error) {
@@ -310,7 +310,7 @@ func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKe
 	}
 
 	if b == nil || b.Int64() == 0 {
-		// fetch the current block number so batched GetActiveUpkeepKeys calls can be performed on the same block
+		// fetch the current block number so batched GetLatestActiveUpkeepKeys calls can be performed on the same block
 		header, err := r.client.HeaderByNumber(ctx, nil)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s: EVM failed to fetch block header", err, ErrRegistryCallFailure)

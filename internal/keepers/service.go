@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/big"
 	"runtime"
 	"sync"
 	"time"
@@ -17,7 +16,10 @@ import (
 // maxWorkersBatchSize is the value of max workers batch size
 const maxWorkersBatchSize = 10
 
-var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
+var (
+	ErrTooManyErrors          = fmt.Errorf("too many errors in parallel worker process")
+	ErrSamplingNotInitialized = fmt.Errorf("sampling not initialized")
+)
 
 type onDemandUpkeepService struct {
 	logger           *log.Logger
@@ -76,14 +78,10 @@ func newOnDemandUpkeepService(
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
-func (s *onDemandUpkeepService) LatestBlock(ctx context.Context) (*big.Int, error) {
-	return s.registry.LatestBlock(ctx)
-}
-
-func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.UpkeepResults, error) {
-	results := s.samplingResults.get()
-	if len(results) == 0 {
-		return nil, nil
+func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.BlockKey, types.UpkeepResults, error) {
+	blockKey, results, ok := s.samplingResults.get()
+	if !ok {
+		return "", nil, ErrSamplingNotInitialized
 	}
 
 	filteredResults := make(types.UpkeepResults, 0, len(results))
@@ -100,7 +98,7 @@ EachKey:
 		filteredResults = append(filteredResults, result)
 	}
 
-	return filteredResults, nil
+	return blockKey, filteredResults, nil
 }
 
 func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
@@ -183,37 +181,31 @@ func (s *onDemandUpkeepService) processLatestHead(ctx context.Context) {
 
 	// Get only the active upkeeps from the contract. This should not include
 	// any cancelled upkeeps.
-	keys, err := s.registry.GetActiveUpkeepKeys(ctx, "0")
+	blockKey, keys, err := s.registry.GetLatestActiveUpkeepKeys(ctx, "0")
 	if err != nil {
-		s.samplingResults.purge()
 		s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 		return
 	}
 
 	s.logger.Printf("%d active upkeep keys found in registry", len(keys))
-	if len(keys) == 0 {
-		s.samplingResults.purge()
-		return
-	}
 
 	// select x upkeeps at random from set
 	keys = s.shuffler.Shuffle(keys)
-	size := s.ratio.OfInt(len(keys))
+	sampleSize := s.ratio.OfInt(len(keys))
 
-	s.logger.Printf("%d results selected by provided ratio %s", size, s.ratio)
-	if size <= 0 {
-		s.samplingResults.purge()
+	s.logger.Printf("%d results selected by provided ratio %s", sampleSize, s.ratio)
+	if sampleSize <= 0 {
+		s.logger.Printf("sample size is too small: %d", sampleSize)
 		return
 	}
 
-	upkeepResults, err := s.parallelCheck(ctx, keys[:size])
+	upkeepResults, err := s.parallelCheck(ctx, keys[:sampleSize])
 	if err != nil {
-		s.samplingResults.purge()
 		s.logger.Printf("%s: failed to parallel check upkeeps", err)
 		return
 	}
 
-	s.samplingResults.set(upkeepResults)
+	s.samplingResults.set(blockKey, upkeepResults)
 }
 
 func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
@@ -369,28 +361,24 @@ func (wr *workerResults) FailureRate() float64 {
 
 type samplingUpkeepsResults struct {
 	upkeepResults types.UpkeepResults
+	blockKey      types.BlockKey
+	ok            bool
 	sync.Mutex
 }
 
-func (sur *samplingUpkeepsResults) purge() {
+func (sur *samplingUpkeepsResults) set(blockKey types.BlockKey, results types.UpkeepResults) {
 	sur.Lock()
-	sur.upkeepResults = make(types.UpkeepResults, 0)
-	sur.Unlock()
-}
+	defer sur.Unlock()
 
-func (sur *samplingUpkeepsResults) set(results types.UpkeepResults) {
-	sur.Lock()
 	sur.upkeepResults = make(types.UpkeepResults, len(results))
 	copy(sur.upkeepResults, results)
-	sur.Unlock()
+	sur.blockKey = blockKey
+	sur.ok = true
 }
 
-func (sur *samplingUpkeepsResults) get() types.UpkeepResults {
+func (sur *samplingUpkeepsResults) get() (types.BlockKey, types.UpkeepResults, bool) {
 	sur.Lock()
-	results := make(types.UpkeepResults, len(sur.upkeepResults))
-	copy(results, sur.upkeepResults)
-	sur.upkeepResults = make(types.UpkeepResults, 0)
-	sur.Unlock()
+	defer sur.Unlock()
 
-	return results
+	return sur.blockKey, sur.upkeepResults, sur.ok
 }
