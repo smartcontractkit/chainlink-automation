@@ -130,24 +130,24 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keys, err := shuffleDedupedObservations(upkeepKeys, key, k.filter.Filter())
+	keysToCheck, err := shuffleDedupedObservations(upkeepKeys, key, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
 	// Check the limit
-	if len(upkeepKeys) > reportKeysLimit {
-		upkeepKeys = upkeepKeys[:reportKeysLimit]
+	if len(keysToCheck) > reportKeysLimit {
+		keysToCheck = keysToCheck[:reportKeysLimit]
 	}
 
 	// No keys found for the given keys
-	if len(keys) == 0 {
+	if len(keysToCheck) == 0 {
 		k.logger.Printf("OCR report completed successfully with no eligible keys: %s", lCtx)
 		return false, nil, nil
 	}
 
 	// Check all upkeeps from the given observation
-	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keys...)
+	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keysToCheck...)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
 	}
@@ -158,8 +158,8 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, nil
 	}
 
-	if len(checkedUpkeeps) > len(keys) {
-		return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected max %d but given %d", key, len(keys), len(checkedUpkeeps))
+	if len(checkedUpkeeps) > len(keysToCheck) {
+		return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected max %d but given %d", key, len(keysToCheck), len(checkedUpkeeps))
 	}
 
 	// Collect eligible upkeeps
