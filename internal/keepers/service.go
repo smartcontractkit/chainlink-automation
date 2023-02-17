@@ -2,7 +2,6 @@ package keepers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"runtime"
@@ -137,12 +136,15 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 		return results, nil
 	}
 
-	keysAsJSON, err := json.Marshal(nonCachedKeys)
-	if err != nil {
-		s.logger.Printf("unable to marshal non cached keys: %s", err.Error())
+	// TODO: Remove this log as it's only for current debugging
+	s.logger.Printf("length of nonCachedKeys: %+v", len(nonCachedKeys))
+	for _, key := range nonCachedKeys {
+		if key == nil {
+			s.logger.Printf("got a nil key: %+v", key)
+		}
 	}
-
-	s.logger.Printf("checking upkeep for these non cached keys: %s", string(keysAsJSON))
+	keysStr := upkeepKeysToString(nonCachedKeys)
+	s.logger.Printf("checking upkeep for these non cached keys: %s", keysStr)
 	// check upkeep at block number in key
 	// return result including performData
 	checkResults, err := s.registry.CheckUpkeep(ctx, nonCachedKeys...)
@@ -307,9 +309,15 @@ func (s *onDemandUpkeepService) wrapAggregate(r *workerResults, sa *syncedArray[
 
 func (s *onDemandUpkeepService) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (types.UpkeepResults, error) {
 	return func(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
+		for _, key := range keys {
+			if key == nil {
+				s.logger.Printf("got a nil key: %+v", key)
+			}
+		}
 		keysStr := upkeepKeysToString(keys)
 		start := time.Now()
 
+		// TODO: Remove this log as it's only for current debugging
 		s.logger.Printf("wrap worker func, calling check upkeep on these keys: %s", keysStr)
 		// perform check and update cache with result
 		checkResults, err := s.registry.CheckUpkeep(ctx, keys...)
