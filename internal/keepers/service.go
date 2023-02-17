@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"runtime"
@@ -136,6 +137,12 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 		return results, nil
 	}
 
+	keysAsJSON, err := json.Marshal(nonCachedKeys)
+	if err != nil {
+		s.logger.Printf("unable to marshal non cached keys: %s", err.Error())
+	}
+
+	s.logger.Printf("checking upkeep for these non cached keys: %s", string(keysAsJSON))
 	// check upkeep at block number in key
 	// return result including performData
 	checkResults, err := s.registry.CheckUpkeep(ctx, nonCachedKeys...)
@@ -303,6 +310,7 @@ func (s *onDemandUpkeepService) wrapWorkerFunc() func(context.Context, []types.U
 		keysStr := upkeepKeysToString(keys)
 		start := time.Now()
 
+		s.logger.Printf("wrap worker func, calling check upkeep on these keys: %s", keysStr)
 		// perform check and update cache with result
 		checkResults, err := s.registry.CheckUpkeep(ctx, keys...)
 		if err != nil {
