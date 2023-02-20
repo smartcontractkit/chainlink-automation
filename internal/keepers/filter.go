@@ -116,6 +116,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 
 	bl, ok := rc.idBlocks.Get(string(id))
 	if ok {
+		// TODO: What if the block number is same? (and the key was cleared out before)
 		isAfter, err := bl.CheckBlockNumber.After(blockKey)
 		if err != nil {
 			return err
@@ -184,11 +185,10 @@ func (rc *reportCoordinator) checkLogs() {
 				}
 			}
 
-			bl.TransmitBlockNumber = l.TransmitBlock
-
 			// if we detect a log, remove it from the observation filters
 			// to allow it to be reported on after the block in
 			// which it was transmitted
+			bl.TransmitBlockNumber = l.TransmitBlock
 			rc.idBlocks.Set(string(id), bl, util.DefaultCacheExpiration)
 
 		}
