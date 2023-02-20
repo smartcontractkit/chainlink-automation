@@ -39,7 +39,7 @@ func TestGetActiveUpkeepKeys(t *testing.T) {
 		t.FailNow()
 	}
 
-	keys, err := reg.GetActiveUpkeepKeys(ctx, types.BlockKey("0"))
+	keys, err := reg.GetActiveUpkeepIDs(ctx)
 	if err != nil {
 		t.Logf("error: %s", err)
 		t.FailNow()
@@ -57,13 +57,16 @@ func TestCheckUpkeep(t *testing.T) {
 	require.NoError(t, err)
 
 	upkeepKey := UpkeepKey("1|1234")
-	_, expectedUpkeep, err := BlockAndIdFromKey(upkeepKey)
+	_, expectedUpkeep, err := upkeepKey.BlockKeyAndUpkeepID()
 	require.NoError(t, err)
 
-	checkPayload, err := keeperRegistryABI.Pack("checkUpkeep", expectedUpkeep)
+	upkeepId, ok := expectedUpkeep.BigInt()
+	require.True(t, ok)
+
+	checkPayload, err := keeperRegistryABI.Pack("checkUpkeep", upkeepId)
 	require.NoError(t, err)
 
-	performPayload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", expectedUpkeep, ret0.Result.PerformData)
+	performPayload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepId, ret0.Result.PerformData)
 	require.NoError(t, err)
 
 	t.Run("Perform", func(t *testing.T) {

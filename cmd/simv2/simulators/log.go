@@ -20,7 +20,7 @@ func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLo
 		lgs, ok := ct.perLogs.Get(key)
 		if ok {
 			for _, log := range lgs {
-				trBlock, trOk := new(big.Int).SetString(string(log.TransmitBlock), 10)
+				trBlock, trOk := new(big.Int).SetString(log.TransmitBlock.String(), 10)
 				if trOk {
 					log.Confirmations = new(big.Int).Sub(ct.lastBlock, trBlock).Int64()
 					logs = append(logs, log)

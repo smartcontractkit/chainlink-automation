@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -16,14 +17,17 @@ import (
 // maxWorkersBatchSize is the value of max workers batch size
 const maxWorkersBatchSize = 10
 
-var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
+var (
+	ErrTooManyErrors          = fmt.Errorf("too many errors in parallel worker process")
+	ErrSamplingNotInitialized = fmt.Errorf("sampling not initialized")
+)
 
 type onDemandUpkeepService struct {
 	logger           *log.Logger
 	ratio            sampleRatio
 	headSubscriber   types.HeadSubscriber
 	registry         types.Registry
-	shuffler         shuffler[types.UpkeepKey]
+	shuffler         shuffler[types.UpkeepIdentifier]
 	cache            *util.Cache[types.UpkeepResult]
 	cacheCleaner     *util.IntervalCacheCleaner[types.UpkeepResult]
 	samplingResults  samplingUpkeepsResults
@@ -56,7 +60,7 @@ func newOnDemandUpkeepService(
 		headSubscriber:   headSubscriber,
 		registry:         registry,
 		samplingDuration: samplingDuration,
-		shuffler:         new(cryptoShuffler[types.UpkeepKey]),
+		shuffler:         new(cryptoShuffler[types.UpkeepIdentifier]),
 		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		workers:          pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
@@ -75,10 +79,10 @@ func newOnDemandUpkeepService(
 
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
-func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.UpkeepResults, error) {
-	results := s.samplingResults.get()
-	if len(results) == 0 {
-		return nil, nil
+func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.BlockKey, types.UpkeepResults, error) {
+	blockKey, results, ok := s.samplingResults.get()
+	if !ok {
+		return nil, nil, ErrSamplingNotInitialized
 	}
 
 	filteredResults := make(types.UpkeepResults, 0, len(results))
@@ -95,7 +99,7 @@ EachKey:
 		filteredResults = append(filteredResults, result)
 	}
 
-	return filteredResults, nil
+	return blockKey, filteredResults, nil
 }
 
 func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
@@ -155,9 +159,9 @@ func (s *onDemandUpkeepService) start() {
 		ch := s.headSubscriber.HeadTicker()
 		for {
 			select {
-			case <-ch:
+			case head := <-ch:
 				// run with new head
-				s.processLatestHead(s.ctx)
+				s.processLatestHead(s.ctx, head)
 			case <-s.ctx.Done():
 				return
 			}
@@ -172,43 +176,42 @@ func (s *onDemandUpkeepService) stop() {
 }
 
 // processLatestHead performs checking upkeep logic for all eligible keys of the given head
-func (s *onDemandUpkeepService) processLatestHead(ctx context.Context) {
+func (s *onDemandUpkeepService) processLatestHead(ctx context.Context, blockKey types.BlockKey) {
 	ctx, cancel := context.WithTimeout(ctx, s.samplingDuration)
 	defer cancel()
 
 	// Get only the active upkeeps from the contract. This should not include
 	// any cancelled upkeeps.
-	keys, err := s.registry.GetActiveUpkeepKeys(ctx, "0")
+	keys, err := s.registry.GetActiveUpkeepIDs(ctx)
 	if err != nil {
-		s.samplingResults.purge()
 		s.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 		return
 	}
 
 	s.logger.Printf("%d active upkeep keys found in registry", len(keys))
-	if len(keys) == 0 {
-		s.samplingResults.purge()
-		return
-	}
 
 	// select x upkeeps at random from set
 	keys = s.shuffler.Shuffle(keys)
-	size := s.ratio.OfInt(len(keys))
+	sampleSize := s.ratio.OfInt(len(keys))
 
-	s.logger.Printf("%d results selected by provided ratio %s", size, s.ratio)
-	if size <= 0 {
-		s.samplingResults.purge()
+	s.logger.Printf("%d results selected by provided ratio %s", sampleSize, s.ratio)
+	if sampleSize < 0 {
+		s.logger.Printf("sample size is too small: %d", sampleSize)
 		return
 	}
 
-	upkeepResults, err := s.parallelCheck(ctx, keys[:size])
+	var upkeepKeys []types.UpkeepKey
+	for _, k := range keys {
+		upkeepKeys = append(upkeepKeys, chain.NewUpkeepKeyFromBlockAndID(blockKey, k))
+	}
+
+	upkeepResults, err := s.parallelCheck(ctx, upkeepKeys[:sampleSize])
 	if err != nil {
-		s.samplingResults.purge()
 		s.logger.Printf("%s: failed to parallel check upkeeps", err)
 		return
 	}
 
-	s.samplingResults.set(upkeepResults)
+	s.samplingResults.set(blockKey, upkeepResults)
 }
 
 func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
@@ -364,28 +367,24 @@ func (wr *workerResults) FailureRate() float64 {
 
 type samplingUpkeepsResults struct {
 	upkeepResults types.UpkeepResults
+	blockKey      types.BlockKey
+	ok            bool
 	sync.Mutex
 }
 
-func (sur *samplingUpkeepsResults) purge() {
+func (sur *samplingUpkeepsResults) set(blockKey types.BlockKey, results types.UpkeepResults) {
 	sur.Lock()
-	sur.upkeepResults = make(types.UpkeepResults, 0)
-	sur.Unlock()
-}
+	defer sur.Unlock()
 
-func (sur *samplingUpkeepsResults) set(results types.UpkeepResults) {
-	sur.Lock()
 	sur.upkeepResults = make(types.UpkeepResults, len(results))
 	copy(sur.upkeepResults, results)
-	sur.Unlock()
+	sur.blockKey = blockKey
+	sur.ok = true
 }
 
-func (sur *samplingUpkeepsResults) get() types.UpkeepResults {
+func (sur *samplingUpkeepsResults) get() (types.BlockKey, types.UpkeepResults, bool) {
 	sur.Lock()
-	results := make(types.UpkeepResults, len(sur.upkeepResults))
-	copy(results, sur.upkeepResults)
-	sur.upkeepResults = make(types.UpkeepResults, 0)
-	sur.Unlock()
+	defer sur.Unlock()
 
-	return results
+	return sur.blockKey, sur.upkeepResults, sur.ok
 }

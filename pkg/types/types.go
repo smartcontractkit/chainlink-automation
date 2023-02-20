@@ -36,7 +36,7 @@ type EVMClient interface {
 //
 //go:generate mockery --name Registry --inpackage --output . --case=underscore --filename registry.generated.go
 type Registry interface {
-	GetActiveUpkeepKeys(context.Context, BlockKey) ([]UpkeepKey, error)
+	GetActiveUpkeepIDs(context.Context) ([]UpkeepIdentifier, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
 	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
@@ -64,7 +64,10 @@ type PerformLog struct {
 	BlockNumber     int64
 }
 
-type BlockKey string
+type BlockKey interface {
+	After(BlockKey) (bool, error)
+	fmt.Stringer
+}
 
 type Address []byte
 
@@ -77,6 +80,11 @@ type UpkeepKey interface {
 
 // UpkeepIdentifier is an identifier for an active upkeep, typically a big int
 type UpkeepIdentifier []byte
+
+// BigInt creates and returns big int from the given upkeep identifier
+func (ui UpkeepIdentifier) BigInt() (*big.Int, bool) {
+	return big.NewInt(0).SetString(string(ui), 10)
+}
 
 type UpkeepResults []UpkeepResult
 
@@ -131,6 +139,9 @@ type OffchainConfig struct {
 
 	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
 	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
+
+	// ReportBlockLag is the number to subtract from median block number during report phase.
+	ReportBlockLag int `json:"reportBlockLag"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
@@ -171,6 +182,10 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 
 	if config.MaxUpkeepBatchSize <= 0 {
 		config.MaxUpkeepBatchSize = 1
+	}
+
+	if config.ReportBlockLag < 0 {
+		config.ReportBlockLag = 0
 	}
 
 	return config, err

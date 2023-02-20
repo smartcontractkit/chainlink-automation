@@ -13,7 +13,7 @@ type MockHeadSubscriber struct {
 	mock.Mock
 }
 
-// HeadTicker provides a mock function
+// HeadTicker provides a mock function with given fields:
 func (_m *MockHeadSubscriber) HeadTicker() chan BlockKey {
 	ret := _m.Called()
 
@@ -21,7 +21,9 @@ func (_m *MockHeadSubscriber) HeadTicker() chan BlockKey {
 	if rf, ok := ret.Get(0).(func() chan BlockKey); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(chan BlockKey)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(chan BlockKey)
+		}
 	}
 
 	return r0

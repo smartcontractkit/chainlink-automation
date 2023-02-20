@@ -62,17 +62,11 @@ func (c *mergedContext) Value(key interface{}) interface{} {
 }
 
 func (c *mergedContext) cancel() {
-	c.mu.RLock()
-	if c.err != nil {
-		c.mu.RUnlock()
-		return
-	}
-	c.mu.RUnlock()
-
 	c.mu.Lock()
-	c.err = fmt.Errorf("context canceled")
+	if c.err == nil {
+		c.err = fmt.Errorf("merged context canceled")
+	}
 	c.mu.Unlock()
-
 	c.once.Do(c.closeChannels)
 }
 
@@ -88,17 +82,11 @@ func (c *mergedContext) run() {
 		break
 	}
 
-	c.mu.RLock()
-	if c.err != nil {
-		c.mu.RUnlock()
-		return
-	}
-	c.mu.RUnlock()
-
 	c.mu.Lock()
-	c.err = doneCtx.Err()
+	if c.err == nil {
+		c.err = doneCtx.Err()
+	}
 	c.mu.Unlock()
-
 	c.once.Do(c.closeChannels)
 }
 

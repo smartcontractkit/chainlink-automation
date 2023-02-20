@@ -17,4 +17,5 @@ type keepers struct {
 	reportGasLimit     uint32
 	upkeepGasOverhead  uint32
 	maxUpkeepBatchSize int
+	reportBlockLag     int
 }

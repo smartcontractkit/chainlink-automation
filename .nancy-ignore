@@ -14,3 +14,7 @@ sonatype-2021-0076
 CVE-2022-37450
 sonatype-2019-0772
 sonatype-2022-3945
+
+# golang.org/x/net is not used directly by anything in this repo, however
+# go-ethereum may use it. container applications should be cautioned
+CVE-2022-41723

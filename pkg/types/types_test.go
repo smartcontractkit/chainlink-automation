@@ -22,7 +22,8 @@ func TestDecode(t *testing.T) {
 			"minConfirmations": 10,
 			"gasLimitPerReport": 10,
 			"gasOverheadPerUpkeep": 100,
-			"maxUpkeepBatchSize": 100
+			"maxUpkeepBatchSize": 100,
+			"reportBlockLag": 100
 		}
 	`), ExpectedErrString: "", ExpectedConfig: OffchainConfig{
 			PerformLockoutWindow: 1000,
@@ -33,6 +34,7 @@ func TestDecode(t *testing.T) {
 			GasLimitPerReport:    10,
 			GasOverheadPerUpkeep: 100,
 			MaxUpkeepBatchSize:   100,
+			ReportBlockLag:       100,
 		}},
 
 		{Name: "Extra field uniqueReports", EncodedData: []byte(`
@@ -70,6 +72,7 @@ func TestDecode(t *testing.T) {
 			GasLimitPerReport:    5_300_000,
 			GasOverheadPerUpkeep: 300_000,
 			MaxUpkeepBatchSize:   1,
+			ReportBlockLag:       0,
 		}},
 
 		{Name: "Negative values", EncodedData: []byte(`
@@ -81,7 +84,8 @@ func TestDecode(t *testing.T) {
 			"minConfirmations": -10,
 			"gasLimitPerReport": 0,
 			"gasOverheadPerUpkeep": 0,
-			"maxUpkeepBatchSize": -100
+			"maxUpkeepBatchSize": -100,
+			"reportBlockLag": -100
 		}
 	`), ExpectedErrString: "", ExpectedConfig: OffchainConfig{
 			PerformLockoutWindow: 1200000,
@@ -92,6 +96,7 @@ func TestDecode(t *testing.T) {
 			GasLimitPerReport:    5_300_000,
 			GasOverheadPerUpkeep: 300_000,
 			MaxUpkeepBatchSize:   1,
+			ReportBlockLag:       0,
 		}},
 
 		{Name: "Unexpected type", EncodedData: []byte(`

@@ -8,7 +8,6 @@ import (
 
 	"go.uber.org/multierr"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -18,18 +17,16 @@ type SimulatedUpkeep struct {
 	Performs   map[string]types.PerformLog // performs at block number
 }
 
-func (ct *SimulatedContract) GetActiveUpkeepKeys(ctx context.Context, key types.BlockKey) ([]types.UpkeepKey, error) {
+func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]types.UpkeepIdentifier, error) {
 
 	ct.mu.RLock()
 	ct.logger.Printf("getting keys at block %s", ct.lastBlock)
 
-	block := ct.lastBlock.String()
-	keys := []types.UpkeepKey{}
+	keys := []types.UpkeepIdentifier{}
 
 	// TODO: filter out cancelled upkeeps
 	for key := range ct.upkeeps {
-		k := chain.UpkeepKey([]byte(fmt.Sprintf("%s|%s", block, key)))
-		keys = append(keys, k)
+		keys = append(keys, types.UpkeepIdentifier(key))
 	}
 	ct.mu.RUnlock()
 
@@ -69,7 +66,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 				panic(err.Error())
 			}
 
-			block, ok := new(big.Int).SetString(string(blockKey), 10)
+			block, ok := new(big.Int).SetString(blockKey.String(), 10)
 			if !ok {
 				mErr = multierr.Append(mErr, fmt.Errorf("block in key not parsable as big int"))
 				return

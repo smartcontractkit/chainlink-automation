@@ -44,22 +44,22 @@ func (_m *MockRegistry) CheckUpkeep(_a0 context.Context, _a1 ...UpkeepKey) (Upke
 	return r0, r1
 }
 
-// GetActiveUpkeepKeys provides a mock function with given fields: _a0, _a1
-func (_m *MockRegistry) GetActiveUpkeepKeys(_a0 context.Context, _a1 BlockKey) ([]UpkeepKey, error) {
-	ret := _m.Called(_a0, _a1)
+// GetActiveUpkeepIDs provides a mock function with given fields: _a0
+func (_m *MockRegistry) GetActiveUpkeepIDs(_a0 context.Context) ([]UpkeepIdentifier, error) {
+	ret := _m.Called(_a0)
 
-	var r0 []UpkeepKey
-	if rf, ok := ret.Get(0).(func(context.Context, BlockKey) []UpkeepKey); ok {
-		r0 = rf(_a0, _a1)
+	var r0 []UpkeepIdentifier
+	if rf, ok := ret.Get(0).(func(context.Context) []UpkeepIdentifier); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]UpkeepKey)
+			r0 = ret.Get(0).([]UpkeepIdentifier)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, BlockKey) error); ok {
-		r1 = rf(_a0, _a1)
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}

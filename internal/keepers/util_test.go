@@ -2,6 +2,8 @@ package keepers
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"math/rand"
 	"sort"
 	"strings"
@@ -40,7 +42,6 @@ func TestDedupe(t *testing.T) {
 		ExpectedResult []testStringer
 		ExpectedError  error
 	}{
-		{Name: "Empty Matching Sets", ExpectedResult: nil, ExpectedError: ErrNotEnoughInputs},
 		{Name: "Single Matching Set", Sets: [][]testStringer{{"1", "2", "3"}}, ExpectedResult: []testStringer{"1", "2", "3"}},
 		{Name: "Double Identical", Sets: [][]testStringer{{"1", "2", "3"}, {"1", "2", "3"}}, ExpectedResult: []testStringer{"1", "2", "3"}},
 		{Name: "Double No Match", Sets: [][]testStringer{{"1", "2", "3"}, {"4", "5", "6"}}, ExpectedResult: []testStringer{"1", "2", "3", "4", "5", "6"}},
@@ -58,7 +59,7 @@ func TestDedupe(t *testing.T) {
 			var matches []testStringer
 			var err error
 
-			matches, err = dedupe(test.Sets)
+			matches, err = filterAndDedupe(test.Sets)
 			if test.ExpectedError != nil {
 				assert.ErrorIs(t, err, test.ExpectedError)
 			} else {
@@ -71,75 +72,151 @@ func TestDedupe(t *testing.T) {
 	}
 }
 
-func TestShuffledDedupedKeyList(t *testing.T) {
-	var attr []types.AttributedObservation
+func Test_filterDedupeShuffleObservations(t *testing.T) {
 	var k [16]byte
 	f := func(ktypes.UpkeepKey) bool {
 		return true
 	}
 
-	obs := [][]ktypes.UpkeepKey{
-		{
-			chain.UpkeepKey("1|1"),
-			chain.UpkeepKey("2|1"),
-		},
-		{
-			chain.UpkeepKey("3|1"),
-			chain.UpkeepKey("1|2"),
-		},
-		{
-			chain.UpkeepKey("1|2"),
-			chain.UpkeepKey("1|3"),
-		},
-		{
-			chain.UpkeepKey("1|3"),
-			chain.UpkeepKey("2|3"),
-		},
-		{
-			chain.UpkeepKey("1|1"),
-			chain.UpkeepKey("2|1"),
-		},
+	given := [][]ktypes.UpkeepKey{
+		{chain.UpkeepKey("2|2")},
+		{chain.UpkeepKey("2|1")},
+		{chain.UpkeepKey("2|3")},
 	}
 
-	attr = make([]types.AttributedObservation, len(obs))
-	for i, o := range obs {
-		b, _ := limitedLengthEncode(o, maxObservationLength)
-		attr[i] = types.AttributedObservation{
-			Observation: types.Observation(b),
-		}
-	}
-
-	// shuffling is deterministic based on the provided key
-	// should probably add some more tests for other keys
 	expected := []ktypes.UpkeepKey{
 		chain.UpkeepKey("2|3"),
-		chain.UpkeepKey("3|1"),
-		chain.UpkeepKey("1|2"),
+		chain.UpkeepKey("2|2"),
+		chain.UpkeepKey("2|1"),
 	}
-	result, err := shuffledDedupedKeyList(attr, k, f)
+	result, err := filterDedupeShuffleObservations(given, k, f)
 
 	assert.Equal(t, expected, result)
 	assert.NoError(t, err)
 }
 
-func TestSortedDedup_Error(t *testing.T) {
-	obs := []types.AttributedObservation{{Observation: types.Observation([]byte("incorrectly encoded"))}}
-	_, err := shuffledDedupedKeyList(obs, [16]byte{})
-	assert.NotNil(t, err)
+func Test_observationsToUpkeepKeys(t *testing.T) {
+	obs := []*chain.UpkeepObservation{
+		{
+			BlockKey: chain.BlockKey("2"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("1"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("3"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("2"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("1"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("2"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("3"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("2"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("1"),
+			},
+		},
+	}
+
+	attr := make([]types.AttributedObservation, len(obs))
+	for i, o := range obs {
+		b, _ := limitedLengthEncode(o, maxObservationLength)
+		attr[i] = types.AttributedObservation{
+			Observation: b,
+		}
+	}
+
+	// shuffling is deterministic based on the provided key
+	// should probably add some more tests for other keys
+	expected := [][]ktypes.UpkeepKey{
+		{chain.UpkeepKey("2|1")},
+		{chain.UpkeepKey("2|1")},
+		{chain.UpkeepKey("2|2")},
+		{chain.UpkeepKey("2|3")},
+		{chain.UpkeepKey("2|1")},
+	}
+	result, err := observationsToUpkeepKeys(&log.Logger{}, attr, 0)
+
+	assert.Equal(t, expected, result)
+	assert.NoError(t, err)
 }
 
-func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
-	key1 := chain.UpkeepKey([]byte("1|1"))
-	key2 := chain.UpkeepKey([]byte("1|2"))
-	key3 := chain.UpkeepKey([]byte("2|1"))
+func Test_observationsToUpkeepKeysError(t *testing.T) {
+	obs := []*chain.UpkeepObservation{
+		{
+			BlockKey: chain.BlockKey("02"), // Error as it should be just '2'
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("1"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("3"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("01"), // Error as it should be just '1
+				ktypes.UpkeepIdentifier("2"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("1"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("02"), // Error in both
+				ktypes.UpkeepIdentifier("03"), // Error in both
+			},
+		},
+	}
 
-	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2})
+	attr := make([]types.AttributedObservation, len(obs))
+	for i, o := range obs {
+		b, _ := limitedLengthEncode(o, maxObservationLength)
+		attr[i] = types.AttributedObservation{
+			Observation: b,
+		}
+	}
+	attr = append(attr, types.AttributedObservation{
+		Observation: []byte("unparseable"), // unparseable observation
+	})
+
+	_, err := observationsToUpkeepKeys(log.New(io.Discard, "", 0), attr, 0)
+	assert.ErrorContains(t, err, "observations not properly encoded")
+}
+
+func Benchmark_observationsToUpkeepKeys(b *testing.B) {
+	encoded := mustEncodeUpkeepObservation(&chain.UpkeepObservation{
+		BlockKey: chain.BlockKey("1"),
+		UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+			ktypes.UpkeepIdentifier("1"),
+			ktypes.UpkeepIdentifier("2"),
+		},
+	})
 
 	observations := []types.AttributedObservation{
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
-		{Observation: types.Observation(mustEncodeKeys([]ktypes.UpkeepKey{key2, key3}))},
+		{Observation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
+			BlockKey: chain.BlockKey("2"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("1"),
+			},
+		}))},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
 		{Observation: types.Observation(encoded)},
@@ -164,14 +241,33 @@ func BenchmarkSortedDedupedKeyListFunc(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 
 				b.StartTimer()
-				_, err := shuffledDedupedKeyList(ob, [16]byte{})
+				_, err := observationsToUpkeepKeys(&log.Logger{}, ob, 0)
 				b.StopTimer()
 
 				if err != nil {
+					b.Error(err)
 					b.Fail()
 				}
 			}
 		})
+	}
+}
+
+func Benchmark_sortedDedupedKeyListFunc(b *testing.B) {
+	keys := [][]ktypes.UpkeepKey{
+		{chain.UpkeepKey("1|1")},
+		{chain.UpkeepKey("1|2")},
+		{chain.UpkeepKey("2|1")},
+	}
+
+	for n := 0; n < b.N; n++ {
+		b.StartTimer()
+		_, err := filterDedupeShuffleObservations(keys, [16]byte{})
+		b.StopTimer()
+
+		if err != nil {
+			b.Fail()
+		}
 	}
 }
 
@@ -232,13 +328,15 @@ func TestLimitedLengthEncode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		keys := make([]ktypes.UpkeepKey, test.KeyCount)
+		obs := &chain.UpkeepObservation{}
+		keys := make([]ktypes.UpkeepIdentifier, test.KeyCount)
 		for i := 0; i < test.KeyCount; i++ {
 			byt := make([]byte, test.KeyLength)
-			keys[i] = chain.UpkeepKey(byt)
+			keys[i] = ktypes.UpkeepIdentifier(byt)
 		}
+		obs.UpkeepIdentifiers = keys
 
-		b, err := limitedLengthEncode(keys, test.MaxLength)
+		b, err := limitedLengthEncode(obs, test.MaxLength)
 		t.Logf("length: %d", len(b))
 
 		assert.NoError(t, err)
@@ -259,26 +357,28 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 			return
 		}
 
-		keys := make([]ktypes.UpkeepKey, a)
+		keys := make([]ktypes.UpkeepIdentifier, a)
 		for i := 0; i < a; i++ {
 			k := strings.Repeat("1", rand.Intn(b)+3)
 			k = k[:1] + "|" + k[2:]
-			keys[i] = chain.UpkeepKey(k)
+			keys[i] = ktypes.UpkeepIdentifier(k)
 		}
 
-		bt, err := limitedLengthEncode(keys, 1000)
+		ob := &chain.UpkeepObservation{}
+		ob.UpkeepIdentifiers = keys
+		bt, err := limitedLengthEncode(ob, 1000)
 
 		assert.NoError(t, err)
 		assert.LessOrEqual(t, len(bt), 1000, "keys: %d; length: %d", a, b)
 
 		if a > 0 {
 			output := make([]ktypes.UpkeepKey, 0)
-			outputKeys := make([]chain.UpkeepKey, 0)
-			err = decode(bt, &outputKeys)
+			obs := &chain.UpkeepObservation{}
+			err = decode(bt, obs)
 			assert.NoError(t, err)
 
-			for _, o := range outputKeys {
-				output = append(output, o)
+			for _, o := range obs.UpkeepIdentifiers {
+				output = append(output, chain.NewUpkeepKeyFromBlockAndID(obs.BlockKey, o))
 			}
 
 			assert.Greater(t, len(bt), 0, "length of bytes :: keys: %d; length: %d", a, b)

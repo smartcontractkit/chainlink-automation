@@ -124,5 +124,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		reportGasLimit:     offChainCfg.GasLimitPerReport,
 		upkeepGasOverhead:  offChainCfg.GasOverheadPerUpkeep,
 		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,
+		reportBlockLag:     offChainCfg.ReportBlockLag,
 	}, info, nil
 }

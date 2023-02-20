@@ -3,7 +3,9 @@ package keepers
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math"
+	"math/big"
 	"math/cmplx"
 	rnd "math/rand"
 	"sort"
@@ -72,11 +74,7 @@ func (s sortUpkeepKeys) Len() int {
 	return len(s)
 }
 
-func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
-	if len(inputs) == 0 {
-		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
-	}
-
+func filterAndDedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
 	var max int
 	for _, input := range inputs {
 		max += len(input)
@@ -110,88 +108,109 @@ func dedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) 
 	return output, nil
 }
 
-func shuffledDedupedKeyList(attributed []types.AttributedObservation, key [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
-	var err error
-
-	if len(attributed) == 0 {
-		return nil, fmt.Errorf("%w: must provide at least 1", ErrNotEnoughInputs)
+func filterDedupeShuffleObservations(upkeepKeys [][]ktypes.UpkeepKey, keyRandSource [16]byte, filters ...func(ktypes.UpkeepKey) bool) ([]ktypes.UpkeepKey, error) {
+	uniqueKeys, err := filterAndDedupe(upkeepKeys, filters...)
+	if err != nil {
+		return nil, err
 	}
 
+	rnd.New(util.NewKeyedCryptoRandSource(keyRandSource)).Shuffle(len(uniqueKeys), func(i, j int) {
+		uniqueKeys[i], uniqueKeys[j] = uniqueKeys[j], uniqueKeys[i]
+	})
+
+	return uniqueKeys, nil
+}
+
+func observationsToUpkeepKeys(logger *log.Logger, observations []types.AttributedObservation, reportBlockLag int) ([][]ktypes.UpkeepKey, error) {
 	var parseErrors int
-	kys := make([][]ktypes.UpkeepKey, len(attributed))
-	for i, attr := range attributed {
-		b := []byte(attr.Observation)
-		if len(b) == 0 {
-			continue
-		}
 
-		var ob []ktypes.UpkeepKey
+	upkeepIDs := make([][]ktypes.UpkeepIdentifier, len(observations))
 
+	var allBlockKeys []*big.Int
+	for i, observation := range observations {
 		// a single observation returning an error here can void all other
 		// good observations. ensure this loop continues on error, but collect
 		// them and throw an error if ALL observations fail at this point.
 		// TODO we can't rely on this concrete type for decoding/encoding
-		var keys []chain.UpkeepKey
-		err = decode(b, &keys)
-		if err != nil {
+		var upkeepObservation *chain.UpkeepObservation
+		if err := decode(observation.Observation, &upkeepObservation); err != nil {
+			logger.Printf("unable to decode observation: %s", err.Error())
 			parseErrors++
 			continue
 		}
 
-		for _, o := range keys {
-			ob = append(ob, o)
-		}
-
-		sort.Sort(sortUpkeepKeys(ob))
-		kys[i] = ob
-	}
-
-	if parseErrors == len(attributed) {
-		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", err)
-	}
-
-	keys, err := dedupe(kys, filters...)
-	if err != nil {
-		return nil, fmt.Errorf("%w: observation dedupe", err)
-	}
-
-	// TODO: a hacky solution assuming upkeep key structure
-	// removes duplicate upkeep ids in preference of ids at higher blocks
-	// needs to be refactored
-	// AUTO-1480
-	idxMap := make(map[string]int)
-	out := make([]ktypes.UpkeepKey, 0, len(keys))
-	for i := 0; i < len(keys); i++ {
-		blockKey, upkeepID, err := keys[i].BlockKeyAndUpkeepID()
-		if err != nil {
-			return nil, err
-		}
-
-		idx, ok := idxMap[string(upkeepID)]
-		if !ok {
-			idxMap[string(upkeepID)] = len(out)
-			out = append(out, keys[i])
+		if err := upkeepObservation.Validate(); err != nil {
+			logger.Printf("unable to validate observation: %s", err.Error())
+			parseErrors++
 			continue
 		}
 
-		savedBlockKey, _, err := out[idx].BlockKeyAndUpkeepID()
-		if err != nil {
-			return nil, err
+		blockKeyInt, ok := big.NewInt(0).SetString(upkeepObservation.BlockKey.String(), 10)
+		if !ok {
+			parseErrors++
+			continue
 		}
+		allBlockKeys = append(allBlockKeys, blockKeyInt)
 
-		if string(blockKey) > string(savedBlockKey) {
-			out[idx] = keys[i]
+		// if we have a non-empty list of upkeep identifiers, limit the upkeeps we take to observationUpkeepsLimit
+		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
+			upkeepIDs[i] = upkeepObservation.UpkeepIdentifiers[:observationUpkeepsLimit]
 		}
 	}
-	keys = out
 
-	src := util.NewKeyedCryptoRandSource(key)
-	r := rnd.New(src)
-	r.Shuffle(len(keys), func(i, j int) {
-		keys[i], keys[j] = keys[j], keys[i]
+	if parseErrors == len(observations) {
+		return nil, fmt.Errorf("%w: cannot prepare sorted key list; observations not properly encoded", ErrTooManyErrors)
+	}
+
+	// Here we calculate the median block that will be applied for all upkeep keys.
+	// reportBlockLag is subtracted from the median block to ensure enough nodes have that block in their blockchain
+	medianBlock := calculateMedianBlock(allBlockKeys, reportBlockLag)
+
+	upkeepKeys, err := createKeysWithMedianBlock(medianBlock, upkeepIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return upkeepKeys, nil
+}
+
+func createKeysWithMedianBlock(medianBlock ktypes.BlockKey, upkeepIDLists [][]ktypes.UpkeepIdentifier) ([][]ktypes.UpkeepKey, error) {
+	var res = make([][]ktypes.UpkeepKey, len(upkeepIDLists))
+
+	for i, upkeepIDs := range upkeepIDLists {
+		var keys []ktypes.UpkeepKey
+		for _, upkeepID := range upkeepIDs {
+			keys = append(keys, chain.NewUpkeepKeyFromBlockAndID(medianBlock, upkeepID))
+		}
+		res[i] = keys
+	}
+
+	return res, nil
+}
+
+func calculateMedianBlock(blockNumbers []*big.Int, reportBlockLag int) ktypes.BlockKey {
+	sort.Slice(blockNumbers, func(i, j int) bool {
+		return blockNumbers[i].Cmp(blockNumbers[j]) < 0
 	})
 
-	return keys, nil
+	// this is a crude median calculation; for a list of an odd number of elements, e.g. [10, 20, 30], the center value
+	// is chosen as the median. for a list of an even number of elements, a true median calculation would average the
+	// two center elements, e.g. [10, 20, 30, 40] = (20 + 30) / 2 = 25, but we want to constrain our median block to
+	// one of the block numbers reported, e.g. either 20 or 30. right now we want to choose the higher block number, e.g.
+	// 30. for this reason, the logic for selecting the median value from an odd number of elements is the same as the
+	// logic for selecting the median value from an even number of elements
+	var median *big.Int
+	if l := len(blockNumbers); l == 0 {
+		median = big.NewInt(0)
+	} else {
+		median = blockNumbers[l/2]
+	}
+
+	if reportBlockLag > 0 {
+		median = median.Sub(median, big.NewInt(int64(reportBlockLag)))
+	}
+
+	return chain.BlockKey(median.String())
 }
 
 func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {
@@ -259,67 +278,27 @@ func (a *syncedArray[T]) Values() []T {
 	return a.data
 }
 
-func limitedLengthEncode(keys []ktypes.UpkeepKey, limit int) ([]byte, error) {
-	if len(keys) == 0 {
-		return encode([]ktypes.UpkeepKey{})
+func limitedLengthEncode(obs *chain.UpkeepObservation, limit int) ([]byte, error) {
+	if len(obs.UpkeepIdentifiers) == 0 {
+		return encode(obs)
 	}
 
-	// limit the number of keys that can be added to an observation
-	// OCR observation limit is set to 1_000 bytes so this should be under the
-	// limit
-	var tot int
-	var idx int
-
-	// json encoding byte arrays follows a linear progression of byte length
-	// vs encoded length. the following is the magic equation where x is the
-	// byte array length and y is the encoded length.
-	// eq: y = 1.32 * x + 7.31
-
-	// if the total plus padding for json encoding is less than the max, another
-	// key can be included
-	c := true
-	for c && idx < len(keys) {
-		tot += len(keys[idx].String())
-
-		// because we are encoding an array of byte arrays, some bytes are added
-		// per byte array and all byte arrays could be different lengths.
-		// this is only for the purpose of estimation so add some padding for
-		// each byte array
-		v := (1.32 * float64(tot)) + 7.31 + float64((idx+1)*2)
-		if int(math.Ceil(v)) > limit {
-			c = false
-		}
-
-		idx++
-	}
-
-	toEncode := keys[:idx]
-
-	var b []byte
-	var err error
-
-	b, err = encode(toEncode)
-	if err != nil {
-		return nil, err
-	}
-
-	// finally we walk backward from the estimate if the resulting length is
-	// larger than our limit. this ensures that the output is within range.
-	for len(b) > limit {
-		idx--
-		if idx == 0 {
-			return encode([]ktypes.UpkeepKey{})
-		}
-
-		toEncode = keys[:idx]
-
-		b, err = encode(toEncode)
+	var res []byte
+	for i := range obs.UpkeepIdentifiers {
+		b, err := encode(&chain.UpkeepObservation{
+			BlockKey:          obs.BlockKey,
+			UpkeepIdentifiers: obs.UpkeepIdentifiers[:i+1],
+		})
 		if err != nil {
 			return nil, err
 		}
+		if len(b) > limit {
+			break
+		}
+		res = b
 	}
 
-	return b, nil
+	return res, nil
 }
 
 func upkeepKeysToString(keys []ktypes.UpkeepKey) string {

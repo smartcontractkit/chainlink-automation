@@ -87,7 +87,7 @@ func (ec *evmClient) subscribe(ctx context.Context) {
 				return
 			}
 		case head := <-ch:
-			ec.chHead <- types.BlockKey(head.Number.String())
+			ec.chHead <- BlockKey(head.Number.String())
 		}
 	}
 }

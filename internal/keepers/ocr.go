@@ -7,8 +7,17 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"golang.org/x/crypto/sha3"
+)
+
+const (
+	// observationUpkeepsLimit is the max number of upkeeps that Observation could return.
+	observationUpkeepsLimit = 1
+
+	// reportKeysLimit is the maximum number of upkeep keys checked during the report phase
+	reportKeysLimit = 10
 )
 
 type ocrLogContextKey struct{}
@@ -48,7 +57,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	lCtx := newOcrLogContext(rt)
 	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
 
-	results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
+	blockKey, results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 	}
@@ -57,7 +66,24 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
 
-	b, err := limitedLengthEncode(keys, maxObservationLength)
+	obs := &chain.UpkeepObservation{
+		BlockKey: chain.BlockKey(blockKey.String()),
+	}
+
+	identifiers := make([]ktypes.UpkeepIdentifier, 0)
+	for _, upkeepKey := range keys {
+		_, upkeepID, _ := upkeepKey.BlockKeyAndUpkeepID()
+		identifiers = append(identifiers, upkeepID)
+	}
+
+	// Check limit
+	if len(identifiers) > observationUpkeepsLimit {
+		identifiers = identifiers[:observationUpkeepsLimit]
+	}
+
+	obs.UpkeepIdentifiers = identifiers
+
+	b, err := limitedLengthEncode(obs, maxObservationLength)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
 	}
@@ -65,7 +91,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// write the number of keys returned from sampling to the debug log
 	// this offers a record of the number of performs the node has visibility
 	// of for each epoch/round
-	k.logger.Printf("OCR observation completed successfully with %d eligible keys: %s", len(keys), lCtx)
+	k.logger.Printf("OCR observation completed successfully with block number %s and %d eligible upkeeps: %s", blockKey, len(identifiers), lCtx)
 
 	return b, nil
 }
@@ -89,24 +115,40 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	binary.LittleEndian.PutUint64(temp, uint64(rt.Round))
 	hash.Write(temp)
 
-	var key [16]byte
-	copy(key[:], hash.Sum(nil))
+	var keyRandSource [16]byte
+	copy(keyRandSource[:], hash.Sum(nil))
+
+	// Must not be empty
+	if len(attributed) == 0 {
+		return false, nil, fmt.Errorf("%w: must provide at least 1 observation", ErrNotEnoughInputs)
+	}
+
+	// Build upkeep keys from the given observations
+	upkeepKeys, err := observationsToUpkeepKeys(k.logger, attributed, k.reportBlockLag)
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: failed to build upkeep keys from the given observations", err)
+	}
 
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
-	keys, err := shuffledDedupedKeyList(attributed, key, k.filter.Filter())
+	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
 
+	// Check the limit
+	if len(keysToCheck) > reportKeysLimit {
+		keysToCheck = keysToCheck[:reportKeysLimit]
+	}
+
 	// No keys found for the given keys
-	if len(keys) == 0 {
+	if len(keysToCheck) == 0 {
 		k.logger.Printf("OCR report completed successfully with no eligible keys: %s", lCtx)
 		return false, nil, nil
 	}
 
 	// Check all upkeeps from the given observation
-	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keys...)
+	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keysToCheck...)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
 	}
@@ -117,8 +159,8 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, nil
 	}
 
-	if len(checkedUpkeeps) > len(keys) {
-		return false, nil, fmt.Errorf("unexpected number of upkeeps returned for %s key, expected max %d but given %d", key, len(keys), len(checkedUpkeeps))
+	if len(checkedUpkeeps) > len(keysToCheck) {
+		return false, nil, fmt.Errorf("unexpected number of upkeeps returned expected max %d but given %d", len(keysToCheck), len(checkedUpkeeps))
 	}
 
 	// Collect eligible upkeeps

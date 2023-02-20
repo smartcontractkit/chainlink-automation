@@ -35,9 +35,9 @@ func TestReportCoordinator(t *testing.T) {
 	key1Block3 := chain.UpkeepKey("3|1")
 	key1Block4 := chain.UpkeepKey("4|1")
 	id1 := types.UpkeepIdentifier("1")
-	bk2 := types.BlockKey("2")
-	bk3 := types.BlockKey("3")
-	bk15 := types.BlockKey("15")
+	bk2 := chain.BlockKey("2")
+	bk3 := chain.BlockKey("3")
+	bk15 := chain.BlockKey("15")
 
 	t.Run("FilterBeforeAccept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))

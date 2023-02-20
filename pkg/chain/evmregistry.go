@@ -47,8 +47,8 @@ func NewEVMRegistryV2_0(address common.Address, client types.EVMClient) (*evmReg
 	}, nil
 }
 
-func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.BlockKey) ([]types.UpkeepKey, error) {
-	opts, err := r.buildCallOpts(ctx, block)
+func (r *evmRegistryv2_0) GetActiveUpkeepIDs(ctx context.Context) ([]types.UpkeepIdentifier, error) {
+	opts, err := r.buildCallOpts(ctx, BlockKey("0"))
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 		return nil, errors.Wrapf(err, "failed to get contract state at block number %d", opts.BlockNumber.Int64())
 	}
 
-	keys := make([]types.UpkeepKey, 0)
+	keys := make([]types.UpkeepIdentifier, 0)
 	for int64(len(keys)) < state.State.NumUpkeeps.Int64() {
 		startIndex := int64(len(keys))
 		maxCount := state.State.NumUpkeeps.Int64() - int64(len(keys))
@@ -72,16 +72,16 @@ func (r *evmRegistryv2_0) GetActiveUpkeepKeys(ctx context.Context, block types.B
 			return nil, errors.Wrapf(err, "failed to get active upkeep IDs from index %d to %d (both inclusive)", startIndex, startIndex+maxCount-1)
 		}
 
-		nextKeys := make([]types.UpkeepKey, len(nextRawKeys))
+		nextKeys := make([]types.UpkeepIdentifier, len(nextRawKeys))
 		for i, next := range nextRawKeys {
-			nextKeys[i] = BlockAndIdToKey(opts.BlockNumber, next)
+			nextKeys[i] = types.UpkeepIdentifier(next.String())
 		}
 
 		if len(nextKeys) == 0 {
 			break
 		}
 
-		buffer := make([]types.UpkeepKey, len(keys), len(keys)+len(nextKeys))
+		buffer := make([]types.UpkeepIdentifier, len(keys), len(keys)+len(nextKeys))
 		copy(keys, buffer)
 
 		keys = append(buffer, nextKeys...)
@@ -97,9 +97,14 @@ func (r *evmRegistryv2_0) checkUpkeeps(ctx context.Context, keys []types.UpkeepK
 	)
 
 	for i, key := range keys {
-		block, upkeepId, err := BlockAndIdFromKey(key)
+		block, upkeepId, err := key.BlockKeyAndUpkeepID()
 		if err != nil {
 			return nil, err
+		}
+
+		upkeepIdInt, ok := upkeepId.BigInt()
+		if !ok {
+			return nil, ErrUpkeepKeyNotParsable
 		}
 
 		opts, err := r.buildCallOpts(ctx, block)
@@ -107,7 +112,7 @@ func (r *evmRegistryv2_0) checkUpkeeps(ctx context.Context, keys []types.UpkeepK
 			return nil, err
 		}
 
-		payload, err := keeperRegistryABI.Pack("checkUpkeep", upkeepId)
+		payload, err := keeperRegistryABI.Pack("checkUpkeep", upkeepIdInt)
 		if err != nil {
 			return nil, err
 		}
@@ -169,9 +174,14 @@ func (r *evmRegistryv2_0) simulatePerformUpkeeps(ctx context.Context, checkResul
 			continue
 		}
 
-		block, upkeepId, err := BlockAndIdFromKey(checkResult.Key)
+		block, upkeepId, err := checkResult.Key.BlockKeyAndUpkeepID()
 		if err != nil {
 			return nil, err
+		}
+
+		upkeepIdInt, ok := upkeepId.BigInt()
+		if !ok {
+			return nil, ErrUpkeepKeyNotParsable
 		}
 
 		opts, err := r.buildCallOpts(ctx, block)
@@ -180,7 +190,7 @@ func (r *evmRegistryv2_0) simulatePerformUpkeeps(ctx context.Context, checkResul
 		}
 
 		// Since checkUpkeep is true, simulate perform upkeep to ensure it doesn't revert
-		payload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepId, checkResult.PerformData)
+		payload, err := keeperRegistryABI.Pack("simulatePerformUpkeep", upkeepIdInt, checkResult.PerformData)
 		if err != nil {
 			return nil, err
 		}
@@ -274,24 +284,24 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 }
 
 func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
-	_, id, err := BlockAndIdFromKey(key)
+	_, id, err := key.BlockKeyAndUpkeepID()
 	if err != nil {
 		return nil, err
 	}
 
-	return id.Bytes(), nil
+	return id, nil
 }
 
 func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {
 	b := new(big.Int)
-	_, ok := b.SetString(string(block), 10)
+	_, ok := b.SetString(block.String(), 10)
 
 	if !ok {
 		return nil, fmt.Errorf("%w: requires big int", ErrBlockKeyNotParsable)
 	}
 
 	if b == nil || b.Int64() == 0 {
-		// fetch the current block number so batched GetActiveUpkeepKeys calls can be performed on the same block
+		// fetch the current block number so batched GetLatestActiveUpkeepKeys calls can be performed on the same block
 		header, err := r.client.HeaderByNumber(ctx, nil)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s: EVM failed to fetch block header", err, ErrRegistryCallFailure)

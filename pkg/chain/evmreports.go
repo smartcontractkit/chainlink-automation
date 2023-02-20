@@ -64,12 +64,17 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 	data := make([]wrappedPerform, len(toReport))
 
 	for i, result := range toReport {
-		_, upkeepId, err := BlockAndIdFromKey(result.Key)
+		_, upkeepId, err := result.Key.BlockKeyAndUpkeepID()
 		if err != nil {
 			return nil, fmt.Errorf("%w: report encoding error", err)
 		}
 
-		ids[i] = upkeepId
+		upkeepIdInt, ok := upkeepId.BigInt()
+		if !ok {
+			return nil, ErrUpkeepKeyNotParsable
+		}
+
+		ids[i] = upkeepIdInt
 		data[i] = wrappedPerform{
 			CheckBlockNumber: result.CheckBlockNumber,
 			CheckBlockhash:   result.CheckBlockHash,
@@ -147,7 +152,7 @@ func (b *evmReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, e
 	res = make([]ktypes.UpkeepResult, len(upkeepIds))
 	for i := 0; i < len(upkeepIds); i++ {
 		res[i] = ktypes.UpkeepResult{
-			Key:              BlockAndIdToKey(big.NewInt(int64(performs[i].CheckBlockNumber)), upkeepIds[i]),
+			Key:              NewUpkeepKey(big.NewInt(int64(performs[i].CheckBlockNumber)), upkeepIds[i]),
 			State:            ktypes.Eligible,
 			PerformData:      performs[i].PerformData,
 			FastGasWei:       wei,
@@ -164,23 +169,4 @@ type wrappedPerform struct {
 	CheckBlockNumber uint32   `abi:"checkBlockNumber"`
 	CheckBlockhash   [32]byte `abi:"checkBlockhash"`
 	PerformData      []byte   `abi:"performData"`
-}
-
-func BlockAndIdFromKey(key ktypes.UpkeepKey) (ktypes.BlockKey, *big.Int, error) {
-	blockKey, upkeepID, err := key.BlockKeyAndUpkeepID()
-	if err != nil {
-		return "", nil, err
-	}
-
-	id := new(big.Int)
-	_, ok := id.SetString(string(upkeepID), 10)
-	if !ok {
-		return "", nil, fmt.Errorf("%w: must be big int", ErrUpkeepKeyNotParsable)
-	}
-
-	return blockKey, id, nil
-}
-
-func BlockAndIdToKey(block *big.Int, id *big.Int) ktypes.UpkeepKey {
-	return UpkeepKey(fmt.Sprintf("%s%s%s", block, separator, id))
 }
