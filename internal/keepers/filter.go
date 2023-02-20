@@ -99,15 +99,7 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 	}
 }
 
-func (rc *reportCoordinator) CheckAlreadyAccepted(key types.UpkeepKey) bool {
-	_, ok := rc.activeKeys.Get(key.String())
-	return ok
-}
-
 func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
-	if rc.CheckAlreadyAccepted(key) {
-		return fmt.Errorf("%w: %s", ErrKeyAlreadyAccepted, key)
-	}
 	id, err := rc.registry.IdentifierFromKey(key)
 	if err != nil {
 		return err
@@ -176,9 +168,6 @@ func (rc *reportCoordinator) checkLogs() {
 			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 			// set state of key to indicate that the report was transmitted
-			// setting a key in this way also blocks it in Accept even if
-			// Accept was never called for on a single node for this key
-			// update the active key to indicate a log was detected
 			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
 			// if an idBlock already exists for a higher check block number, don't update it

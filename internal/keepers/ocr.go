@@ -228,14 +228,6 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, rt types.Report
 	}
 
 	for _, r := range results {
-		// check whether the key is already accepted
-		if k.filter.CheckAlreadyAccepted(r.Key) {
-			k.logger.Printf("%s: key already accepted: %s", r.Key, lCtx.Short())
-			return false, fmt.Errorf("failed to accept key %s as it was already accepted", r.Key)
-		}
-	}
-
-	for _, r := range results {
 		// indicate to the filter that the key has been accepted for transmit
 		if err = k.filter.Accept(r.Key); err != nil {
 			return false, fmt.Errorf("%w: failed to accept key: %s", err, lCtx)
