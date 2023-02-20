@@ -27,3 +27,7 @@ func (k BlockKey) After(kk types.BlockKey) (bool, error) {
 func (k BlockKey) String() string {
 	return string(k)
 }
+
+func (k BlockKey) BigInt() (*big.Int, bool) {
+	return big.NewInt(0).SetString(string(k), 10)
+}

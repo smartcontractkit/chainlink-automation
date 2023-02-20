@@ -145,11 +145,3 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.Upke
 
 	return results, nil
 }
-
-func (ct *SimulatedContract) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
-	_, upkeepID, err := key.BlockKeyAndUpkeepID()
-	if err != nil {
-		panic(err.Error())
-	}
-	return upkeepID, nil
-}
