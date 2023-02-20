@@ -139,6 +139,12 @@ func observationsToUpkeepKeys(logger *log.Logger, observations []types.Attribute
 			continue
 		}
 
+		if err := upkeepObservation.Validate(); err != nil {
+			logger.Printf("unable to validate observation: %s", err.Error())
+			parseErrors++
+			continue
+		}
+
 		blockKeyInt, ok := big.NewInt(0).SetString(upkeepObservation.BlockKey.String(), 10)
 		if !ok {
 			parseErrors++
