@@ -65,6 +65,7 @@ type PerformLog struct {
 
 type BlockKey interface {
 	After(BlockKey) (bool, error)
+	BigInt() (*big.Int, bool)
 	fmt.Stringer
 }
 

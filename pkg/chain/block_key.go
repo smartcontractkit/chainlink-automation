@@ -9,6 +9,10 @@ import (
 // TODO (AUTO-2014), find a better place for these concrete types than chain package
 type BlockKey string
 
+func (k BlockKey) BigInt() (*big.Int, bool) {
+	return big.NewInt(0).SetString(string(k), 10)
+}
+
 func (k BlockKey) After(kk types.BlockKey) (bool, error) {
 	a, ok := big.NewInt(0).SetString(k.String(), 10)
 	if !ok {
