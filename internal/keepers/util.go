@@ -312,6 +312,7 @@ func createBatches[T any](b []T, size int) (batches [][]T) {
 		}
 		batches = append(batches, b[i:j])
 	}
+
 	return
 }
 

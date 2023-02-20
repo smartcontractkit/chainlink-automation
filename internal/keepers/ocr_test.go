@@ -1183,10 +1183,6 @@ func (_m *BenchmarkMockedRegistry) CheckUpkeep(ctx context.Context, keys ...ktyp
 	return true, _m.rtnRes, nil
 }
 
-func (_m *BenchmarkMockedRegistry) IdentifierFromKey(key ktypes.UpkeepKey) (ktypes.UpkeepIdentifier, error) {
-	return _m.rtnId, nil
-}
-
 type BenchmarkMockedFilterer struct{}
 
 func (_m *BenchmarkMockedFilterer) Filter() func(ktypes.UpkeepKey) bool {

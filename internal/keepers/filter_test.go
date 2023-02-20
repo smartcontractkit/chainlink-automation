@@ -41,15 +41,6 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("FilterBeforeAccept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
-
-		// calling filter at this point should return true because the key has not
-		// yet been added to the filter
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
-		assert.Equal(t, true, filter(key1Block1), "should not filter out key 1 at block 1: key has not been accepted")
-
-		mr.Mock.On("IdentifierFromKey", key1Block2).Return(id1, nil)
-		assert.Equal(t, true, filter(key1Block2), "should not filter out key 1 at block 2: key has not been accepted")
 
 		// is transmission confirmed should also return true because the key has
 		// not been set in the filter
@@ -62,7 +53,6 @@ func TestReportCoordinator(t *testing.T) {
 	t.Run("Accept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		assert.NoError(t, rc.Accept(key1Block1), "no error expected from accepting the key")
 		assert.ErrorIs(t, rc.Accept(key1Block1), ErrKeyAlreadyAccepted, "key should not be accepted again and should return an error")
 
@@ -73,15 +63,12 @@ func TestReportCoordinator(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 		filter := rc.Filter()
 
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		_ = rc.Accept(key1Block1)
 
 		// no logs have been read at this point so the upkeep key should be filtered
 		// out at all block numbers
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		assert.Equal(t, false, filter(key1Block1), "filter should return false to indicate key should be filtered out at block 1")
 
-		mr.Mock.On("IdentifierFromKey", key1Block2).Return(id1, nil)
 		assert.Equal(t, false, filter(key1Block2), "filter should return false to indicate key should be filtered out at block 2")
 
 		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "transmit should not be confirmed: key is now set, but no logs have been identified")
@@ -96,10 +83,8 @@ func TestReportCoordinator(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
 		filter := rc.Filter()
 
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		_ = rc.Accept(key1Block1)
 
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 0},
 		}, nil).Once()
@@ -108,10 +93,8 @@ func TestReportCoordinator(t *testing.T) {
 
 		// perform log didn't have the threshold number of confirmations
 		// making the key still locked at all blocks
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		assert.Equal(t, false, filter(key1Block1), "filter should return false to indicate key should be filtered out at block 1")
 
-		mr.Mock.On("IdentifierFromKey", key1Block2).Return(id1, nil)
 		assert.Equal(t, false, filter(key1Block2), "filter should return false to indicate key should be filtered out at block 2")
 
 		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "transmit should not be confirmed: the key is now set, but no logs have been identified")
@@ -125,10 +108,8 @@ func TestReportCoordinator(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
 		filter := rc.Filter()
 
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		_ = rc.Accept(key1Block1)
 
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
 		}, nil).Once()
@@ -137,13 +118,10 @@ func TestReportCoordinator(t *testing.T) {
 
 		// because the transmit block is block 2, the filter should continue
 		// to filter out key up to block 2
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		assert.Equal(t, false, filter(key1Block1), "filter should return false to indicate key should be filtered out at block 1")
 
-		mr.Mock.On("IdentifierFromKey", key1Block2).Return(id1, nil)
 		assert.Equal(t, false, filter(key1Block2), "filter should return false to indicate key should be filtered out at block 2")
 
-		mr.Mock.On("IdentifierFromKey", key1Block3).Return(id1, nil)
 		assert.Equal(t, true, filter(key1Block3), "filter should return true to indicate key should not be filtered out at block 3")
 
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "transmit should be confirmed")
@@ -160,31 +138,28 @@ func TestReportCoordinator(t *testing.T) {
 		filter := rc.Filter()
 
 		// 1. key 1|1 is Accepted
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
-		_ = rc.Accept(key1Block1)
-
+		rc.Accept(key1Block1)
 		// 1a. key 1|1 filter returns false
 		// 1c. key 2|1 filter returns false
 		// 1d. key 4|1 filter returns false
-		// reason: the node sees id 1 as 'in-flight' and blocks for all block numbers
-		assertFilter(t, mr, key1Block1, id1, false, filter)
-		assertFilter(t, mr, key1Block2, id1, false, filter)
-		assertFilter(t, mr, key1Block4, id1, false, filter)
+		// reason: the node  sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
 
 		// 1b. key 1|1 transmit confirmed returns false
 		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
 
 		// 2. key 2|1 is Accepted (if other nodes produce report)
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		_ = rc.Accept(key1Block2)
 
 		// 2a. key 1|1 filter returns false
 		// 2c. key 2|1 filter returns false
 		// 2e. key 4|1 filter returns false
 		// reason: the node still sees id 1 as 'in-flight' and blocks for all block numbers
-		assertFilter(t, mr, key1Block1, id1, false, filter)
-		assertFilter(t, mr, key1Block2, id1, false, filter)
-		assertFilter(t, mr, key1Block4, id1, false, filter)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
 
 		// 2b. key 1|1 transmit confirmed returns false
 		// 2d. key 2|1 transmit confirmed returns false
@@ -192,7 +167,6 @@ func TestReportCoordinator(t *testing.T) {
 		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
 
 		// 3. perform log for 1|1 is at block 2
-		mr.Mock.On("IdentifierFromKey", key1Block1).Return(id1, nil)
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
 		}, nil).Once()
@@ -203,9 +177,9 @@ func TestReportCoordinator(t *testing.T) {
 		// 3c. key 2|1 filter returns false
 		// 3e. key 4|1 filter returns false
 		// reason: the node still sees id 1 as 'in-flight' and blocks for all block numbers
-		assertFilter(t, mr, key1Block1, id1, false, filter)
-		assertFilter(t, mr, key1Block2, id1, false, filter)
-		assertFilter(t, mr, key1Block4, id1, false, filter)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
 
 		// 3b. key 1|1 transmit confirmed returns true
 		// 3d. key 2|1 transmit confirmed returns false
@@ -214,7 +188,6 @@ func TestReportCoordinator(t *testing.T) {
 		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
 
 		// 4. perform log for 2|1 is at block 3
-		mr.Mock.On("IdentifierFromKey", key1Block2).Return(id1, nil)
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block2, TransmitBlock: bk3, Confirmations: 1},
 		}, nil).Once()
@@ -225,9 +198,9 @@ func TestReportCoordinator(t *testing.T) {
 		// 4c. key 2|1 filter returns false
 		// 4e. key 4|1 filter returns true
 		// reason: the id unblocks after the highest block number seen
-		assertFilter(t, mr, key1Block1, id1, false, filter)
-		assertFilter(t, mr, key1Block2, id1, false, filter)
-		assertFilter(t, mr, key1Block4, id1, true, filter)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, true, filter)
 
 		// 4b. key 1|1 transmit confirmed returns true
 		// 4d. key 2|1 transmit confirmed returns true
@@ -247,14 +220,12 @@ func TestReportCoordinator(t *testing.T) {
 			TransmitBlockNumber: bk15,
 		}, util.DefaultCacheExpiration)
 
-		mr.Mock.On("IdentifierFromKey", key1Block4).Return(id1, nil)
 		assert.False(t, filter(key1Block4))
 
 		mr.AssertExpectations(t)
 	})
 }
 
-func assertFilter(t *testing.T, reg *types.MockRegistry, key types.UpkeepKey, id types.UpkeepIdentifier, exp bool, f func(types.UpkeepKey) bool) {
-	reg.Mock.On("IdentifierFromKey", key).Return(id, nil)
+func assertFilter(t *testing.T, key types.UpkeepKey, exp bool, f func(types.UpkeepKey) bool) {
 	assert.Equal(t, exp, f(key), "filter should return '%v' to indicate key should not be filtered out at block %s", exp, key)
 }

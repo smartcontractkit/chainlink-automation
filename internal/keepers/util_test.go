@@ -21,15 +21,15 @@ func (ts testStringer) String() string {
 }
 
 func TestCryptoShuffler(t *testing.T) {
-	expectected := []int{1, 2, 3, 4, 5}
-	test := make([]int, len(expectected))
-	copy(test, expectected)
+	expected := []int{1, 2, 3, 4, 5}
+	test := make([]int, len(expected))
+	copy(test, expected)
 
 	sh := &cryptoShuffler[int]{}
 	sh.Shuffle(test)
 
-	assert.NotEqual(t, test, expectected)
-	for _, value := range expectected {
+	assert.NotEqual(t, test, expected)
+	for _, value := range expected {
 		assert.Contains(t, test, value)
 	}
 }
@@ -316,15 +316,17 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 			return
 		}
 
+		blockKey := chain.BlockKey("123")
 		keys := make([]ktypes.UpkeepIdentifier, a)
 		for i := 0; i < a; i++ {
 			k := strings.Repeat("1", rand.Intn(b)+3)
-			k = k[:1] + "|" + k[2:]
 			keys[i] = ktypes.UpkeepIdentifier(k)
 		}
 
-		ob := &chain.UpkeepObservation{}
-		ob.UpkeepIdentifiers = keys
+		ob := &chain.UpkeepObservation{
+			BlockKey:          blockKey,
+			UpkeepIdentifiers: keys,
+		}
 		bt, err := limitedLengthEncode(ob, 1000)
 
 		assert.NoError(t, err)
@@ -345,4 +347,104 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 			assert.LessOrEqual(t, len(output), a, "max number of keys :: keys: %d; length: %d", a, b)
 		}
 	})
+}
+
+func Test_createBatches(t *testing.T) {
+	for _, test := range []struct {
+		in   []ktypes.UpkeepKey
+		size int
+
+		want [][]ktypes.UpkeepKey
+	}{
+		{
+			in: []ktypes.UpkeepKey{
+				chain.UpkeepKey("1|2"),
+				chain.UpkeepKey("2|12"),
+				chain.UpkeepKey("3|22"),
+				chain.UpkeepKey("4|23"),
+				chain.UpkeepKey("5|42"),
+				chain.UpkeepKey("6|52"),
+				chain.UpkeepKey("7|662"),
+			},
+			size: 1,
+			want: [][]ktypes.UpkeepKey{
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("1|2"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("2|12"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("3|22"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("4|23"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("5|42"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("6|52"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("7|662"),
+				},
+			},
+		},
+		{
+			in: []ktypes.UpkeepKey{
+				chain.UpkeepKey("1|2"),
+				chain.UpkeepKey("2|12"),
+				chain.UpkeepKey("3|22"),
+				chain.UpkeepKey("4|23"),
+				chain.UpkeepKey("5|42"),
+				chain.UpkeepKey("6|52"),
+				chain.UpkeepKey("7|662"),
+			},
+			size: 2,
+			want: [][]ktypes.UpkeepKey{
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("1|2"),
+					chain.UpkeepKey("2|12"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("3|22"),
+					chain.UpkeepKey("4|23"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("5|42"),
+					chain.UpkeepKey("6|52"),
+				},
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("7|662"),
+				},
+			},
+		},
+		{
+			in: []ktypes.UpkeepKey{
+				chain.UpkeepKey("1|2"),
+				chain.UpkeepKey("2|12"),
+				chain.UpkeepKey("3|22"),
+				chain.UpkeepKey("4|23"),
+				chain.UpkeepKey("5|42"),
+				chain.UpkeepKey("6|52"),
+				chain.UpkeepKey("7|662"),
+			},
+			size: 10,
+			want: [][]ktypes.UpkeepKey{
+				[]ktypes.UpkeepKey{
+					chain.UpkeepKey("1|2"),
+					chain.UpkeepKey("2|12"),
+					chain.UpkeepKey("3|22"),
+					chain.UpkeepKey("4|23"),
+					chain.UpkeepKey("5|42"),
+					chain.UpkeepKey("6|52"),
+					chain.UpkeepKey("7|662"),
+				},
+			},
+		},
+	} {
+		batches := createBatches[ktypes.UpkeepKey](test.in, test.size)
+		assert.Equal(t, batches, test.want)
+	}
 }

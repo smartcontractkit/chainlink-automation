@@ -168,7 +168,10 @@ func (ct *SimulatedContract) run() {
 							Confirmations: 0,
 						}
 
-						id, _ := ct.IdentifierFromKey(result.Key)
+						_, id, err := result.Key.BlockKeyAndUpkeepID()
+						if err != nil {
+							continue
+						}
 						up, ok := ct.upkeeps[string(id)]
 						if ok {
 							//result.PerformData

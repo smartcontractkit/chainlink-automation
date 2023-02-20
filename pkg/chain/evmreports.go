@@ -15,11 +15,12 @@ const (
 )
 
 var (
-	ErrRegistryCallFailure   = fmt.Errorf("registry chain call failure")
-	ErrBlockKeyNotParsable   = fmt.Errorf("block identifier not parsable")
-	ErrUpkeepKeyNotParsable  = fmt.Errorf("upkeep key not parsable")
-	ErrInitializationFailure = fmt.Errorf("failed to initialize registry")
-	ErrContextCancelled      = fmt.Errorf("context was cancelled")
+	ErrRegistryCallFailure          = fmt.Errorf("registry chain call failure")
+	ErrBlockKeyNotParsable          = fmt.Errorf("block identifier not parsable")
+	ErrUpkeepKeyNotParsable         = fmt.Errorf("upkeep key not parsable")
+	ErrUpkeepObservationNotParsable = fmt.Errorf("upkeep observation not parsable")
+	ErrInitializationFailure        = fmt.Errorf("failed to initialize registry")
+	ErrContextCancelled             = fmt.Errorf("context was cancelled")
 )
 
 type evmReportEncoder struct{}

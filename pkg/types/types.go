@@ -38,7 +38,6 @@ type EVMClient interface {
 type Registry interface {
 	GetActiveUpkeepIDs(context.Context) ([]UpkeepIdentifier, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
-	IdentifierFromKey(UpkeepKey) (UpkeepIdentifier, error)
 }
 
 // ReportEncoder represents the report encoder behaviour
