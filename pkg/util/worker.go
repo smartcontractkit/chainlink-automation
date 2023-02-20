@@ -2,10 +2,10 @@ package util
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -28,28 +28,29 @@ type worker[T any] struct {
 	Queue chan *worker[T]
 }
 
-func (w *worker[T]) Do(ctx context.Context, r chan WorkItemResult[T], wrk WorkItem[T]) {
+func (w *worker[T]) Do(ctx context.Context, r func(WorkItemResult[T]), wrk WorkItem[T]) {
 	start := time.Now()
 
-	data, err := wrk(ctx)
-	result := WorkItemResult[T]{
+	var data T
+	var err error
+
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	} else {
+		data, err = wrk(ctx)
+	}
+
+	r(WorkItemResult[T]{
 		Worker: w.Name,
 		Data:   data,
 		Err:    err,
 		Time:   time.Since(start),
-	}
+	})
 
+	// put itself back on the queue when done
 	select {
-	case r <- result:
-		// put itself back on the queue when done
-		select {
-		case w.Queue <- w:
-			return
-		case <-ctx.Done():
-			return
-		}
-	case <-ctx.Done():
-		return
+	case w.Queue <- w:
+	default:
 	}
 }
 
@@ -58,65 +59,32 @@ type WorkerGroup[T any] struct {
 	activeWorkers int
 	workers       chan *worker[T]
 	queue         chan WorkItem[T]
-	queueClosed   bool
-	stop          chan struct{}
-	Results       chan WorkItemResult[T]
-	mu            sync.Mutex
+	queuedItems   atomic.Int64
+	queueClosed   atomic.Bool
+	drain         chan struct{}
+	svcCtx        context.Context
+	svcCancel     context.CancelFunc
+	resultData    []WorkItemResult[T]
+	resultNotify  chan struct{}
+	resultLen     atomic.Int64
+	mu            sync.RWMutex
 	once          sync.Once
 }
 
 func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
+	svcCtx, svcCancel := context.WithCancel(context.Background())
 	wg := &WorkerGroup[T]{
-		maxWorkers: workers,
-		workers:    make(chan *worker[T], workers),
-		queue:      make(chan WorkItem[T], queue),
-		stop:       make(chan struct{}, 1),
-		Results:    make(chan WorkItemResult[T], queue),
+		maxWorkers:   workers,
+		workers:      make(chan *worker[T], workers),
+		queue:        make(chan WorkItem[T], queue),
+		drain:        make(chan struct{}, 1),
+		resultData:   make([]WorkItemResult[T], 0),
+		resultNotify: make(chan struct{}, 1),
+		svcCtx:       svcCtx,
+		svcCancel:    svcCancel,
 	}
 
-	go func(g *WorkerGroup[T]) {
-		// timer := time.NewTimer(5 * time.Second)
-		ctx, cancel := context.WithCancel(context.Background())
-		for {
-			select {
-			case item := <-g.queue:
-				var wkr *worker[T]
-				if g.activeWorkers < g.maxWorkers {
-					// create a new worker
-					wkr = &worker[T]{
-						Name:  fmt.Sprintf("worker-%d", g.activeWorkers+1),
-						Queue: g.workers,
-					}
-					g.activeWorkers++
-				} else {
-					// wait for a worker to be available
-					wkr = <-g.workers
-				}
-
-				// have worker do the work
-				go wkr.Do(ctx, g.Results, item)
-
-				// timer.Reset(5 * time.Second)
-				/*
-					case <-timer.C:
-						// close workers when not needed
-						if g.activeWorkers > 0 {
-							<-g.workers
-							g.activeWorkers--
-						}
-				*/
-			case <-g.stop:
-				g.mu.Lock()
-				if !g.queueClosed {
-					close(g.queue)
-					g.queueClosed = true
-				}
-				g.mu.Unlock()
-				cancel()
-				return
-			}
-		}
-	}(wg)
+	go wg.run()
 
 	runtime.SetFinalizer(wg, func(g *WorkerGroup[T]) { g.Stop() })
 
@@ -126,31 +94,118 @@ func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
 // Do adds a new work item onto the work queue. This function blocks until
 // the work queue clears up or the context is cancelled.
 func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T]) error {
-	wg.mu.Lock()
-	defer wg.mu.Unlock()
 
 	if ctx.Err() != nil {
 		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
 	}
 
-	if wg.queueClosed {
+	if wg.queueClosed.Load() {
 		return fmt.Errorf("%w; work not added to queue", ErrProcessStopped)
 	}
 
 	select {
 	case wg.queue <- w:
+		wg.queuedItems.Add(1)
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
-	case <-wg.stop:
+	case <-wg.svcCtx.Done():
 		return fmt.Errorf("%w; work not added to queue", ErrProcessStopped)
 	}
 }
 
+func (wg *WorkerGroup[T]) NotifyResult() <-chan struct{} {
+	return wg.resultNotify
+}
+
+func (wg *WorkerGroup[T]) Results() []WorkItemResult[T] {
+	wg.mu.Lock()
+	defer wg.mu.Unlock()
+
+	resultData := wg.resultData
+	wg.resultData = nil
+	wg.resultLen.Store(0)
+	for i, j := 0, len(resultData)-1; i < j; i, j = i+1, j-1 {
+		resultData[i], resultData[j] = resultData[j], resultData[i]
+	}
+	return resultData
+}
+
 func (wg *WorkerGroup[T]) Stop() {
 	wg.once.Do(func() {
-		close(wg.stop)
+		wg.svcCancel()
+		wg.queueClosed.Store(true)
+		wg.drain <- struct{}{}
 	})
+}
+
+func (wg *WorkerGroup[T]) run() {
+	// main run loop for queued jobs
+	{
+	Runner:
+		for {
+			select {
+			case item := <-wg.queue:
+				wg.queuedItems.Add(-1)
+				wg.doJob(item)
+			case <-wg.drain:
+				// if drain is called, cancel the service context
+				// and break from the run loop
+				break Runner
+			}
+		}
+	}
+
+	if wg.queuedItems.Load() == 0 {
+		return
+	}
+
+	// drain the job queue before terminating the run process
+	{
+	Drainer:
+		for item := range wg.queue {
+			if wg.queuedItems.Load() == 0 {
+				break Drainer
+			}
+
+			wg.queuedItems.Add(-1)
+			wg.doJob(item)
+		}
+	}
+}
+
+func (wg *WorkerGroup[T]) doJob(item WorkItem[T]) {
+	var wkr *worker[T]
+
+	// no read or write locks on activeWorkers or maxWorkers because it's
+	// assumed the job loop is a single process reading from the job queue
+	if wg.activeWorkers < wg.maxWorkers {
+		// create a new worker
+		wkr = &worker[T]{
+			Name:  fmt.Sprintf("worker-%d", wg.activeWorkers+1),
+			Queue: wg.workers,
+		}
+		wg.activeWorkers++
+	} else {
+		// wait for a worker to be available
+		wkr = <-wg.workers
+	}
+
+	// have worker do the work
+	go wkr.Do(wg.svcCtx, wg.storeResult, item)
+}
+
+func (wg *WorkerGroup[T]) storeResult(result WorkItemResult[T]) {
+	wg.mu.Lock()
+	defer wg.mu.Unlock()
+
+	wg.resultData = append([]WorkItemResult[T]{result}, wg.resultData...)
+	wg.resultLen.Add(1)
+
+	select {
+	case wg.resultNotify <- struct{}{}:
+	default:
+	}
 }
 
 type JobFunc[T, K any] func(context.Context, T) (K, error)
@@ -158,14 +213,16 @@ type JobResultFunc[T any] func(T, error)
 
 func RunJobs[T, K any](ctx context.Context, wg *WorkerGroup[T], jobs []K, jobFunc JobFunc[K, T], resFunc JobResultFunc[T]) {
 	var wait sync.WaitGroup
-	end := make(chan struct{})
+	end := make(chan struct{}, 1)
 
 	go func(g *WorkerGroup[T], w *sync.WaitGroup, ch chan struct{}) {
 		for {
 			select {
-			case r := <-g.Results:
-				resFunc(r.Data, r.Err)
-				w.Done()
+			case <-g.NotifyResult():
+				for _, r := range g.Results() {
+					resFunc(r.Data, r.Err)
+					w.Done()
+				}
 			case <-ch:
 				return
 			}
@@ -176,20 +233,17 @@ func RunJobs[T, K any](ctx context.Context, wg *WorkerGroup[T], jobs []K, jobFun
 		wait.Add(1)
 
 		if err := wg.Do(ctx, makeJobFunc(ctx, job, jobFunc)); err != nil {
-			if !errors.Is(err, ErrContextCancelled) {
-				// the worker group process has probably stopped so the job runner
-				// should close outstanding resources and terminate
-				close(end)
-				return
-			}
-
 			// the makeJobFunc will exit early if the context passed to it has
-			// already completed.
+			// already completed or if the worker process has been stopped
 			wait.Done()
+			break
 		}
 	}
 
+	// wait for all results to be read
 	wait.Wait()
+
+	// close the results reader process to clean up resources
 	close(end)
 }
 
