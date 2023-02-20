@@ -25,7 +25,6 @@ func (uo UpkeepObservation) Validate() error {
 	}
 	if bl.String() != uo.BlockKey.String() {
 		return ErrInvalidBlockKey
-
 	}
 
 	for _, ui := range uo.UpkeepIdentifiers {
@@ -33,7 +32,6 @@ func (uo UpkeepObservation) Validate() error {
 		if !ok {
 			return ErrUpkeepKeyNotParsable
 		}
-
 		if uiInt.String() != string(ui) {
 			return ErrInvalidUpkeepIdentifier
 		}

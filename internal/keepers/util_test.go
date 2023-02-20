@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"sort"
@@ -154,6 +155,46 @@ func Test_observationsToUpkeepKeys(t *testing.T) {
 
 	assert.Equal(t, expected, result)
 	assert.NoError(t, err)
+}
+
+func Test_observationsToUpkeepKeysError(t *testing.T) {
+	obs := []*chain.UpkeepObservation{
+		{
+			BlockKey: chain.BlockKey("02"), // Error as it should be just '2'
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("1"),
+				ktypes.UpkeepIdentifier("1"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("3"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("01"), // Error as it should be just '1
+				ktypes.UpkeepIdentifier("2"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("1"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("02"), // Error in both
+				ktypes.UpkeepIdentifier("03"), // Error in both
+			},
+		},
+	}
+
+	attr := make([]types.AttributedObservation, len(obs))
+	for i, o := range obs {
+		b, _ := limitedLengthEncode(o, maxObservationLength)
+		attr[i] = types.AttributedObservation{
+			Observation: b,
+		}
+	}
+	attr = append(attr, types.AttributedObservation{
+		Observation: []byte("unparseable"), // unparseable observation
+	})
+
+	_, err := observationsToUpkeepKeys(log.New(io.Discard, "", 0), attr, 0)
+	assert.ErrorContains(t, err, "observations not properly encoded")
 }
 
 func Benchmark_observationsToUpkeepKeys(b *testing.B) {
