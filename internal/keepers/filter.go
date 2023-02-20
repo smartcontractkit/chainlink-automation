@@ -68,7 +68,7 @@ func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Dur
 // filter. Returns false if a key should be filtered out.
 func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 	return func(key types.UpkeepKey) bool {
-		_, id, err := key.BlockKeyAndUpkeepID()
+		id, err := rc.registry.IdentifierFromKey(key)
 		if err != nil {
 			// filter on error
 			return false
@@ -108,7 +108,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 	if rc.CheckAlreadyAccepted(key) {
 		return fmt.Errorf("%w: %s", ErrKeyAlreadyAccepted, key)
 	}
-	_, id, err := key.BlockKeyAndUpkeepID()
+	id, err := rc.registry.IdentifierFromKey(key)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		_, id, err := l.Key.BlockKeyAndUpkeepID()
+		id, err := rc.registry.IdentifierFromKey(l.Key)
 		if err != nil {
 			continue
 		}
