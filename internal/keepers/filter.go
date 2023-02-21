@@ -185,9 +185,8 @@ func (rc *reportCoordinator) checkLogs() {
 			rc.logger.Printf("Reorg log found for upkeep %s in transaction %s at block %s, with confirmations %d", l.UpkeepId, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 			rc.reorgLogs.Set(logKey, true, util.DefaultCacheExpiration)
 
-			// As we do not have the actual checkBlockNumber which generated this reorg log, use transmitBlockNumber
 			rc.updateIdBlock(string(l.UpkeepId), idBlocker{
-				CheckBlockNumber:    l.TransmitBlock,
+				CheckBlockNumber:    l.TransmitBlock, // As we do not have the actual checkBlockNumber which generated this reorg log, use transmitBlockNumber
 				TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
 			})
 		}
