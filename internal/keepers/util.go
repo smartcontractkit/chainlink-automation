@@ -123,6 +123,14 @@ func filterDedupeShuffleObservations(upkeepKeys [][]ktypes.UpkeepKey, keyRandSou
 	return uniqueKeys, nil
 }
 
+func shuffleObservations(upkeepIdentifiers []ktypes.UpkeepIdentifier, keyRandSource [16]byte) []ktypes.UpkeepIdentifier {
+	rnd.New(util.NewKeyedCryptoRandSource(keyRandSource)).Shuffle(len(upkeepIdentifiers), func(i, j int) {
+		upkeepIdentifiers[i], upkeepIdentifiers[j] = upkeepIdentifiers[j], upkeepIdentifiers[i]
+	})
+
+	return upkeepIdentifiers
+}
+
 func observationsToUpkeepKeys(logger *log.Logger, observations []types.AttributedObservation, reportBlockLag int) ([][]ktypes.UpkeepKey, error) {
 	var parseErrors int
 

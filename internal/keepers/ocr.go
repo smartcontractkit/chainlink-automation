@@ -75,6 +75,9 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 		identifiers = append(identifiers, upkeepID)
 	}
 
+	// Shuffle the observations before we limit it to observationUpkeepsLimit
+	keyRandSource := getRandomKeySource(rt)
+	identifiers = shuffleObservations(identifiers, keyRandSource)
 	// Check limit
 	if len(identifiers) > observationUpkeepsLimit {
 		identifiers = identifiers[:observationUpkeepsLimit]
