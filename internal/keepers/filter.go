@@ -107,25 +107,11 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 	// Set the key as accepted within activeKeys
 	rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
-	// Update idBlocks if it doesn't exist for the upkeep, or if it existed on an older checkBlockNumber
-	bl, ok := rc.idBlocks.Get(string(id))
-	if ok {
-		isAfter, err := blockKey.After(bl.CheckBlockNumber)
-		if err != nil {
-			return err
-		}
-
-		if !isAfter {
-			rc.logger.Printf("Not updating idBlocks while accepting key %, as it is not after the existing idBlock.checkBlockNumber %s", key, bl.CheckBlockNumber)
-			return nil
-		}
-	}
-
 	// Set idBlocks with the key as checkBlockNumber and empty as TransmitBlockNumber
 	// Empty TransmitBlockNumber filters the upkeep indefinitely (until it is updated by performLog or after performLockoutWindow)
-	rc.idBlocks.Set(string(id), idBlocker{
+	rc.updateIdBlock(string(id), idBlocker{
 		CheckBlockNumber: blockKey,
-	}, util.DefaultCacheExpiration)
+	})
 
 	return nil
 }
@@ -168,28 +154,11 @@ func (rc *reportCoordinator) checkLogs() {
 			// set state of key to indicate that the report was transmitted
 			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
-			// if an idBlock already exists for a higher check block number, don't update it
 			logCheckBlockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
-			idBlock, ok := rc.idBlocks.Get(string(id))
-
-			if ok {
-				isAfter, err := idBlock.CheckBlockNumber.After(logCheckBlockKey)
-				if err != nil {
-					continue
-				}
-				if isAfter {
-					rc.logger.Printf("Higher check block already exists in idBlocks, not clearing idBlocks while processing perform log for key %s", l.Key)
-					continue
-				}
-			}
-
-			// if we detect a log, remove it from the observation filters
-			// to allow it to be reported on after the block in
-			// which it was transmitted
-			rc.idBlocks.Set(string(id), idBlocker{
+			rc.updateIdBlock(string(id), idBlocker{
 				CheckBlockNumber:    logCheckBlockKey,
-				TransmitBlockNumber: l.TransmitBlock, // TODO: Max of existing transmit block number, refactor to separate function?
-			}, util.DefaultCacheExpiration)
+				TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
+			})
 		}
 	}
 
@@ -216,25 +185,72 @@ func (rc *reportCoordinator) checkLogs() {
 			rc.logger.Printf("Reorg log found for upkeep %s in transaction %s at block %s, with confirmations %d", l.UpkeepId, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 			rc.reorgLogs.Set(logKey, true, util.DefaultCacheExpiration)
 
-			// If an idBlock already exists for a higher check block number, don't update it
-			idBlock, ok := rc.idBlocks.Get(string(l.UpkeepId))
-			if ok {
-				isAfter, err := idBlock.CheckBlockNumber.After(l.TransmitBlock)
-				if err != nil {
-					continue
-				}
-				if isAfter {
-					rc.logger.Printf("Higher check block already exists in idBlocks, not clearing idBlocks while processing reorg log for upkeep %s on block %s", l.UpkeepId, l.TransmitBlock)
-					continue
-				}
-			}
-
-			rc.idBlocks.Set(string(l.UpkeepId), idBlocker{
+			// As we do not have the actual checkBlockNumber which generated this reorg log, use transmitBlockNumber
+			rc.updateIdBlock(string(l.UpkeepId), idBlocker{
 				CheckBlockNumber:    l.TransmitBlock,
-				TransmitBlockNumber: l.TransmitBlock, // TODO: Max of existing transmit block number, refactor to separate function?
-			}, util.DefaultCacheExpiration)
+				TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
+			})
 		}
 	}
+}
+
+// This function tries to update idBlock for a given key to val. If no idBlock existed for this key
+// then it's just updated with val, however if it existed before then it is only updated if checkBlockNumber
+// is set higher, or checkBlockNumber is the same and transmitBlockNumber is higher.
+//
+// For a sequence of updates, updateIdBlock can be called in any order on different nodes, but by
+// maintaining this invariant it results in an eventually consistent value across nodes.
+func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
+	idBlock, ok := rc.idBlocks.Get(key)
+	if !ok {
+		// No value before, simply set it and return
+		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
+		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
+		return
+	}
+
+	// If idBlock.checkBlockNumber is strictly after val.checkBlockNumber, nothing to update, simply return
+	isAfter, err := idBlock.CheckBlockNumber.After(val.CheckBlockNumber)
+	if err != nil {
+		// No updates in case of error
+		return
+	}
+	if isAfter {
+		rc.logger.Printf("updateIdBlock for key %s: Higher check block already exists in idBlocks (%+v), not setting new val (%+v)", key, idBlock, val)
+		return
+	}
+
+	// If val.checkBlockNumber is strictly after idBlock.checkBlockNumber, simply update it
+	isAfter, err = val.CheckBlockNumber.After(idBlock.CheckBlockNumber)
+	if err != nil {
+		// No updates in case of error
+		return
+	}
+	if isAfter {
+		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
+		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
+		return
+	}
+
+	// Now val.checkBlockNumber == idBlock.checkBlockNumber, update if transmitBlockNumber has increased
+	// Note: val.TransmitBlockNumber can be nil or empty, in which case it is considered lower and not updated
+	// We do this separately so that after is not called on the key
+	if idBlock.TransmitBlockNumber == nil || idBlock.TransmitBlockNumber.String() == "" {
+		rc.logger.Printf("updateIdBlock for key %s: Higher transmit block already exists in idBlocks (%+v), not setting new val (%+v)", key, idBlock, val)
+		return
+	}
+	isAfter, err = val.TransmitBlockNumber.After(idBlock.TransmitBlockNumber)
+	if err != nil {
+		// No updates in case of error
+		return
+	}
+	if isAfter {
+		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
+		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
+		return
+	}
+
+	rc.logger.Printf("updateIdBlock for key %s: Higher transmit block already exists in idBlocks (%+v), not setting new val (%+v)", key, idBlock, val)
 }
 
 type idBlocker struct {
