@@ -73,9 +73,6 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 		ctx, cancel := test.Ctx()
 
 		rg := ktypes.NewMockRegistry(t)
-		rg.Mock.On("IdentifierFromKey", mock.Anything).
-			Return(test.ID, nil).
-			Maybe()
 		rg.Mock.On("CheckUpkeep", mock.Anything, test.Key).
 			Return(test.RegResult, test.Err)
 

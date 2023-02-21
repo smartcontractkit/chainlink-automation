@@ -357,15 +357,17 @@ func FuzzLimitedLengthEncode(f *testing.F) {
 			return
 		}
 
+		blockKey := chain.BlockKey("123")
 		keys := make([]ktypes.UpkeepIdentifier, a)
 		for i := 0; i < a; i++ {
 			k := strings.Repeat("1", rand.Intn(b)+3)
-			k = k[:1] + "|" + k[2:]
 			keys[i] = ktypes.UpkeepIdentifier(k)
 		}
 
-		ob := &chain.UpkeepObservation{}
-		ob.UpkeepIdentifiers = keys
+		ob := &chain.UpkeepObservation{
+			BlockKey:          blockKey,
+			UpkeepIdentifiers: keys,
+		}
 		bt, err := limitedLengthEncode(ob, 1000)
 
 		assert.NoError(t, err)

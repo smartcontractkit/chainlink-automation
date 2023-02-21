@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -18,7 +19,24 @@ type UpkeepObservation struct {
 	UpkeepIdentifiers []types.UpkeepIdentifier `json:"2"`
 }
 
-func (uo UpkeepObservation) Validate() error {
+type upkeepObservation UpkeepObservation
+
+func (u *UpkeepObservation) UnmarshalJSON(b []byte) error {
+	var upkeep upkeepObservation
+	if err := json.Unmarshal(b, &upkeep); err != nil {
+		return err
+	}
+
+	if err := u.validate(upkeep); err != nil {
+		return err
+	}
+
+	*u = UpkeepObservation(upkeep)
+
+	return nil
+}
+
+func (u *UpkeepObservation) validate(uo upkeepObservation) error {
 	bl, ok := big.NewInt(0).SetString(uo.BlockKey.String(), 10)
 	if !ok {
 		return ErrBlockKeyNotParsable
