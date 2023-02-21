@@ -283,15 +283,6 @@ func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 	}
 }
 
-func (r *evmRegistryv2_0) IdentifierFromKey(key types.UpkeepKey) (types.UpkeepIdentifier, error) {
-	_, id, err := key.BlockKeyAndUpkeepID()
-	if err != nil {
-		return nil, err
-	}
-
-	return id, nil
-}
-
 func (r *evmRegistryv2_0) buildCallOpts(ctx context.Context, block types.BlockKey) (*bind.CallOpts, error) {
 	b := new(big.Int)
 	_, ok := b.SetString(block.String(), 10)

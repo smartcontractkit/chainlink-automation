@@ -91,7 +91,7 @@ EachKey:
 	for _, result := range results {
 		for _, filter := range filters {
 			if !filter(result.Key) {
-				s.logger.Printf("filtered out key '%s'", result.Key)
+				s.logger.Printf("filtered out key during SampleUpkeeps '%s'", result.Key)
 				continue EachKey
 			}
 		}

@@ -1172,7 +1172,6 @@ func (_m *BenchmarkMockedReportEncoder) DecodeReport(report []byte) ([]ktypes.Up
 type BenchmarkMockedRegistry struct {
 	rtnKeys []ktypes.UpkeepKey
 	rtnRes  ktypes.UpkeepResult
-	rtnId   ktypes.UpkeepIdentifier
 }
 
 func (_m *BenchmarkMockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key ktypes.BlockKey) ([]ktypes.UpkeepKey, error) {
@@ -1181,10 +1180,6 @@ func (_m *BenchmarkMockedRegistry) GetActiveUpkeepKeys(ctx context.Context, key 
 
 func (_m *BenchmarkMockedRegistry) CheckUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) (bool, ktypes.UpkeepResult, error) {
 	return true, _m.rtnRes, nil
-}
-
-func (_m *BenchmarkMockedRegistry) IdentifierFromKey(key ktypes.UpkeepKey) (ktypes.UpkeepIdentifier, error) {
-	return _m.rtnId, nil
 }
 
 type BenchmarkMockedFilterer struct{}
