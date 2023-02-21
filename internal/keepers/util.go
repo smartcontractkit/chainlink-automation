@@ -159,6 +159,7 @@ func observationsToUpkeepKeys(logger *log.Logger, observations []types.Attribute
 	// Here we calculate the median block that will be applied for all upkeep keys.
 	// reportBlockLag is subtracted from the median block to ensure enough nodes have that block in their blockchain
 	medianBlock := calculateMedianBlock(allBlockKeys, reportBlockLag)
+	logger.Printf("calculated median block %s, accounting for reportBlockLag of %d", medianBlock.String(), reportBlockLag)
 
 	upkeepKeys, err := createKeysWithMedianBlock(medianBlock, upkeepIDs)
 	if err != nil {
@@ -302,6 +303,15 @@ func upkeepKeysToString(keys []ktypes.UpkeepKey) string {
 	}
 
 	return strings.Join(keysStr, ", ")
+}
+
+func upkeepIdentifiersToString(ids []ktypes.UpkeepIdentifier) string {
+	idsStr := make([]string, len(ids))
+	for i, id := range ids {
+		idsStr[i] = string(id)
+	}
+
+	return strings.Join(idsStr, ", ")
 }
 
 func createBatches[T any](b []T, size int) (batches [][]T) {

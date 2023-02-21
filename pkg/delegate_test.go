@@ -7,6 +7,7 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -31,8 +32,11 @@ func TestStart(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	var err error
+	var mockLogger = ktypes.NewMockLogger(t)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 	d, err := NewDelegate(DelegateConfig{
+		Logger: mockLogger,
 		LocalConfig: types.LocalConfig{
 			BlockchainTimeout:                  1 * time.Second,
 			ContractConfigTrackerPollInterval:  15 * time.Second,

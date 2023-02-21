@@ -151,7 +151,7 @@ func Test_observationsToUpkeepKeys(t *testing.T) {
 		{chain.UpkeepKey("2|3")},
 		{chain.UpkeepKey("2|1")},
 	}
-	result, err := observationsToUpkeepKeys(&log.Logger{}, attr, 0)
+	result, err := observationsToUpkeepKeys(log.New(io.Discard, "", 0), attr, 0)
 
 	assert.Equal(t, expected, result)
 	assert.NoError(t, err)

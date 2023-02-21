@@ -118,6 +118,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		}
 
 		if isAfter {
+			rc.logger.Printf("Higher check block already exists in idBlocks, not changing idBlocks while accepting key %s", key)
 			return nil
 		}
 	}
@@ -179,6 +180,7 @@ func (rc *reportCoordinator) checkLogs() {
 					continue
 				}
 				if isAfter {
+					rc.logger.Printf("Higher check block already exists in idBlocks, not clearing idBlocks while processing perform log for key %s", l.Key)
 					continue
 				}
 			}
