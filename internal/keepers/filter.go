@@ -108,7 +108,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 
 	bl, ok := rc.idBlocks.Get(string(id))
 	if ok {
-		// TODO: What if the block number is same? (and the key was cleared out before)
+		// TODO: What if the block number is same? (and the key was cleared out before by setting a transmit block)
 		isAfter, err := bl.CheckBlockNumber.After(blockKey)
 		if err != nil {
 			return err
