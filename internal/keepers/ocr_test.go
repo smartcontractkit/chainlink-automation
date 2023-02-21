@@ -48,6 +48,7 @@ func TestObservation(t *testing.T) {
 		Ctx                 func() (context.Context, func())
 		SampleSet           ktypes.UpkeepResults
 		LatestBlock         ktypes.BlockKey
+		reportTimestamp     types.ReportTimestamp
 		ServiceError        bool
 		SampleErr           error
 		ExpectedObservation types.Observation
@@ -133,9 +134,42 @@ func TestObservation(t *testing.T) {
 			LatestBlock: bigBlockKey,
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
 				BlockKey: chain.BlockKey("100000000000100000000000100000000000100000000000100000000001"),
+				// We expect "observationKeysLimit" item(s) here, from a detereministically shuffled order
+				UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+					ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000004"),
+				},
+			})),
+		},
+		{
+			Name: "Reduce Key List to Observation Limit Shuffled",
+			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
+			SampleSet: ktypes.UpkeepResults{
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000001")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000002")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000003")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000004")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000005")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000006")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000007")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000008")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000009")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000010")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000011")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000012")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000013")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000014")), State: ktypes.Eligible},
+				{Key: chain.UpkeepKey([]byte("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000015")), State: ktypes.Eligible},
+			},
+			LatestBlock: bigBlockKey,
+			reportTimestamp: types.ReportTimestamp{ // Changes the shuffle order from previous case
+				Epoch: 1,
+				Round: 3,
+			},
+			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
+				BlockKey: chain.BlockKey("100000000000100000000000100000000000100000000000100000000001"),
 				// We expect "observationKeysLimit" item(s) here
 				UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
-					ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000001"),
+					ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000006"),
 				},
 			})),
 		},
@@ -159,7 +193,7 @@ func TestObservation(t *testing.T) {
 			ctx, cancel := test.Ctx()
 			ms.Mock.On("SampleUpkeeps", mock.Anything).Return(test.LatestBlock, test.SampleSet, test.SampleErr)
 
-			b, err := plugin.Observation(ctx, types.ReportTimestamp{}, types.Query{})
+			b, err := plugin.Observation(ctx, test.reportTimestamp, types.Query{})
 			cancel()
 
 			if test.ExpectedErr == nil {
