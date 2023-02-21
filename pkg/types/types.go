@@ -53,6 +53,7 @@ type ReportEncoder interface {
 //go:generate mockery --name PerformLogProvider --inpackage --output . --case=underscore --filename perform_log_provider.generated.go
 type PerformLogProvider interface {
 	PerformLogs(context.Context) ([]PerformLog, error)
+	ReorgLogs(context.Context) ([]ReorgLog, error)
 }
 
 type PerformLog struct {
@@ -60,7 +61,13 @@ type PerformLog struct {
 	TransmitBlock   BlockKey
 	Confirmations   int64
 	TransactionHash string
-	BlockNumber     int64
+}
+
+type ReorgLog struct {
+	UpkeepId        UpkeepIdentifier
+	TransmitBlock   BlockKey
+	Confirmations   int64
+	TransactionHash string
 }
 
 type BlockKey interface {
