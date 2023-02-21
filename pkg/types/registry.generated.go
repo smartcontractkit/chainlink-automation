@@ -67,29 +67,6 @@ func (_m *MockRegistry) GetActiveUpkeepIDs(_a0 context.Context) ([]UpkeepIdentif
 	return r0, r1
 }
 
-// IdentifierFromKey provides a mock function with given fields: _a0
-func (_m *MockRegistry) IdentifierFromKey(_a0 UpkeepKey) (UpkeepIdentifier, error) {
-	ret := _m.Called(_a0)
-
-	var r0 UpkeepIdentifier
-	if rf, ok := ret.Get(0).(func(UpkeepKey) UpkeepIdentifier); ok {
-		r0 = rf(_a0)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(UpkeepIdentifier)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(UpkeepKey) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // NewMockRegistry creates a new instance of MockRegistry. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
 func NewMockRegistry(t testing.TB) *MockRegistry {
 	mock := &MockRegistry{}
