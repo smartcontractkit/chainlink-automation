@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"math"
@@ -16,6 +17,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -294,6 +296,23 @@ func limitedLengthEncode(obs *chain.UpkeepObservation, limit int) ([]byte, error
 	}
 
 	return res, nil
+}
+
+// Generates a randomness source derived from the report timestamp (config, epoch, round) so
+// that it's the same across the network for the same round
+func getRandomKeySource(rt types.ReportTimestamp) [16]byte {
+	// similar key building as libocr transmit selector
+	hash := sha3.NewLegacyKeccak256()
+	hash.Write(rt.ConfigDigest[:])
+	temp := make([]byte, 8)
+	binary.LittleEndian.PutUint64(temp, uint64(rt.Epoch))
+	hash.Write(temp)
+	binary.LittleEndian.PutUint64(temp, uint64(rt.Round))
+	hash.Write(temp)
+
+	var keyRandSource [16]byte
+	copy(keyRandSource[:], hash.Sum(nil))
+	return keyRandSource
 }
 
 func upkeepKeysToString(keys []ktypes.UpkeepKey) string {
