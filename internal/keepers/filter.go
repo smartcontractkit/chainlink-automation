@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -106,20 +107,22 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 	// Set the key as accepted within activeKeys
 	rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
+	// Update idBlocks if it doesn't exist for the upkeep, or if it existed on an older checkBlockNumber
 	bl, ok := rc.idBlocks.Get(string(id))
 	if ok {
-		// TODO: What if the block number is same? (and the key was cleared out before by setting a transmit block)
-		isAfter, err := bl.CheckBlockNumber.After(blockKey)
+		isAfter, err := blockKey.After(bl.CheckBlockNumber)
 		if err != nil {
 			return err
 		}
 
-		if isAfter {
-			rc.logger.Printf("Higher check block already exists in idBlocks, not changing idBlocks while accepting key %s", key)
+		if !isAfter {
+			rc.logger.Printf("Not updating idBlocks while accepting key %, as it is not after the existing idBlock.checkBlockNumber %s", key, bl.CheckBlockNumber)
 			return nil
 		}
 	}
 
+	// Set idBlocks with the key as checkBlockNumber and empty as TransmitBlockNumber
+	// Empty TransmitBlockNumber filters the upkeep indefinitely (until it is updated by performLog or after performLockoutWindow)
 	rc.idBlocks.Set(string(id), idBlocker{
 		CheckBlockNumber: blockKey,
 	}, util.DefaultCacheExpiration)
@@ -167,10 +170,10 @@ func (rc *reportCoordinator) checkLogs() {
 
 			// if an idBlock already exists for a higher check block number, don't update it
 			logCheckBlockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
-			bl, ok := rc.idBlocks.Get(string(id))
+			idBlock, ok := rc.idBlocks.Get(string(id))
 
 			if ok {
-				isAfter, err := bl.CheckBlockNumber.After(logCheckBlockKey)
+				isAfter, err := idBlock.CheckBlockNumber.After(logCheckBlockKey)
 				if err != nil {
 					continue
 				}
@@ -183,9 +186,10 @@ func (rc *reportCoordinator) checkLogs() {
 			// if we detect a log, remove it from the observation filters
 			// to allow it to be reported on after the block in
 			// which it was transmitted
-			bl.TransmitBlockNumber = l.TransmitBlock
-			rc.idBlocks.Set(string(id), bl, util.DefaultCacheExpiration)
-
+			rc.idBlocks.Set(string(id), idBlocker{
+				CheckBlockNumber:    logCheckBlockKey,
+				TransmitBlockNumber: l.TransmitBlock, // TODO: Max of existing transmit block number, refactor to separate function?
+			}, util.DefaultCacheExpiration)
 		}
 	}
 
@@ -205,20 +209,30 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		// If a reorg was processed already, do not reprocess it. txHash + upkeepID is used to identify the log
-		logKey := string(l.TransactionHash) + string(l.UpkeepId)
+		// If a reorg log was processed already, do not reprocess it. TransmitBlock + UpkeepId is used to identify the log
+		logKey := chain.NewUpkeepKeyFromBlockAndID(l.TransmitBlock, l.UpkeepId).String()
 		_, ok := rc.reorgLogs.Get(logKey)
-		if ok {
-			continue
-		}
-		rc.reorgLogs.Set(logKey, true, util.DefaultCacheExpiration)
-		rc.logger.Printf("Reorg log found for upkeep %s in transaction %s at block %s, with confirmations %d", l.UpkeepId, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+		if !ok {
+			rc.logger.Printf("Reorg log found for upkeep %s in transaction %s at block %s, with confirmations %d", l.UpkeepId, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+			rc.reorgLogs.Set(logKey, true, util.DefaultCacheExpiration)
 
-		bl, ok := rc.idBlocks.Get(string(l.UpkeepId))
-		// In case we don't have an idBlock for the upkeep, then there's nothing to clear
-		if ok {
-			bl.TransmitBlockNumber = l.TransmitBlock
-			rc.idBlocks.Set(string(l.UpkeepId), bl, util.DefaultCacheExpiration)
+			// If an idBlock already exists for a higher check block number, don't update it
+			idBlock, ok := rc.idBlocks.Get(string(l.UpkeepId))
+			if ok {
+				isAfter, err := idBlock.CheckBlockNumber.After(l.TransmitBlock)
+				if err != nil {
+					continue
+				}
+				if isAfter {
+					rc.logger.Printf("Higher check block already exists in idBlocks, not clearing idBlocks while processing reorg log for upkeep %s on block %s", l.UpkeepId, l.TransmitBlock)
+					continue
+				}
+			}
+
+			rc.idBlocks.Set(string(l.UpkeepId), idBlocker{
+				CheckBlockNumber:    l.TransmitBlock,
+				TransmitBlockNumber: l.TransmitBlock, // TODO: Max of existing transmit block number, refactor to separate function?
+			}, util.DefaultCacheExpiration)
 		}
 	}
 }
