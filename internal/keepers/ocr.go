@@ -92,7 +92,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// write the number of keys returned from sampling to the debug log
 	// this offers a record of the number of performs the node has visibility
 	// of for each epoch/round
-	k.logger.Printf("OCR observation completed successfully with block number %s and %d eligible upkeeps: %s", blockKey, len(identifiers), lCtx)
+	k.logger.Printf("OCR observation completed successfully with block number %s, %d eligible upkeeps(%s): %s", blockKey, len(identifiers), upkeepIdentifiersToString(identifiers), lCtx)
 
 	return b, nil
 }
@@ -134,7 +134,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	for i, uk := range upkeepKeys {
 		upkeepKeysStr[i] = upkeepKeysToString(uk)
 	}
-	k.logger.Printf("Parsed observation keys to check in report: %s, %s", strings.Join(upkeepKeysStr, ", "), lCtx)
+	k.logger.Printf("Parsed observation keys to check in report %s: %s", strings.Join(upkeepKeysStr, ", "), lCtx)
 
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
@@ -142,7 +142,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
-	k.logger.Printf("Post filtering, deduping and shuffling, keys to check in report: %s, %s", upkeepKeysToString(keysToCheck), lCtx)
+	k.logger.Printf("Post filtering, deduping and shuffling, keys to check in report %s: %s", upkeepKeysToString(keysToCheck), lCtx)
 
 	// Check the limit
 	if len(keysToCheck) > reportKeysLimit {

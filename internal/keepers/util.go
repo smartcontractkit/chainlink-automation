@@ -305,6 +305,15 @@ func upkeepKeysToString(keys []ktypes.UpkeepKey) string {
 	return strings.Join(keysStr, ", ")
 }
 
+func upkeepIdentifiersToString(ids []ktypes.UpkeepIdentifier) string {
+	idsStr := make([]string, len(ids))
+	for i, id := range ids {
+		idsStr[i] = string(id)
+	}
+
+	return strings.Join(idsStr, ", ")
+}
+
 func createBatches[T any](b []T, size int) (batches [][]T) {
 	for i := 0; i < len(b); i += size {
 		j := i + size
