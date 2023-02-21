@@ -118,6 +118,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		}
 
 		if isAfter {
+			rc.logger.Printf("Higher check block already exists in idBlocks, not changing idBlocks while accepting key %s", key)
 			return nil
 		}
 	}
