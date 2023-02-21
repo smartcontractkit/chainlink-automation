@@ -50,6 +50,8 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		conf.ServiceQueueLength = c.ServiceQueueLength
 	}
 
+	l.Printf("creating oracle with reporting factory config: %+v", conf)
+
 	// create the oracle from config values
 	keeper, err := offchainreporting.NewOracle(offchainreporting.OracleArgs{
 		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
