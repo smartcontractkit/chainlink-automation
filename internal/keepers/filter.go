@@ -232,12 +232,18 @@ func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
 	}
 
 	// Now val.checkBlockNumber == idBlock.checkBlockNumber, update if transmitBlockNumber has increased
-	// Note: val.TransmitBlockNumber can be nil or empty, in which case it is considered lower and not updated
-	// We do this separately so that after is not called on the key
-	if idBlock.TransmitBlockNumber == nil || idBlock.TransmitBlockNumber.String() == "" {
+
+	// transmitBlockNumber can be nil or empty which needs to be handled separately so that after does not throw an error
+	if val.TransmitBlockNumber == nil || val.TransmitBlockNumber.String() == "" {
 		rc.logger.Printf("updateIdBlock for key %s: Higher transmit block already exists in idBlocks (%+v), not setting new val (%+v)", key, idBlock, val)
 		return
 	}
+	if idBlock.TransmitBlockNumber == nil || idBlock.TransmitBlockNumber.String() == "" {
+		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
+		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
+		return
+	}
+
 	isAfter, err = val.TransmitBlockNumber.After(idBlock.TransmitBlockNumber)
 	if err != nil {
 		// No updates in case of error
