@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
@@ -129,12 +130,19 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 		return false, nil, fmt.Errorf("%w: failed to build upkeep keys from the given observations", err)
 	}
 
+	upkeepKeysStr := make([]string, len(upkeepKeys))
+	for i, uk := range upkeepKeys {
+		upkeepKeysStr[i] = upkeepKeysToString(uk)
+	}
+	k.logger.Printf("Parsed observation keys to check in report: %s, %s", strings.Join(upkeepKeysStr, ", "), lCtx)
+
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
 	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.filter.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
+	k.logger.Printf("Post filtering, deduping and shuffling, keys to check in report: %s, %s", upkeepKeysToString(keysToCheck), lCtx)
 
 	// Check the limit
 	if len(keysToCheck) > reportKeysLimit {
