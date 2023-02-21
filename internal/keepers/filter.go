@@ -180,6 +180,7 @@ func (rc *reportCoordinator) checkLogs() {
 					continue
 				}
 				if isAfter {
+					rc.logger.Printf("Higher check block already exists in idBlocks, not clearing idBlocks while processing perform log for key %s", l.Key)
 					continue
 				}
 			}
