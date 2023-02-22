@@ -164,12 +164,18 @@ func (rc *reportCoordinator) checkLogs() {
 
 		if ok && confirmed {
 			// This can happen if we get a perform log for the same key again on a newer block in case of reorgs
-			// In this case, no change to activeKeys is needed, but idBlocks is updated to the newerBlockNumber
-			// TODO: Think how you can reduce calls to this since it will be called everytime
-			rc.updateIdBlock(string(id), idBlocker{
-				CheckBlockNumber:    logCheckBlockKey,
-				TransmitBlockNumber: l.TransmitBlock,
-			})
+			// In this case, no change to activeKeys is needed, but idBlocks is updated to the newer BlockNumber
+			idBlock, ok := rc.idBlocks.Get(string(id))
+			if ok && idBlock.CheckBlockNumber.String() == logCheckBlockKey.String() &&
+				idBlock.TransmitBlockNumber.String() != l.TransmitBlock.String() {
+
+				rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+
+				rc.updateIdBlock(string(id), idBlocker{
+					CheckBlockNumber:    logCheckBlockKey,
+					TransmitBlockNumber: l.TransmitBlock,
+				})
+			}
 		}
 	}
 
