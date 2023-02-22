@@ -104,14 +104,19 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		return err
 	}
 
-	// Set the key as accepted within activeKeys
-	rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
+	// If a key is already active then don't update filters, but also not throw errors as
+	// there might be other keys in the same report which can get accepted
+	_, ok := rc.activeKeys.Get(key.String())
+	if !ok {
+		// Set the key as accepted within activeKeys
+		rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
-	// Set idBlocks with the key as checkBlockNumber and empty as TransmitBlockNumber
-	// Empty TransmitBlockNumber filters the upkeep indefinitely (until it is updated by performLog or after performLockoutWindow)
-	rc.updateIdBlock(string(id), idBlocker{
-		CheckBlockNumber: blockKey,
-	})
+		// Set idBlocks with the key as checkBlockNumber and empty as TransmitBlockNumber
+		// Empty TransmitBlockNumber filters the upkeep indefinitely (until it is updated by performLog or after performLockoutWindow)
+		rc.updateIdBlock(string(id), idBlocker{
+			CheckBlockNumber: blockKey,
+		})
+	}
 
 	return nil
 }
