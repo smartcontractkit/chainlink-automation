@@ -129,8 +129,8 @@ func (rc *reportCoordinator) checkLogs() {
 	// Perform log entries indicate that a perform exists on chain in some
 	// capacity. the existance of an entry means that the transaction
 	// was broadcast by at least one node. reorgs can still happen
-	// causing performs to vanish or get moved to a later block. Higher minConfirmations
-	// setting reduces the chances of this happening.
+	// causing performs to get moved to a later block or change to reorg logs.
+	// Higher minConfirmations setting reduces the chances of this happening.
 	//
 	// We do two things upon receiving a perform log
 	// - Mark the upkeep key responsible for the perform as 'transmitted', so that this node does not
@@ -147,6 +147,7 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
+		logCheckBlockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
 		// Process log if the key hasn't been confirmed yet
 		confirmed, ok := rc.activeKeys.Get(l.Key.String())
 		if ok && !confirmed {
@@ -155,10 +156,19 @@ func (rc *reportCoordinator) checkLogs() {
 			// set state of key to indicate that the report was transmitted
 			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
-			logCheckBlockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
 			rc.updateIdBlock(string(id), idBlocker{
 				CheckBlockNumber:    logCheckBlockKey,
 				TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
+			})
+		}
+
+		if ok && confirmed {
+			// This can happen if we get a perform log for the same key again on a newer block in case of reorgs
+			// In this case, no change to activeKeys is needed, but idBlocks is updated to the newerBlockNumber
+			// TODO: Think how you can reduce calls to this since it will be called everytime
+			rc.updateIdBlock(string(id), idBlocker{
+				CheckBlockNumber:    logCheckBlockKey,
+				TransmitBlockNumber: l.TransmitBlock,
 			})
 		}
 	}
@@ -200,7 +210,8 @@ type idBlocker struct {
 }
 
 // idBlock should only be updated if checkBlockNumber is set higher
-// or checkBlockNumber is the same and transmitBlockNumber is lower.
+// or checkBlockNumber is the same and transmitBlockNumber is higher
+// (with a special case for IndefiniteBlockingKey).
 //
 // For a sequence of updates, updateIdBlock can be called in any order
 // on different nodes, but by maintaining this invariant it results in
@@ -224,8 +235,14 @@ func (b idBlocker) ShouldUpdate(val idBlocker) (bool, error) {
 		return false, nil
 	}
 
-	// Now the checkBlockNumber should be same, return true if val.TransmitBlockNumber is lower
-	return b.TransmitBlockNumber.After(val.TransmitBlockNumber)
+	// Now the checkBlockNumber should be same
+	// If idBlock has an IndefiniteBlockingKey, then update
+	if b.TransmitBlockNumber.String() == IndefiniteBlockingKey.String() {
+		return true, nil
+	}
+
+	// return true if val.TransmitBlockNumber is higher
+	return val.TransmitBlockNumber.After(b.TransmitBlockNumber)
 }
 
 func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
