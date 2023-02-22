@@ -7,7 +7,7 @@ dependencies:
 	go mod download
 
 generate:
-	go generate
+	go generate -x ./...
 
 test: dependencies
 	@go test -v $(GOPACKAGES)
