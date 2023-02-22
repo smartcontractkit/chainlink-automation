@@ -30,6 +30,7 @@ import (
 
 var (
 	ErrKeyAlreadyAccepted = fmt.Errorf("key alredy accepted")
+	IndefiniteBlockingKey = chain.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
 )
 
 type reportCoordinator struct {
@@ -80,11 +81,6 @@ func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
 
 		// only apply filter if key id is registered in the cache
 		if bl, ok := rc.idBlocks.Get(string(id)); ok {
-			// Return false if empty
-			if bl.TransmitBlockNumber == nil || bl.TransmitBlockNumber.String() == "" {
-				return false
-			}
-
 			isAfter, err := blockKey.After(bl.TransmitBlockNumber)
 			if err != nil {
 				return false
@@ -112,9 +108,9 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
 		// Set idBlocks with the key as checkBlockNumber and empty as TransmitBlockNumber
-		// Empty TransmitBlockNumber filters the upkeep indefinitely (until it is updated by performLog or after performLockoutWindow)
 		rc.updateIdBlock(string(id), idBlocker{
-			CheckBlockNumber: blockKey,
+			CheckBlockNumber:    blockKey,
+			TransmitBlockNumber: IndefiniteBlockingKey,
 		})
 	}
 
@@ -198,74 +194,56 @@ func (rc *reportCoordinator) checkLogs() {
 	}
 }
 
-// This function tries to update idBlock for a given key to val. If no idBlock existed for this key
-// then it's just updated with val, however if it existed before then it is only updated if checkBlockNumber
-// is set higher, or checkBlockNumber is the same and transmitBlockNumber is higher.
-//
-// For a sequence of updates, updateIdBlock can be called in any order on different nodes, but by
-// maintaining this invariant it results in an eventually consistent value across nodes.
-func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
-	idBlock, ok := rc.idBlocks.Get(key)
-	if !ok {
-		// No value before, simply set it and return
-		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
-		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
-		return
-	}
-
-	// If idBlock.checkBlockNumber is strictly after val.checkBlockNumber, nothing to update, simply return
-	isAfter, err := idBlock.CheckBlockNumber.After(val.CheckBlockNumber)
-	if err != nil {
-		// No updates in case of error
-		return
-	}
-	if isAfter {
-		rc.logger.Printf("updateIdBlock for key %s: Higher check block already exists in idBlocks (%+v), not setting new val (%+v)", key, idBlock, val)
-		return
-	}
-
-	// If val.checkBlockNumber is strictly after idBlock.checkBlockNumber, simply update it
-	isAfter, err = val.CheckBlockNumber.After(idBlock.CheckBlockNumber)
-	if err != nil {
-		// No updates in case of error
-		return
-	}
-	if isAfter {
-		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
-		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
-		return
-	}
-
-	// Now val.checkBlockNumber == idBlock.checkBlockNumber, update if transmitBlockNumber has increased
-
-	// transmitBlockNumber can be nil or empty which needs to be handled separately so that after does not throw an error
-	if val.TransmitBlockNumber == nil || val.TransmitBlockNumber.String() == "" {
-		rc.logger.Printf("updateIdBlock for key %s: Higher transmit block already exists in idBlocks (%+v), not setting new val (%+v)", key, idBlock, val)
-		return
-	}
-	if idBlock.TransmitBlockNumber == nil || idBlock.TransmitBlockNumber.String() == "" {
-		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
-		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
-		return
-	}
-
-	isAfter, err = val.TransmitBlockNumber.After(idBlock.TransmitBlockNumber)
-	if err != nil {
-		// No updates in case of error
-		return
-	}
-	if isAfter {
-		rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
-		rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
-		return
-	}
-
-	rc.logger.Printf("updateIdBlock for key %s: Higher transmit block already exists in idBlocks (%+v), not setting new val (%+v)", key, idBlock, val)
-}
-
 type idBlocker struct {
 	CheckBlockNumber    types.BlockKey
 	TransmitBlockNumber types.BlockKey
+}
+
+// idBlock should only be updated if checkBlockNumber is set higher
+// or checkBlockNumber is the same and transmitBlockNumber is lower.
+//
+// For a sequence of updates, updateIdBlock can be called in any order
+// on different nodes, but by maintaining this invariant it results in
+// an eventually consistent value across nodes.
+func (b idBlocker) ShouldUpdate(val idBlocker) (bool, error) {
+	isAfter, err := val.CheckBlockNumber.After(b.CheckBlockNumber)
+	if err != nil {
+		return false, err
+	}
+	if isAfter {
+		// val has higher checkBlockNumber
+		return true, nil
+	}
+
+	isAfter, err = b.CheckBlockNumber.After(val.CheckBlockNumber)
+	if err != nil {
+		return false, err
+	}
+	if isAfter {
+		// b has higher checkBlockNumber
+		return false, nil
+	}
+
+	// Now the checkBlockNumber should be same, return true if val.TransmitBlockNumber is lower
+	return b.TransmitBlockNumber.After(val.TransmitBlockNumber)
+}
+
+func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
+	idBlock, ok := rc.idBlocks.Get(key)
+	if ok {
+		shouldUpdate, err := idBlock.ShouldUpdate(val)
+		if err != nil {
+			// Don't update on errors
+			return
+		}
+		if !shouldUpdate {
+			rc.logger.Printf("updateIdBlock for key %s: Not updating idBlocks (%+v) to new val (%+v)", key, idBlock, val)
+			return
+		}
+	}
+
+	rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
+	rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
 }
 
 func (rc *reportCoordinator) start() {
