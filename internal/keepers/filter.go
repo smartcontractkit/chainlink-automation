@@ -197,7 +197,8 @@ func (rc *reportCoordinator) checkLogs() {
 			rc.reorgLogs.Set(logKey, true, util.DefaultCacheExpiration)
 
 			rc.updateIdBlock(string(l.UpkeepId), idBlocker{
-				CheckBlockNumber:    l.TransmitBlock, // As we do not have the actual checkBlockNumber which generated this reorg log, use transmitBlockNumber
+				CheckBlockNumber: l.TransmitBlock, // As we do not have the actual checkBlockNumber which generated this
+				//reorg log, use transmitBlockNumber to override all previous checkBlockNumbers
 				TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
 			})
 		}
