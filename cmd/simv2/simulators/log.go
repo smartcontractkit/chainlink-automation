@@ -32,6 +32,11 @@ func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLo
 	return logs, nil
 }
 
+func (ct *SimulatedContract) ReorgLogs(ctx context.Context) ([]types.ReorgLog, error) {
+	// Not implemented in simulated contract yet
+	return nil, nil
+}
+
 type sortedKeyMap[T any] struct {
 	mu     sync.RWMutex
 	values map[string]T
