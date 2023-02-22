@@ -145,6 +145,100 @@ func SendVeryLargeBlockValue(ctx context.Context, original []byte, _ error) (str
 	return name, b, err
 }
 
+// SendNegativeUpkeepID produces an encoded json object with the upkeep IDs as negative values
+func SendNegativeUpkeepID(ctx context.Context, original []byte, _ error) (string, []byte, error) {
+	name := "Send Negative Upkeep ID"
+
+	type modifiedObservation struct {
+		BlockKey          types.BlockKey           `json:"1"`
+		UpkeepIdentifiers []types.UpkeepIdentifier `json:"2"`
+	}
+
+	var ob chain.UpkeepObservation
+	if err := json.Unmarshal(original, &ob); err != nil {
+		return name, nil, err
+	}
+
+	var ids []types.UpkeepIdentifier
+	for _, id := range ob.UpkeepIdentifiers {
+		idInt, _ := id.BigInt()
+		if idInt.Cmp(big.NewInt(0)) > 1 {
+			ids = append(ids, types.UpkeepIdentifier(idInt.Neg(idInt).String()))
+		} else {
+			ids = append(ids, id)
+		}
+	}
+
+	observation := modifiedObservation{
+		BlockKey:          ob.BlockKey,
+		UpkeepIdentifiers: ids,
+	}
+
+	b, err := json.Marshal(observation)
+	return name, b, err
+}
+
+// SendZeroUpkeepID produces an encoded json object with the upkeep IDs as zeroes
+func SendZeroUpkeepID(ctx context.Context, original []byte, _ error) (string, []byte, error) {
+	name := "Send Zero Upkeep ID"
+
+	type modifiedObservation struct {
+		BlockKey          types.BlockKey           `json:"1"`
+		UpkeepIdentifiers []types.UpkeepIdentifier `json:"2"`
+	}
+
+	var ob chain.UpkeepObservation
+	if err := json.Unmarshal(original, &ob); err != nil {
+		return name, nil, err
+	}
+
+	var ids []types.UpkeepIdentifier
+	for i := 0; i < len(ob.UpkeepIdentifiers); i++ {
+		ids = append(ids, types.UpkeepIdentifier("0"))
+	}
+
+	observation := modifiedObservation{
+		BlockKey:          ob.BlockKey,
+		UpkeepIdentifiers: ids,
+	}
+
+	b, err := json.Marshal(observation)
+	return name, b, err
+}
+
+// SendVeryLargeUpkeepIDs produces an encoded json object with very large upkeep IDs
+func SendVeryLargeUpkeepIDs(ctx context.Context, original []byte, _ error) (string, []byte, error) {
+	name := "Very Large Upkeep ID"
+
+	type modifiedObservation struct {
+		BlockKey          types.BlockKey           `json:"1"`
+		UpkeepIdentifiers []types.UpkeepIdentifier `json:"2"`
+	}
+
+	var ob chain.UpkeepObservation
+	if err := json.Unmarshal(original, &ob); err != nil {
+		return name, nil, err
+	}
+
+	var ids []types.UpkeepIdentifier
+	for i := 0; i < len(ob.UpkeepIdentifiers); i++ {
+		keyStr, err := GenerateRandomASCIIString(1000)
+		if err != nil {
+			return name, nil, err
+		}
+
+		ids = append(ids, types.UpkeepIdentifier(keyStr))
+	}
+
+	observation := modifiedObservation{
+		BlockKey:          ob.BlockKey,
+		UpkeepIdentifiers: ids,
+	}
+
+	b, err := json.Marshal(observation)
+	return name, b, err
+}
+
 func GenerateRandomASCIIString(length int) (string, error) {
 	result := strings.Builder{}
 	for {
