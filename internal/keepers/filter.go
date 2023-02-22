@@ -107,7 +107,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 		// Set the key as accepted within activeKeys
 		rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
-		// Set idBlocks with the key as checkBlockNumber and empty as TransmitBlockNumber
+		// Set idBlocks with the key as checkBlockNumber and IndefiniteBlockingKey as TransmitBlockNumber
 		rc.updateIdBlock(string(id), idBlocker{
 			CheckBlockNumber:    blockKey,
 			TransmitBlockNumber: IndefiniteBlockingKey,
