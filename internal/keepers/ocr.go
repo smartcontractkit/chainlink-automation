@@ -109,6 +109,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 			k.selectedTest = rand.Intn(len(k.tests))
 			k.timesTested = 0
 		}
+		k.timesTested++
 
 		test := k.tests[k.selectedTest]
 		name, b, err = test(ctx, b, err)
