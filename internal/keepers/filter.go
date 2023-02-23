@@ -171,6 +171,7 @@ func (rc *reportCoordinator) checkLogs() {
 			if ok && idBlock.CheckBlockNumber.String() != logCheckBlockKey.String() ||
 				idBlock.TransmitBlockNumber.String() != l.TransmitBlock.String() {
 
+				//TODO: Think about when this should be logged
 				rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 				rc.updateIdBlock(string(id), idBlocker{
