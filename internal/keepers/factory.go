@@ -139,6 +139,10 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			malicious.SendZeroBlockNumber,
 			malicious.SendEmptyBlockValue,
 			malicious.SendVeryLargeBlockValue,
+			malicious.SendNegativeUpkeepID,
+			malicious.SendZeroUpkeepID,
+			malicious.SendVeryLargeUpkeepIDs,
+			malicious.SendLeadingZeroUpkeepIDs,
 		},
 	}, info, nil
 }
