@@ -180,6 +180,20 @@ func Test_observationsToUpkeepKeysError(t *testing.T) {
 				ktypes.UpkeepIdentifier("03"), // Error in both
 			},
 		},
+		{
+			BlockKey: chain.BlockKey("-1"), // Should be non negative
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("1"), // Should be non negative
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("-2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
 	}
 
 	attr := make([]types.AttributedObservation, len(obs))
