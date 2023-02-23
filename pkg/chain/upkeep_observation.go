@@ -44,6 +44,10 @@ func (u *UpkeepObservation) validate(uo upkeepObservation) error {
 	if bl.String() != uo.BlockKey.String() {
 		return ErrInvalidBlockKey
 	}
+	if bl.Cmp(big.NewInt(0)) <= 0 {
+		// Block number should be positive
+		return ErrInvalidBlockKey
+	}
 
 	for _, ui := range uo.UpkeepIdentifiers {
 		uiInt, ok := ui.BigInt()
@@ -51,6 +55,10 @@ func (u *UpkeepObservation) validate(uo upkeepObservation) error {
 			return ErrUpkeepKeyNotParsable
 		}
 		if uiInt.String() != string(ui) {
+			return ErrInvalidUpkeepIdentifier
+		}
+		if uiInt.Cmp(big.NewInt(0)) == -1 {
+			// UpkeepId should be non negative
 			return ErrInvalidUpkeepIdentifier
 		}
 	}
