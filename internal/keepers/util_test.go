@@ -181,7 +181,14 @@ func Test_observationsToUpkeepKeysError(t *testing.T) {
 			},
 		},
 		{
-			BlockKey: chain.BlockKey("-1"), // Should be non negative
+			BlockKey: chain.BlockKey("-1"), // Should be positive
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("0"), // Should be positive
 			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
 				ktypes.UpkeepIdentifier("2"),
 				ktypes.UpkeepIdentifier("3"),
