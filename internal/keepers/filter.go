@@ -168,7 +168,7 @@ func (rc *reportCoordinator) checkLogs() {
 			// This can happen if we get a perform log for the same key again on a newer block in case of reorgs
 			// In this case, no change to activeKeys is needed, but idBlocks is updated to the newer BlockNumber
 			idBlock, ok := rc.idBlocks.Get(string(id))
-			if ok && idBlock.CheckBlockNumber.String() == logCheckBlockKey.String() &&
+			if ok && idBlock.CheckBlockNumber.String() != logCheckBlockKey.String() ||
 				idBlock.TransmitBlockNumber.String() != l.TransmitBlock.String() {
 
 				rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
@@ -214,6 +214,7 @@ func (rc *reportCoordinator) checkLogs() {
 				continue
 			}
 			rc.updateIdBlock(string(l.UpkeepId), idBlocker{
+				//TODO: Fetch checkBlockNumber from tx data
 				CheckBlockNumber: l.TransmitBlock, // As we do not have the actual checkBlockNumber which generated this
 				//reorg log, use transmitBlockNumber to override all previous checkBlockNumbers
 				TransmitBlockNumber: chain.BlockKey(bl), // Removes the id from filters from l.TrnasmitBlock - reportBlockLag.
@@ -230,7 +231,7 @@ type idBlocker struct {
 
 // idBlock should only be updated if checkBlockNumber is set higher
 // or checkBlockNumber is the same and transmitBlockNumber is higher
-// (with a special case for IndefiniteBlockingKey).
+// (with a special case for IndefiniteBlockingKey being considered lowest).
 //
 // For a sequence of updates, updateIdBlock can be called in any order
 // on different nodes, but by maintaining this invariant it results in
@@ -255,11 +256,15 @@ func (b idBlocker) ShouldUpdate(val idBlocker) (bool, error) {
 	}
 
 	// Now the checkBlockNumber should be same
+
 	// If idBlock has an IndefiniteBlockingKey, then update
 	if b.TransmitBlockNumber.String() == IndefiniteBlockingKey.String() {
 		return true, nil
 	}
-
+	// If val has an IndefiniteBlockingKey, then don't update
+	if val.TransmitBlockNumber.String() == IndefiniteBlockingKey.String() {
+		return false, nil
+	}
 	// return true if val.TransmitBlockNumber is higher
 	return val.TransmitBlockNumber.After(b.TransmitBlockNumber)
 }
