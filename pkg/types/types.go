@@ -73,6 +73,7 @@ type StaleReportLog struct {
 type BlockKey interface {
 	After(BlockKey) (bool, error)
 	BigInt() (*big.Int, bool)
+	Subtract(int) (string, error)
 	fmt.Stringer
 }
 

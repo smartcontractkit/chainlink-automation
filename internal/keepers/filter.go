@@ -38,6 +38,7 @@ type reportCoordinator struct {
 	registry                    types.Registry
 	logs                        types.PerformLogProvider
 	minConfs                    int
+	reportBlockLag              int
 	idBlocks                    *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
 	activeKeys                  *util.Cache[bool]
 	staleReportLogs             *util.Cache[bool] // Stores the processed reorg log hashes
@@ -48,12 +49,13 @@ type reportCoordinator struct {
 	chStop                      chan struct{}
 }
 
-func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
+func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, reportBlockLag int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
 		logger:                      logger,
 		registry:                    r,
 		logs:                        logs,
 		minConfs:                    minConfs,
+		reportBlockLag:              reportBlockLag,
 		idBlocks:                    util.NewCache[idBlocker](s),
 		activeKeys:                  util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		staleReportLogs:             util.NewCache[bool](time.Hour),
@@ -206,10 +208,16 @@ func (rc *reportCoordinator) checkLogs() {
 			rc.logger.Printf("Stale report log found for upkeep %s in transaction %s at block %s, with confirmations %d", l.UpkeepId, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 			rc.staleReportLogs.Set(logKey, true, util.DefaultCacheExpiration)
 
+			bl, err := l.TransmitBlock.Subtract(rc.reportBlockLag)
+			if err != nil {
+				rc.logger.Printf("Error while subtracting reportBlockLag from TransmitBlock")
+				continue
+			}
 			rc.updateIdBlock(string(l.UpkeepId), idBlocker{
 				CheckBlockNumber: l.TransmitBlock, // As we do not have the actual checkBlockNumber which generated this
 				//reorg log, use transmitBlockNumber to override all previous checkBlockNumbers
-				TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
+				TransmitBlockNumber: chain.BlockKey(bl), // Removes the id from filters from l.TrnasmitBlock - reportBlockLag.
+				//We subtract the reportBlock lag so that the DON can immediately start producing new reports for the upkeep
 			})
 		}
 	}
