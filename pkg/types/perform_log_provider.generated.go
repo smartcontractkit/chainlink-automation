@@ -37,16 +37,16 @@ func (_m *MockPerformLogProvider) PerformLogs(_a0 context.Context) ([]PerformLog
 	return r0, r1
 }
 
-// ReorgLogs provides a mock function with given fields: _a0
-func (_m *MockPerformLogProvider) ReorgLogs(_a0 context.Context) ([]ReorgLog, error) {
+// StaleReportLogs provides a mock function with given fields: _a0
+func (_m *MockPerformLogProvider) StaleReportLogs(_a0 context.Context) ([]StaleReportLog, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []ReorgLog
-	if rf, ok := ret.Get(0).(func(context.Context) []ReorgLog); ok {
+	var r0 []StaleReportLog
+	if rf, ok := ret.Get(0).(func(context.Context) []StaleReportLog); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]ReorgLog)
+			r0 = ret.Get(0).([]StaleReportLog)
 		}
 	}
 

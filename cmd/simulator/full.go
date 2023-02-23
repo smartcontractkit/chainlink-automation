@@ -347,6 +347,6 @@ func (m *mockPerfLogs) PerformLogs(context.Context) ([]ktypes.PerformLog, error)
 	return nil, nil
 }
 
-func (m *mockPerfLogs) ReorgLogs(context.Context) ([]ktypes.ReorgLog, error) {
+func (m *mockPerfLogs) StaleReportLogs(context.Context) ([]ktypes.StaleReportLog, error) {
 	return nil, nil
 }

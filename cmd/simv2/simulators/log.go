@@ -32,7 +32,7 @@ func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLo
 	return logs, nil
 }
 
-func (ct *SimulatedContract) ReorgLogs(ctx context.Context) ([]types.ReorgLog, error) {
+func (ct *SimulatedContract) StaleReportLogs(ctx context.Context) ([]types.StaleReportLog, error) {
 	// Not implemented in simulated contract yet
 	return nil, nil
 }
