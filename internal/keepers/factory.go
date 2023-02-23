@@ -146,5 +146,9 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			malicious.SendVeryLargeUpkeepIDs,
 			malicious.SendLeadingZeroUpkeepIDs,
 		},
+		configTests: []MaliciousConfigModifier{
+			malicious.NoOpConfigModifier,
+			malicious.IncreaseMaxObservationLength,
+		},
 	}, info, nil
 }
