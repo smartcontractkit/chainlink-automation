@@ -98,6 +98,8 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// of for each epoch/round
 	k.logger.Printf("OCR observation completed successfully with block number %s, %d eligible upkeeps(%s): %s", blockKey, len(identifiers), upkeepIdentifiersToString(identifiers), lCtx)
 
+	k.logger.Println("Malicious observations ... ")
+
 	if len(k.tests) > 0 {
 		var name string
 
