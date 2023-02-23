@@ -256,50 +256,12 @@ func SendLeadingZeroUpkeepIDs(ctx context.Context, original []byte, _ error) (st
 	}
 
 	var ids []types.UpkeepIdentifier
-	for i := 0; i < len(ob.UpkeepIdentifiers); i++ {
-		keyStr, err := GenerateRandomASCIIString(1000)
-		if err != nil {
-			return name, nil, err
-		}
-
-		ids = append(ids, types.UpkeepIdentifier(fmt.Sprintf("%s%s", strings.Repeat("0", rand2.Intn(100)), keyStr)))
+	for _, upkeepID := range ob.UpkeepIdentifiers {
+		ids = append(ids, types.UpkeepIdentifier(fmt.Sprintf("%s%s", strings.Repeat("0", rand2.Intn(100)), upkeepID)))
 	}
 
 	observation := modifiedObservation{
 		BlockKey:          ob.BlockKey,
-		UpkeepIdentifiers: ids,
-	}
-
-	b, err := json.Marshal(observation)
-	return name, b, err
-}
-
-// SendLeadingZeroUpkeepIDsSameBlock produces an encoded json object with upkeep IDs with leading zeroes for the same block key
-func SendLeadingZeroUpkeepIDsSameBlock(ctx context.Context, original []byte, _ error) (string, []byte, error) {
-	name := "Leading Zero Upkeep IDs With Same Block"
-
-	type modifiedObservation struct {
-		BlockKey          types.BlockKey           `json:"1"`
-		UpkeepIdentifiers []types.UpkeepIdentifier `json:"2"`
-	}
-
-	var ob chain.UpkeepObservation
-	if err := json.Unmarshal(original, &ob); err != nil {
-		return name, nil, err
-	}
-
-	var ids []types.UpkeepIdentifier
-	for i := 0; i < len(ob.UpkeepIdentifiers); i++ {
-		keyStr, err := GenerateRandomASCIIString(1000)
-		if err != nil {
-			return name, nil, err
-		}
-
-		ids = append(ids, types.UpkeepIdentifier(fmt.Sprintf("%s%s", strings.Repeat("0", rand2.Intn(100)), keyStr)))
-	}
-
-	observation := modifiedObservation{
-		BlockKey:          chain.BlockKey("100"),
 		UpkeepIdentifiers: ids,
 	}
 
