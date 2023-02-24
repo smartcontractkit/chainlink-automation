@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
-	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
@@ -79,9 +79,9 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 		svcCtx, svcCancel := context.WithCancel(context.Background())
 		svc := &onDemandUpkeepService{
 			logger:           l,
-			cache:            pkgutil.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			registry:         rg,
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
@@ -123,9 +123,9 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 		ratio:            sampleRatio(0.5),
 		registry:         rg,
 		shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
-		cache:            pkgutil.NewCache[ktypes.UpkeepResult](1 * time.Second),
-		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-		workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+		cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
+		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+		workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 		samplingDuration: time.Second * 5,
 		ctx:              svcCtx,
 		cancel:           svcCancel,
@@ -215,9 +215,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			ratio:            sampleRatio(0.5),
 			registry:         rg,
 			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
-			cache:            pkgutil.NewCache[ktypes.UpkeepResult](1 * time.Second),
-			cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
+			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
@@ -275,9 +275,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			logger:           l,
 			registry:         rg,
 			headSubscriber:   hs,
-			cache:            pkgutil.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
-			cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
@@ -342,9 +342,9 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			ratio:            sampleRatio(0.5),
 			registry:         rg,
 			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
-			cache:            pkgutil.NewCache[ktypes.UpkeepResult](1 * time.Second),
-			cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
+			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,

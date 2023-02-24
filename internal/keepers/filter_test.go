@@ -11,7 +11,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
-	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 func TestReportCoordinator(t *testing.T) {
@@ -22,8 +22,8 @@ func TestReportCoordinator(t *testing.T) {
 			logger:     l,
 			registry:   mr,
 			logs:       mp,
-			idBlocks:   pkgutil.NewCache[idBlocker](time.Second),
-			activeKeys: pkgutil.NewCache[bool](time.Minute),
+			idBlocks:   util.NewCache[idBlocker](time.Second),
+			activeKeys: util.NewCache[bool](time.Minute),
 			minConfs:   1,
 			chStop:     make(chan struct{}),
 		}, mr, mp
@@ -226,7 +226,7 @@ func TestReportCoordinator(t *testing.T) {
 
 		rc.idBlocks.Set(string(id1), idBlocker{
 			TransmitBlockNumber: bk15,
-		}, pkgutil.DefaultCacheExpiration)
+		}, util.DefaultCacheExpiration)
 
 		assert.False(t, filter(key1Block4))
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
-	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 // maxWorkersBatchSize is the value of max workers batch size
@@ -27,11 +27,11 @@ type onDemandUpkeepService struct {
 	headSubscriber   types.HeadSubscriber
 	registry         types.Registry
 	shuffler         shuffler[types.UpkeepIdentifier]
-	cache            *pkgutil.Cache[types.UpkeepResult]
-	cacheCleaner     *pkgutil.IntervalCacheCleaner[types.UpkeepResult]
+	cache            *util.Cache[types.UpkeepResult]
+	cacheCleaner     *util.IntervalCacheCleaner[types.UpkeepResult]
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
-	workers          *pkgutil.WorkerGroup[types.UpkeepResults]
+	workers          *util.WorkerGroup[types.UpkeepResults]
 	ctx              context.Context
 	cancel           context.CancelFunc
 }
@@ -60,9 +60,9 @@ func newOnDemandUpkeepService(
 		registry:         registry,
 		samplingDuration: samplingDuration,
 		shuffler:         new(cryptoShuffler[types.UpkeepIdentifier]),
-		cache:            pkgutil.NewCache[types.UpkeepResult](cacheExpire),
-		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
-		workers:          pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
+		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
+		workers:          util.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		ctx:              ctx,
 		cancel:           cancel,
 	}
@@ -144,7 +144,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 
 	// Cache results
 	for i, u := range checkResults {
-		s.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, pkgutil.DefaultCacheExpiration)
+		s.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, util.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
@@ -228,7 +228,7 @@ func (s *onDemandUpkeepService) parallelCheck(ctx context.Context, keys []types.
 
 	// Create batches from the given keys.
 	// Max keyBatchSize items in the batch.
-	pkgutil.RunJobs(
+	util.RunJobs(
 		ctx,
 		s.workers,
 		createBatches(filteredKeys, maxWorkersBatchSize),
@@ -284,7 +284,7 @@ func (s *onDemandUpkeepService) wrapAggregate(r *workerResults, sa *syncedArray[
 			// Cache results
 			for i := range result {
 				res := result[i]
-				s.cache.Set(string(res.Key.String()), res, pkgutil.DefaultCacheExpiration)
+				s.cache.Set(string(res.Key.String()), res, util.DefaultCacheExpiration)
 				if res.State == types.Eligible {
 					sa.Append(res)
 				}
