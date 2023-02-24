@@ -252,7 +252,7 @@ func (b idBlocker) ShouldUpdate(val idBlocker) (bool, error) {
 
 	// Now the checkBlockNumber should be same
 
-	// If idBlock has an IndefiniteBlockingKey, then update
+	// If b has an IndefiniteBlockingKey, then update
 	if b.TransmitBlockNumber.String() == IndefiniteBlockingKey.String() {
 		return true, nil
 	}
