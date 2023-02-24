@@ -37,6 +37,11 @@ func (u *UpkeepObservation) UnmarshalJSON(b []byte) error {
 }
 
 func (u *UpkeepObservation) validate(uo upkeepObservation) error {
+	maxBlockNumber := new(big.Int)
+	maxBlockNumber, _ = maxBlockNumber.SetString("18446744073709551615", 10) // 2 ** 64 -1
+	maxUpkeepIdentifer := new(big.Int)
+	maxUpkeepIdentifer, _ = maxUpkeepIdentifer.SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10) // 2 ** 256 -1
+
 	bl, ok := big.NewInt(0).SetString(uo.BlockKey.String(), 10)
 	if !ok {
 		return ErrBlockKeyNotParsable
@@ -44,8 +49,9 @@ func (u *UpkeepObservation) validate(uo upkeepObservation) error {
 	if bl.String() != uo.BlockKey.String() {
 		return ErrInvalidBlockKey
 	}
-	if bl.Cmp(big.NewInt(0)) <= 0 {
-		// Block number should be positive
+
+	if bl.Cmp(big.NewInt(0)) <= 0 || bl.Cmp(maxBlockNumber) > 0 {
+		// Block number should be positive and not greater than 2**64 -1
 		return ErrInvalidBlockKey
 	}
 
@@ -57,8 +63,8 @@ func (u *UpkeepObservation) validate(uo upkeepObservation) error {
 		if uiInt.String() != string(ui) {
 			return ErrInvalidUpkeepIdentifier
 		}
-		if uiInt.Cmp(big.NewInt(0)) == -1 {
-			// UpkeepId should be non negative
+		if uiInt.Cmp(big.NewInt(0)) == -1 || uiInt.Cmp(maxUpkeepIdentifer) > 0 {
+			// UpkeepId should be non negative and not greater than 2**256 - 1
 			return ErrInvalidUpkeepIdentifier
 		}
 	}

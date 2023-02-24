@@ -201,6 +201,20 @@ func Test_observationsToUpkeepKeysError(t *testing.T) {
 				ktypes.UpkeepIdentifier("3"),
 			},
 		},
+		{
+			BlockKey: chain.BlockKey("18446744073709551616"), // Should be less than 2**64 - 1
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("1"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("115792089237316195423570985008687907853269984665640564039457584007913129639936"), // Should be less than 2**256 - 1
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
 	}
 
 	attr := make([]types.AttributedObservation, len(obs))
