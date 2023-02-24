@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 var (
@@ -39,12 +39,12 @@ type reportCoordinator struct {
 	logs                        types.PerformLogProvider
 	minConfs                    int
 	reportBlockLag              int
-	idBlocks                    *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
-	activeKeys                  *util.Cache[bool]
-	staleReportLogs             *util.Cache[bool] // Stores the processed reorg log hashes
-	cacheCleaner                *util.IntervalCacheCleaner[bool]
-	idCacheCleaner              *util.IntervalCacheCleaner[idBlocker]
-	staleReportLogsCacheCleaner *util.IntervalCacheCleaner[bool]
+	idBlocks                    *pkgutil.Cache[idBlocker] // should clear out when the next perform with this id occurs
+	activeKeys                  *pkgutil.Cache[bool]
+	staleReportLogs             *pkgutil.Cache[bool] // Stores the processed reorg log hashes
+	cacheCleaner                *pkgutil.IntervalCacheCleaner[bool]
+	idCacheCleaner              *pkgutil.IntervalCacheCleaner[idBlocker]
+	staleReportLogsCacheCleaner *pkgutil.IntervalCacheCleaner[bool]
 	starter                     sync.Once
 	chStop                      chan struct{}
 }
@@ -56,12 +56,12 @@ func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Dur
 		logs:                        logs,
 		minConfs:                    minConfs,
 		reportBlockLag:              reportBlockLag,
-		idBlocks:                    util.NewCache[idBlocker](s),
-		activeKeys:                  util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		staleReportLogs:             util.NewCache[bool](time.Hour),
-		idCacheCleaner:              util.NewIntervalCacheCleaner[idBlocker](cacheClean),
-		cacheCleaner:                util.NewIntervalCacheCleaner[bool](cacheClean),
-		staleReportLogsCacheCleaner: util.NewIntervalCacheCleaner[bool](cacheClean),
+		idBlocks:                    pkgutil.NewCache[idBlocker](s),
+		activeKeys:                  pkgutil.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
+		staleReportLogs:             pkgutil.NewCache[bool](time.Hour),
+		idCacheCleaner:              pkgutil.NewIntervalCacheCleaner[idBlocker](cacheClean),
+		cacheCleaner:                pkgutil.NewIntervalCacheCleaner[bool](cacheClean),
+		staleReportLogsCacheCleaner: pkgutil.NewIntervalCacheCleaner[bool](cacheClean),
 		chStop:                      make(chan struct{}),
 	}
 
@@ -107,7 +107,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 	_, ok := rc.activeKeys.Get(key.String())
 	if !ok {
 		// Set the key as accepted within activeKeys
-		rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
+		rc.activeKeys.Set(key.String(), false, pkgutil.DefaultCacheExpiration)
 
 		// Set idBlocks with the key as checkBlockNumber and IndefiniteBlockingKey as TransmitBlockNumber
 		rc.updateIdBlock(string(id), idBlocker{
@@ -155,7 +155,7 @@ func (rc *reportCoordinator) checkLogs() {
 			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 			// set state of key to indicate that the report was transmitted
-			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
+			rc.activeKeys.Set(l.Key.String(), true, pkgutil.DefaultCacheExpiration)
 
 			rc.updateIdBlock(string(id), idBlocker{
 				CheckBlockNumber:    logCheckBlockKey,
@@ -204,7 +204,7 @@ func (rc *reportCoordinator) checkLogs() {
 		_, ok := rc.staleReportLogs.Get(l.Key.String())
 		if !ok {
 			rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
-			rc.staleReportLogs.Set(l.Key.String(), true, util.DefaultCacheExpiration)
+			rc.staleReportLogs.Set(l.Key.String(), true, pkgutil.DefaultCacheExpiration)
 
 			logCheckBlockKey, id, err := l.Key.BlockKeyAndUpkeepID()
 			if err != nil {
@@ -279,7 +279,7 @@ func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
 	}
 
 	rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
-	rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
+	rc.idBlocks.Set(key, val, pkgutil.DefaultCacheExpiration)
 }
 
 func (rc *reportCoordinator) start() {

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
@@ -28,8 +27,8 @@ type onDemandUpkeepService struct {
 	headSubscriber   types.HeadSubscriber
 	registry         types.Registry
 	shuffler         shuffler[types.UpkeepIdentifier]
-	cache            *util.Cache[types.UpkeepResult]
-	cacheCleaner     *util.IntervalCacheCleaner[types.UpkeepResult]
+	cache            *pkgutil.Cache[types.UpkeepResult]
+	cacheCleaner     *pkgutil.IntervalCacheCleaner[types.UpkeepResult]
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
 	workers          *pkgutil.WorkerGroup[types.UpkeepResults]
@@ -61,8 +60,8 @@ func newOnDemandUpkeepService(
 		registry:         registry,
 		samplingDuration: samplingDuration,
 		shuffler:         new(cryptoShuffler[types.UpkeepIdentifier]),
-		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
-		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
+		cache:            pkgutil.NewCache[types.UpkeepResult](cacheExpire),
+		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		workers:          pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		ctx:              ctx,
 		cancel:           cancel,
@@ -145,7 +144,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.U
 
 	// Cache results
 	for i, u := range checkResults {
-		s.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, util.DefaultCacheExpiration)
+		s.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, pkgutil.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
@@ -285,7 +284,7 @@ func (s *onDemandUpkeepService) wrapAggregate(r *workerResults, sa *syncedArray[
 			// Cache results
 			for i := range result {
 				res := result[i]
-				s.cache.Set(string(res.Key.String()), res, util.DefaultCacheExpiration)
+				s.cache.Set(string(res.Key.String()), res, pkgutil.DefaultCacheExpiration)
 				if res.State == types.Eligible {
 					sa.Append(res)
 				}
