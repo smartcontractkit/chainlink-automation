@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -31,16 +30,4 @@ func (k BlockKey) String() string {
 
 func (k BlockKey) BigInt() (*big.Int, bool) {
 	return big.NewInt(0).SetString(string(k), 10)
-}
-
-func (k BlockKey) Subtract(x int) (string, error) {
-	a, ok := big.NewInt(0).SetString(k.String(), 10)
-	if !ok {
-		return "", ErrBlockKeyNotParsable
-	}
-	a.Sub(a, big.NewInt(int64(x)))
-	if a.Cmp(big.NewInt(0)) == -1 {
-		return "", fmt.Errorf("subtraction resulted in negative block key")
-	}
-	return a.String(), nil
 }

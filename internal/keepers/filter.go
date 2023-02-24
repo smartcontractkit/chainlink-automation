@@ -144,12 +144,11 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		_, id, err := l.Key.BlockKeyAndUpkeepID()
+		logCheckBlockKey, id, err := l.Key.BlockKeyAndUpkeepID()
 		if err != nil {
 			continue
 		}
 
-		logCheckBlockKey, _, _ := l.Key.BlockKeyAndUpkeepID()
 		// Process log if the key hasn't been confirmed yet
 		confirmed, ok := rc.activeKeys.Get(l.Key.String())
 		if ok && !confirmed {
@@ -201,24 +200,20 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		// If a reorg log was processed already, do not reprocess it. TransmitBlock + UpkeepId is used to identify the log
-		logKey := chain.NewUpkeepKeyFromBlockAndID(l.TransmitBlock, l.UpkeepId).String()
-		_, ok := rc.staleReportLogs.Get(logKey)
+		// If a reorg log was processed already, do not reprocess it.
+		_, ok := rc.staleReportLogs.Get(l.Key.String())
 		if !ok {
-			rc.logger.Printf("Stale report log found for upkeep %s in transaction %s at block %s, with confirmations %d", l.UpkeepId, l.TransactionHash, l.TransmitBlock, l.Confirmations)
-			rc.staleReportLogs.Set(logKey, true, util.DefaultCacheExpiration)
+			rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+			rc.staleReportLogs.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
-			bl, err := l.TransmitBlock.Subtract(rc.reportBlockLag)
+			logCheckBlockKey, id, err := l.Key.BlockKeyAndUpkeepID()
 			if err != nil {
-				rc.logger.Printf("Error while subtracting reportBlockLag from TransmitBlock")
 				continue
 			}
-			rc.updateIdBlock(string(l.UpkeepId), idBlocker{
-				//TODO: Fetch checkBlockNumber from tx data
-				CheckBlockNumber: l.TransmitBlock, // As we do not have the actual checkBlockNumber which generated this
-				//reorg log, use transmitBlockNumber to override all previous checkBlockNumbers
-				TransmitBlockNumber: chain.BlockKey(bl), // Removes the id from filters from l.TrnasmitBlock - reportBlockLag.
-				//We subtract the reportBlock lag so that the DON can immediately start producing new reports for the upkeep
+
+			rc.updateIdBlock(string(id), idBlocker{
+				CheckBlockNumber:    logCheckBlockKey,
+				TransmitBlockNumber: logCheckBlockKey, // Removes the id from filters after logCheckBlockKey
 			})
 		}
 	}
