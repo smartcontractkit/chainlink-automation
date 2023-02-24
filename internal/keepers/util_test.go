@@ -180,6 +180,41 @@ func Test_observationsToUpkeepKeysError(t *testing.T) {
 				ktypes.UpkeepIdentifier("03"), // Error in both
 			},
 		},
+		{
+			BlockKey: chain.BlockKey("-1"), // Should be positive
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("0"), // Should be positive
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("1"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("-2"), // Should be non negative
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("18446744073709551616"), // Should be less than 2**64 - 1
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("2"),
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
+		{
+			BlockKey: chain.BlockKey("1"),
+			UpkeepIdentifiers: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("115792089237316195423570985008687907853269984665640564039457584007913129639936"), // Should be less than 2**256 - 1
+				ktypes.UpkeepIdentifier("3"),
+			},
+		},
 	}
 
 	attr := make([]types.AttributedObservation, len(obs))
@@ -347,13 +382,13 @@ func TestLimitedLengthEncode(t *testing.T) {
 func FuzzLimitedLengthEncode(f *testing.F) {
 	f.Add(4, 10)
 	f.Fuzz(func(t *testing.T, a int, b int) {
-		// only accept fuzz values of key length between 2 and 700 and number
+		// only accept fuzz values of key length between 2 and 70 and number
 		// of keys greater than or equal to 0.
-		// the number 700 was chosen because a key length larger than this
-		// should be paired with a higher limit anyway. this test is scoped to
-		// a single encoded limit while fuzzing the keys and key lengths.
-		// keys are randomized in length to ensure outcome remains within limits
-		if a < 0 || b <= 1 || b >= 700 {
+		// the number 70 was chosen because a key needs to be less than 2**64.
+		// This test is scoped to a single encoded limit while fuzzing the keys
+		// and key lengths. keys are randomized in length to ensure outcome
+		// remains within limits
+		if a < 0 || b <= 1 || b >= 70 {
 			return
 		}
 
