@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 func TestReportCoordinator(t *testing.T) {
@@ -37,6 +37,7 @@ func TestReportCoordinator(t *testing.T) {
 	id1 := types.UpkeepIdentifier("1")
 	bk2 := chain.BlockKey("2")
 	bk3 := chain.BlockKey("3")
+	bk4 := chain.BlockKey("4")
 	bk15 := chain.BlockKey("15")
 
 	t.Run("FilterBeforeAccept", func(t *testing.T) {
@@ -61,7 +62,7 @@ func TestReportCoordinator(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 
 		assert.NoError(t, rc.Accept(key1Block1), "no error expected from accepting the key")
-		assert.ErrorIs(t, rc.Accept(key1Block1), ErrKeyAlreadyAccepted, "key should not be accepted again and should return an error")
+		assert.NoError(t, rc.Accept(key1Block1), "Key can get accepted again")
 
 		mr.AssertExpectations(t)
 	})
@@ -95,6 +96,9 @@ func TestReportCoordinator(t *testing.T) {
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 0},
 		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
 
 		rc.checkLogs()
 
@@ -120,6 +124,9 @@ func TestReportCoordinator(t *testing.T) {
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
 		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
 
 		rc.checkLogs()
 
@@ -134,7 +141,10 @@ func TestReportCoordinator(t *testing.T) {
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "transmit should be confirmed")
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "transmit should be confirmed: key was not set for block 2")
 
-		assert.ErrorIs(t, rc.Accept(key1Block1), ErrKeyAlreadyAccepted, "key should not be accepted after transmit confirmed and should return an error")
+		// Accpeting the key again should not affect the filters
+		assert.NoError(t, rc.Accept(key1Block1), "Key can get accepted again")
+		assert.Equal(t, false, filter(key1Block2), "filter should return false to indicate key should be filtered out at block 2")
+		assert.Equal(t, true, filter(key1Block3), "filter should return true to indicate key should not be filtered out at block 3")
 
 		mp.AssertExpectations(t)
 		mr.AssertExpectations(t)
@@ -178,6 +188,9 @@ func TestReportCoordinator(t *testing.T) {
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
 		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
 
 		rc.checkLogs()
 
@@ -199,6 +212,9 @@ func TestReportCoordinator(t *testing.T) {
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
 			{Key: key1Block2, TransmitBlock: bk3, Confirmations: 1},
 		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
 
 		rc.checkLogs()
 
@@ -215,6 +231,383 @@ func TestReportCoordinator(t *testing.T) {
 		// reason: all transmissions have come in the logs
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Reorged Perform Logs", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// perform log for 1|1 is at block 2
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// key 1|1 filter returns false
+		// key 2|1 filter returns false
+		// key 3|1 filter returns true
+		// reason: the node unblocks id 1 after block 2
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+
+		// A re-orged perform log for 1|1 is found at block 3
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// Transmit confirmed should not change
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// key 1|1 filter returns false
+		// key 2|1 filter returns false
+		// key 3|1 filter returns false
+		// key 4|1 filter returns true
+		// reason: the node unblocks id 1 after block 3 (latest reorged perform)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Same key accepted twice", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// key 1|1 is Accepted again. It should not error out
+		err := rc.Accept(key1Block1)
+		assert.NoError(t, err)
+
+		// Same filtering and transmission confirmed should hold true
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// perform log for 1|1 is found at block 2
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 2
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// key 1|1 is Accepted again. It should not error out and not change filters
+		err = rc.Accept(key1Block1)
+		assert.NoError(t, err)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// Now a new key is accepted which is after previously accepted key
+		err = rc.Accept(key1Block2)
+		assert.NoError(t, err)
+
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
+		// Id should be blocked indefintely on all blocks
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Stale report log is found", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// stale report log for 1|1 is found at block 4
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 2 (checkBlock(1) + 1)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		assertFilter(t, key1Block4, true, filter)
+		// Transmit should be confirmed as stale report log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Perform log gets reorged to stale report log", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// perform log for 1|1 is found at block 3
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 3
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// Now the perform log gets re-orged into a stale report log on block 4
+		// It should not cause amny changes in the filter as checkBlockNumber of stale report log
+		// is still 1
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Stale report log gets reorged", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// stale log for 1|1 is found at block 2
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 2
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// stale log for 1|1 is again found at block 4
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// Filters should not change as checkBlockNumber of stale report log remains unchanged
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Multiple accepted keys and old ones get perform/stale report log", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// Another key 2|1 is Accepted before receiving logs (This can happen if this node is lagging the network)
+		err := rc.Accept(key1Block2)
+		assert.NoError(t, err)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		// key 2|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
+
+		// Now a perform log is fetched for the previous key. It should not have effect on id filters as
+		// that is locked on higher checkBlockNumber
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		// key 1|1 transmit confirmed now returns true
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+		// key 2|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
+
+		//Now the node sees perform log for latest accepted key. It should unblock the key from id filters
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block2, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+		// ID unblocked from block 4
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should be confirmed")
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Multiple accepted keys and out of order logs", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// Another key 2|1 is Accepted before receiving logs (This can happen if this node is lagging the network)
+		err := rc.Accept(key1Block2)
+		assert.NoError(t, err)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		// key 2|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
+
+		// Now a perform log is received for the latest key. It should unblock the idFilters
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block2, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+		// ID unblocked from block 4
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should be confirmed")
+
+		//Now the node sees perform log for previous accepted key (out of order). It should not have any effect
+		//on id filters
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should be confirmed")
 
 		mp.AssertExpectations(t)
 		mr.AssertExpectations(t)

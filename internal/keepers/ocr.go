@@ -226,14 +226,6 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, rt types.Report
 	}
 
 	for _, r := range results {
-		// check whether the key is already accepted
-		if k.filter.CheckAlreadyAccepted(r.Key) {
-			k.logger.Printf("%s: key already accepted: %s", r.Key, lCtx.Short())
-			return false, fmt.Errorf("failed to accept key %s as it was already accepted", r.Key)
-		}
-	}
-
-	for _, r := range results {
 		// indicate to the filter that the key has been accepted for transmit
 		if err = k.filter.Accept(r.Key); err != nil {
 			return false, fmt.Errorf("%w: failed to accept key: %s", err, lCtx)
@@ -263,19 +255,18 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.Repor
 
 	for _, id := range results {
 		transmitConfirmed := k.filter.IsTransmissionConfirmed(id.Key)
-		// multiple keys can be in a single report. if one has a confirmed transmission
-		// (while others may not have), don't try to transmit again
-		if transmitConfirmed {
-			k.logger.Printf("not transmitting report because upkeep '%s' was already transmitted: %s", id.Key, lCtx)
-			return false, nil
+		// multiple keys can be in a single report. if one has a non confirmed transmission
+		// (while others may not have), try to transmit anyway
+		if !transmitConfirmed {
+			k.logger.Printf("upkeep '%s' transmit not confirmed, transmitting whole report: %s", id.Key, lCtx.Short())
+			k.logger.Printf("OCR should transmit completed successfully with result true: %s", lCtx)
+			return true, nil
 		}
-
-		k.logger.Printf("upkeep '%s' transmit not confirmed: %s", id.Key, lCtx.Short())
+		k.logger.Printf("upkeep '%s' was already transmitted: %s", id.Key, lCtx)
 	}
 
-	k.logger.Printf("OCR should transmit completed successfully: %s", lCtx)
-
-	return true, nil
+	k.logger.Printf("OCR should transmit completed successfully with result false: %s", lCtx)
+	return false, nil
 }
 
 // Close implements the types.ReportingPlugin interface in OCR2.

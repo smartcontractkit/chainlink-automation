@@ -8,25 +8,40 @@ import (
 )
 
 type mergedContext struct {
-	mu      sync.RWMutex
-	mainCtx context.Context
-	ctx     context.Context
-	done    chan struct{}
-	doneExt chan struct{}
-	once    sync.Once
-	err     error
+	mu          sync.RWMutex
+	mainCtx     context.Context
+	ctx         context.Context
+	cancelFuncs []context.CancelFunc
+	done        chan struct{}
+	doneExt     chan struct{}
+	once        sync.Once
+	err         error
 }
 
 func MergeContexts(mainCtx, ctx context.Context) context.Context {
-	c := &mergedContext{mainCtx: mainCtx, ctx: ctx, done: make(chan struct{}), doneExt: make(chan struct{})}
+	c := newMergedContext(mainCtx, ctx)
 	go c.run()
 	return c
 }
 
 func MergeContextsWithCancel(mainCtx, ctx context.Context) (context.Context, context.CancelFunc) {
-	c := &mergedContext{mainCtx: mainCtx, ctx: ctx, done: make(chan struct{}), doneExt: make(chan struct{})}
+	c := newMergedContext(mainCtx, ctx)
 	go c.run()
 	return c, c.cancel
+}
+
+func newMergedContext(mainCtx, ctx context.Context) *mergedContext {
+	ctx1, cancel1 := context.WithCancel(mainCtx)
+	ctx2, cancel2 := context.WithCancel(ctx)
+
+	c := &mergedContext{
+		mainCtx:     ctx1,
+		ctx:         ctx2,
+		done:        make(chan struct{}),
+		doneExt:     make(chan struct{}),
+		cancelFuncs: []context.CancelFunc{cancel1, cancel2}}
+
+	return c
 }
 
 func (c *mergedContext) Done() <-chan struct{} {
@@ -91,6 +106,14 @@ func (c *mergedContext) run() {
 }
 
 func (c *mergedContext) closeChannels() {
+	// clean up context resources by calling the cancel functions associated
+	// with the merged contexts
+	// this is safe to not use a mutex only as long as the function is wrapped
+	// in a sync.Once
+	for _, cancel := range c.cancelFuncs {
+		cancel()
+	}
+
 	close(c.done)
 	close(c.doneExt)
 }

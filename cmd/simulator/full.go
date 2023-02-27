@@ -346,3 +346,7 @@ type mockPerfLogs struct{}
 func (m *mockPerfLogs) PerformLogs(context.Context) ([]ktypes.PerformLog, error) {
 	return nil, nil
 }
+
+func (m *mockPerfLogs) StaleReportLogs(context.Context) ([]ktypes.StaleReportLog, error) {
+	return nil, nil
+}

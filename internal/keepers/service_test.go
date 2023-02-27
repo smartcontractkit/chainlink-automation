@@ -12,11 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
-	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
@@ -82,7 +81,7 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 			logger:           l,
 			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			registry:         rg,
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
@@ -126,7 +125,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 		shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 		cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-		workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+		workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 		samplingDuration: time.Second * 5,
 		ctx:              svcCtx,
 		cancel:           svcCancel,
@@ -192,7 +191,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			}
 		}
 
-		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		rg.Mock.On("CheckUpkeep", mock.AnythingOfType("*util.mergedContext"), mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				a := make([]ktypes.UpkeepKey, 5)
 				copy(a, actives[:5])
@@ -218,7 +217,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
@@ -278,7 +277,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			headSubscriber:   hs,
 			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
@@ -345,7 +344,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
 			cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
-			workers:          pkgutil.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
+			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
 			ctx:              svcCtx,
 			cancel:           svcCancel,
