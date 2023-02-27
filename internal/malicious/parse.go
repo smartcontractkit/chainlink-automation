@@ -63,3 +63,45 @@ func ObservationExtraFields(ctx context.Context, original []byte, _ error) (stri
 	b, err := json.Marshal(observation)
 	return name, b, err
 }
+
+func InvalidObservationBlockKeyError(ctx context.Context, original []byte, _ error) (string, []byte, error) {
+	name := "Invalid Observation Block Key"
+
+	var ob chain.UpkeepObservation
+	if err := json.Unmarshal(original, &ob); err != nil {
+		return name, nil, err
+	}
+
+	// The max uint64 value is 18446744073709551615.
+	// Just incrementing the value here.
+	ob.BlockKey = "18446744073709551616"
+
+	badObservation, err := json.Marshal(ob)
+	if err != nil {
+		return name, nil, err
+	}
+
+	return name, badObservation, nil
+}
+
+func InvalidObservationUpkeepKeyError(ctx context.Context, original []byte, _ error) (string, []byte, error) {
+	name := "Invalid Observation Upkeep Key"
+
+	var ob chain.UpkeepObservation
+	if err := json.Unmarshal(original, &ob); err != nil {
+		return name, nil, err
+	}
+
+	for i := range ob.UpkeepIdentifiers {
+		// The max uint64 value is 18446744073709551615.
+		// Just incrementing the value here.
+		ob.UpkeepIdentifiers[i] = types.UpkeepIdentifier("18446744073709551616")
+	}
+
+	badObservation, err := json.Marshal(ob)
+	if err != nil {
+		return name, nil, err
+	}
+
+	return name, badObservation, nil
+}

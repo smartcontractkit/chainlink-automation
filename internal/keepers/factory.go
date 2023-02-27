@@ -129,6 +129,8 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,
 		reportBlockLag:     offChainCfg.ReportBlockLag,
 		tests: []MaliciousObservationModifier{
+			malicious.InvalidObservationBlockKeyError,
+			malicious.InvalidObservationUpkeepKeyError,
 			malicious.ObservationParseError,
 			malicious.ObservationExtraFields,
 			malicious.NilBytesObservation,
