@@ -93,9 +93,9 @@ func InvalidObservationUpkeepKeyError(ctx context.Context, original []byte, _ er
 	}
 
 	for i := range ob.UpkeepIdentifiers {
-		// The max uint64 value is 18446744073709551615.
-		// Just incrementing the value here.
-		ob.UpkeepIdentifiers[i] = types.UpkeepIdentifier("18446744073709551616")
+		// The max uint64 value is 115792089237316195423570985008687907853269984665640564039457584007913129639935.
+		// Just adding some zeroes here
+		ob.UpkeepIdentifiers[i] = types.UpkeepIdentifier("1157920892373161954235709850086879078532699846656405640394575840079131296399350000000")
 	}
 
 	badObservation, err := json.Marshal(ob)
