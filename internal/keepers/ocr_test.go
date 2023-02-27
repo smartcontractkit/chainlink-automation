@@ -732,16 +732,12 @@ func BenchmarkReport(b *testing.B) {
 
 func TestShouldAcceptFinalizedReport(t *testing.T) {
 	tests := []struct {
-		Name            string
-		Description     string
-		ReportContents  []ktypes.UpkeepResult
-		AlreadyAccepted []struct {
-			K ktypes.UpkeepKey
-			B bool
-		}
-		DecodeErr    error
-		ExpectedBool bool
-		Err          error
+		Name           string
+		Description    string
+		ReportContents []ktypes.UpkeepResult
+		DecodeErr      error
+		ExpectedBool   bool
+		Err            error
 	}{
 		{
 			Name:           "No upkeeps in report",
@@ -760,24 +756,17 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 		},
 		{
 			Name:        "Already accepted keys",
-			Description: "Should not accept report if calls were previously accepted",
+			Description: "Should be able to accept keys that were previously accepted",
 			ReportContents: []ktypes.UpkeepResult{
 				{
 					Key: chain.UpkeepKey("1|1"),
 				},
 			},
-			AlreadyAccepted: []struct {
-				K ktypes.UpkeepKey
-				B bool
-			}{
-				{K: chain.UpkeepKey("1|1"), B: true},
-			},
-			ExpectedBool: false,
-			Err:          fmt.Errorf("failed to accept key"),
+			ExpectedBool: true,
 		},
 		{
 			Name:        "Already accepted partial keys",
-			Description: "Should not accept report if calls were previously accepted",
+			Description: "Should be able to accept keys if calls were previously accepted",
 			ReportContents: []ktypes.UpkeepResult{
 				{
 					Key: chain.UpkeepKey("1|1"),
@@ -786,15 +775,7 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 					Key: chain.UpkeepKey("1|2"),
 				},
 			},
-			AlreadyAccepted: []struct {
-				K ktypes.UpkeepKey
-				B bool
-			}{
-				{K: chain.UpkeepKey("1|1"), B: false},
-				{K: chain.UpkeepKey("1|2"), B: true},
-			},
-			ExpectedBool: false,
-			Err:          fmt.Errorf("failed to accept key"),
+			ExpectedBool: true,
 		},
 		{
 			Name:        "Accept successfully",
@@ -806,13 +787,6 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 				{
 					Key: chain.UpkeepKey("1|2"),
 				},
-			},
-			AlreadyAccepted: []struct {
-				K ktypes.UpkeepKey
-				B bool
-			}{
-				{K: chain.UpkeepKey("1|1"), B: false},
-				{K: chain.UpkeepKey("1|2"), B: false},
 			},
 			ExpectedBool: true,
 		},
@@ -831,11 +805,6 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 		}
 
 		me.Mock.On("DecodeReport", []byte("abc")).Return(test.ReportContents, test.DecodeErr)
-
-		// set the transmit filters before calling the function in test
-		for _, a := range test.AlreadyAccepted {
-			mf.Mock.On("CheckAlreadyAccepted", a.K).Return(a.B)
-		}
 
 		if test.ExpectedBool {
 			// If shouldAccept is successful then Accept will be called on report which needs to be mocked
@@ -1159,17 +1128,6 @@ func (_m *MockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
 	var r0 func(ktypes.UpkeepKey) bool
 	if ret.Get(0) != nil {
 		r0 = ret.Get(0).(func(ktypes.UpkeepKey) bool)
-	}
-
-	return r0
-}
-
-func (_m *MockedFilterer) CheckAlreadyAccepted(key ktypes.UpkeepKey) bool {
-	ret := _m.Mock.Called(key)
-
-	var r0 bool
-	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(bool)
 	}
 
 	return r0
