@@ -49,6 +49,9 @@ func TestNewReportingPlugin(t *testing.T) {
 	mp.Mock.On("PerformLogs", mock.Anything).
 		Return([]ktypes.PerformLog{}, nil).
 		Maybe()
+	mp.Mock.On("StaleReportLogs", mock.Anything).
+		Return([]ktypes.StaleReportLog{}, nil).
+		Maybe()
 
 	digest := [32]byte{}
 	digestStr := fmt.Sprintf("%32s", "test")
