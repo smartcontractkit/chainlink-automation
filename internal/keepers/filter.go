@@ -34,33 +34,29 @@ var (
 )
 
 type reportCoordinator struct {
-	logger                      *log.Logger
-	registry                    types.Registry
-	logs                        types.PerformLogProvider
-	minConfs                    int
-	idBlocks                    *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
-	activeKeys                  *util.Cache[bool]
-	staleReportLogs             *util.Cache[bool] // Stores the processed reorg log hashes
-	cacheCleaner                *util.IntervalCacheCleaner[bool]
-	idCacheCleaner              *util.IntervalCacheCleaner[idBlocker]
-	staleReportLogsCacheCleaner *util.IntervalCacheCleaner[bool]
-	starter                     sync.Once
-	chStop                      chan struct{}
+	logger         *log.Logger
+	registry       types.Registry
+	logs           types.PerformLogProvider
+	minConfs       int
+	idBlocks       *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
+	activeKeys     *util.Cache[bool]
+	cacheCleaner   *util.IntervalCacheCleaner[bool]
+	idCacheCleaner *util.IntervalCacheCleaner[idBlocker]
+	starter        sync.Once
+	chStop         chan struct{}
 }
 
 func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
-		logger:                      logger,
-		registry:                    r,
-		logs:                        logs,
-		minConfs:                    minConfs,
-		idBlocks:                    util.NewCache[idBlocker](s),
-		activeKeys:                  util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		staleReportLogs:             util.NewCache[bool](time.Hour),
-		idCacheCleaner:              util.NewIntervalCacheCleaner[idBlocker](cacheClean),
-		cacheCleaner:                util.NewIntervalCacheCleaner[bool](cacheClean),
-		staleReportLogsCacheCleaner: util.NewIntervalCacheCleaner[bool](cacheClean),
-		chStop:                      make(chan struct{}),
+		logger:         logger,
+		registry:       r,
+		logs:           logs,
+		minConfs:       minConfs,
+		idBlocks:       util.NewCache[idBlocker](s),
+		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
+		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
+		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
+		chStop:         make(chan struct{}),
 	}
 
 	runtime.SetFinalizer(c, func(srv *reportCoordinator) { srv.stop() })
@@ -198,11 +194,12 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		// If a reorg log was processed already, do not reprocess it.
-		_, ok := rc.staleReportLogs.Get(l.Key.String())
-		if !ok {
+		// Process log if the key hasn't been confirmed yet
+		confirmed, ok := rc.activeKeys.Get(l.Key.String())
+		if ok && !confirmed {
 			rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
-			rc.staleReportLogs.Set(l.Key.String(), true, util.DefaultCacheExpiration)
+			// set state of key to indicate that the report was transmitted
+			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
 			logCheckBlockKey, id, err := l.Key.BlockKeyAndUpkeepID()
 			if err != nil {
@@ -220,6 +217,9 @@ func (rc *reportCoordinator) checkLogs() {
 				// resulting in atleast report checkBlockNumber of logCheckBlockKey+1
 			})
 		}
+		// We do not do anything if (ok && confirmed) as in the case of perform logs because
+		// a stale report log can get reorged to a different block number but it will have the safe effect
+		// on filters, as the filter update depends upon checkBlockNumber and not transmitBlockNumber
 	}
 }
 
@@ -291,7 +291,6 @@ func (rc *reportCoordinator) start() {
 		go rc.run()
 		go rc.idCacheCleaner.Run(rc.idBlocks)
 		go rc.cacheCleaner.Run(rc.activeKeys)
-		go rc.staleReportLogsCacheCleaner.Run(rc.staleReportLogs)
 	})
 }
 
@@ -299,7 +298,6 @@ func (rc *reportCoordinator) stop() {
 	rc.chStop <- struct{}{}
 	rc.idCacheCleaner.Stop()
 	rc.cacheCleaner.Stop()
-	rc.staleReportLogsCacheCleaner.Stop()
 }
 
 func (rc *reportCoordinator) run() {

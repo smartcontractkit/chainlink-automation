@@ -37,6 +37,7 @@ func TestReportCoordinator(t *testing.T) {
 	id1 := types.UpkeepIdentifier("1")
 	bk2 := chain.BlockKey("2")
 	bk3 := chain.BlockKey("3")
+	bk4 := chain.BlockKey("4")
 	bk15 := chain.BlockKey("15")
 
 	t.Run("FilterBeforeAccept", func(t *testing.T) {
@@ -344,6 +345,84 @@ func TestReportCoordinator(t *testing.T) {
 		assertFilter(t, key1Block2, false, filter)
 		assertFilter(t, key1Block3, true, filter)
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// Now a new key is accepted which is after previously accepted key
+		err = rc.Accept(key1Block2)
+		assert.NoError(t, err)
+
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
+		// Id should be blocked indefintely on all blocks
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Stale report log is found", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// stale report log for 1|1 is found at block 4
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 2 (checkBlock(1) + 1)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		assertFilter(t, key1Block4, true, filter)
+		// Transmit should be confirmed as stale report log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Perform log gets reorged to stale report log", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		//filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Stale report log gets reorged", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		//filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Multiple accepted keys and old ones get perform/stale report log", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		//filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
 
 		mp.AssertExpectations(t)
 		mr.AssertExpectations(t)
