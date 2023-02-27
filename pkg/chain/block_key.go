@@ -24,6 +24,16 @@ func (k BlockKey) After(kk types.BlockKey) (bool, error) {
 	return gt > 0, nil
 }
 
+// Returns the next block key after this block (addition of 1)
+func (k BlockKey) Next() (types.BlockKey, error) {
+	a, ok := big.NewInt(0).SetString(k.String(), 10)
+	if !ok {
+		return BlockKey(""), ErrBlockKeyNotParsable
+	}
+	a = a.Add(a, big.NewInt(1))
+	return BlockKey(a.String()), nil
+}
+
 func (k BlockKey) String() string {
 	return string(k)
 }

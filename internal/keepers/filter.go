@@ -210,10 +210,16 @@ func (rc *reportCoordinator) checkLogs() {
 			if err != nil {
 				continue
 			}
+			nextKey, err := logCheckBlockKey.Next()
+			if err != nil {
+				continue
+			}
 
 			rc.updateIdBlock(string(id), idBlocker{
 				CheckBlockNumber:    logCheckBlockKey,
-				TransmitBlockNumber: logCheckBlockKey, // Removes the id from filters after logCheckBlockKey
+				TransmitBlockNumber: nextKey, // Removes the id from filters after logCheckBlockKey+1
+				// We add one here as this filter is applied on RPC checkBlockNumber (which will be atleast logCheckBlockKey+1+1)
+				// resulting in atleast report checkBlockNumber of logCheckBlockKey+1
 			})
 		}
 	}
