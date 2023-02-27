@@ -98,7 +98,7 @@ func (c *mergedContext) run() {
 	}
 
 	c.mu.Lock()
-	if c.err == nil {
+	if c.err == nil && doneCtx != nil {
 		c.err = doneCtx.Err()
 	}
 	c.mu.Unlock()
