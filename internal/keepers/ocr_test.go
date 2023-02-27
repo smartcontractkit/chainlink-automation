@@ -908,7 +908,7 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 		},
 		{
 			Name:        "Multiple Results w/ Last Transmitted",
-			Description: "Should not transmit if one key in report has been transmitted",
+			Description: "Should transmit if atleast one key in report has not been transmitted",
 			ReportContents: []ktypes.UpkeepResult{
 				{
 					Key: chain.UpkeepKey("1|1"),
@@ -922,6 +922,27 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 				B bool
 			}{
 				{K: chain.UpkeepKey("1|1"), B: false},
+				{K: chain.UpkeepKey("1|2"), B: true},
+			},
+			ExpectedBool: true,
+			Err:          nil,
+		},
+		{
+			Name:        "Multiple Results w/ Last Transmitted",
+			Description: "Should not transmit if all keys in report have been transmitted",
+			ReportContents: []ktypes.UpkeepResult{
+				{
+					Key: chain.UpkeepKey("1|1"),
+				},
+				{
+					Key: chain.UpkeepKey("1|2"),
+				},
+			},
+			TransmitChecks: []struct {
+				K ktypes.UpkeepKey
+				B bool
+			}{
+				{K: chain.UpkeepKey("1|1"), B: true},
 				{K: chain.UpkeepKey("1|2"), B: true},
 			},
 			ExpectedBool: false,
