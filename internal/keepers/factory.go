@@ -119,7 +119,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			d.config.CacheEvictionInterval,
 			d.perfLogs,
 			offChainCfg.MinConfirmations,
-			offChainCfg.ReportBlockLag,
 			d.logger,
 		),
 		reportGasLimit:     offChainCfg.GasLimitPerReport,

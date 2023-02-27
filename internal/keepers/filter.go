@@ -38,7 +38,6 @@ type reportCoordinator struct {
 	registry                    types.Registry
 	logs                        types.PerformLogProvider
 	minConfs                    int
-	reportBlockLag              int
 	idBlocks                    *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
 	activeKeys                  *util.Cache[bool]
 	staleReportLogs             *util.Cache[bool] // Stores the processed reorg log hashes
@@ -49,13 +48,12 @@ type reportCoordinator struct {
 	chStop                      chan struct{}
 }
 
-func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, reportBlockLag int, logger *log.Logger) *reportCoordinator {
+func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
 		logger:                      logger,
 		registry:                    r,
 		logs:                        logs,
 		minConfs:                    minConfs,
-		reportBlockLag:              reportBlockLag,
 		idBlocks:                    util.NewCache[idBlocker](s),
 		activeKeys:                  util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		staleReportLogs:             util.NewCache[bool](time.Hour),
