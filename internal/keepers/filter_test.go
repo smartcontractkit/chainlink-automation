@@ -235,6 +235,67 @@ func TestReportCoordinator(t *testing.T) {
 		mr.AssertExpectations(t)
 	})
 
+	t.Run("Reorged Perform Logs", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// 1. key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// perform log for 1|1 is at block 2
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// key 1|1 filter returns false
+		// key 2|1 filter returns false
+		// key 3|1 filter returns true
+		// reason: the node unblocks id 1 after block 2
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+
+		// A re-orged perform log for 1|1 is found at block 3
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// Transmit confirmed should not change
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// key 1|1 filter returns false
+		// key 2|1 filter returns false
+		// key 3|1 filter returns false
+		// key 4|1 filter returns true
+		// reason: the node unblocks id 1 after block 3 (latest reorged perform)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
 	t.Run("Filter", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 		filter := rc.Filter()
