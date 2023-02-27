@@ -235,7 +235,7 @@ type idBlocker struct {
 // For a sequence of updates, updateIdBlock can be called in any order
 // on different nodes, but by maintaining this invariant it results in
 // an eventually consistent value across nodes.
-func (b idBlocker) ShouldUpdate(val idBlocker) (bool, error) {
+func (b idBlocker) shouldUpdate(val idBlocker) (bool, error) {
 	isAfter, err := val.CheckBlockNumber.After(b.CheckBlockNumber)
 	if err != nil {
 		return false, err
@@ -271,7 +271,7 @@ func (b idBlocker) ShouldUpdate(val idBlocker) (bool, error) {
 func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
 	idBlock, ok := rc.idBlocks.Get(key)
 	if ok {
-		shouldUpdate, err := idBlock.ShouldUpdate(val)
+		shouldUpdate, err := idBlock.shouldUpdate(val)
 		if err != nil {
 			// Don't update on errors
 			return
