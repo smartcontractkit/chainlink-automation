@@ -239,7 +239,7 @@ func TestReportCoordinator(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
 		filter := rc.Filter()
 
-		// 1. key 1|1 is Accepted
+		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
 
 		// the node sees id 1 as 'in-flight' and blocks for all block numbers
@@ -291,6 +291,59 @@ func TestReportCoordinator(t *testing.T) {
 		assertFilter(t, key1Block2, false, filter)
 		assertFilter(t, key1Block3, false, filter)
 		assertFilter(t, key1Block4, true, filter)
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Same key accepted twice", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// key 1|1 is Accepted again. It should not error out
+		err := rc.Accept(key1Block1)
+		assert.NoError(t, err)
+
+		// Same filtering and transmission confirmed should hold true
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// perform log for 1|1 is found at block 2
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 2
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// key 1|1 is Accepted again. It should not error out and not change filters
+		err = rc.Accept(key1Block1)
+		assert.NoError(t, err)
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
 
 		mp.AssertExpectations(t)
 		mr.AssertExpectations(t)
