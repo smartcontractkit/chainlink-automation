@@ -554,6 +554,65 @@ func TestReportCoordinator(t *testing.T) {
 		mr.AssertExpectations(t)
 	})
 
+	t.Run("Multiple accepted keys and out of order logs", func(t *testing.T) {
+		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
+		filter := rc.Filter()
+
+		// key 1|1 is Accepted
+		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// Another key 2|1 is Accepted before receiving logs (This can happen if this node is lagging the network)
+		err := rc.Accept(key1Block2)
+		assert.NoError(t, err)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+		// key 2|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should not be confirmed")
+
+		// Now a perform log is received for the latest key. It should unblock the idFilters
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block2, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+		// ID unblocked from block 4
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should be confirmed")
+
+		//Now the node sees perform log for previous accepted key (out of order). It should not have any effect
+		//on id filters
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block2), "2|1 transmit should be confirmed")
+
+		mp.AssertExpectations(t)
+		mr.AssertExpectations(t)
+	})
+
 	t.Run("Filter", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 		filter := rc.Filter()
