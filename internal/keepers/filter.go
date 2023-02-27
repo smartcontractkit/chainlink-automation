@@ -98,8 +98,7 @@ func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
 
 	// If a key is already active then don't update filters, but also not throw errors as
 	// there might be other keys in the same report which can get accepted
-	_, ok := rc.activeKeys.Get(key.String())
-	if !ok {
+	if _, ok := rc.activeKeys.Get(key.String()); !ok {
 		// Set the key as accepted within activeKeys
 		rc.activeKeys.Set(key.String(), false, util.DefaultCacheExpiration)
 
@@ -143,38 +142,39 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		// Process log if the key hasn't been confirmed yet
-		confirmed, ok := rc.activeKeys.Get(l.Key.String())
-		if ok && !confirmed {
-			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+		if confirmed, ok := rc.activeKeys.Get(l.Key.String()); ok {
+			if !confirmed {
+				// Process log if the key hasn't been confirmed yet
+				rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
-			// set state of key to indicate that the report was transmitted
-			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
-
-			rc.updateIdBlock(string(id), idBlocker{
-				CheckBlockNumber:    logCheckBlockKey,
-				TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
-			})
-		}
-
-		if ok && confirmed {
-			// This can happen if we get a perform log for the same key again on a newer block in case of reorgs
-			// In this case, no change to activeKeys is needed, but idBlocks is updated to the newer BlockNumber
-			idBlock, ok := rc.idBlocks.Get(string(id))
-			if ok && idBlock.CheckBlockNumber.String() == logCheckBlockKey.String() &&
-				idBlock.TransmitBlockNumber.String() != l.TransmitBlock.String() {
-
-				rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+				// set state of key to indicate that the report was transmitted
+				rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
 					CheckBlockNumber:    logCheckBlockKey,
-					TransmitBlockNumber: l.TransmitBlock,
+					TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
 				})
+			}
+
+			if confirmed {
+				// This can happen if we get a perform log for the same key again on a newer block in case of reorgs
+				// In this case, no change to activeKeys is needed, but idBlocks is updated to the newer BlockNumber
+				idBlock, ok := rc.idBlocks.Get(string(id))
+				if ok && idBlock.CheckBlockNumber.String() == logCheckBlockKey.String() &&
+					idBlock.TransmitBlockNumber.String() != l.TransmitBlock.String() {
+
+					rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+
+					rc.updateIdBlock(string(id), idBlocker{
+						CheckBlockNumber:    logCheckBlockKey,
+						TransmitBlockNumber: l.TransmitBlock,
+					})
+				}
 			}
 		}
 	}
 
-	slateReportLogs, _ := rc.logs.StaleReportLogs(context.Background())
+	staleReportLogs, _ := rc.logs.StaleReportLogs(context.Background())
 	// It can happen that in between the time the report is generated and it gets
 	// confirmed on chain something changes and it becomes stale. Current scenarios are:
 	//    - Another report for the upkeep is transmitted making this report stale
@@ -188,7 +188,7 @@ func (rc *reportCoordinator) checkLogs() {
 	// are not able to mark the key responsible as transmitted which will result in some wasted
 	// gas if this node tries to transmit it again, however we prioritise the upkeep performance
 	// and clear the idBlocks for this upkeep.
-	for _, l := range slateReportLogs {
+	for _, l := range staleReportLogs {
 		if l.Confirmations < int64(rc.minConfs) {
 			rc.logger.Printf("Skipping stale report log in transaction %s as confirmations (%d) is less than min confirmations (%d)", l.TransactionHash, l.Confirmations, rc.minConfs)
 			continue
@@ -203,34 +203,35 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		// Process log if the key hasn't been confirmed yet
-		confirmed, ok := rc.activeKeys.Get(l.Key.String())
-		if ok && !confirmed {
-			rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
-			// set state of key to indicate that the report was transmitted
-			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
-
-			rc.updateIdBlock(string(id), idBlocker{
-				CheckBlockNumber:    logCheckBlockKey,
-				TransmitBlockNumber: nextKey, // Removes the id from filters after logCheckBlockKey+1
-				// We add one here as this filter is applied on RPC checkBlockNumber (which will be atleast logCheckBlockKey+1+1)
-				// resulting in atleast report checkBlockNumber of logCheckBlockKey+1
-			})
-		}
-
-		if ok && confirmed {
-			// This can happen if we get a stale log for the same key again on a newer block or in case
-			// the key was unblocked due to a performLog which later got reorged into a stale log
-			idBlock, ok := rc.idBlocks.Get(string(id))
-			if ok && idBlock.CheckBlockNumber.String() == logCheckBlockKey.String() &&
-				idBlock.TransmitBlockNumber.String() != nextKey.String() {
-
-				rc.logger.Printf("Got a stale report log for previously accepted key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+		if confirmed, ok := rc.activeKeys.Get(l.Key.String()); ok {
+			if !confirmed {
+				// Process log if the key hasn't been confirmed yet
+				rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+				// set state of key to indicate that the report was transmitted
+				rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
 					CheckBlockNumber:    logCheckBlockKey,
-					TransmitBlockNumber: nextKey,
+					TransmitBlockNumber: nextKey, // Removes the id from filters after logCheckBlockKey+1
+					// We add one here as this filter is applied on RPC checkBlockNumber (which will be atleast logCheckBlockKey+1+1)
+					// resulting in atleast report checkBlockNumber of logCheckBlockKey+1
 				})
+			}
+
+			if confirmed {
+				// This can happen if we get a stale log for the same key again on a newer block or in case
+				// the key was unblocked due to a performLog which later got reorged into a stale log
+				idBlock, ok := rc.idBlocks.Get(string(id))
+				if ok && idBlock.CheckBlockNumber.String() == logCheckBlockKey.String() &&
+					idBlock.TransmitBlockNumber.String() != nextKey.String() {
+
+					rc.logger.Printf("Got a stale report log for previously accepted key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+
+					rc.updateIdBlock(string(id), idBlocker{
+						CheckBlockNumber:    logCheckBlockKey,
+						TransmitBlockNumber: nextKey,
+					})
+				}
 			}
 		}
 	}
