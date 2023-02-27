@@ -194,21 +194,21 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
+		logCheckBlockKey, id, err := l.Key.BlockKeyAndUpkeepID()
+		if err != nil {
+			continue
+		}
+		nextKey, err := logCheckBlockKey.Next()
+		if err != nil {
+			continue
+		}
+
 		// Process log if the key hasn't been confirmed yet
 		confirmed, ok := rc.activeKeys.Get(l.Key.String())
 		if ok && !confirmed {
 			rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 			// set state of key to indicate that the report was transmitted
 			rc.activeKeys.Set(l.Key.String(), true, util.DefaultCacheExpiration)
-
-			logCheckBlockKey, id, err := l.Key.BlockKeyAndUpkeepID()
-			if err != nil {
-				continue
-			}
-			nextKey, err := logCheckBlockKey.Next()
-			if err != nil {
-				continue
-			}
 
 			rc.updateIdBlock(string(id), idBlocker{
 				CheckBlockNumber:    logCheckBlockKey,
@@ -217,9 +217,22 @@ func (rc *reportCoordinator) checkLogs() {
 				// resulting in atleast report checkBlockNumber of logCheckBlockKey+1
 			})
 		}
-		// We do not do anything if (ok && confirmed) as in the case of perform logs because
-		// a stale report log can get reorged to a different block number but it will have the safe effect
-		// on filters, as the filter update depends upon checkBlockNumber and not transmitBlockNumber
+
+		if ok && confirmed {
+			// This can happen if we get a stale log for the same key again on a newer block or in case
+			// the key was unblocked due to a performLog which later got reorged into a stale log
+			idBlock, ok := rc.idBlocks.Get(string(id))
+			if ok && idBlock.CheckBlockNumber.String() == logCheckBlockKey.String() &&
+				idBlock.TransmitBlockNumber.String() != nextKey.String() {
+
+				rc.logger.Printf("Got a stale report log for previously accepted key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+
+				rc.updateIdBlock(string(id), idBlocker{
+					CheckBlockNumber:    logCheckBlockKey,
+					TransmitBlockNumber: nextKey,
+				})
+			}
+		}
 	}
 }
 

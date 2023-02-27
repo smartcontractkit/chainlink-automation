@@ -397,10 +397,50 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Perform log gets reorged to stale report log", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		//filter := rc.Filter()
+		filter := rc.Filter()
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// perform log for 1|1 is found at block 3
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{
+			{Key: key1Block1, TransmitBlock: bk3, Confirmations: 1},
+		}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 3
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// Now the perform log gets re-orged into a stale report log on block 4
+		// It should not cause amny changes in the filter as checkBlockNumber of stale report log
+		// is still 1
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, false, filter)
+		assertFilter(t, key1Block4, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
 
 		mp.AssertExpectations(t)
 		mr.AssertExpectations(t)
@@ -408,10 +448,45 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Stale report log gets reorged", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		//filter := rc.Filter()
+		filter := rc.Filter()
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
+
+		// the node sees id 1 as 'in-flight' and blocks for all block numbers
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block4, false, filter)
+
+		// key 1|1 transmit confirmed returns false
+		assert.Equal(t, false, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should not be confirmed")
+
+		// stale log for 1|1 is found at block 2
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk2, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// reason: the node unblocks id 1 after block 2
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		// Transmit should be confirmed as perform log is found
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
+
+		// stale log for 1|1 is again found at block 4
+		mp.Mock.On("PerformLogs", mock.Anything).Return([]types.PerformLog{}, nil).Once()
+		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]types.StaleReportLog{
+			{Key: key1Block1, TransmitBlock: bk4, Confirmations: 1},
+		}, nil).Once()
+		rc.checkLogs()
+
+		// Filters should not change as checkBlockNumber of stale report log remains unchanged
+		assertFilter(t, key1Block1, false, filter)
+		assertFilter(t, key1Block2, false, filter)
+		assertFilter(t, key1Block3, true, filter)
+		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
 
 		mp.AssertExpectations(t)
 		mr.AssertExpectations(t)
