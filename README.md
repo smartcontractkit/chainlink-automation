@@ -1,10 +1,17 @@
-# ocr2keepers Oracle Plugin
-Initialize the plugin by creating a new Delegate
+# OCR2 Automation Oracle Plugin
+The intention of this package is to be a library that a joining layer between the OCR2 protocol, the chainlink node, and the automation pipeline. The primary functions involve converting chain state into OCR2 observations and utility functions for producing reports.
+
+## Interface Implementation Requirements
+This package provides interfaces instead of distict types to allow for future extensibility and to isolate relevant functionality.
+
+## Observation Detail
+An observation of upkeep state can be simplified to which upkeeps are eligible and which are processing. Those which are ineligible are not necessary to broadcast in an observation. The upkeeps that are in progress can be agreed on by a quorum by using a simple identifier. This can be an integer or string id. The upkeeps that are eligible require a deep comparison to reach agreement. For example, if one node checks an upkeep at block 1 and another node checks the same upkeep at block 2, the results could not be determined to be equal.
 
 ```go
 delegate, err := ocr2keepers.NewDelegate(delegateConfig)
 ```
 
+# Development
 ## Unit Testing
 Unit testing is used extensively and the primary goal is to keep test coverage above 70%.
 
