@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/internal/malicious"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -108,22 +109,42 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.ServiceQueueLength,
 	)
 
+	coordinator := newReportCoordinator(
+		d.registry,
+		time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
+		d.config.CacheEvictionInterval,
+		d.perfLogs,
+		offChainCfg.MinConfirmations,
+		d.logger,
+	)
+
 	return &keepers{
-		id:      c.OracleID,
-		service: d.upkeepService,
-		encoder: d.encoder,
-		logger:  d.logger,
-		filter: newReportCoordinator(
-			d.registry,
-			time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
-			d.config.CacheEvictionInterval,
-			d.perfLogs,
-			offChainCfg.MinConfirmations,
-			d.logger,
-		),
+		id:                 c.OracleID,
+		service:            d.upkeepService,
+		encoder:            d.encoder,
+		logger:             d.logger,
+		filter:             coordinator,
 		reportGasLimit:     offChainCfg.GasLimitPerReport,
 		upkeepGasOverhead:  offChainCfg.GasOverheadPerUpkeep,
 		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,
 		reportBlockLag:     offChainCfg.ReportBlockLag,
+		tests: []MaliciousObservationModifier{
+			malicious.InvalidObservationBlockKeyError,
+			malicious.InvalidObservationUpkeepKeyError,
+			malicious.ObservationParseError,
+			malicious.ObservationExtraFields,
+			malicious.NilBytesObservation,
+			malicious.EmptyBytesObservation,
+			malicious.SendVeryOldBlockNumber,
+			malicious.SendVeryFutureBlockNumber,
+			malicious.SendNegativeBlockNumber,
+			malicious.SendZeroBlockNumber,
+			malicious.SendEmptyBlockValue,
+			malicious.SendVeryLargeBlockValue,
+			malicious.SendNegativeUpkeepID,
+			malicious.SendZeroUpkeepID,
+			malicious.SendVeryLargeUpkeepIDs,
+			malicious.SendLeadingZeroUpkeepIDs,
+		},
 	}, info, nil
 }

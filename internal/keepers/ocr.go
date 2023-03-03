@@ -3,6 +3,7 @@ package keepers
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -17,6 +18,8 @@ const (
 
 	// reportKeysLimit is the maximum number of upkeep keys checked during the report phase
 	reportKeysLimit = 10
+
+	roundsPerTest = 20
 )
 
 type ocrLogContextKey struct{}
@@ -95,7 +98,34 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// of for each epoch/round
 	k.logger.Printf("OCR observation completed successfully with block number %s, %d eligible upkeeps(%s): %s", blockKey, len(identifiers), upkeepIdentifiersToString(identifiers), lCtx)
 
+	k.logger.Println("Malicious observations ... ")
+
+	if len(k.tests) > 0 {
+		var name string
+
+		// cycle through scenarios and randomly select every x number of rounds
+		if k.timesTested > roundsPerTest {
+			// select new test
+			k.selectedTest = rand.Intn(len(k.tests))
+			k.timesTested = 0
+		}
+		k.timesTested++
+
+		test := k.tests[k.selectedTest]
+		name, b, err = test(ctx, b, err)
+
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to modify observation: %s", err, lCtx)
+		}
+
+		// write the number of keys returned from sampling to the debug log
+		// this offers a record of the number of performs the node has visibility
+		// of for each epoch/round
+		k.logger.Printf("OCR observation completed successfully for test '%s': %s", name, lCtx)
+	}
+
 	return b, nil
+
 }
 
 // Report implements the types.ReportingPlugin interface in OC2. This method chooses a single upkeep
