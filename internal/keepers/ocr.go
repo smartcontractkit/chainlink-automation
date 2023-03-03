@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	"github.com/smartcontractkit/ocr2keepers/internal/malicious"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -20,8 +19,7 @@ const (
 	// reportKeysLimit is the maximum number of upkeep keys checked during the report phase
 	reportKeysLimit = 10
 
-	roundsPerTest       = 20
-	roundsPerConfigTest = 20
+	roundsPerTest = 20
 )
 
 type ocrLogContextKey struct{}
@@ -90,10 +88,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 
 	obs.UpkeepIdentifiers = identifiers
 
-	k.logger.Println("Malicious config ... ")
-
-	config := k.manipulateConfig(malicious.ConfigRemapping{MaxObservationLength: maxObservationLength})
-	b, err := limitedLengthEncode(obs, config.MaxObservationLength)
+	b, err := limitedLengthEncode(obs, maxObservationLength)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
 	}
@@ -131,28 +126,6 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 
 	return b, nil
 
-}
-
-func (k *keepers) manipulateConfig(m malicious.ConfigRemapping) malicious.ConfigRemapping {
-	if len(k.configTests) > 0 {
-		var name string
-		var testIdx int
-
-		// cycle through scenarios and randomly select every x number of rounds
-		if k.timesConfigTested > roundsPerConfigTest {
-			// select new test
-			testIdx = rand.Intn(len(k.configTests))
-			k.timesConfigTested = 0
-		}
-		k.timesConfigTested++
-
-		test := k.configTests[testIdx]
-
-		name, m = test(m)
-		k.logger.Printf("Config values successfully updated for test '%s'", name)
-	}
-
-	return m
 }
 
 // Report implements the types.ReportingPlugin interface in OC2. This method chooses a single upkeep
