@@ -11,7 +11,7 @@ import (
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
-const maxObservationLength = 1_000
+const maxObservationLength = 2_000
 
 var _ types.ReportingPluginFactory = (*keepersReportingFactory)(nil)
 
@@ -76,7 +76,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 			MaxObservationLength: maxObservationLength,
 			// a report is composed of 1 or more abi encoded perform calls
 			// with performData of arbitrary length
-			MaxReportLength: 10_000, // TODO (config): pick sane limit based on expected performData size. maybe set this to block size limit or 2/3 block size limit?
+			MaxReportLength: 20_000, // TODO (config): pick sane limit based on expected performData size. maybe set this to block size limit or 2/3 block size limit?
 		},
 		// UniqueReports increases the threshold of signatures needed for quorum to (n+f)/2 so that it's guaranteed a unique report is generated per round.
 		// Fixed to false for ocr2keepers, as we always expect f+1 signatures on a report on contract and do not support uniqueReports quorum
