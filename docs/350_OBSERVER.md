@@ -38,14 +38,8 @@ The polling observer is a specific implementation of an `Observer` that polls a
 chain through a registry every block. To reduce workload, the polling observer
 limits the number of upkeeps check based on a sampling ratio.
 
+[DIAGRAM](./diagrams/POLLINGOBSERVER.md)
+
 ## Ratio
 The sampling ratio is determined by the probability that all upkeeps will be
 observed by at least `n` nodes over `x` number of blocks.
-
-```mermaid
-sequenceDiagram
-    participant PollingObserver
-    participant HeadSubscriber
-
-    HeadSubscriber->>PollingObserver: new head
-```

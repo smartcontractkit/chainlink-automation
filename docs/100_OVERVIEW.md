@@ -40,7 +40,7 @@ sole responsibilities should remain as a collector and basic encoder to the
 final transport type.
 
 More about specifics of an observation from an observer here:
-[OBSERVATION](./OBSERVATION.md)
+[OBSERVATION](./300_OBSERVATION.md)
 
 ##### Observation Struct
 An observation is composed of a list of eligible upkeeps and a list of pending
@@ -88,7 +88,7 @@ external state. All observations should be fully validated independently, merged
 together, and reduced by provided pending state structs. The result should be 
 entirely stateless.
 
-More information on building reports here: [REPORT](./REPORT.md)
+More information on building reports here: [REPORT](./400_REPORT.md)
 
 #### Life Cycle
 An instance of a `Plugin` is produced by a factory method. This factory method
@@ -108,7 +108,7 @@ Examples can include:
 - log trigger observer (logs can trigger observations)
 - scheduled observer (polling occurs on a defined schedule like cron)
 
-More information on observers here: [OBSERVER](./OBSERVER.md)
+More information on observers here: [OBSERVER](./350_OBSERVER.md)
 
 ### Encoder
 An `Encoder` is intended to be purely a translation layer. A `Plugin` should not
@@ -116,7 +116,7 @@ need to know the structural contents of observations, which is why a
 `PointState` contains raw byte values. The responsibility of an `Encoder` is to
 convert those raw values into necessary actionable results.
 
-More information on encoders here: [ENCODER](./ENCODER.md)
+More information on encoders here: [ENCODER](./500_ENCODER.md)
 
 ### Merger
 A `Merger` provides methods to reduce individual parts from multiple observations
@@ -126,7 +126,7 @@ of eligibles by a list of pendings. The `Merger` is a critical component that
 establishes the OCR report function as a pure function. It should rely ONLY on
 its inputs and not interact with any outside state (node, chain, or otherwise).
 
-More information on mergers here: [MERGER](./MERGER.md)
+More information on mergers here: [MERGER](./600_MERGER.md)
 
 ## External Message Interactions
 The use of OCR telemetry was considered in the design of the plugin such that
@@ -143,6 +143,8 @@ responsibility.
 
 Observation distinct types and decoders should be exposed as public types and
 functions for the package.
+
+More information on the external package interface and types: [TYPES](./700_TYPES.md)
 
 ## Open Questions
 - Does LibOCR leverage compression on message delivery?
