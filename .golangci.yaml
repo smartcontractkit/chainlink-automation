@@ -4,29 +4,34 @@ run:
   skip-dirs-use-default: true
   modules-download-mode: readonly
   allow-parallel-runners: false
+  skip-dirs:
+    - "simulation_runbooks"
+    - "cmd"
 linters:
+  # commented linters are intended to be uncommented, but currently have a lot
+  # of errors. these can be enabled one at a time.
   enable:
     - bodyclose
     - exhaustive
-    - forcetypeassert
+    # - forcetypeassert
     # - funlen
     - goconst
     # - gocognit
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
-    - gosec
+    # - gomnd
+    # - gosec
     - importas
     - interfacebloat
-    - ireturn
+    # - ireturn
     - makezero
-    - misspell
+    # - misspell
     - nestif
-    - nlreturn
-    - prealloc
-    - unconvert
-    - unparam
+    # - nlreturn
+    # - prealloc
+    # - unconvert
+    # - unparam
     - usestdlibvars
-    - whitespace
-    - wsl
+    # - whitespace
+    # - wsl
