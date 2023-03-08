@@ -1,0 +1,32 @@
+run:
+  concurrency: 4
+  timeout: 5m
+  skip-dirs-use-default: true
+  modules-download-mode: readonly
+  allow-parallel-runners: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - forcetypeassert
+    # - funlen
+    - goconst
+    # - gocognit
+    - gocyclo
+    - gofmt
+    - goimports
+    - gomnd
+    - gosec
+    - importas
+    - interfacebloat
+    - ireturn
+    - makezero
+    - misspell
+    - nestif
+    - nlreturn
+    - prealloc
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - whitespace
+    - wsl

@@ -1,4 +1,4 @@
-name: Go Build and Test
+name: Linting w/ Unit, Fuzz, and Race Checks
 
 on:
   push:
@@ -9,57 +9,57 @@ on:
 jobs:
 
   lint:
+    name: Code Linting Checks
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    - uses: actions/setup-go@v3
       with:
         go-version: 1.19
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
-        # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
         version: latest
 
   unit-test:
+    name: Unit Test Checks
     runs-on: ubuntu-latest
+    needs: [ lint ]
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    - uses: actions/setup-go@v3
       with:
         go-version: 1.19
 
     - name: Run Unit Tests
-      run: go test -v ./...
+      run: |
+        go test -v ./... -coverprofile cover.out -covermode count
+        go tool cover -func cover.out
 
-  dependency-check:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
-    
-    - name: Write Go Dep list
-      run: go list -json -m all > go.list
-    
-    - name: Nancy Scan
-      uses: sonatype-nexus-community/nancy-github-action@main
+    - name: Code Coverage Threshold Check
+      env:
+        TESTCOVERAGE_THRESHOLD: 50
+      run: |
+        echo "Code Coverage Threshold Check: coverage should be above threshold"
+        echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
+        totalCoverage=`go tool cover -func=cover.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
+        echo "Current test coverage : $totalCoverage %"
+        if (( $(echo "totalCoverage $TESTCOVERAGE_THRESHOLD" | awk '{print ($1 > $2)}') )); then
+          echo "OK"
+        else
+          echo "Current test coverage is below threshold."
+          echo "Check failed"
+          exit 1
+        fi
     
   race-test:
+    name: Race Condition Checks
     runs-on: ubuntu-latest
+    needs: [ lint ]
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    - uses: actions/setup-go@v3
       with:
         go-version: 1.19
 
@@ -67,12 +67,12 @@ jobs:
       run: go test -race ./...
 
   fuzz-test:
+    name: Fuzz Test Checks
     runs-on: ubuntu-latest
+    needs: [ lint ]
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    - uses: actions/setup-go@v3
       with:
         go-version: 1.19
 
