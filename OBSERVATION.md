@@ -34,9 +34,9 @@ operation as simple as a value comparison.
 
 ```
 type PointState struct {
+    Identifier  []byte  // provides congruence check
     Hash        [8]byte // hash of Data for deep equality check
-    Identifier  [8]byte // provides congruence check
-    TimeOrdinal [8]byte // allows points to be time ordered
+    Ordinal     [8]byte // allows points to be time ordered
     Data        []byte  // provides complete data required to build a report
 }
 ```

@@ -149,3 +149,4 @@ functions for the package.
 - Would it be helpful to implement data compression on observations or reports?
 - What should be the observation size limits? (check data, perform data, etc.)
 - What should be report size limits? (perform data is a big factor)
+- How is the best way to pass off-chain config values to plugin components?
