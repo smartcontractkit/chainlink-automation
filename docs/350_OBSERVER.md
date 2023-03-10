@@ -42,6 +42,7 @@ and the limitations on calldata per chain.
 - an identifier is a uint64 value (8 bytes)
 - an active window is 12s
 - throughput is 3 upkeeps per second average
+- each node has a 1/12 chance of being leader (leader is required to broadcast)
 
 With the perform data of an upkeep being much larger than all other values in
 a `PointState`, we can discard the `Identifier`, `Hash`, and `Ordinal` as 
@@ -59,8 +60,8 @@ reduced. Uncompressed, one observation would take 1 second to upload on a
 100 Mbps connection, assuming a node is running on a high-speed home internet
 connection (which shouldn't be the case).
 
-For a node cluster of 16 nodes, each node would need to download upwards of 
-192 MB of data per round, not using data compression. 
+For a node cluster of 12 nodes, each node would need to download upwards of 
+144 MB of data per round, not using data compression. 
 
 This calculation is also assuming 3 reports per second, which is very fast for
 the OCR protocol. The assumptions could be adjusted to a single report gas
@@ -78,14 +79,23 @@ cost the following on egress for automation observations with a round time of
 one second:
 
 ```
-12 * 86,400 * 30 = 31,104,000 MB / month = 31,104 GB / month
-31,104 * 0.18 = $5,318.78
+12 * 86,400 * 30 * 2 = 62,208,000 MB / month = 62,208 GB / month
+62,208 * 0.18 = $11,197.44
 ```
 
 Some of these egress costs can be as low as $0.01 / GB depending on the origin 
 and destination regions. Therefore, the above is intended to be a maximum 
 estimate on the cost to run an instance of the automation plugin with the 
-intended design within the context of data egress only.
+intended design within the context of data egress on ***observations only***.
+
+**Optimal Results**
+
+With data compression on observations using [zstd](https://pkg.go.dev/github.com/klauspost/compress/zstd#section-readme), an optimal compression ratio 
+could be upwards of 1/10, which reduces egress by an order of magnitude. If 
+egress costs are assumed to be the lower of the estimates of $0.01 / GB, that
+lowers the cost by an order of magnitude. Therefore, a cost estimate under 
+optimal conditions might be in the range of $120 / month or less to support the
+observation design mentioned.
 
 ## Filter
 A `Filter` tracks the pending state of upkeeps from the perspective of a single
