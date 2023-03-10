@@ -79,12 +79,36 @@ type Observer interface {
 ```
 
 # Polling Observer
-The polling observer is a specific implementation of an `Observer` that polls a
+A polling observer is a specific implementation of an `Observer` that polls a
 chain through a registry every block. To reduce workload, the polling observer
-limits the number of upkeeps check based on a sampling ratio.
+limits the number of upkeeps checked per block based on a sampling ratio where
+some random subset of the total upkeeps is checked instead of the entire set.
+
+Each polled upkeep state is added to an observation window that is returned to
+the calling function (the `Plugin`). A polling observer must maintain active 
+state on pending upkeeps via log events. The `Plugin` indicates to the observer
+that an upkeep has been accepted for transmission and the observer must filter
+that upkeep from the active window of observations until specific log events
+are encountered or a timeout passes for the specific upkeep.
 
 [DIAGRAM](./diagrams/POLLINGOBSERVER.md)
 
 ## Ratio
 The sampling ratio is determined by the probability that all upkeeps will be
-observed by at least `n` nodes over `x` number of blocks.
+observed by at least `n` nodes over `x` number of blocks. Sampling is to be done
+at random over the entire set of upkeeps needing to be polled.
+
+# Log Trigger Observer
+A log trigger observer is a modification of the polling observer where a custom
+log event triggers polling instead of a block. A custom log event would need to
+indicate which upkeep needs to be polled. The specified upkeep is added to a
+set of upkeeps needing to be polled and is limited to a polling window. This
+provides the same active window of state observations for the upkeep and 
+abstracts the differences between a full polling observer and a log trigger
+observer.
+
+# Cron Trigger Observer
+A cron trigger observer is a further modification of a log trigger observer in
+that a custom cron schedule triggers polling on an individual upkeep instead of
+logs. In much the same way, a single upkeep would be triggered for polling and
+would be limited to a polling window. 
