@@ -152,3 +152,10 @@ More information on the external package interface and types: [TYPES](./700_TYPE
 - What should be the observation size limits? (check data, perform data, etc.)
 - What should be report size limits? (perform data is a big factor)
 - How is the best way to pass off-chain config values to plugin components?
+
+## Cost Analysis
+
+It is with intentions of producing a more informed decision that a cost analysis
+is included. The primary focus is on costs incurred via data egress.
+
+More information on cost: [COST](./800_COST_ANALYSIS.md)

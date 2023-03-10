@@ -60,43 +60,6 @@ reduced. Uncompressed, one observation would take 1 second to upload on a
 100 Mbps connection, assuming a node is running on a high-speed home internet
 connection (which shouldn't be the case).
 
-For a node cluster of 12 nodes, each node would need to download upwards of 
-144 MB of data per round, not using data compression. 
-
-This calculation is also assuming 3 reports per second, which is very fast for
-the OCR protocol. The assumptions could be adjusted to a single report gas
-limit of 15 million, allowing for only one report per second which might be
-more reasonable.
-
-Egress costs for data centers (ingress costs are typically free, and highest 
-cost regions were chosen for the example calculation):
-- GCP: $0.15 / GB (from Indonesia or Oceania2 to any other Google Cloud region) [Google Pricing](https://cloud.google.com/vpc/network-pricing)
-- AWS: $0.12 / GB (highest estimated) [AWS Pricing](https://aws.amazon.com/blogs/apn/aws-data-transfer-charges-for-server-and-serverless-architectures/)
-- Azure: $0.18 / GB (From South America to any destination) [Azure Pricing](https://azure.microsoft.com/en-us/pricing/details/bandwidth/)
-
-Therefore a single node running in one of the above data center providers might
-cost the following on egress for automation observations with a round time of
-one second:
-
-```
-12 * 86,400 * 30 * 2 = 62,208,000 MB / month = 62,208 GB / month
-62,208 * 0.18 = $11,197.44
-```
-
-Some of these egress costs can be as low as $0.01 / GB depending on the origin 
-and destination regions. Therefore, the above is intended to be a maximum 
-estimate on the cost to run an instance of the automation plugin with the 
-intended design within the context of data egress on ***observations only***.
-
-**Optimal Results**
-
-With data compression on observations using [zstd](https://pkg.go.dev/github.com/klauspost/compress/zstd#section-readme), an optimal compression ratio 
-could be upwards of 1/10, which reduces egress by an order of magnitude. If 
-egress costs are assumed to be the lower of the estimates of $0.01 / GB, that
-lowers the cost by an order of magnitude. Therefore, a cost estimate under 
-optimal conditions might be in the range of $120 / month or less to support the
-observation design mentioned.
-
 ## Filter
 A `Filter` tracks the pending state of upkeeps from the perspective of a single
 node. Once an upkeep is accepted into a report, the filter should indicate
