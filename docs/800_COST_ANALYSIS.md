@@ -104,6 +104,83 @@ Together
 | $0.15 | $894.24 |
 | $0.20 | $1,192.32 |
 
+## Per Upkeep Observation Cost
+
+The above makes the assumption that the network is running at full reporting
+capacity. However, the inverse can very easily be the case where a single upkeep
+is rarely performed. In this case, observations will be very small in size
+because they will contain very few upkeeps in any. The cost for a single upkeep
+can still be calculated as follows:
+
+**Assumptions**
+- a single upkeep uses the max gas limit of 5 million
+- the evm estimates 16 gas per non-zero byte of data
+- an identifier is a uint64 value (8 bytes)
+- an active window is 12s
+- an OCR round is 1 second
+- the network reaches a quorum within 4 blocks of the first node identifying the upkeep
+- one block is 3 seconds
+- network is a 12 node cluster
+- each node has a 1/12 chance of being leader (leader is required to broadcast)
+- calculation is for the first node to identify upkeep for perform
+
+In this scenario, one node identifies an upkeep needing to be performed and 
+is the first in the network to do so. It then adds this observed upkeep to its
+active window and begins broadcasting the observation. There is a broadcast 
+every second and the observation grows in size every 3 seconds to a maximum of
+4x due to the active window.
+
+Values:
+- `o`: the size (uncompressed) of a single `PointState` in an observation => `312 KB`
+
+*For the cost in egress using data compression, a maximum optimistic ratio of 
+1/10 can be used or a very conservative ratio of 1/3 can be used. Apply the 
+desired ratio to the costs below for the visible impact of data compression.*
+
+```
+3(o) + 3(2o) + 3(3o) + 3(4o) = 30o = 9,360 KB
+```
+
+Cost in egress for a single uncompressed observation given the above scenario:
+
+| $ / GB | Total |
+| --- | ---: |
+| $0.01 | $0.000094 |
+| $0.02 | $0.000187 |
+| $0.05 | $0.000468 |
+| $0.10 | $0.000936 |
+| $0.15 | $0.001404 |
+| $0.20 | $0.001872 |
+
+The cost for the leader is 11 times the above value (since the leader sends 
+observations directly to themselves).
+
+| $ / GB | Total |
+| --- | ---: |
+| $0.01 | $0.001030 |
+| $0.02 | $0.002060 |
+| $0.05 | $0.005148 |
+| $0.10 | $0.010296 |
+| $0.15 | $0.015444 |
+| $0.20 | $0.020592 |
+
+As an oversimplification, the total cost to the network for the single upkeep to
+be observed can be calculated by the total number of follower nodes plus the 
+cost for the one leader.
+
+```
+30o + 11(30o) = 360o = 112,320 KB
+```
+
+| $ / GB | Total |
+| --- | ---: |
+| $0.01 | $0.001123 |
+| $0.02 | $0.002246 |
+| $0.05 | $0.005616 |
+| $0.10 | $0.011232 |
+| $0.15 | $0.016848 |
+| $0.20 | $0.022464 |
+
 ## Reports
 
 A single report can contain up to the maxumim number of bytes that would fall
