@@ -13,8 +13,8 @@ is done using a randomness source derived from the config digest, epoch, and
 block number. This ensure all nodes have the same source, but the results are
 random across different OCR rounds if an observation is repeated.
 
-> the shuffling should not be necessary in the observation because we 
-> cannot trust that shuffling was done once the observation is consumed in Report
+> shuffling is done to ensure that all upkeeps have a chance at being sent in an
+> observation due to limiting the observation length
 
 ```
 ocr -> PluginThatImplementsLibOCR2
@@ -56,13 +56,13 @@ Observations from all other nodes (including the one processing a report) are
 processed into a final encoded report ready to be transmitted on chain. Key
 checks include:
 
-- all observations must pass decoding
+- all observations that don't pass decoding are discarded
 - a report must be built off of at least 1 observation
 - all observations must have a block number to calculate median from
 - observation id length should be less than or equal to max
-- check keys should be less than max keys for a report
+- check keys (block+ID) should be less than max keys for a report
 - all upkeeps should be checked at specified median block for eligibility
-- report capacity should be based on total gas used and max upkeeps per report
+- report capacity is based on max upkeeps per report (currently configured as 1), though there exists report gas limit checks too
 
 All upkeep ids are combined into a single list, duplicates removed, in-flight
 upkeeps removed, and finally shuffled using the report timestamp such that a 
@@ -167,7 +167,8 @@ following:
 - byte length should be greater than zero
 - at least one upkeep in report
 - no decode error
-- no errors from marking a key as 'in-flight'
+- no errors from marking a key as 'in-flight' (which would only happen for an error decoding an upkeep key)
+- otherwise, all keys are accepted
 
 This step is primarily focused on minimal report verification and extracting
 values from the report for tracking internal state. This internal state is used
