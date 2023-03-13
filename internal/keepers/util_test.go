@@ -217,12 +217,12 @@ func Test_observationsToUpkeepKeysError(t *testing.T) {
 		},
 	}
 
-	attr := make([]types.AttributedObservation, len(obs))
-	for i, o := range obs {
+	attr := make([]types.AttributedObservation, 0, len(obs))
+	for _, o := range obs {
 		b, _ := limitedLengthEncode(o, maxObservationLength)
-		attr[i] = types.AttributedObservation{
+		attr = append(attr, types.AttributedObservation{
 			Observation: b,
-		}
+		})
 	}
 	attr = append(attr, types.AttributedObservation{
 		Observation: []byte("unparseable"), // unparseable observation
