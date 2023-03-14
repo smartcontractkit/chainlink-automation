@@ -20,8 +20,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0/go.mod h1:DZGJHZMqrU4JJqFAWUS2U
 github.com/edsrzf/mmap-go v1.0.0 h1:CEBF7HpRnUCSJgGUb5h1Gm7e3VkmVDrR8lvWVLtrOFw=
 github.com/ethereum/go-ethereum v1.10.26 h1:i/7d9RBBwiXCEuyduBQzJw/mKmnvzsN14jqBmytw72s=
 github.com/ethereum/go-ethereum v1.10.26/go.mod h1:EYFyF19u3ezGLD4RqOkLq+ZCXzYbLoNDdZlMt7kyKFg=
-github.com/ferglor/libocr v0.0.0-20230314131233-763d1b962d90 h1:GI/oS1SPVtthprrFeCiJbydiIzt6uPmjr6HTKtsDpUI=
-github.com/ferglor/libocr v0.0.0-20230314131233-763d1b962d90/go.mod h1:5JnCHuYgmIP9ZyXzgAfI5Iwu0WxBtBKp+ApeT5o1Cjw=
+github.com/ferglor/libocr v0.0.0-20230314181804-fd40e3d0d0ff h1:/7HNlz9AcTrWLspgszvl1jb+ohAvK0mjah3famBhCUo=
+github.com/ferglor/libocr v0.0.0-20230314181804-fd40e3d0d0ff/go.mod h1:5JnCHuYgmIP9ZyXzgAfI5Iwu0WxBtBKp+ApeT5o1Cjw=
 github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 h1:FtmdgXiUlNeRsoNMFlKLDt+S+6hbjVMEW6RGQ7aUf7c=
 github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 h1:f6D9Hr8xV8uYKlyuj8XIruxlh9WjVjdh1gIicAS7ays=
 github.com/go-echarts/go-echarts/v2 v2.2.5 h1:Jl0gtQa9i/iTZHEsmzf89HoxX2WTGa4K5r0be4qaquE=
