@@ -10,6 +10,9 @@ An `Encoder` can be used by an `Observer`, but in that case the `Observer`
 and the `Plugin` should share the same `Encoder`. An `Encoder` typically maps to
 a single contract instance or registry.
 
+Ideally an encoder should not maintain any state and should be able to be 
+represented with static functions instead of reference functions.
+
 ## Encoder
 An `Encoder` is responsible for encoding/decoding upkeeps, observation points, 
 performable results, etc. since each of these concepts are simply wrappers for
@@ -24,7 +27,7 @@ type Encoder interface {
     ValidateUpkeepKey(UpkeepKey) (bool, error)
     ValidateUpkeepIdentifier(UpkeepIdentifier) (bool, error)
     ValidateBlockKey(BlockKey) (bool, error)
-    MakeUpkeepKey(BlockKey, UpkeepIdentifier)
+    MakeUpkeepKey(BlockKey, UpkeepIdentifier) (UpkeepKey)
     SplitUpkeepKey(UpkeepKey) (BlockKey, UpkeepIdentifier, error)
     // EncodeReport should pack as many upkeep results into a single report
     // as possible (by configuration) and fully encode the result. The report
@@ -33,14 +36,15 @@ type Encoder interface {
     // A Config can be included to pass config values from the off-chain
     // config to the encoder. This provides a way for network-wide configurations
     // to be used by an `Encoder`.
-    EncodeReport([]interface{}, ...Config) ([]byte, error)
-    EncodeBlockKey(interface{}) (BlockKey, error)
-    EncodeUpkeepIdentifier(interface{}) (UpkeepIdentifier, error)
+    EncodeReport([]UpkeepResult, ...Config) ([]byte, error)
+    // EncodeUpkeepIdentifier should take the output of a registry check result
+    // as input and return an UpkeepIdentifier
+    EncodeUpkeepIdentifier(UpkeepResult) (UpkeepIdentifier, error)
     // KeysFromReport extracts all upkeep keys from a report byte array
     KeysFromReport([]byte) ([]UpkeepKey, error)
-    // Eligible takes an interface to provide an abstraction per registry
+    // Eligible takes an upkeep result to provide an abstraction per registry;
     // returns whether an upkeep is eligible or not along with any decoding
     // or type conversion errors encountered
-    Eligible(interface{}) (bool, error)
+    Eligible(UpkeepResult) (bool, error)
 }
 ```

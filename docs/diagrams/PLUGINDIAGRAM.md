@@ -27,13 +27,12 @@ sequenceDiagram
             Encoder-->>Observer: bool
         end
 
-        Observer->>Encoder: EncodeBlockKey(latestBlock)
-        Encoder-->>Observer: BlockKey
-
         loop each upkeep observed
             Observer->>Encoder: EncodeUpkeepIdentifier(upkeep)
             Encoder-->>Observer: UpkeepIdentifier
         end
+        
+        Observer->>Observer: getLatestBlock
 
         Observer-->>Plugin: (BlockKey, []UpkeepIdentifier, error)
         Plugin->>Plugin: shuffleAndLimit
@@ -59,6 +58,10 @@ sequenceDiagram
             Plugin->>Encoder: MakeUpkeepKey(median, id)
             Encoder-->>Plugin: UpkeepKey
 
+            Plugin->>Coordinator: IsPending()
+            Coordinator-->>Plugin: bool
+
+            Note over Plugin: only add to list if not pending
             Plugin->>Plugin: addToUpkeepKeyList
         end
 
