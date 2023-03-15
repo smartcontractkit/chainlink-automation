@@ -158,7 +158,12 @@ func observationsToUpkeepKeys(logger *log.Logger, observations []types.Attribute
 
 		// if we have a non-empty list of upkeep identifiers, limit the upkeeps we take to observationUpkeepsLimit
 		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
-			upkeepIDs[i] = upkeepObservation.UpkeepIdentifiers[:observationUpkeepsLimit]
+			ids := upkeepObservation.UpkeepIdentifiers[:]
+			if len(ids) > observationUpkeepsLimit {
+				ids = ids[:observationUpkeepsLimit]
+			}
+
+			upkeepIDs[i] = ids
 		}
 	}
 
