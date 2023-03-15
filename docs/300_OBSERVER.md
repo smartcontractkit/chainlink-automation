@@ -8,13 +8,13 @@ Examples can include:
 - scheduled observer (polling occurs on a defined schedule like cron)
 
 ## Observer Rules
+- an observer should only be used for observation triggers and timing
+- an observer should be unaware of registry specific types
 - an observer should be chain agnostic
-- an observer should interact with a registry through a wrapper
+- an observer should interact with a registry through an interface
 - an observer can define its own dependency interfaces
-- an observer should track relevant upkeep pending state
-- an observer can have registry specific structures
+- an observer should use a `Coordinator` to track in-flight state
 - all observers used by the same plugin instance should use the same registry
-- an observer should provide block and upkeepidentifiers as observations
 
 ## Filter
 A `Filter` tracks the pending state of upkeeps from the perspective of a single
@@ -50,12 +50,9 @@ chain through a registry every block. To reduce workload, the polling observer
 limits the number of upkeeps checked per block based on a sampling ratio where
 some random subset of the total upkeeps is checked instead of the entire set.
 
-Each polled upkeep state is added to an observation window that is returned to
-the calling function (the `Plugin`). A polling observer must maintain active 
-state on pending upkeeps via log events. The `Plugin` indicates to the observer
-that an upkeep has been accepted for transmission and the observer must filter
-that upkeep from the active window of observations until specific log events
-are encountered or a timeout passes for the specific upkeep.
+Once upkeep state is polled for a single block, an internal cache should be 
+reset with all eligible upkeeps and the latest block at which upkeeps were 
+checked. These results should be returned every time `Observe` is called.
 
 [DIAGRAM](./diagrams/POLLINGOBSERVER.md)
 
@@ -69,9 +66,8 @@ A log trigger observer is a modification of the polling observer where a custom
 log event triggers polling instead of a block. A custom log event would need to
 indicate which upkeep needs to be polled. The specified upkeep is added to a
 set of upkeeps needing to be polled and is limited to a polling window. This
-provides the same active window of state observations for the upkeep and 
-abstracts the differences between a full polling observer and a log trigger
-observer.
+provides the same results as a polling observer, but at a reduction of total
+upkeeps polled.
 
 # Cron Trigger Observer
 A cron trigger observer is a further modification of a log trigger observer in

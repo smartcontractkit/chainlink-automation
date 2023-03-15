@@ -4,9 +4,8 @@
 sequenceDiagram
     participant LibOCR
     participant Plugin
-    participant Merger
     participant Observer
-    participant PendingTracker
+    participant Coordinator
     participant Encoder
 
     par libOCR round sequence
@@ -14,64 +13,85 @@ sequenceDiagram
         Note over LibOCR,Plugin: query is not required by automation
         Plugin-->>LibOCR: [empty bytes]
         LibOCR->>Plugin: Observation(Query)
-        Plugin->>Observer: Observe(NetworkConfig)
+        Plugin->>Observer: Observe(Config)
+
+        Observer->>Observer: getLatestObserved
 
         loop each upkeep
-            Observer->>PendingTracker: should include
-            alt upkeep pending
-                PendingTracker-->>Observer: add to pending
-            else upkeep eligible
-                PendingTracker-->>Observer: add to eligible
-            end
+            Observer->>Coordinator: IsPending()
+            Coordinator-->>Observer: bool
+            
+            Observer->>Observer: addToObservation
+
+            Observer->>Encoder: Eligible()
+            Encoder-->>Observer: bool
         end
+
+        Observer->>Encoder: EncodeBlockKey(latestBlock)
+        Encoder-->>Observer: BlockKey
 
         loop each upkeep observed
-            Observer->>Encoder: Encode(...upkeeps)
-            Note over Observer,Encoder: observer interacts with encoder to create PointState values
-            Encoder-->>Observer: [upkeepkey type]
+            Observer->>Encoder: EncodeUpkeepIdentifier(upkeep)
+            Encoder-->>Observer: UpkeepIdentifier
         end
 
-        Observer-->>Plugin: ([]PointState, error)
+        Observer-->>Plugin: (BlockKey, []UpkeepIdentifier, error)
+        Plugin->>Plugin: shuffleAndLimit
+        Plugin->>Plugin: makeVersionedObservation
+
         Plugin-->>LibOCR: [observation bytes from VersionedObservation]
         
         LibOCR->>Plugin: Report([]Observation)
-        Plugin->>Merger: Merge([][]PointState)
-        Note over Plugin,Merger: merge compares common hashes and returns instances over threshold
-        Merger->>Encoder: Valid(PointState)
-        Note over Merger,Encoder: discard PointState if invalid
-        Merger-->>Plugin: ([]PointState, error)
 
-        Plugin->>Merger: Reduce([]PointState)
-        Note over Plugin,Merger: reduce eliminates duplicates by choosing latest instances
-        Merger-->>Plugin: []PointState
+        loop each observation
+            Plugin->>Encoder: ValidateBlockKey()
+            Plugin->>Plugin: addBlockKeyToList
 
-        Plugin->>Encoder: EncodeReport([]PointState, NetworkConfig)
-        Encoder-->>Plugin: ([]byte, error)
+            loop each UpkeepIdentifier
+                Plugin->>Encoder: ValidateUpkeepIdentifier()
+                Plugin->>Plugin: addIdentifierToList
+            end
+        end
+
+        Plugin->>Plugin: findBlockKeyMedian
+
+        loop each UpkeepIdentifier
+            Plugin->>Encoder: MakeUpkeepKey(median, id)
+            Encoder-->>Plugin: UpkeepKey
+
+            Plugin->>Plugin: addToUpkeepKeyList
+        end
+
+        Plugin->>Plugin: shuffleAndDedupe
+
+        Plugin->>Observer: MakeReport([]UpkeepKey)
+        Observer->>Encoder: EncodeReport([]UpkeepKey)
+        Encoder-->>Observer: [result]
+        Observer-->>Plugin: []byte, error
 
         Plugin-->>LibOCR: [report bytes]
     and LibOCR transmit sequence
         LibOCR->>Plugin: ShouldAcceptFinalizedReport(Report)
         
-        Plugin->>Encoder: ExtractPointIdentifiers([]byte)
-        Encoder-->>Plugin: ([]PointIdentifier, error)
+        Plugin->>Encoder: KeysFromReport([]byte)
+        Encoder-->>Plugin: ([]UpkeepKey, error)
 
-        loop each Observer
-            Plugin->>Observer: Accepted([]PointIdentifier)
-            Observer->>PendingTracker: IsPending(PointIdentifier)
-            PendingTracker-->>Observer: [bool]
-            Observer-->>Plugin: [error if all are already pending]
-        end
+        Plugin->>Coordinator: Accept([]UpkeepKey)
+        Coordinator-->>Plugin: error
 
         Plugin-->>LibOCR: [bool]
 
         LibOCR->>Plugin: ShouldTransmitAcceptedReport(Report)
         alt contract v2.0
-            Plugin->>Observer: IsPending([]PointIdentifier)
-            Observer-->>Plugin: [boolean]
+            loop each UpkeepKey
+                Plugin->>Coordinator: IsTransmissionConfirmed(UpkeepKey)
+                Coordinator-->>Plugin: [boolean]
+            end
         else contract v2.02+
-            Plugin->>Plugin: IsPending(ReportTimestamp) (boolean)
+            Plugin->>Coordinator: IsTransmissionConfirmed(ReportTimestamp) (boolean)
+            Coordinator-->>Plugin: [boolean]
         end
-        Note over Plugin,Observer: v2.02 introduces report logs, v2.0 relies on individual upkeep logs
+        Note over Plugin,Coordinator: v2.02 introduces report logs, v2.0 relies on individual upkeep logs
         Plugin-->>LibOCR: [bool]
     end
 ```

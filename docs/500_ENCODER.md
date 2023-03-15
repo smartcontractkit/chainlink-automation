@@ -34,7 +34,13 @@ type Encoder interface {
     // config to the encoder. This provides a way for network-wide configurations
     // to be used by an `Encoder`.
     EncodeReport([]interface{}, ...Config) ([]byte, error)
+    EncodeBlockKey(interface{}) (BlockKey, error)
+    EncodeUpkeepIdentifier(interface{}) (UpkeepIdentifier, error)
     // KeysFromReport extracts all upkeep keys from a report byte array
     KeysFromReport([]byte) ([]UpkeepKey, error)
+    // Eligible takes an interface to provide an abstraction per registry
+    // returns whether an upkeep is eligible or not along with any decoding
+    // or type conversion errors encountered
+    Eligible(interface{}) (bool, error)
 }
 ```

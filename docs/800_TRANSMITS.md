@@ -16,6 +16,6 @@ type Coordinator interface {
     Accept([]UpkeepKey) error
     // IsTransmissionConfirmed is a temporary function that checks if a log has
     // been received for a particular key
-    IsTransmissionConfirmed
+    IsTransmissionConfirmed(UpkeepKey) bool
 }
 ```
