@@ -6,9 +6,9 @@ messages via external sources (like telemetry).
 ## Glossary of Terms
 - Observation: two different types; one from the `Plugin` and one from an `Observer`
 - Report: encoded instructions and/or values for on-chain execution
-- PointState: the entire state of an upkeep at a single point in time
-- PointIdentifier: an identifier composed of upkeep id and point in time
-- Ordinal: general term to describe a value used to sort on time
+- BlockKey: a block identifier (typically a big.Int on many chains)
+- UpkeepIdentifier: an identifier for an upkeep (typically a big.Int)
+- UpkeepKey: a combination of `BlockKey` and `UpkeepIdentifier`
 - NetworkConfig: also called off-chain config in OCR; network configuration
 - In-flight: upkeeps are in-flight if they are reported, but not transmitted
 - Transmit: an attempt to include a report on-chain
@@ -24,12 +24,11 @@ report.
 
 #### Rules
 - A `Plugin` only interacts with `Observer`, `Merger`, and `Encoder`
-- A `Plugin` should not know anything about the structural contents of a `PointState`
-- A `Plugin` should not know anything about the structural contents of a `PointIdentifier`
+- A `Plugin` should not know anything about the structural contents of a `BlockKey`
+- A `Plugin` should not know anything about the structural contents of a `UpkeepIdentifier`
 - A `Plugin` should start and stop services per its appropriate life cycle
 - A `Plugin` should treat all incoming observations as potentially malicious
 - A `Plugin` should isolate all state interactions to instances of `Observer`
-- A `Plugin` requires COMPLETE state in an observed `PointState` for accurate reports
 
 #### Observation
 The `Observation` method should loop through multiple `Observer` instances to
@@ -60,15 +59,19 @@ type VersionedObservation struct {
 // ObservationV10 is the intended first step in observation versioning
 type ObservationV10 struct {
     VersionedObservation
+    // Block contains the block value for nodes to coordinate on
+    Block BlockKey
     // Data contains actual values of this version of observation
-    Data []PointState
+    Data []UpkeepIdentifier
 }
 
 // ObservationV11 displays a potential way to differentiate observation versions
 type ObservationV11 struct {
     VersionedObservation
+    // Block contains the block value for nodes to coordinate on
+    Block BlockKey
     // Data contains actual values of this version of observation
-    Data       []PointState
+    Data       []UpkeepIdentifier
     // OtherStuff in this case is addative and the version minor is incremented
     OtherStuff int
 }
@@ -112,21 +115,11 @@ More information on observers here: [OBSERVER](./350_OBSERVER.md)
 
 ### Encoder
 An `Encoder` is intended to be purely a translation layer. A `Plugin` should not
-need to know the structural contents of observations, which is why a 
-`PointState` contains raw byte values. The responsibility of an `Encoder` is to
-convert those raw values into necessary actionable results.
+need to know the structural contents of observations or reports, which is why an 
+`BlockKey` and `UpkeepIdentifier` contain raw byte values. The responsibility 
+of an `Encoder` is to convert those raw values into necessary actionable results.
 
 More information on encoders here: [ENCODER](./500_ENCODER.md)
-
-### Merger
-A `Merger` provides methods to reduce individual parts from multiple observations
-down to a simple list of validated, deduplicated, and counted 
-(for quorum evaluation) values. Second, it provides a method to reduce a list
-of eligibles by a list of pendings. The `Merger` is a critical component that
-establishes the OCR report function as a pure function. It should rely ONLY on
-its inputs and not interact with any outside state (node, chain, or otherwise).
-
-More information on mergers here: [MERGER](./600_MERGER.md)
 
 ## External Message Interactions
 The use of OCR telemetry was considered in the design of the plugin such that
@@ -152,10 +145,3 @@ More information on the external package interface and types: [TYPES](./700_TYPE
 - What should be the observation size limits? (check data, perform data, etc.)
 - What should be report size limits? (perform data is a big factor)
 - How is the best way to pass off-chain config values to plugin components?
-
-## Cost Analysis
-
-It is with intentions of producing a more informed decision that a cost analysis
-is included. The primary focus is on costs incurred via data egress.
-
-More information on cost: [COST](./800_COST_ANALYSIS.md)

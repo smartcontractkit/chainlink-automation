@@ -18,24 +18,23 @@ without using the `Encoder`. The encoder can provide interface types only when
 comparisons are needed.
 
 ## Interface
+
 ```
 type Encoder interface {
-    // Valid should validate that the individual raw values are correct in 
-    // in structure. Error should be provided to bubble up specific errors
-    // encountered in validation.
-    Valid(PointState) (bool, error)
-    // EncodeReport should pack as many PointState values into a single report
+    ValidateUpkeepKey(UpkeepKey) (bool, error)
+    ValidateUpkeepIdentifier(UpkeepIdentifier) (bool, error)
+    ValidateBlockKey(BlockKey) (bool, error)
+    MakeUpkeepKey(BlockKey, UpkeepIdentifier)
+    SplitUpkeepKey(UpkeepKey) (BlockKey, UpkeepIdentifier, error)
+    // EncodeReport should pack as many upkeep results into a single report
     // as possible (by configuration) and fully encode the result. The report
     // is registry specific so the plugin should have no knowledge of what is
     // inside.
-    // An EncoderConfig can be included to pass config values from the off-chain
+    // A Config can be included to pass config values from the off-chain
     // config to the encoder. This provides a way for network-wide configurations
     // to be used by an `Encoder`.
-    EncodeReport([]PointState, EncoderConfig) ([]byte, error)
-    // ExtractPointIdentifiers should return a list of identifiers for instances
-    // of PointState included in a report. A PointIdentifier should include
-    // what and when a PointState references such that an Observer can use this
-    // value to mark an upkeep as in-flight and always progressing.
-    ExtractPointIdentifiers([]byte) ([]PointIdentifier, error)
+    EncodeReport([]interface{}, ...Config) ([]byte, error)
+    // KeysFromReport extracts all upkeep keys from a report byte array
+    KeysFromReport([]byte) ([]UpkeepKey, error)
 }
 ```
