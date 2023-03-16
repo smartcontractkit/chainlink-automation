@@ -36,14 +36,21 @@ type encoder struct {
 }
 
 func NewEncoder() *encoder {
+	arguments := abi.Arguments{
+		{Name: "fastGasWei", Type: chain.Uint256},
+		{Name: "linkNative", Type: chain.Uint256},
+		{Name: "upkeepIds", Type: chain.Uint256Arr},
+		{Name: "wrappedPerformDatas", Type: chain.PerformDataArr},
+	}
+
+	reportKeys := make([]string, len(arguments))
+	for i, arg := range arguments {
+		reportKeys[i] = arg.Name
+	}
+
 	return &encoder{
-		reportKeys: []string{"fastGasWei", "linkNative", "upkeepIds", "wrappedPerformDatas"},
-		packer: abi.Arguments{
-			{Name: "fastGasWei", Type: chain.Uint256},
-			{Name: "linkNative", Type: chain.Uint256},
-			{Name: "upkeepIds", Type: chain.Uint256Arr},
-			{Name: "wrappedPerformDatas", Type: chain.PerformDataArr},
-		},
+		reportKeys: reportKeys,
+		packer:     arguments,
 	}
 }
 
