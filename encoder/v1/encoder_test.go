@@ -57,7 +57,7 @@ func TestEncoder_ValidateUpkeepKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := NewEncoder()
 			isValid, err := e.ValidateUpkeepKey(tc.key)
-			if tc.wantValid != tc.wantValid {
+			if isValid != tc.wantValid {
 				t.Fatalf("unexpected validity, want %T, got %T ", tc.wantValid, isValid)
 			}
 			if tc.wantErr != nil && tc.wantErr.Error() != err.Error() {
@@ -96,7 +96,7 @@ func TestEncoder_ValidateUpkeepIdentifier(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := NewEncoder()
 			isValid, err := e.ValidateUpkeepIdentifier(tc.identifier)
-			if tc.wantValid != tc.wantValid {
+			if isValid != tc.wantValid {
 				t.Fatalf("unexpected validity, want %T, got %T ", tc.wantValid, isValid)
 			}
 			if tc.wantErr != nil && tc.wantErr.Error() != err.Error() {
@@ -537,7 +537,7 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 		}
 	})
 
-	t.Run("upkeep ids and performs of mismatched length returns an error", func(t *testing.T) {
+	t.Run("unable to read wrappedPerformedDatas returns an error", func(t *testing.T) {
 		e := NewEncoder()
 		key := chain.UpkeepKey("123|456")
 		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
@@ -560,6 +560,45 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 				v["fastGasWei"] = big.NewInt(1)
 				v["linkNative"] = big.NewInt(1)
 				v["wrappedPerformDatas"] = []byte{}
+				return nil
+			},
+		}
+		keys, err := e.KeysFromReport(reportBytes)
+		if err.Error() != "unable to read wrappedPerformDatas" {
+			t.Fatalf("unexpected error: %s", err.Error())
+		}
+		if len(keys) != 0 {
+			t.Fatalf("unexpected key count: %d", len(keys))
+		}
+	})
+
+	t.Run("upkeep ids and performs of mismatched length returns an error", func(t *testing.T) {
+		e := NewEncoder()
+		key := chain.UpkeepKey("123|456")
+		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
+			{
+				Key:              key,
+				FastGasWei:       big.NewInt(1),
+				LinkNative:       big.NewInt(1),
+				CheckBlockNumber: uint32(123),
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err.Error())
+		}
+		if len(reportBytes) == 0 {
+			t.Fatalf("unexpected bytes")
+		}
+		e.packer = &mockPacker{
+			UnpackIntoMapFn: func(v map[string]interface{}, data []byte) error {
+				v["upkeepIds"] = []*big.Int{big.NewInt(1)}
+				v["fastGasWei"] = big.NewInt(1)
+				v["linkNative"] = big.NewInt(1)
+				v["wrappedPerformDatas"] = []struct {
+					CheckBlockNumber uint32   `json:"checkBlockNumber"`
+					CheckBlockhash   [32]byte `json:"checkBlockhash"`
+					PerformData      []byte   `json:"performData"`
+				}{}
 				return nil
 			},
 		}

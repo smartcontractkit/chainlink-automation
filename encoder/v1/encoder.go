@@ -189,6 +189,9 @@ func (e *encoder) KeysFromReport(report []byte) ([]types.UpkeepKey, error) {
 		CheckBlockhash   [32]byte `json:"checkBlockhash"`
 		PerformData      []byte   `json:"performData"`
 	})
+	if !ok {
+		return nil, fmt.Errorf("unable to read wrappedPerformDatas")
+	}
 
 	if len(upkeepIds) != len(performs) {
 		return nil, fmt.Errorf("upkeep ids and performs should have matching length")
