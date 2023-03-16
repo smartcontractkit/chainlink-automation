@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
@@ -447,20 +448,12 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 	t.Run("fails to unpack and returns an error", func(t *testing.T) {
 		e := NewEncoder()
 		key := chain.UpkeepKey("123|456")
-		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
-			{
-				Key:              key,
-				FastGasWei:       big.NewInt(1),
-				LinkNative:       big.NewInt(1),
-				CheckBlockNumber: uint32(123),
-			},
-		})
+
+		reportBytes, err := encodeReport(e, key)
 		if err != nil {
-			t.Fatalf("unexpected error: %s", err.Error())
+			t.Fatalf("error encoding report: %s", err.Error())
 		}
-		if len(reportBytes) == 0 {
-			t.Fatalf("unexpected bytes")
-		}
+
 		e.packer = &mockPacker{
 			UnpackIntoMapFn: func(v map[string]interface{}, data []byte) error {
 				return errors.New("unable to unpack into map")
@@ -478,20 +471,12 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 	t.Run("missing report key returns an error", func(t *testing.T) {
 		e := NewEncoder()
 		key := chain.UpkeepKey("123|456")
-		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
-			{
-				Key:              key,
-				FastGasWei:       big.NewInt(1),
-				LinkNative:       big.NewInt(1),
-				CheckBlockNumber: uint32(123),
-			},
-		})
+
+		reportBytes, err := encodeReport(e, key)
 		if err != nil {
-			t.Fatalf("unexpected error: %s", err.Error())
+			t.Fatalf("error encoding report: %s", err.Error())
 		}
-		if len(reportBytes) == 0 {
-			t.Fatalf("unexpected bytes")
-		}
+
 		e.reportKeys = []string{"bulbasaur", "charmander", "squirtle", "pikachu"}
 		keys, err := e.KeysFromReport(reportBytes)
 		if err.Error() != "decoding error: bulbasaur missing from struct" {
@@ -505,20 +490,12 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 	t.Run("upkeep ids of incorrect type in report returns an error", func(t *testing.T) {
 		e := NewEncoder()
 		key := chain.UpkeepKey("123|456")
-		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
-			{
-				Key:              key,
-				FastGasWei:       big.NewInt(1),
-				LinkNative:       big.NewInt(1),
-				CheckBlockNumber: uint32(123),
-			},
-		})
+
+		reportBytes, err := encodeReport(e, key)
 		if err != nil {
-			t.Fatalf("unexpected error: %s", err.Error())
+			t.Fatalf("error encoding report: %s", err.Error())
 		}
-		if len(reportBytes) == 0 {
-			t.Fatalf("unexpected bytes")
-		}
+
 		e.packer = &mockPacker{
 			UnpackIntoMapFn: func(v map[string]interface{}, data []byte) error {
 				v["upkeepIds"] = "dog"
@@ -540,20 +517,12 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 	t.Run("unable to read wrappedPerformedDatas returns an error", func(t *testing.T) {
 		e := NewEncoder()
 		key := chain.UpkeepKey("123|456")
-		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
-			{
-				Key:              key,
-				FastGasWei:       big.NewInt(1),
-				LinkNative:       big.NewInt(1),
-				CheckBlockNumber: uint32(123),
-			},
-		})
+
+		reportBytes, err := encodeReport(e, key)
 		if err != nil {
-			t.Fatalf("unexpected error: %s", err.Error())
+			t.Fatalf("error encoding report: %s", err.Error())
 		}
-		if len(reportBytes) == 0 {
-			t.Fatalf("unexpected bytes")
-		}
+
 		e.packer = &mockPacker{
 			UnpackIntoMapFn: func(v map[string]interface{}, data []byte) error {
 				v["upkeepIds"] = []*big.Int{big.NewInt(1)}
@@ -575,20 +544,12 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 	t.Run("upkeep ids and performs of mismatched length returns an error", func(t *testing.T) {
 		e := NewEncoder()
 		key := chain.UpkeepKey("123|456")
-		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
-			{
-				Key:              key,
-				FastGasWei:       big.NewInt(1),
-				LinkNative:       big.NewInt(1),
-				CheckBlockNumber: uint32(123),
-			},
-		})
+
+		reportBytes, err := encodeReport(e, key)
 		if err != nil {
-			t.Fatalf("unexpected error: %s", err.Error())
+			t.Fatalf("error encoding report: %s", err.Error())
 		}
-		if len(reportBytes) == 0 {
-			t.Fatalf("unexpected bytes")
-		}
+
 		e.packer = &mockPacker{
 			UnpackIntoMapFn: func(v map[string]interface{}, data []byte) error {
 				v["upkeepIds"] = []*big.Int{big.NewInt(1)}
@@ -614,20 +575,12 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 	t.Run("successfully encodes a report and then reads the keys back", func(t *testing.T) {
 		e := NewEncoder()
 		key := chain.UpkeepKey("123|456")
-		reportBytes, err := e.EncodeReport([]types.UpkeepResult{
-			{
-				Key:              key,
-				FastGasWei:       big.NewInt(1),
-				LinkNative:       big.NewInt(1),
-				CheckBlockNumber: uint32(123),
-			},
-		})
+
+		reportBytes, err := encodeReport(e, key)
 		if err != nil {
-			t.Fatalf("unexpected error: %s", err.Error())
+			t.Fatalf("error encoding report: %s", err.Error())
 		}
-		if len(reportBytes) == 0 {
-			t.Fatalf("unexpected bytes")
-		}
+
 		keys, err := e.KeysFromReport(reportBytes)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err.Error())
@@ -639,6 +592,24 @@ func TestEncoder_KeysFromReport(t *testing.T) {
 			t.Fatalf("unexpected key: %+s", keys[0])
 		}
 	})
+}
+
+func encodeReport(e *encoder, key chain.UpkeepKey) ([]byte, error) {
+	reportBytes, err := e.EncodeReport([]types.UpkeepResult{
+		{
+			Key:              key,
+			FastGasWei:       big.NewInt(1),
+			LinkNative:       big.NewInt(1),
+			CheckBlockNumber: uint32(123),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(reportBytes) == 0 {
+		return nil, fmt.Errorf("unexpected bytes")
+	}
+	return reportBytes, nil
 }
 
 type mockPacker struct {
