@@ -9,11 +9,20 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 )
 
+var (
+	newOracleFn = offchainreporting.NewOracle
+)
+
+type oracle interface {
+	Start() error
+	Close() error
+}
+
 // Delegate is a container struct for an Oracle plugin. This struct provides
 // the ability to start and stop underlying services associated with the
 // plugin instance.
 type Delegate struct {
-	keeper *offchainreporting.Oracle
+	keeper oracle
 }
 
 // NewDelegate provides a new Delegate from a provided config. A new logger
@@ -53,7 +62,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	l.Printf("creating oracle with reporting factory config: %+v", conf)
 
 	// create the oracle from config values
-	keeper, err := offchainreporting.NewOracle(offchainreporting.OracleArgs{
+	keeper, err := newOracleFn(offchainreporting.OracleArgs{
 		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
 		V2Bootstrappers:              c.V2Bootstrappers,
 		ContractConfigTracker:        c.ContractConfigTracker,
