@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -15,9 +16,9 @@ import (
 )
 
 func TestReportCoordinator(t *testing.T) {
-	setup := func(t *testing.T, l *log.Logger) (*reportCoordinator, *types.MockRegistry, *types.MockPerformLogProvider) {
-		mr := types.NewMockRegistry(t)
-		mp := types.NewMockPerformLogProvider(t)
+	setup := func(t *testing.T, l *log.Logger) (*reportCoordinator, *mocks.MockRegistry, *mocks.MockPerformLogProvider) {
+		mr := mocks.NewMockRegistry(t)
+		mp := mocks.NewMockPerformLogProvider(t)
 		return &reportCoordinator{
 			logger:     l,
 			registry:   mr,

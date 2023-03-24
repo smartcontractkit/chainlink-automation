@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -605,7 +606,7 @@ func TestReport(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
-			me := ktypes.NewMockReportEncoder(t)
+			me := mocks.NewMockReportEncoder(t)
 			mf := new(MockedFilterer)
 
 			plugin := &keepers{
@@ -794,7 +795,7 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 
 	for _, test := range tests {
 		ms := new(MockedUpkeepService)
-		me := ktypes.NewMockReportEncoder(t)
+		me := mocks.NewMockReportEncoder(t)
 		mf := new(MockedFilterer)
 
 		plugin := &keepers{
@@ -952,7 +953,7 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 
 	for _, test := range tests {
 		ms := new(MockedUpkeepService)
-		me := ktypes.NewMockReportEncoder(t)
+		me := mocks.NewMockReportEncoder(t)
 		mf := new(MockedFilterer)
 
 		plugin := &keepers{

@@ -3,14 +3,13 @@ package ocr2keepers
 import (
 	"testing"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestLogWriter(t *testing.T) {
-	m := types.NewMockLogger(t)
+	m := mocks.NewMockLogger(t)
 	lw := &logWriter{l: m}
 	input := []byte("test")
 

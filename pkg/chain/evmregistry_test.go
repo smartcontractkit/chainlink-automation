@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ import (
 )
 
 func TestGetActiveUpkeepKeys(t *testing.T) {
-	mockClient := types.NewMockEVMClient(t)
+	mockClient := mocks.NewMockEVMClient(t)
 	ctx := context.Background()
 	kabi, _ := keeper_registry_wrapper2_0.KeeperRegistryMetaData.GetAbi()
 	rec := NewContractMockReceiver(t, mockClient, *kabi)
@@ -74,7 +75,7 @@ func TestCheckUpkeep(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Perform", func(t *testing.T) {
-		mockClient := types.NewMockEVMClient(t)
+		mockClient := mocks.NewMockEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -146,7 +147,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("UPKEEP_NOT_NEEDED", func(t *testing.T) {
-		mockClient := types.NewMockEVMClient(t)
+		mockClient := mocks.NewMockEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -193,7 +194,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("Check upkeep true but simulate perform fails", func(t *testing.T) {
-		mockClient := types.NewMockEVMClient(t)
+		mockClient := mocks.NewMockEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -265,7 +266,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("Hanging process respects context", func(t *testing.T) {
-		mockClient := types.NewMockEVMClient(t)
+		mockClient := mocks.NewMockEVMClient(t)
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 
 		mockClient.On("BatchCallContext", ctx, mock.Anything).
@@ -331,11 +332,11 @@ const funcSigLength = 10
 
 type ContractMockReceiver struct {
 	t       *testing.T
-	ethMock *types.MockEVMClient
+	ethMock *mocks.MockEVMClient
 	abi     abi.ABI
 }
 
-func NewContractMockReceiver(t *testing.T, ethMock *types.MockEVMClient, abi abi.ABI) ContractMockReceiver {
+func NewContractMockReceiver(t *testing.T, ethMock *mocks.MockEVMClient, abi abi.ABI) ContractMockReceiver {
 	return ContractMockReceiver{
 		t:       t,
 		ethMock: ethMock,

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -71,7 +72,7 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 	for i, test := range tests {
 		ctx, cancel := test.Ctx()
 
-		rg := ktypes.NewMockRegistry(t)
+		rg := mocks.NewMockRegistry(t)
 		rg.Mock.On("CheckUpkeep", mock.Anything, test.Key).
 			Return(test.RegResult, test.Err)
 
@@ -104,7 +105,7 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 
 func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	ctx := context.Background()
-	rg := ktypes.NewMockRegistry(t)
+	rg := mocks.NewMockRegistry(t)
 
 	blockKey := chain.BlockKey("1")
 	returnResults := make(ktypes.UpkeepResults, 5)
@@ -157,8 +158,8 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 	}
 
 	t.Run("successfully sampled upkeeps", func(t *testing.T) {
-		rg := ktypes.NewMockRegistry(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
+		rg := mocks.NewMockRegistry(t)
+		hs := mocks.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
 		header := chain.BlockKey("1")
 
@@ -253,8 +254,8 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 	})
 
 	t.Run("getting active upkeeps error", func(t *testing.T) {
-		rg := ktypes.NewMockRegistry(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
+		rg := mocks.NewMockRegistry(t)
+		hs := mocks.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
 		header := chain.BlockKey("1")
 
@@ -298,8 +299,8 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 	})
 
 	t.Run("getting check upkeeps error", func(t *testing.T) {
-		rg := ktypes.NewMockRegistry(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
+		rg := mocks.NewMockRegistry(t)
+		hs := mocks.NewMockHeadSubscriber(t)
 		subscribed := make(chan struct{}, 1)
 		header := chain.BlockKey("1")
 

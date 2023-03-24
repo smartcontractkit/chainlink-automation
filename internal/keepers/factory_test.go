@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,12 +33,12 @@ func TestNewReportingPluginFactory(t *testing.T) {
 
 func TestNewReportingPlugin(t *testing.T) {
 	t.Run("fails to decode the offchain config", func(t *testing.T) {
-		mp := ktypes.NewMockPerformLogProvider(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
+		mp := mocks.NewMockPerformLogProvider(t)
+		hs := mocks.NewMockHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       ktypes.NewMockRegistry(t),
-			encoder:        ktypes.NewMockReportEncoder(t),
+			registry:       mocks.NewMockRegistry(t),
+			encoder:        mocks.NewMockReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),
@@ -72,12 +73,12 @@ func TestNewReportingPlugin(t *testing.T) {
 	})
 
 	t.Run("fails to create a new reporting plugin due to malformed TargetProbability", func(t *testing.T) {
-		mp := ktypes.NewMockPerformLogProvider(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
+		mp := mocks.NewMockPerformLogProvider(t)
+		hs := mocks.NewMockHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       ktypes.NewMockRegistry(t),
-			encoder:        ktypes.NewMockReportEncoder(t),
+			registry:       mocks.NewMockRegistry(t),
+			encoder:        mocks.NewMockReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),
@@ -119,12 +120,12 @@ func TestNewReportingPlugin(t *testing.T) {
 	})
 
 	t.Run("fails to create a new reporting plugin due to invalid TargetProbability", func(t *testing.T) {
-		mp := ktypes.NewMockPerformLogProvider(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
+		mp := mocks.NewMockPerformLogProvider(t)
+		hs := mocks.NewMockHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       ktypes.NewMockRegistry(t),
-			encoder:        ktypes.NewMockReportEncoder(t),
+			registry:       mocks.NewMockRegistry(t),
+			encoder:        mocks.NewMockReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),
@@ -166,12 +167,12 @@ func TestNewReportingPlugin(t *testing.T) {
 	})
 
 	t.Run("creates a new reporting plugin", func(t *testing.T) {
-		mp := ktypes.NewMockPerformLogProvider(t)
-		hs := ktypes.NewMockHeadSubscriber(t)
+		mp := mocks.NewMockPerformLogProvider(t)
+		hs := mocks.NewMockHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       ktypes.NewMockRegistry(t),
-			encoder:        ktypes.NewMockReportEncoder(t),
+			registry:       mocks.NewMockRegistry(t),
+			encoder:        mocks.NewMockReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),

@@ -7,10 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestStart(t *testing.T) {
