@@ -32,7 +32,6 @@ func NewEVMClient(client *rpc.Client, batchSize int) types.EVMClient {
 		rpcClient: client,
 		batchSize: batchSize,
 	}
-
 	c.subscribe(context.Background())
 
 	return c

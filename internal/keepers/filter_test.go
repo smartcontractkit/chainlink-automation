@@ -67,6 +67,15 @@ func TestReportCoordinator(t *testing.T) {
 		mr.AssertExpectations(t)
 	})
 
+	t.Run("Accept errors on an error parsing BlockKeyAndUpkeepID", func(t *testing.T) {
+		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+
+		key := chain.UpkeepKey("||")
+		assert.Error(t, rc.Accept(key))
+
+		mr.AssertExpectations(t)
+	})
+
 	t.Run("FilterAfterAccept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 		filter := rc.Filter()

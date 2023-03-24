@@ -11,6 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+var (
+	marshalFn = json.Marshal
+)
+
 // Generate types from third-party repos:
 //
 //go:generate mockery --name Logger --structname MockLogger --srcpkg "github.com/smartcontractkit/libocr/commontypes" --outpkg types --output . --case=underscore --filename logger.generated.go
@@ -200,7 +204,7 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 }
 
 func (c OffchainConfig) Encode() []byte {
-	b, err := json.Marshal(&c)
+	b, err := marshalFn(&c)
 	if err != nil {
 		panic(fmt.Sprintf("unexpected error json encoding OffChainConfig: %s", err))
 	}
