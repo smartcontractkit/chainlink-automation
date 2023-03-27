@@ -1,4 +1,4 @@
-package chain
+package client
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"go.uber.org/multierr"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -86,7 +87,7 @@ func (ec *evmClient) subscribe(ctx context.Context) {
 				return
 			}
 		case head := <-ch:
-			ec.chHead <- BlockKey(head.Number.String())
+			ec.chHead <- chain.BlockKey(head.Number.String())
 		}
 	}
 }

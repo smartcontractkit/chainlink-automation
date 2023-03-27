@@ -33,12 +33,12 @@ func TestNewReportingPluginFactory(t *testing.T) {
 
 func TestNewReportingPlugin(t *testing.T) {
 	t.Run("fails to decode the offchain config", func(t *testing.T) {
-		mp := mocks.NewMockPerformLogProvider(t)
-		hs := mocks.NewMockHeadSubscriber(t)
+		mp := mocks.NewPerformLogProvider(t)
+		hs := mocks.NewHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       mocks.NewMockRegistry(t),
-			encoder:        mocks.NewMockReportEncoder(t),
+			registry:       mocks.NewRegistry(t),
+			encoder:        mocks.NewReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),
@@ -73,12 +73,12 @@ func TestNewReportingPlugin(t *testing.T) {
 	})
 
 	t.Run("fails to create a new reporting plugin due to malformed TargetProbability", func(t *testing.T) {
-		mp := mocks.NewMockPerformLogProvider(t)
-		hs := mocks.NewMockHeadSubscriber(t)
+		mp := mocks.NewPerformLogProvider(t)
+		hs := mocks.NewHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       mocks.NewMockRegistry(t),
-			encoder:        mocks.NewMockReportEncoder(t),
+			registry:       mocks.NewRegistry(t),
+			encoder:        mocks.NewReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),
@@ -120,12 +120,12 @@ func TestNewReportingPlugin(t *testing.T) {
 	})
 
 	t.Run("fails to create a new reporting plugin due to invalid TargetProbability", func(t *testing.T) {
-		mp := mocks.NewMockPerformLogProvider(t)
-		hs := mocks.NewMockHeadSubscriber(t)
+		mp := mocks.NewPerformLogProvider(t)
+		hs := mocks.NewHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       mocks.NewMockRegistry(t),
-			encoder:        mocks.NewMockReportEncoder(t),
+			registry:       mocks.NewRegistry(t),
+			encoder:        mocks.NewReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),
@@ -167,12 +167,12 @@ func TestNewReportingPlugin(t *testing.T) {
 	})
 
 	t.Run("creates a new reporting plugin", func(t *testing.T) {
-		mp := mocks.NewMockPerformLogProvider(t)
-		hs := mocks.NewMockHeadSubscriber(t)
+		mp := mocks.NewPerformLogProvider(t)
+		hs := mocks.NewHeadSubscriber(t)
 
 		f := &keepersReportingFactory{
-			registry:       mocks.NewMockRegistry(t),
-			encoder:        mocks.NewMockReportEncoder(t),
+			registry:       mocks.NewRegistry(t),
+			encoder:        mocks.NewReportEncoder(t),
 			headSubscriber: hs,
 			perfLogs:       mp,
 			logger:         log.New(io.Discard, "test", 0),

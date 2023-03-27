@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain/client"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
@@ -212,7 +213,7 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 }
 
 func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, rpcClient *rpc.Client, i int8, n int) types.ReportingPlugin {
-	client := chain.NewEVMClient(rpcClient, 10)
+	client := client.NewEVMClient(rpcClient, 10)
 
 	reg, err := chain.NewEVMRegistryV2_0(address, client)
 	if err != nil {

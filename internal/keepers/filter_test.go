@@ -16,9 +16,9 @@ import (
 )
 
 func TestReportCoordinator(t *testing.T) {
-	setup := func(t *testing.T, l *log.Logger) (*reportCoordinator, *mocks.MockRegistry, *mocks.MockPerformLogProvider) {
-		mr := mocks.NewMockRegistry(t)
-		mp := mocks.NewMockPerformLogProvider(t)
+	setup := func(t *testing.T, l *log.Logger) (*reportCoordinator, *mocks.Registry, *mocks.PerformLogProvider) {
+		mr := mocks.NewRegistry(t)
+		mp := mocks.NewPerformLogProvider(t)
 		return &reportCoordinator{
 			logger:     l,
 			registry:   mr,

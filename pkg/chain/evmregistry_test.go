@@ -24,7 +24,7 @@ import (
 )
 
 func TestGetActiveUpkeepKeys(t *testing.T) {
-	mockClient := mocks.NewMockEVMClient(t)
+	mockClient := mocks.NewEVMClient(t)
 	ctx := context.Background()
 	kabi, _ := keeper_registry_wrapper2_0.KeeperRegistryMetaData.GetAbi()
 	rec := NewContractMockReceiver(t, mockClient, *kabi)
@@ -75,7 +75,7 @@ func TestCheckUpkeep(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Perform", func(t *testing.T) {
-		mockClient := mocks.NewMockEVMClient(t)
+		mockClient := mocks.NewEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -147,7 +147,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("UPKEEP_NOT_NEEDED", func(t *testing.T) {
-		mockClient := mocks.NewMockEVMClient(t)
+		mockClient := mocks.NewEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -194,7 +194,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("Check upkeep true but simulate perform fails", func(t *testing.T) {
-		mockClient := mocks.NewMockEVMClient(t)
+		mockClient := mocks.NewEVMClient(t)
 		ctx := context.Background()
 
 		reg, err := NewEVMRegistryV2_0(common.Address{}, mockClient)
@@ -266,7 +266,7 @@ func TestCheckUpkeep(t *testing.T) {
 	})
 
 	t.Run("Hanging process respects context", func(t *testing.T) {
-		mockClient := mocks.NewMockEVMClient(t)
+		mockClient := mocks.NewEVMClient(t)
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 
 		mockClient.On("BatchCallContext", ctx, mock.Anything).
@@ -332,11 +332,11 @@ const funcSigLength = 10
 
 type ContractMockReceiver struct {
 	t       *testing.T
-	ethMock *mocks.MockEVMClient
+	ethMock *mocks.EVMClient
 	abi     abi.ABI
 }
 
-func NewContractMockReceiver(t *testing.T, ethMock *mocks.MockEVMClient, abi abi.ABI) ContractMockReceiver {
+func NewContractMockReceiver(t *testing.T, ethMock *mocks.EVMClient, abi abi.ABI) ContractMockReceiver {
 	return ContractMockReceiver{
 		t:       t,
 		ethMock: ethMock,
@@ -352,14 +352,13 @@ func (receiver ContractMockReceiver) MockResponse(funcName string, responseArgs 
 
 	encoded := receiver.mustEncodeResponse(funcName, responseArgs...)
 
-	return receiver.ethMock.
-		On(
-			"CallContract",
-			mock.Anything,
-			mock.MatchedBy(func(callArgs ethereum.CallMsg) bool {
-				return hexutil.Encode(callArgs.Data)[0:funcSigLength] == funcSig
-			}),
-			mock.Anything).
+	return receiver.ethMock.On(
+		"CallContract",
+		mock.Anything,
+		mock.MatchedBy(func(callArgs ethereum.CallMsg) bool {
+			return hexutil.Encode(callArgs.Data)[0:funcSigLength] == funcSig
+		}),
+		mock.Anything).
 		Return(encoded, nil)
 }
 

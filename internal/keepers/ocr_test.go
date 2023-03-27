@@ -606,7 +606,7 @@ func TestReport(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
-			me := mocks.NewMockReportEncoder(t)
+			me := mocks.NewReportEncoder(t)
 			mf := new(MockedFilterer)
 
 			plugin := &keepers{
@@ -795,7 +795,7 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 
 	for _, test := range tests {
 		ms := new(MockedUpkeepService)
-		me := mocks.NewMockReportEncoder(t)
+		me := mocks.NewReportEncoder(t)
 		mf := new(MockedFilterer)
 
 		plugin := &keepers{
@@ -953,7 +953,7 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 
 	for _, test := range tests {
 		ms := new(MockedUpkeepService)
-		me := mocks.NewMockReportEncoder(t)
+		me := mocks.NewReportEncoder(t)
 		mf := new(MockedFilterer)
 
 		plugin := &keepers{
