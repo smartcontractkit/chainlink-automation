@@ -624,17 +624,49 @@ func TestReportCoordinator(t *testing.T) {
 	})
 
 	t.Run("Filter", func(t *testing.T) {
-		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		t.Run("Determines that a key should be filtered out", func(t *testing.T) {
+			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+			filter := rc.Filter()
 
-		rc.idBlocks.Set(string(id1), idBlocker{
-			TransmitBlockNumber: bk15,
-		}, util.DefaultCacheExpiration)
+			rc.idBlocks.Set(string(id1), idBlocker{
+				TransmitBlockNumber: bk15,
+			}, util.DefaultCacheExpiration)
 
-		assert.False(t, filter(key1Block4))
+			assert.False(t, filter(key1Block4))
 
-		mr.AssertExpectations(t)
+			mr.AssertExpectations(t)
+		})
+
+		t.Run("Determines that a key should be filtered out due to an error retrieving BlockKeyAndUpkeepID", func(t *testing.T) {
+			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+			filter := rc.Filter()
+
+			rc.idBlocks.Set(string(id1), idBlocker{
+				TransmitBlockNumber: bk15,
+			}, util.DefaultCacheExpiration)
+
+			key := chain.UpkeepKey("invalid")
+			assert.False(t, filter(key))
+
+			mr.AssertExpectations(t)
+		})
+
+		t.Run("Determines that a key should be filtered out due to an error comparing block keys", func(t *testing.T) {
+			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+			filter := rc.Filter()
+
+			key := chain.UpkeepKey("1|1234")
+
+			rc.idBlocks.Set("1234", idBlocker{
+				TransmitBlockNumber: chain.BlockKey("invalid"),
+			}, util.DefaultCacheExpiration)
+
+			assert.False(t, filter(key))
+
+			mr.AssertExpectations(t)
+		})
 	})
+
 }
 
 func assertFilter(t *testing.T, key types.UpkeepKey, exp bool, f func(types.UpkeepKey) bool) {
