@@ -4,8 +4,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestNewUpkeepKey(t *testing.T) {

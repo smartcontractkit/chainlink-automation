@@ -3,9 +3,10 @@ package keepers
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func BenchmarkDecode(b *testing.B) {
@@ -33,8 +34,7 @@ func Test_encode(t *testing.T) {
 	t.Run("successfully encodes a string", func(t *testing.T) {
 		b, err := encode([]string{"1", "2", "3"})
 		assert.Nil(t, err)
-		assert.Equal(t, b, []byte(`["1","2","3"]
-`))
+		assert.Equal(t, b, []byte(`["1","2","3"]`))
 	})
 
 	t.Run("fails to encode a channel", func(t *testing.T) {

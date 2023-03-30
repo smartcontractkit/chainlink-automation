@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
