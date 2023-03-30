@@ -34,6 +34,7 @@ func Test_encode(t *testing.T) {
 	t.Run("successfully encodes a string", func(t *testing.T) {
 		b, err := encode([]string{"1", "2", "3"})
 		assert.Nil(t, err)
+		// the encoder appends a new line to the output string
 		assert.Equal(t, b, []byte(`["1","2","3"]
 `))
 	})
