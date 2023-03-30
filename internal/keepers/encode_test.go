@@ -34,7 +34,8 @@ func Test_encode(t *testing.T) {
 	t.Run("successfully encodes a string", func(t *testing.T) {
 		b, err := encode([]string{"1", "2", "3"})
 		assert.Nil(t, err)
-		assert.Equal(t, b, []byte(`["1","2","3"]`))
+		assert.Equal(t, b, []byte(`["1","2","3"]
+`))
 	})
 
 	t.Run("fails to encode a channel", func(t *testing.T) {
