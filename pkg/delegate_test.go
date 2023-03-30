@@ -7,9 +7,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 )
 
 func TestStart(t *testing.T) {
@@ -92,15 +94,8 @@ func TestClose(t *testing.T) {
 				ContractConfigConfirmations:        1,
 			},
 		})
-		assert.NoError(t, err)
-		if err != nil {
-			t.FailNow()
-		}
-
-		assert.NotNil(t, d.keeper, "Delegate keeper should not be nil")
-		if d.keeper == nil {
-			t.FailNow()
-		}
+		require.NoError(t, err)
+		require.NotNil(t, d.keeper, "Delegate keeper should not be nil")
 
 		err = d.Close()
 		assert.Equal(t, err.Error(), "can only close a started Oracle: failed to close keeper oracle")
