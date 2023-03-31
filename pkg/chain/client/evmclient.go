@@ -1,4 +1,4 @@
-package chain
+package client
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -32,7 +33,6 @@ func NewEVMClient(client *rpc.Client, batchSize int) types.EVMClient {
 		rpcClient: client,
 		batchSize: batchSize,
 	}
-
 	c.subscribe(context.Background())
 
 	return c
@@ -87,7 +87,7 @@ func (ec *evmClient) subscribe(ctx context.Context) {
 				return
 			}
 		case head := <-ch:
-			ec.chHead <- BlockKey(head.Number.String())
+			ec.chHead <- chain.BlockKey(head.Number.String())
 		}
 	}
 }

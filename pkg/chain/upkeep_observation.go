@@ -11,6 +11,7 @@ import (
 var (
 	ErrInvalidBlockKey         = fmt.Errorf("invalid block key")
 	ErrInvalidUpkeepIdentifier = fmt.Errorf("invalid upkeep identifier")
+	unmarshalFn                = json.Unmarshal
 )
 
 // TODO (AUTO-2014), find a better place for these concrete types than chain package
@@ -23,7 +24,7 @@ type upkeepObservation UpkeepObservation
 
 func (u *UpkeepObservation) UnmarshalJSON(b []byte) error {
 	var upkeep upkeepObservation
-	if err := json.Unmarshal(b, &upkeep); err != nil {
+	if err := unmarshalFn(b, &upkeep); err != nil {
 		return err
 	}
 

@@ -8,13 +8,18 @@ import (
 	"math/rand"
 )
 
+var (
+	newCipherFn = aes.NewCipher
+	randReadFn  = crand.Read
+)
+
 type keyedCryptoRandSource struct {
 	stream cipher.Stream
 }
 
 func NewKeyedCryptoRandSource(key [16]byte) rand.Source {
 	var iv [16]byte // zero IV is fine here
-	block, err := aes.NewCipher(key[:])
+	block, err := newCipherFn(key[:])
 	if err != nil {
 		// assertion
 		panic(err)
@@ -42,7 +47,7 @@ func NewCryptoRandSource() rand.Source {
 
 func (_ cryptoRandSource) Int63() int64 {
 	var b [8]byte
-	_, err := crand.Read(b[:])
+	_, err := randReadFn(b[:])
 	if err != nil {
 		panic(err)
 	}

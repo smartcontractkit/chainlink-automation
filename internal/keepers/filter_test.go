@@ -11,13 +11,14 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 func TestReportCoordinator(t *testing.T) {
-	setup := func(t *testing.T, l *log.Logger) (*reportCoordinator, *types.MockRegistry, *types.MockPerformLogProvider) {
-		mr := types.NewMockRegistry(t)
-		mp := types.NewMockPerformLogProvider(t)
+	setup := func(t *testing.T, l *log.Logger) (*reportCoordinator, *mocks.Registry, *mocks.PerformLogProvider) {
+		mr := mocks.NewRegistry(t)
+		mp := mocks.NewPerformLogProvider(t)
 		return &reportCoordinator{
 			logger:     l,
 			registry:   mr,
@@ -63,6 +64,15 @@ func TestReportCoordinator(t *testing.T) {
 
 		assert.NoError(t, rc.Accept(key1Block1), "no error expected from accepting the key")
 		assert.NoError(t, rc.Accept(key1Block1), "Key can get accepted again")
+
+		mr.AssertExpectations(t)
+	})
+
+	t.Run("Accept errors on an error parsing BlockKeyAndUpkeepID", func(t *testing.T) {
+		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+
+		key := chain.UpkeepKey("||")
+		assert.Error(t, rc.Accept(key))
 
 		mr.AssertExpectations(t)
 	})
@@ -614,17 +624,49 @@ func TestReportCoordinator(t *testing.T) {
 	})
 
 	t.Run("Filter", func(t *testing.T) {
-		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		t.Run("Determines that a key should be filtered out", func(t *testing.T) {
+			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+			filter := rc.Filter()
 
-		rc.idBlocks.Set(string(id1), idBlocker{
-			TransmitBlockNumber: bk15,
-		}, util.DefaultCacheExpiration)
+			rc.idBlocks.Set(string(id1), idBlocker{
+				TransmitBlockNumber: bk15,
+			}, util.DefaultCacheExpiration)
 
-		assert.False(t, filter(key1Block4))
+			assert.False(t, filter(key1Block4))
 
-		mr.AssertExpectations(t)
+			mr.AssertExpectations(t)
+		})
+
+		t.Run("Determines that a key should be filtered out due to an error retrieving BlockKeyAndUpkeepID", func(t *testing.T) {
+			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+			filter := rc.Filter()
+
+			rc.idBlocks.Set(string(id1), idBlocker{
+				TransmitBlockNumber: bk15,
+			}, util.DefaultCacheExpiration)
+
+			key := chain.UpkeepKey("invalid")
+			assert.False(t, filter(key))
+
+			mr.AssertExpectations(t)
+		})
+
+		t.Run("Determines that a key should be filtered out due to an error comparing block keys", func(t *testing.T) {
+			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
+			filter := rc.Filter()
+
+			key := chain.UpkeepKey("1|1234")
+
+			rc.idBlocks.Set("1234", idBlocker{
+				TransmitBlockNumber: chain.BlockKey("invalid"),
+			}, util.DefaultCacheExpiration)
+
+			assert.False(t, filter(key))
+
+			mr.AssertExpectations(t)
+		})
 	})
+
 }
 
 func assertFilter(t *testing.T, key types.UpkeepKey, exp bool, f func(types.UpkeepKey) bool) {

@@ -12,10 +12,8 @@ import (
 func encode[T any](value T) ([]byte, error) {
 	var b bytes.Buffer
 
-	enc := json.NewEncoder(&b)
-	err := enc.Encode(value)
-	if err != nil {
-		return []byte{}, err
+	if err := json.NewEncoder(&b).Encode(value); err != nil {
+		return nil, err
 	}
 
 	return b.Bytes(), nil

@@ -11,20 +11,24 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+var (
+	marshalFn = json.Marshal
+)
+
 // Generate types from third-party repos:
 //
-//go:generate mockery --name Logger --structname MockLogger --srcpkg "github.com/smartcontractkit/libocr/commontypes" --outpkg types --output . --case=underscore --filename logger.generated.go
+//go:generate mockery --name Logger --structname MockLogger --srcpkg "github.com/smartcontractkit/libocr/commontypes" --case underscore --filename logger.generated.go
 
 // HeadSubscriber represents head subscriber behaviour; used for evm chains;
 //
-//go:generate mockery --name HeadSubscriber --inpackage --output . --case=underscore --filename head_subscribed.generated.go
+//go:generate mockery --name HeadSubscriber --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/types"   --case underscore --filename head_subscribed.generated.go
 type HeadSubscriber interface {
 	HeadTicker() chan BlockKey
 }
 
 // EVMClient represents evm client's behavior
 //
-//go:generate mockery --name EVMClient --inpackage --output . --case=underscore --filename evm_client.generated.go
+//go:generate mockery --name EVMClient --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/types"   --case underscore --filename evm_client.generated.go
 type EVMClient interface {
 	HeadSubscriber
 	bind.ContractCaller
@@ -34,7 +38,7 @@ type EVMClient interface {
 
 // Registry represents keeper registry behaviour
 //
-//go:generate mockery --name Registry --inpackage --output . --case=underscore --filename registry.generated.go
+//go:generate mockery --name Registry --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/types"   --case underscore --filename registry.generated.go
 type Registry interface {
 	GetActiveUpkeepIDs(context.Context) ([]UpkeepIdentifier, error)
 	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
@@ -42,7 +46,7 @@ type Registry interface {
 
 // ReportEncoder represents the report encoder behaviour
 //
-//go:generate mockery --name ReportEncoder --inpackage --output . --case=underscore --filename report_encoder.generated.go
+//go:generate mockery --name ReportEncoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/types"   --case underscore --filename report_encoder.generated.go
 type ReportEncoder interface {
 	EncodeReport([]UpkeepResult) ([]byte, error)
 	DecodeReport([]byte) ([]UpkeepResult, error)
@@ -50,7 +54,7 @@ type ReportEncoder interface {
 
 // PerformLogProvider represents the perform log provider
 //
-//go:generate mockery --name PerformLogProvider --inpackage --output . --case=underscore --filename perform_log_provider.generated.go
+//go:generate mockery --name PerformLogProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/types"   --case underscore --filename perform_log_provider.generated.go
 type PerformLogProvider interface {
 	PerformLogs(context.Context) ([]PerformLog, error)
 	StaleReportLogs(context.Context) ([]StaleReportLog, error)
@@ -200,7 +204,7 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 }
 
 func (c OffchainConfig) Encode() []byte {
-	b, err := json.Marshal(&c)
+	b, err := marshalFn(&c)
 	if err != nil {
 		panic(fmt.Sprintf("unexpected error json encoding OffChainConfig: %s", err))
 	}

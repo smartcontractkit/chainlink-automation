@@ -1,8 +1,10 @@
 package types
 
 import (
+	"math/big"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -124,4 +126,52 @@ func TestDecode(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOffchainConfig_Encode(t *testing.T) {
+	t.Run("unmarshall-able config causes a panic", func(t *testing.T) {
+		oldMarshalFn := marshalFn
+		marshalFn = func(v any) ([]byte, error) {
+			return nil, errors.New("panicking")
+		}
+		defer func() {
+			marshalFn = oldMarshalFn
+		}()
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatalf("expected a panic, but didn't panic")
+			}
+		}()
+
+		config := OffchainConfig{
+			PerformLockoutWindow: 1,
+		}
+
+		config.Encode()
+	})
+
+	t.Run("config is marshalled into json bytes", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("unexpected panic")
+			}
+		}()
+
+		config := OffchainConfig{
+			PerformLockoutWindow: 1,
+		}
+
+		bytes := config.Encode()
+		assert.Equal(t, bytes, []byte(`{"performLockoutWindow":1,"targetProbability":"","targetInRounds":0,"samplingJobDuration":0,"minConfirmations":0,"gasLimitPerReport":0,"gasOverheadPerUpkeep":0,"maxUpkeepBatchSize":0,"reportBlockLag":0}`))
+	})
+}
+
+func TestUpkeepIdentifier_BigInt(t *testing.T) {
+	id := UpkeepIdentifier("123")
+	idInt, ok := id.BigInt()
+	if !ok {
+		t.Fatalf("unexpected identifier")
+	}
+	assert.Equal(t, idInt, big.NewInt(123))
 }

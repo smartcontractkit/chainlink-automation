@@ -19,6 +19,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain/client"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -212,7 +213,7 @@ func runFullSimulation(logger *log.Logger, config *SimulatorConfig) error {
 }
 
 func makePlugin(address common.Address, controller *OCRController, logger *log.Logger, rpcClient *rpc.Client, i int8, n int) types.ReportingPlugin {
-	client := chain.NewEVMClient(rpcClient, 10)
+	client := client.NewEVMClient(rpcClient, 10)
 
 	reg, err := chain.NewEVMRegistryV2_0(address, client)
 	if err != nil {

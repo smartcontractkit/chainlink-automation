@@ -3,6 +3,8 @@ package keepers
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -26,4 +28,20 @@ func BenchmarkDecode(b *testing.B) {
 			b.FailNow()
 		}
 	}
+}
+
+func Test_encode(t *testing.T) {
+	t.Run("successfully encodes a string", func(t *testing.T) {
+		b, err := encode([]string{"1", "2", "3"})
+		assert.Nil(t, err)
+		// the encoder appends a new line to the output string
+		assert.Equal(t, b, []byte(`["1","2","3"]
+`))
+	})
+
+	t.Run("fails to encode a channel", func(t *testing.T) {
+		b, err := encode(make(chan int))
+		assert.NotNil(t, err)
+		assert.Nil(t, b)
+	})
 }
