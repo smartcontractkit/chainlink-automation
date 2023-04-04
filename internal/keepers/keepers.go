@@ -13,7 +13,7 @@ type keepers struct {
 	service            upkeepService
 	encoder            types.ReportEncoder
 	logger             *log.Logger
-	filter             filterer
+	filter             Coordinator
 	reportGasLimit     uint32
 	upkeepGasOverhead  uint32
 	maxUpkeepBatchSize int
