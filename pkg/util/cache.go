@@ -10,13 +10,6 @@ const (
 	DefaultCacheExpiration time.Duration = 0
 )
 
-func NewIntervalCacheCleaner[T any](interval time.Duration) *IntervalCacheCleaner[T] {
-	return &IntervalCacheCleaner[T]{
-		interval: interval,
-		stop:     make(chan struct{}),
-	}
-}
-
 func NewCache[T any](expiration time.Duration) *Cache[T] {
 	return &Cache[T]{
 		defaultExpiration: expiration,
@@ -114,32 +107,13 @@ func (c *Cache[T]) ClearExpired() {
 	}
 }
 
+func (c *Cache[T]) ClearAll() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data = make(map[string]CacheItem[T])
+}
+
 func getZero[T any]() T {
 	var result T
 	return result
-}
-
-type IntervalCacheCleaner[T any] struct {
-	interval time.Duration
-	stopper  sync.Once
-	stop     chan struct{}
-}
-
-func (ic *IntervalCacheCleaner[T]) Run(c *Cache[T]) {
-	ticker := time.NewTicker(ic.interval)
-	for {
-		select {
-		case <-ticker.C:
-			c.ClearExpired()
-		case <-ic.stop:
-			ticker.Stop()
-			return
-		}
-	}
-}
-
-func (ic *IntervalCacheCleaner[T]) Stop() {
-	ic.stopper.Do(func() {
-		close(ic.stop)
-	})
 }
