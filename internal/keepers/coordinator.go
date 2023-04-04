@@ -33,12 +33,6 @@ var (
 	IndefiniteBlockingKey = chain.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
 )
 
-type Coordinator interface {
-	Filter() func(types.UpkeepKey) bool
-	Accept(key types.UpkeepKey) error
-	IsTransmissionConfirmed(key types.UpkeepKey) bool
-}
-
 type reportCoordinator struct {
 	logger         *log.Logger
 	registry       types.Registry
