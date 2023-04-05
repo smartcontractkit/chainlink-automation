@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -52,6 +53,7 @@ func NewPollingObserver(
 	coord KeyStatusCoordinator,
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
+	filterer keepers.Coordinator,
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -70,6 +72,7 @@ func NewPollingObserver(
 		coord:            coord,
 		cache:            pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
+		filterer:         filterer,
 	}
 
 	// make all go-routines started by this entity automatically recoverable
@@ -112,6 +115,7 @@ type PollingObserver struct {
 	keys     KeyProvider               // provides keys to this block observer
 	coord    KeyStatusCoordinator      // key status coordinator tracks in-flight status
 	shuffler Shuffler[types.UpkeepKey] // provides shuffling logic for upkeep keys
+	filterer keepers.Coordinator       // provides filtering logic for upkeep keys
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
@@ -126,6 +130,11 @@ func (bso *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier,
 
 		if pending, err := bso.coord.IsPending(key); pending || err != nil {
 			bso.logger.Printf("error checking pending state for '%s': %s", key, err)
+			continue
+		}
+
+		if !bso.filterer.Filter()(key) {
+			bso.logger.Printf("filtered out key '%s'", key)
 			continue
 		}
 
