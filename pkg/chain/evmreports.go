@@ -95,13 +95,14 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 }
 
 func (b *evmReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, error) {
-	mKeys := []string{"fastGasWei", "linkNative", "upkeepIds", "wrappedPerformDatas"}
+	mKeys := []string{"instanceId", "fastGasWei", "linkNative", "upkeepIds", "wrappedPerformDatas"}
 
 	reportArgs := abi.Arguments{
-		{Name: mKeys[0], Type: Uint256},
+		{Name: mKeys[0], Type: Uint8},
 		{Name: mKeys[1], Type: Uint256},
-		{Name: mKeys[2], Type: Uint256Arr},
-		{Name: mKeys[3], Type: PerformDataArr},
+		{Name: mKeys[2], Type: Uint256},
+		{Name: mKeys[3], Type: Uint256Arr},
+		{Name: mKeys[4], Type: PerformDataArr},
 	}
 
 	m := make(map[string]interface{})
@@ -122,7 +123,7 @@ func (b *evmReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, e
 	var wei *big.Int
 	var link *big.Int
 
-	if upkeepIds, ok = m[mKeys[2]].([]*big.Int); !ok {
+	if upkeepIds, ok = m[mKeys[3]].([]*big.Int); !ok {
 		return res, fmt.Errorf("upkeep ids of incorrect type in report")
 	}
 
@@ -132,7 +133,7 @@ func (b *evmReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, e
 	// ex:
 	// t := reflect.TypeOf(rawPerforms)
 	// fmt.Printf("%v\n", t)
-	performs, ok := m[mKeys[3]].([]struct {
+	performs, ok := m[mKeys[4]].([]struct {
 		CheckBlockNumber uint32   `json:"checkBlockNumber"`
 		CheckBlockhash   [32]byte `json:"checkBlockhash"`
 		PerformData      []byte   `json:"performData"`
@@ -145,11 +146,11 @@ func (b *evmReportEncoder) DecodeReport(report []byte) ([]ktypes.UpkeepResult, e
 		return res, fmt.Errorf("upkeep ids and performs should have matching length")
 	}
 
-	if wei, ok = m[mKeys[0]].(*big.Int); !ok {
+	if wei, ok = m[mKeys[1]].(*big.Int); !ok {
 		return res, fmt.Errorf("fast gas as wrong type")
 	}
 
-	if link, ok = m[mKeys[1]].(*big.Int); !ok {
+	if link, ok = m[mKeys[2]].(*big.Int); !ok {
 		return res, fmt.Errorf("link native as wrong type")
 	}
 
