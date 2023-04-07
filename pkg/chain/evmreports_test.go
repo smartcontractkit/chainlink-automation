@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewEVMEncoder(t *testing.T) {
-	enc := NewEVMReportEncoder()
+	enc := NewEVMReportEncoder(1)
 	assert.NotNil(t, enc)
 }
 
@@ -37,12 +37,13 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 			},
 		}
 
-		encoder := &evmReportEncoder{}
+		encoder := &evmReportEncoder{instance: 7}
 		b, err := encoder.EncodeReport(input)
 
 		// fast gas and link native values should come from the result at the latest block number
 		buff := new(bytes.Buffer)
 		// buff.Write([]byte("0x"))                                                                         // preface to data structure
+		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000007")) // instanceId in hex format
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGasWei in hex format
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000010")) // linkNative in hex format
 		buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000080")) // offset for ids array
@@ -78,7 +79,7 @@ func TestEncodeReport_MultiplePerforms(t *testing.T) {
 			{Key: UpkeepKey([]byte("1")), PerformData: []byte("hello")},
 		}
 
-		encoder := &evmReportEncoder{}
+		encoder := &evmReportEncoder{instance: 1}
 		b, err := encoder.EncodeReport(input)
 
 		assert.ErrorIs(t, err, ErrUpkeepKeyNotParsable)
@@ -98,12 +99,13 @@ func TestEncodeReport_EmptyPerformData(t *testing.T) {
 		},
 	}
 
-	encoder := &evmReportEncoder{}
+	encoder := &evmReportEncoder{instance: 7}
 	b, err := encoder.EncodeReport(input)
 
 	// fast gas and link native values should come from the result at the latest block number
 	buff := new(bytes.Buffer)
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGast
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000007")) // instanceId in hex format
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGas
 	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000010")) // link native
 	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000080")) // ids array offset
 	buff.Write(common.Hex2Bytes("00000000000000000000000000000000000000000000000000000000000000c0")) // tuple array offset
@@ -139,7 +141,8 @@ func TestDecodeReport(t *testing.T) {
 
 	// fast gas and link native values should come from the result at the latest block number
 	buff := new(bytes.Buffer)
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGast
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000007")) // instanceId in hex format
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000008")) // fastGas
 	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000010")) // link native
 	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000080")) // ids array offset
 	buff.Write(common.Hex2Bytes("00000000000000000000000000000000000000000000000000000000000000c0")) // tuple array offset
@@ -171,7 +174,7 @@ func BenchmarkEncodeReport(b *testing.B) {
 	rand.Read(smallData)
 	rand.Read(largeData)
 
-	encoder := NewEVMReportEncoder()
+	encoder := NewEVMReportEncoder(1)
 	tests := []struct {
 		Name string
 		Data []ktypes.UpkeepResult

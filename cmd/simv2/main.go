@@ -89,7 +89,7 @@ func main() {
 	}
 
 	// generic report encoder for testing evm encoding/decoding
-	enc := chain.NewEVMReportEncoder()
+	enc := chain.NewEVMReportEncoder(1)
 
 	// generic config digester
 	digester := evmutil.EVMOffchainConfigDigester{

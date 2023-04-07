@@ -22,13 +22,16 @@ var (
 	ErrContextCancelled      = fmt.Errorf("context was cancelled")
 )
 
-type evmReportEncoder struct{}
+type evmReportEncoder struct {
+	instance uint8
+}
 
-func NewEVMReportEncoder() *evmReportEncoder {
-	return &evmReportEncoder{}
+func NewEVMReportEncoder(instance uint8) *evmReportEncoder {
+	return &evmReportEncoder{instance: instance}
 }
 
 var (
+	Uint8, _                  = abi.NewType("uint8", "", nil)
 	Uint256, _                = abi.NewType("uint256", "", nil)
 	Uint256Arr, _             = abi.NewType("uint256[]", "", nil)
 	PerformDataMarshalingArgs = []abi.ArgumentMarshaling{
@@ -45,6 +48,7 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 	}
 
 	reportArgs := abi.Arguments{
+		{Name: "instanceId", Type: Uint8},
 		{Name: "fastGasWei", Type: Uint256},
 		{Name: "linkNative", Type: Uint256},
 		{Name: "upkeepIds", Type: Uint256Arr},
@@ -82,7 +86,7 @@ func (b *evmReportEncoder) EncodeReport(toReport []ktypes.UpkeepResult) ([]byte,
 		}
 	}
 
-	bts, err := reportArgs.Pack(fastGas, link, ids, data)
+	bts, err := reportArgs.Pack(b.instance, fastGas, link, ids, data)
 	if err != nil {
 		return []byte{}, fmt.Errorf("%w: failed to pack report data", err)
 	}

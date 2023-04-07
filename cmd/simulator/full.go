@@ -237,7 +237,7 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 		ServiceQueueLength:    1000,
 	}
 
-	factory := keepers.NewReportingPluginFactory(client, reg, pLogs, chain.NewEVMReportEncoder(), logger, config)
+	factory := keepers.NewReportingPluginFactory(client, reg, pLogs, chain.NewEVMReportEncoder(1), logger, config)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{
 		ConfigDigest:   [32]byte{},
 		OracleID:       commontypes.OracleID(i),

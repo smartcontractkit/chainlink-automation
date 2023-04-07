@@ -73,4 +73,8 @@ type DelegateConfig struct {
 	// workers or slower RPC responses will cause this queue to build up.
 	// Adding new items to the queue will block if the queue becomes full.
 	ServiceQueueLength int
+	// InstanceId is the numberic id of the oracle instance serving upkeeps.
+	// This value is primarily used in logs to help identify the instance that
+	// emitted them.
+	InstanceId uint8
 }

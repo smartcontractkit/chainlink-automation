@@ -32,7 +32,7 @@ type Delegate struct {
 // with '[keepers-plugin] ' and a short file name.
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	wrapper := &logWriter{l: c.Logger}
-	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
+	l := log.New(wrapper, fmt.Sprintf("[keepers-plugin](%d) ", int(c.InstanceId)), log.Lshortfile)
 
 	// set some defaults
 	conf := keepers.ReportingFactoryConfig{
