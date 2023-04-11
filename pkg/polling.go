@@ -127,20 +127,20 @@ type PollingObserver struct {
 // Observe implements the Observer interface and provides a slice of identifiers
 // that were observed to be performable along with the block at which they were
 // observed. All ids that are pending are filtered out.
-func (bso *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, error) {
-	bl, ids := bso.stager.get()
+func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, error) {
+	bl, ids := o.stager.get()
 	filteredIDs := make([]types.UpkeepIdentifier, 0, len(ids))
 
 	for _, id := range ids {
-		key := bso.upkeepProvider.MakeUpkeepKey(bl, id)
+		key := o.upkeepProvider.MakeUpkeepKey(bl, id)
 
-		if pending, err := bso.coord.IsPending(key); pending || err != nil {
-			bso.logger.Printf("error checking pending state for '%s': %s", key, err)
+		if pending, err := o.coord.IsPending(key); pending || err != nil {
+			o.logger.Printf("error checking pending state for '%s': %s", key, err)
 			continue
 		}
 
-		if !bso.filterer.IsPending(key) {
-			bso.logger.Printf("filtered out key '%s'", key)
+		if !o.filterer.IsPending(key) {
+			o.logger.Printf("filtered out key '%s'", key)
 			continue
 		}
 
@@ -152,7 +152,7 @@ func (bso *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier,
 
 // CheckUpkeep implements the Observer interface. It takes an number of upkeep
 // keys and returns upkeep results.
-func (bso *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepResult, error) {
+func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepResult, error) {
 	var (
 		results           = make([]types.UpkeepResult, len(keys))
 		nonCachedKeysIdxs = make([]int, 0, len(keys))
@@ -163,7 +163,7 @@ func (bso *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.Upkee
 		// the cache is a collection of keys (block & id) that map to cached
 		// results. if the same upkeep is checked at a block that has already been
 		// checked, return the cached result
-		if result, cached := bso.cache.Get(key.String()); cached {
+		if result, cached := o.cache.Get(key.String()); cached {
 			results[i] = result
 		} else {
 			nonCachedKeysIdxs = append(nonCachedKeysIdxs, i)
@@ -178,14 +178,14 @@ func (bso *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.Upkee
 
 	// check upkeep at block number in key
 	// return result including performData
-	checkResults, err := bso.registry.CheckUpkeep(ctx, nonCachedKeys...)
+	checkResults, err := o.registry.CheckUpkeep(ctx, nonCachedKeys...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
 
 	// Cache results
 	for i, u := range checkResults {
-		bso.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, pkgutil.DefaultCacheExpiration)
+		o.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, pkgutil.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
@@ -194,44 +194,44 @@ func (bso *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.Upkee
 
 // Start will start all required internal services. Calling this function again
 // after the first is a noop.
-func (bso *PollingObserver) Start() {
-	bso.startOnce.Do(func() {
-		for _, svc := range bso.services {
+func (o *PollingObserver) Start() {
+	o.startOnce.Do(func() {
+		for _, svc := range o.services {
 			svc.Start()
 		}
 	})
 }
 
 // Stop will stop all internal services allowing the observer to exit cleanly.
-func (bso *PollingObserver) Stop() {
-	bso.stopOnce.Do(func() {
-		for _, svc := range bso.services {
+func (o *PollingObserver) Stop() {
+	o.stopOnce.Do(func() {
+		for _, svc := range o.services {
 			svc.Stop()
 		}
 	})
 }
 
-func (bso *PollingObserver) runHeadTasks() error {
-	ch := bso.heads.HeadTicker()
+func (o *PollingObserver) runHeadTasks() error {
+	ch := o.heads.HeadTicker()
 	for {
 		select {
 		case bl := <-ch:
 			// limit the context timeout to configured value
-			ctx, cancel := context.WithTimeout(bso.ctx, bso.samplingDuration)
+			ctx, cancel := context.WithTimeout(o.ctx, o.samplingDuration)
 
 			// run sampling with latest head
-			bso.processLatestHead(ctx, bl)
+			o.processLatestHead(ctx, bl)
 
 			// clean up resources by canceling the context after processing
 			cancel()
-		case <-bso.ctx.Done():
-			return bso.ctx.Err()
+		case <-o.ctx.Done():
+			return o.ctx.Err()
 		}
 	}
 }
 
 // processLatestHead performs checking upkeep logic for all eligible keys of the given head
-func (bso *PollingObserver) processLatestHead(ctx context.Context, blockKey types.BlockKey) {
+func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.BlockKey) {
 	var (
 		keys []types.UpkeepKey
 		err  error
@@ -239,46 +239,46 @@ func (bso *PollingObserver) processLatestHead(ctx context.Context, blockKey type
 
 	// Get only the active upkeeps from the key provider. This should not include
 	// any cancelled upkeeps.
-	if keys, err = bso.keys.ActiveKeys(ctx); err != nil {
-		bso.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
+	if keys, err = o.keys.ActiveKeys(ctx); err != nil {
+		o.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 		return
 	}
 
-	bso.logger.Printf("%d active upkeep keys found in registry", len(keys))
+	o.logger.Printf("%d active upkeep keys found in registry", len(keys))
 
 	// reduce keys to ratio size and shuffle. this can return a nil array.
 	// in that case we have no keys so return.
-	if keys = bso.shuffleAndSliceKeysToRatio(keys); keys == nil {
+	if keys = o.shuffleAndSliceKeysToRatio(keys); keys == nil {
 		return
 	}
 
-	bso.stager.prepareBlock(blockKey)
+	o.stager.prepareBlock(blockKey)
 
 	// run checkupkeep on all keys. an error from this function should
 	// bubble up.
-	if err = bso.parallelCheck(ctx, keys); err != nil {
-		bso.logger.Printf("%s: failed to parallel check upkeeps", err)
+	if err = o.parallelCheck(ctx, keys); err != nil {
+		o.logger.Printf("%s: failed to parallel check upkeeps", err)
 		return
 	}
 
 	// advance the staged block/upkeep id list to the next in line
-	bso.stager.advance()
+	o.stager.advance()
 }
 
-func (bso *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
-	keys = bso.shuffler.Shuffle(keys)
-	size := bso.ratio.OfInt(len(keys))
+func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
+	keys = o.shuffler.Shuffle(keys)
+	size := o.ratio.OfInt(len(keys))
 
 	if len(keys) == 0 || size <= 0 {
 		return nil
 	}
 
-	bso.logger.Printf("%d results selected by provided ratio %s", size, bso.ratio)
+	o.logger.Printf("%d results selected by provided ratio %s", size, o.ratio)
 
 	return keys[:size]
 }
 
-func (bso *PollingObserver) parallelCheck(ctx context.Context, keys []types.UpkeepKey) error {
+func (o *PollingObserver) parallelCheck(ctx context.Context, keys []types.UpkeepKey) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -289,16 +289,16 @@ func (bso *PollingObserver) parallelCheck(ctx context.Context, keys []types.Upke
 	// Max keyBatchSize items in the batch.
 	pkgutil.RunJobs(
 		ctx,
-		bso.workers,
-		util.Unflatten(keys, bso.workerBatchLimit),
-		bso.wrapWorkerFunc(),
-		bso.wrapAggregate(&wResults),
+		o.workers,
+		util.Unflatten(keys, o.workerBatchLimit),
+		o.wrapWorkerFunc(),
+		o.wrapAggregate(&wResults),
 	)
 
 	if wResults.Total() == 0 {
-		bso.logger.Printf("no network calls were made for this sampling set")
+		o.logger.Printf("no network calls were made for this sampling set")
 	} else {
-		bso.logger.Printf("worker call success rate: %.2f; failure rate: %.2f; total calls %d", wResults.SuccessRate(), wResults.FailureRate(), wResults.Total())
+		o.logger.Printf("worker call success rate: %.2f; failure rate: %.2f; total calls %d", wResults.SuccessRate(), wResults.FailureRate(), wResults.Total())
 	}
 
 	// multiple network calls can result in an error while some can be successful
@@ -311,22 +311,22 @@ func (bso *PollingObserver) parallelCheck(ctx context.Context, keys []types.Upke
 	return nil
 }
 
-func (bso *PollingObserver) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (types.UpkeepResults, error) {
+func (o *PollingObserver) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (types.UpkeepResults, error) {
 	return func(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
 		start := time.Now()
 
 		// perform check and update cache with result
-		checkResults, err := bso.registry.CheckUpkeep(ctx, keys...)
+		checkResults, err := o.registry.CheckUpkeep(ctx, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keys)
 		} else {
-			bso.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
+			o.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
 
 			for _, result := range checkResults {
-				if bso.eligibilityProvider.Eligible(result) {
-					bso.logger.Printf("upkeep ready to perform for key %s", result.Key)
+				if o.eligibilityProvider.Eligible(result) {
+					o.logger.Printf("upkeep ready to perform for key %s", result.Key)
 				} else {
-					bso.logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
+					o.logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
 				}
 			}
 		}
@@ -335,26 +335,26 @@ func (bso *PollingObserver) wrapWorkerFunc() func(context.Context, []types.Upkee
 	}
 }
 
-func (bso *PollingObserver) wrapAggregate(r *util.Results) func(types.UpkeepResults, error) {
+func (o *PollingObserver) wrapAggregate(r *util.Results) func(types.UpkeepResults, error) {
 	return func(result types.UpkeepResults, err error) {
 		if err == nil {
 			r.Successes++
 
 			for _, res := range result {
-				bso.cache.Set(string(res.Key.String()), res, pkgutil.DefaultCacheExpiration)
+				o.cache.Set(string(res.Key.String()), res, pkgutil.DefaultCacheExpiration)
 
-				if bso.eligibilityProvider.Eligible(res) {
-					_, id, err := bso.upkeepProvider.SplitUpkeepKey(res.Key)
+				if o.eligibilityProvider.Eligible(res) {
+					_, id, err := o.upkeepProvider.SplitUpkeepKey(res.Key)
 					if err != nil {
 						continue
 					}
 
-					bso.stager.prepareIdentifier(id)
+					o.stager.prepareIdentifier(id)
 				}
 			}
 		} else {
 			r.Err = err
-			bso.logger.Printf("error received from worker result: %s", err)
+			o.logger.Printf("error received from worker result: %s", err)
 			r.Failures++
 		}
 	}
@@ -368,39 +368,39 @@ type stager struct {
 	sync.RWMutex
 }
 
-func (st *stager) prepareBlock(bl types.BlockKey) {
-	st.Lock()
-	defer st.Unlock()
+func (s *stager) prepareBlock(bl types.BlockKey) {
+	s.Lock()
+	defer s.Unlock()
 
-	st.nextBlock = bl
+	s.nextBlock = bl
 }
 
-func (st *stager) prepareIdentifier(id types.UpkeepIdentifier) {
-	st.Lock()
-	defer st.Unlock()
+func (s *stager) prepareIdentifier(id types.UpkeepIdentifier) {
+	s.Lock()
+	defer s.Unlock()
 
-	if st.nextIDs == nil {
-		st.nextIDs = []types.UpkeepIdentifier{}
+	if s.nextIDs == nil {
+		s.nextIDs = []types.UpkeepIdentifier{}
 	}
 
-	st.nextIDs = append(st.nextIDs, id)
+	s.nextIDs = append(s.nextIDs, id)
 }
 
-func (st *stager) advance() {
-	st.Lock()
-	defer st.Unlock()
+func (s *stager) advance() {
+	s.Lock()
+	defer s.Unlock()
 
-	st.currentBlock = st.nextBlock
-	st.currentIDs = make([]types.UpkeepIdentifier, len(st.nextIDs))
+	s.currentBlock = s.nextBlock
+	s.currentIDs = make([]types.UpkeepIdentifier, len(s.nextIDs))
 
-	copy(st.currentIDs, st.nextIDs)
+	copy(s.currentIDs, s.nextIDs)
 
-	st.nextIDs = make([]types.UpkeepIdentifier, 0)
+	s.nextIDs = make([]types.UpkeepIdentifier, 0)
 }
 
-func (st *stager) get() (types.BlockKey, []types.UpkeepIdentifier) {
-	st.RLock()
-	defer st.RUnlock()
+func (s *stager) get() (types.BlockKey, []types.UpkeepIdentifier) {
+	s.RLock()
+	defer s.RUnlock()
 
-	return st.currentBlock, st.currentIDs
+	return s.currentBlock, s.currentIDs
 }
