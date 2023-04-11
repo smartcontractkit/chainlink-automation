@@ -341,7 +341,7 @@ func (o *PollingObserver) wrapAggregate(r *util.Results) func(types.UpkeepResult
 			r.Successes++
 
 			for _, res := range result {
-				o.cache.Set(string(res.Key.String()), res, pkgutil.DefaultCacheExpiration)
+				o.cache.Set(res.Key.String(), res, pkgutil.DefaultCacheExpiration)
 
 				if o.eligibilityProvider.Eligible(res) {
 					_, id, err := o.upkeepProvider.SplitUpkeepKey(res.Key)
@@ -368,11 +368,11 @@ type stager struct {
 	sync.RWMutex
 }
 
-func (s *stager) prepareBlock(bl types.BlockKey) {
+func (s *stager) prepareBlock(block types.BlockKey) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.nextBlock = bl
+	s.nextBlock = block
 }
 
 func (s *stager) prepareIdentifier(id types.UpkeepIdentifier) {
