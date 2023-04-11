@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
@@ -54,25 +55,27 @@ func NewPollingObserver(
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
 	filterer keepers.Coordinator,
+	eligibilityProvider encoder.EligibilityProvider,
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ob := &PollingObserver{
-		ctx:              ctx,
-		cancel:           cancel,
-		logger:           logger,
-		workers:          pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		workerBatchLimit: 10, // TODO: hard coded for now
-		samplingDuration: maxSamplingDuration,
-		registry:         registry,
-		keys:             keys,
-		shuffler:         util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
-		ratio:            ratio,
-		stager:           &stager{},
-		coord:            coord,
-		cache:            pkgutil.NewCache[types.UpkeepResult](cacheExpire),
-		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
-		filterer:         filterer,
+		ctx:                 ctx,
+		cancel:              cancel,
+		logger:              logger,
+		workers:             pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		workerBatchLimit:    10, // TODO: hard coded for now
+		samplingDuration:    maxSamplingDuration,
+		registry:            registry,
+		keys:                keys,
+		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
+		ratio:               ratio,
+		stager:              &stager{},
+		coord:               coord,
+		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
+		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
+		filterer:            filterer,
+		eligibilityProvider: eligibilityProvider,
 	}
 
 	// make all go-routines started by this entity automatically recoverable
@@ -109,13 +112,15 @@ type PollingObserver struct {
 	cacheCleaner *pkgutil.IntervalCacheCleaner[types.UpkeepResult]
 
 	// dependency interfaces required by the polling observer
-	logger   *log.Logger
-	heads    types.HeadSubscriber      // provides new blocks to be operated on
-	registry types.Registry            // abstracted access to contract and chain
-	keys     KeyProvider               // provides keys to this block observer
-	coord    KeyStatusCoordinator      // key status coordinator tracks in-flight status
-	shuffler Shuffler[types.UpkeepKey] // provides shuffling logic for upkeep keys
-	filterer keepers.Coordinator       // provides filtering logic for upkeep keys
+	logger              *log.Logger
+	heads               types.HeadSubscriber        // provides new blocks to be operated on
+	registry            types.Registry              // abstracted access to contract and chain
+	keys                KeyProvider                 // provides keys to this block observer
+	coord               KeyStatusCoordinator        // key status coordinator tracks in-flight status
+	shuffler            Shuffler[types.UpkeepKey]   // provides shuffling logic for upkeep keys
+	filterer            keepers.Coordinator         // provides filtering logic for upkeep keys
+	eligibilityProvider encoder.EligibilityProvider // provides an eligibility check for upkeep keys
+
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
@@ -317,7 +322,7 @@ func (bso *PollingObserver) wrapWorkerFunc() func(context.Context, []types.Upkee
 			bso.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
 
 			for _, result := range checkResults {
-				if result.State == types.Eligible {
+				if bso.eligibilityProvider.Eligible(result) {
 					bso.logger.Printf("upkeep ready to perform for key %s", result.Key)
 				} else {
 					bso.logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
@@ -339,7 +344,7 @@ func (bso *PollingObserver) wrapAggregate(r *util.Results) func(types.UpkeepResu
 
 				bso.cache.Set(string(res.Key.String()), res, pkgutil.DefaultCacheExpiration)
 
-				if result[i].State == types.Eligible {
+				if bso.eligibilityProvider.Eligible(result[i]) {
 					_, id, err := result[i].Key.BlockKeyAndUpkeepID()
 					if err != nil {
 						continue
