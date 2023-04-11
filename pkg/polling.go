@@ -11,7 +11,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -56,6 +55,7 @@ func NewPollingObserver(
 	cacheClean time.Duration,
 	filterer keepers.Coordinator,
 	eligibilityProvider encoder.EligibilityProvider,
+	upkeepProvider encoder.UpkeepProvider,
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -76,6 +76,7 @@ func NewPollingObserver(
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		filterer:            filterer,
 		eligibilityProvider: eligibilityProvider,
+		upkeepProvider:      upkeepProvider,
 	}
 
 	// make all go-routines started by this entity automatically recoverable
@@ -120,7 +121,7 @@ type PollingObserver struct {
 	shuffler            Shuffler[types.UpkeepKey]   // provides shuffling logic for upkeep keys
 	filterer            keepers.Coordinator         // provides filtering logic for upkeep keys
 	eligibilityProvider encoder.EligibilityProvider // provides an eligibility check for upkeep keys
-
+	upkeepProvider      encoder.UpkeepProvider
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
@@ -131,7 +132,7 @@ func (bso *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier,
 	filteredIDs := make([]types.UpkeepIdentifier, 0, len(ids))
 
 	for _, id := range ids {
-		key := chain.NewUpkeepKeyFromBlockAndID(bl, id)
+		key := bso.upkeepProvider.MakeUpkeepKey(bl, id)
 
 		if pending, err := bso.coord.IsPending(key); pending || err != nil {
 			bso.logger.Printf("error checking pending state for '%s': %s", key, err)
@@ -339,13 +340,11 @@ func (bso *PollingObserver) wrapAggregate(r *util.Results) func(types.UpkeepResu
 		if err == nil {
 			r.Successes++
 
-			for i := range result {
-				res := result[i]
-
+			for _, res := range result {
 				bso.cache.Set(string(res.Key.String()), res, pkgutil.DefaultCacheExpiration)
 
-				if bso.eligibilityProvider.Eligible(result[i]) {
-					_, id, err := result[i].Key.BlockKeyAndUpkeepID()
+				if bso.eligibilityProvider.Eligible(res) {
+					_, id, err := bso.upkeepProvider.SplitUpkeepKey(res.Key)
 					if err != nil {
 						continue
 					}
