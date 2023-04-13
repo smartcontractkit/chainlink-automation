@@ -1,14 +1,14 @@
 package observer
 
-type simpleService struct {
-	f func() error
-	c func()
+type SimpleService struct {
+	F func() error
+	C func()
 }
 
-func (sw *simpleService) Do() error {
-	return sw.f()
+func (sw *SimpleService) Do() error {
+	return sw.F()
 }
 
-func (sw *simpleService) Stop() {
-	sw.c()
+func (sw *SimpleService) Stop() {
+	sw.C()
 }

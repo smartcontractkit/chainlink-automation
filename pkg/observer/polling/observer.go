@@ -1,4 +1,4 @@
-package observer
+package polling
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -82,14 +83,14 @@ func NewPollingObserver(
 	// make all go-routines started by this entity automatically recoverable
 	// on panics
 	ob.services = []Service{
-		util.NewRecoverableService(&simpleService{f: ob.runHeadTasks, c: cancel}, logger),
+		util.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: cancel}, logger),
 		// TODO: workers is not recoverable because it cannot restart yet
-		util.NewRecoverableService(&simpleService{f: func() error { return nil }, c: func() { ob.workers.Stop() }}, logger),
+		util.NewRecoverableService(&observer.SimpleService{F: func() error { return nil }, C: func() { ob.workers.Stop() }}, logger),
 	}
 
 	// automatically stop all services if the reference is no longer reachable
 	// this is a safety in the case Stop isn't called explicitly
-	runtime.SetFinalizer(ob, func(srv Observer) { srv.Stop() })
+	runtime.SetFinalizer(ob, func(srv observer.Observer) { srv.Stop() })
 
 	return ob
 }
