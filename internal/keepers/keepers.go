@@ -13,7 +13,7 @@ import (
 type keepers struct {
 	id                 commontypes.OracleID
 	service            upkeepService
-	observers          []observer.Observer // replaces the service above
+	observers          []observer.Observer
 	encoder            types.ReportEncoder
 	logger             *log.Logger
 	coordinator        coordinator.Coordinator
