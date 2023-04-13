@@ -3,6 +3,7 @@ package keepers
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -53,40 +54,43 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 // Observation implements the types.ReportingPlugin interface in OCR2. This method samples a set
 // of upkeeps available in and UpkeepService and produces an observation containing upkeeps that
 // need to be executed.
-func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ types.Query) (types.Observation, error) {
-	lCtx := newOcrLogContext(rt)
+func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportTimestamp, _ types.Query) (types.Observation, error) {
+	lCtx := newOcrLogContext(reportTimestamp)
 	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
 
-	blockKey, results, err := k.service.SampleUpkeeps(ctx, k.filter.IsPending)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
+	allIDs := make([]ktypes.UpkeepIdentifier, 0)
+	var blocks []*big.Int
+
+	for _, observer := range k.observers {
+		block, ids, err := observer.Observe()
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
+		}
+
+		allIDs = append(allIDs, ids...)
+
+		if bigInt, ok := block.BigInt(); ok {
+			blocks = append(blocks, bigInt)
+		} else {
+			return nil, fmt.Errorf("%w: failed to parse block key for observation: %s", err, lCtx)
+		}
 	}
 
-	// keyList produces a sorted result so the following reduction of keys
-	// should be more uniform for all nodes
-	keys := keyList(filterUpkeeps(results, ktypes.Eligible))
-
-	obs := &chain.UpkeepObservation{
-		BlockKey: chain.BlockKey(blockKey.String()),
-	}
-
-	identifiers := make([]ktypes.UpkeepIdentifier, 0)
-	for _, upkeepKey := range keys {
-		_, upkeepID, _ := upkeepKey.BlockKeyAndUpkeepID()
-		identifiers = append(identifiers, upkeepID)
-	}
-
-	// Shuffle the observations before we limit it to observationUpkeepsLimit
-	keyRandSource := getRandomKeySource(rt)
-	identifiers = shuffleObservations(identifiers, keyRandSource)
+	keyRandSource := getRandomKeySource(reportTimestamp)
+	allIDs = shuffleObservations(allIDs, keyRandSource)
 	// Check limit
-	if len(identifiers) > observationUpkeepsLimit {
-		identifiers = identifiers[:observationUpkeepsLimit]
+	if len(allIDs) > observationUpkeepsLimit {
+		allIDs = allIDs[:observationUpkeepsLimit]
 	}
 
-	obs.UpkeepIdentifiers = identifiers
+	medianBlock := calculateMedianBlock(blocks, k.reportBlockLag)
+	blockKey := chain.BlockKey(medianBlock.String())
+	observation := &chain.UpkeepObservation{
+		BlockKey:          blockKey,
+		UpkeepIdentifiers: allIDs,
+	}
 
-	b, err := limitedLengthEncode(obs, maxObservationLength)
+	observationBytes, err := limitedLengthEncode(observation, maxObservationLength)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
 	}
@@ -94,9 +98,9 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// write the number of keys returned from sampling to the debug log
 	// this offers a record of the number of performs the node has visibility
 	// of for each epoch/round
-	k.logger.Printf("OCR observation completed successfully with block number %s, %d eligible upkeeps(%s): %s", blockKey, len(identifiers), upkeepIdentifiersToString(identifiers), lCtx)
+	k.logger.Printf("OCR observation completed successfully with block number %s, %d eligible upkeeps(%s): %s", blockKey, len(allIDs), upkeepIdentifiersToString(allIDs), lCtx)
 
-	return b, nil
+	return observationBytes, nil
 }
 
 // Report implements the types.ReportingPlugin interface in OC2. This method chooses a single upkeep
@@ -129,7 +133,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
 	keyRandSource := getRandomKeySource(rt)
-	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.filter.IsPending)
+	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.coordinator.Filter())
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
@@ -228,7 +232,7 @@ func (k *keepers) ShouldAcceptFinalizedReport(_ context.Context, rt types.Report
 
 	for _, r := range results {
 		// indicate to the filter that the key has been accepted for transmit
-		if err = k.filter.Accept(r.Key); err != nil {
+		if err = k.coordinator.Accept(r.Key); err != nil {
 			return false, fmt.Errorf("%w: failed to accept key: %s", err, lCtx)
 		}
 		k.logger.Printf("accepting key %s: %s", r.Key, lCtx.Short())
@@ -255,7 +259,7 @@ func (k *keepers) ShouldTransmitAcceptedReport(_ context.Context, rt types.Repor
 	}
 
 	for _, id := range results {
-		transmitConfirmed := k.filter.IsTransmissionConfirmed(id.Key)
+		transmitConfirmed := k.coordinator.IsTransmissionConfirmed(id.Key)
 		// multiple keys can be in a single report. if one has a non confirmed transmission
 		// (while others may not have), try to transmit anyway
 		if !transmitConfirmed {
