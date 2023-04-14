@@ -56,7 +56,6 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 // need to be executed.
 func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportTimestamp, _ types.Query) (types.Observation, error) {
 	lCtx := newOcrLogContext(reportTimestamp)
-	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
 
 	allIDs := make([]ktypes.UpkeepIdentifier, 0)
 	var blocks []*big.Int
