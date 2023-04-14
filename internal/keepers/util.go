@@ -14,10 +14,11 @@ import (
 	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"golang.org/x/crypto/sha3"
+
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -36,18 +37,6 @@ func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState) ktyp
 	return ret
 }
 
-func keyList(upkeeps ktypes.UpkeepResults) []ktypes.UpkeepKey {
-	ret := make([]ktypes.UpkeepKey, len(upkeeps))
-
-	for i, up := range upkeeps {
-		ret[i] = up.Key
-	}
-
-	sort.Sort(sortUpkeepKeys(ret))
-
-	return ret
-}
-
 type shuffler[T any] interface {
 	Shuffle([]T) []T
 }
@@ -60,20 +49,6 @@ func (_ *cryptoShuffler[T]) Shuffle(a []T) []T {
 		a[i], a[j] = a[j], a[i]
 	})
 	return a
-}
-
-type sortUpkeepKeys []ktypes.UpkeepKey
-
-func (s sortUpkeepKeys) Less(i, j int) bool {
-	return s[i].String() < s[j].String()
-}
-
-func (s sortUpkeepKeys) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s sortUpkeepKeys) Len() int {
-	return len(s)
 }
 
 func filterAndDedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
