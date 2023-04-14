@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -32,6 +33,7 @@ type onDemandUpkeepService struct {
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
 	workers          *util.WorkerGroup[types.UpkeepResults]
+	observers        []observer.Observer
 	ctx              context.Context
 	cancel           context.CancelFunc
 	mercuryEnabled   bool
@@ -53,6 +55,7 @@ func newOnDemandUpkeepService(
 	workers int,
 	workerQueueLength int,
 	mercuryEnabled bool,
+	observers []observer.Observer,
 ) *onDemandUpkeepService {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &onDemandUpkeepService{
@@ -65,6 +68,7 @@ func newOnDemandUpkeepService(
 		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		workers:          util.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		observers:        observers,
 		ctx:              ctx,
 		cancel:           cancel,
 		mercuryEnabled:   mercuryEnabled,

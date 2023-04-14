@@ -6,6 +6,8 @@ import (
 
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -73,4 +75,6 @@ type DelegateConfig struct {
 	// workers or slower RPC responses will cause this queue to build up.
 	// Adding new items to the queue will block if the queue becomes full.
 	ServiceQueueLength int
+
+	Observers []observer.Observer
 }
