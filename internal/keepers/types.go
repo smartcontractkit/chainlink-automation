@@ -23,7 +23,6 @@ type upkeepService interface {
 	SampleUpkeeps(context.Context, ...func(types.UpkeepKey) bool) (types.BlockKey, types.UpkeepResults, error)
 	CheckUpkeep(context.Context, ...types.UpkeepKey) (types.UpkeepResults, error)
 }
-
 type Coordinator interface {
 	IsPending(key types.UpkeepKey) bool
 	Accept(keys types.UpkeepKey) error
