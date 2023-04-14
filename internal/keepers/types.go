@@ -25,7 +25,7 @@ type upkeepService interface {
 }
 
 type Coordinator interface {
-	Filter() func(types.UpkeepKey) bool
-	Accept(key types.UpkeepKey) error
+	IsPending(key types.UpkeepKey) bool
+	Accept(keys types.UpkeepKey) error
 	IsTransmissionConfirmed(key types.UpkeepKey) bool
 }

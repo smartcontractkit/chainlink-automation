@@ -188,9 +188,7 @@ func TestObservation(t *testing.T) {
 				filter:  mf,
 			}
 
-			mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
-				return true
-			})
+			mf.Mock.On("IsPending", mock.AnythingOfType("chain.UpkeepKey")).Return(true)
 
 			ctx, cancel := test.Ctx()
 			ms.Mock.On("SampleUpkeeps", mock.Anything).Return(test.LatestBlock, test.SampleSet, test.SampleErr)
@@ -608,7 +606,30 @@ func TestReport(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			ms := new(MockedUpkeepService)
 			me := mocks.NewReportEncoder(t)
-			mf := new(MockedFilterer)
+			//mf := new(MockedFilterer)
+
+			mf := &mockFilter{
+				IsPendingFn: func(key ktypes.UpkeepKey) bool {
+					return false
+				},
+				IsTransmissionConfirmedFn: func(key ktypes.UpkeepKey) bool {
+					return true
+				},
+				AcceptFn: func(keys ktypes.UpkeepKey) error {
+					return nil
+				},
+			}
+
+			if len(test.Observations) > 0 && !errors.Is(test.ExpectedErr, ErrTooManyErrors) {
+				mf.IsPendingFn = func(k ktypes.UpkeepKey) bool {
+					for _, key := range test.FilterOut {
+						if k.String() == key.String() {
+							return false
+						}
+					}
+					return true
+				}
+			}
 
 			plugin := &keepers{
 				service:        ms,
@@ -618,17 +639,6 @@ func TestReport(t *testing.T) {
 				reportGasLimit: test.ReportGasLimit,
 			}
 			ctx, cancel := test.Ctx()
-
-			if len(test.Observations) > 0 && !errors.Is(test.ExpectedErr, ErrTooManyErrors) {
-				mf.Mock.On("Filter").Return(func(k ktypes.UpkeepKey) bool {
-					for _, key := range test.FilterOut {
-						if k.String() == key.String() {
-							return false
-						}
-					}
-					return true
-				})
-			}
 
 			// set up upkeep checks with the mocked service
 			if len(test.Checks.K) > 0 {
@@ -660,9 +670,26 @@ func TestReport(t *testing.T) {
 
 			ms.Mock.AssertExpectations(t)
 			me.Mock.AssertExpectations(t)
-			mf.Mock.AssertExpectations(t)
 		})
 	}
+}
+
+type mockFilter struct {
+	IsPendingFn               func(key ktypes.UpkeepKey) bool
+	AcceptFn                  func(keys ktypes.UpkeepKey) error
+	IsTransmissionConfirmedFn func(key ktypes.UpkeepKey) bool
+}
+
+func (f *mockFilter) IsPending(key ktypes.UpkeepKey) bool {
+	return f.IsPendingFn(key)
+}
+
+func (f *mockFilter) Accept(key ktypes.UpkeepKey) error {
+	return f.AcceptFn(key)
+}
+
+func (f *mockFilter) IsTransmissionConfirmed(key ktypes.UpkeepKey) bool {
+	return f.IsTransmissionConfirmedFn(key)
 }
 
 func BenchmarkReport(b *testing.B) {
@@ -1145,12 +1172,12 @@ type MockedFilterer struct {
 	mock.Mock
 }
 
-func (_m *MockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
-	ret := _m.Mock.Called()
+func (_m *MockedFilterer) IsPending(key ktypes.UpkeepKey) bool {
+	ret := _m.Mock.Called(key)
 
-	var r0 func(ktypes.UpkeepKey) bool
+	var r0 bool
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(func(ktypes.UpkeepKey) bool)
+		r0 = ret.Get(0).(bool)
 	}
 
 	return r0
@@ -1199,10 +1226,8 @@ func (_m *BenchmarkMockedRegistry) CheckUpkeep(ctx context.Context, keys ...ktyp
 
 type BenchmarkMockedFilterer struct{}
 
-func (_m *BenchmarkMockedFilterer) Filter() func(ktypes.UpkeepKey) bool {
-	return func(ktypes.UpkeepKey) bool {
-		return true
-	}
+func (_m *BenchmarkMockedFilterer) IsPending(ktypes.UpkeepKey) bool {
+	return true
 }
 
 func (_m *BenchmarkMockedFilterer) CheckAlreadyAccepted(key ktypes.UpkeepKey) bool {

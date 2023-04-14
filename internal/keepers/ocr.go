@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -56,7 +57,7 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	lCtx := newOcrLogContext(rt)
 	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
 
-	blockKey, results, err := k.service.SampleUpkeeps(ctx, k.filter.Filter())
+	blockKey, results, err := k.service.SampleUpkeeps(ctx, k.filter.IsPending)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 	}
@@ -128,7 +129,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
 	keyRandSource := getRandomKeySource(rt)
-	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.filter.Filter())
+	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.filter.IsPending)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
