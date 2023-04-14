@@ -12,7 +12,6 @@ func TestEligibilityProvider_Eligible(t *testing.T) {
 		upkeepResult types.UpkeepResult
 
 		wantEligible bool
-		wantErr      error
 	}{
 		{
 			name: "eligible state on upkeep result is deemed eligible",
@@ -38,12 +37,9 @@ func TestEligibilityProvider_Eligible(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := NewEncoder()
-			isEligible, err := e.Eligible(tc.upkeepResult)
+			isEligible := e.Eligible(tc.upkeepResult)
 			if isEligible != tc.wantEligible {
 				t.Fatalf("unexpected eligibility, want %T, got %T ", tc.wantEligible, isEligible)
-			}
-			if tc.wantErr != nil && tc.wantErr.Error() != err.Error() {
-				t.Fatalf("unexpected error: %s", err.Error())
 			}
 		})
 	}

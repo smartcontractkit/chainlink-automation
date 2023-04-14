@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+
 	encoders "github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -57,7 +58,7 @@ func NewEncoder() *encoder {
 }
 
 // EncodeReport encodes a report from a list of upkeep results
-func (v *encoder) EncodeReport(toReport []types.UpkeepResult, _ ...encoders.Config) ([]byte, error) {
+func (e *encoder) EncodeReport(toReport []types.UpkeepResult, _ ...encoders.Config) ([]byte, error) {
 	if len(toReport) == 0 {
 		return nil, nil
 	}
@@ -81,7 +82,7 @@ func (v *encoder) EncodeReport(toReport []types.UpkeepResult, _ ...encoders.Conf
 	data := make([]wrappedPerform, len(toReport))
 
 	for i, result := range toReport {
-		_, upkeepId, err := v.SplitUpkeepKey(result.Key)
+		_, upkeepId, err := e.SplitUpkeepKey(result.Key)
 		if err != nil {
 			return nil, fmt.Errorf("%w: report encoding error", err)
 		}
@@ -99,7 +100,7 @@ func (v *encoder) EncodeReport(toReport []types.UpkeepResult, _ ...encoders.Conf
 		}
 	}
 
-	reportBytes, err := v.packer.Pack(fastGas, link, ids, data)
+	reportBytes, err := e.packer.Pack(fastGas, link, ids, data)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to pack report data", err)
 	}
@@ -108,30 +109,30 @@ func (v *encoder) EncodeReport(toReport []types.UpkeepResult, _ ...encoders.Conf
 }
 
 // EncodeUpkeepIdentifier returns the types.UpkeepIdentifier of a types.UpkeepResult
-func (v *encoder) EncodeUpkeepIdentifier(result types.UpkeepResult) (types.UpkeepIdentifier, error) {
-	_, identifier, err := v.SplitUpkeepKey(result.Key)
+func (e *encoder) EncodeUpkeepIdentifier(result types.UpkeepResult) (types.UpkeepIdentifier, error) {
+	_, identifier, err := e.SplitUpkeepKey(result.Key)
 	return identifier, err
 }
 
 // KeysFromReport extracts the upkeep keys from a report
-func (v *encoder) KeysFromReport(report []byte) ([]types.UpkeepKey, error) {
+func (e *encoder) KeysFromReport(report []byte) ([]types.UpkeepKey, error) {
 	reportMap := make(map[string]interface{})
-	if err := v.packer.UnpackIntoMap(reportMap, report); err != nil {
+	if err := e.packer.UnpackIntoMap(reportMap, report); err != nil {
 		return nil, err
 	}
 
-	for _, reportKey := range v.reportKeys {
+	for _, reportKey := range e.reportKeys {
 		if _, ok := reportMap[reportKey]; !ok {
 			return nil, fmt.Errorf("decoding error: %s missing from struct", reportKey)
 		}
 	}
 
-	upkeepIds, ok := reportMap[v.reportKeys[2]].([]*big.Int)
+	upkeepIds, ok := reportMap[e.reportKeys[2]].([]*big.Int)
 	if !ok {
 		return nil, fmt.Errorf("upkeep ids of incorrect type in report")
 	}
 
-	performs, ok := reportMap[v.reportKeys[3]].([]struct {
+	performs, ok := reportMap[e.reportKeys[3]].([]struct {
 		CheckBlockNumber uint32   `json:"checkBlockNumber"`
 		CheckBlockhash   [32]byte `json:"checkBlockhash"`
 		PerformData      []byte   `json:"performData"`
