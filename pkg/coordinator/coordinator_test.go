@@ -1,4 +1,4 @@
-package keepers
+package coordinator
 
 import (
 	"io"
@@ -43,7 +43,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("FilterBeforeAccept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// calling filter at this point should return true because the key has not
 		// yet been added to the filter
@@ -79,7 +79,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("FilterAfterAccept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		_ = rc.Accept(key1Block1)
 
@@ -99,7 +99,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("CollectLogsWithMinConfirmations_LessThan", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		_ = rc.Accept(key1Block1)
 
@@ -127,7 +127,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("CollectLogsWithMinConfirmations_GreaterThan", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		_ = rc.Accept(key1Block1)
 
@@ -162,7 +162,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("SameID_DifferentBlocks", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// 1. key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -248,7 +248,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Reorged Perform Logs", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -309,7 +309,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Same key accepted twice", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -371,7 +371,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Stale report log is found", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -407,7 +407,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Perform log gets reorged to stale report log", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -458,7 +458,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Stale report log gets reorged", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -504,7 +504,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Multiple accepted keys and old ones get perform/stale report log", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -566,7 +566,7 @@ func TestReportCoordinator(t *testing.T) {
 
 	t.Run("Multiple accepted keys and out of order logs", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
-		filter := rc.Filter()
+		filter := rc.IsPending
 
 		// key 1|1 is Accepted
 		_ = rc.Accept(key1Block1)
@@ -626,7 +626,7 @@ func TestReportCoordinator(t *testing.T) {
 	t.Run("Filter", func(t *testing.T) {
 		t.Run("Determines that a key should be filtered out", func(t *testing.T) {
 			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-			filter := rc.Filter()
+			filter := rc.IsPending
 
 			rc.idBlocks.Set(string(id1), idBlocker{
 				TransmitBlockNumber: bk15,
@@ -639,7 +639,7 @@ func TestReportCoordinator(t *testing.T) {
 
 		t.Run("Determines that a key should be filtered out due to an error retrieving BlockKeyAndUpkeepID", func(t *testing.T) {
 			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-			filter := rc.Filter()
+			filter := rc.IsPending
 
 			rc.idBlocks.Set(string(id1), idBlocker{
 				TransmitBlockNumber: bk15,
@@ -653,7 +653,7 @@ func TestReportCoordinator(t *testing.T) {
 
 		t.Run("Determines that a key should be filtered out due to an error comparing block keys", func(t *testing.T) {
 			rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
-			filter := rc.Filter()
+			filter := rc.IsPending
 
 			key := chain.UpkeepKey("1|1234")
 

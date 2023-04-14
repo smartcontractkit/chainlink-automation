@@ -1,3 +1,5 @@
+package coordinator
+
 /*
 The report coordinator provides 3 main functions:
 Filter
@@ -13,7 +15,6 @@ When an upkeep key is accepted using the Accept function, the upkeep key will
 return false on IsTransmissionConfirmed until a perform log is identified with
 the same key. This allows a coordinated effort on transmit fallbacks.
 */
-package keepers
 
 import (
 	"context"
@@ -27,6 +28,12 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
+
+type Coordinator interface {
+	IsPending(types.UpkeepKey) bool
+	Accept(key types.UpkeepKey) error
+	IsTransmissionConfirmed(key types.UpkeepKey) bool
+}
 
 var (
 	ErrKeyAlreadyAccepted = fmt.Errorf("key alredy accepted")
@@ -46,7 +53,7 @@ type reportCoordinator struct {
 	chStop         chan struct{}
 }
 
-func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
 		logger:         logger,
 		registry:       r,
@@ -66,28 +73,25 @@ func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Dur
 	return c
 }
 
-// Filter returns a filter function that removes upkeep keys that apply to this
-// filter. Returns false if a key should be filtered out.
-func (rc *reportCoordinator) Filter() func(types.UpkeepKey) bool {
-	return func(key types.UpkeepKey) bool {
-		blockKey, id, err := key.BlockKeyAndUpkeepID()
+// IsPending returns false if a key should be filtered out.
+func (rc *reportCoordinator) IsPending(key types.UpkeepKey) bool {
+	blockKey, id, err := key.BlockKeyAndUpkeepID()
+	if err != nil {
+		return false
+	}
+
+	// only apply filter if key id is registered in the cache
+	if bl, ok := rc.idBlocks.Get(string(id)); ok {
+		isAfter, err := blockKey.After(bl.TransmitBlockNumber)
 		if err != nil {
 			return false
 		}
 
-		// only apply filter if key id is registered in the cache
-		if bl, ok := rc.idBlocks.Get(string(id)); ok {
-			isAfter, err := blockKey.After(bl.TransmitBlockNumber)
-			if err != nil {
-				return false
-			}
-
-			// do not filter the key out if key block is after block in cache
-			return isAfter
-		}
-
-		return true
+		// do not filter the key out if key block is after block in cache
+		return isAfter
 	}
+
+	return true
 }
 
 func (rc *reportCoordinator) Accept(key types.UpkeepKey) error {
