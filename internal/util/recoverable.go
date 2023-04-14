@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	ErrServiceStopped = fmt.Errorf("service stopped")
+	errServiceStopped = fmt.Errorf("service stopped")
+	coolDown          = 10 * time.Second
 )
 
 type Doable interface {
@@ -66,12 +67,13 @@ func (m *RecoverableService) Stop() {
 }
 
 func (m *RecoverableService) serviceStart() {
+	m.run()
 	for {
 		select {
 		case err := <-m.stopped:
 			// restart the service
-			if err != nil && errors.Is(err, ErrServiceStopped) {
-				<-time.After(10 * time.Second)
+			if err != nil && errors.Is(err, errServiceStopped) {
+				<-time.After(coolDown)
 				m.run()
 			}
 		case <-m.ctx.Done():
@@ -89,7 +91,7 @@ func (m *RecoverableService) run() {
 					l.Println(string(debug.Stack()))
 				}
 
-				chStop <- ErrServiceStopped
+				chStop <- errServiceStopped
 			}
 		}()
 

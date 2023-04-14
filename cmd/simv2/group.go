@@ -18,7 +18,11 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
+	v1 "github.com/smartcontractkit/ocr2keepers/encoder/v1"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -146,6 +150,22 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		cLogger)
 	db := simulators.NewSimulatedDatabase()
 
+	encoder := v1.NewEncoder()
+	defaultLogger := log.Default()
+	pollingObserver := polling.NewPollingObserver(
+		defaultLogger,
+		ct,
+		polling.NewKeyProvider(ct),
+		10,
+		10,
+		time.Minute,
+		time.Minute,
+		coordinator.NewReportCoordinator(ct, time.Minute, time.Minute, ct, 5, defaultLogger),
+		encoder,
+		encoder,
+		ct,
+	)
+
 	dConfig := ocr2keepers.DelegateConfig{
 		BinaryNetworkEndpointFactory: net,
 		V2Bootstrappers:              []commontypes.BootstrapperLocator{},
@@ -163,6 +183,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		},
 		HeadSubscriber:         ct,
 		Logger:                 slogger,
+		PrefixedLogger:         defaultLogger,
 		MonitoringEndpoint:     g.monitor,
 		OffchainConfigDigester: g.digester,
 		OffchainKeyring:        offchainRing,
@@ -172,6 +193,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		ReportEncoder:          g.encoder,
 		MaxServiceWorkers:      maxWorkers,
 		ServiceQueueLength:     maxQueueSize,
+		Observers:              []observer.Observer{pollingObserver},
 	}
 
 	service, err := ocr2keepers.NewDelegate(dConfig)

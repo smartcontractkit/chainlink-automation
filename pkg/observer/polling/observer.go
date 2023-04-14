@@ -10,20 +10,42 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
-type KeyStatusCoordinator interface {
-	IsPending(types.UpkeepKey) (bool, error)
+type KeyProvider interface {
+	ActiveKeys(context.Context, types.BlockKey) ([]types.UpkeepKey, error)
 }
 
-type KeyProvider interface {
-	ActiveKeys(context.Context) ([]types.UpkeepKey, error)
+type keyProvider struct {
+	registry types.Registry
+}
+
+func NewKeyProvider(registry types.Registry) *keyProvider {
+	return &keyProvider{
+		registry: registry,
+	}
+}
+
+func (p *keyProvider) ActiveKeys(ctx context.Context, blockKey types.BlockKey) ([]types.UpkeepKey, error) {
+	upkeepIDs, err := p.registry.GetActiveUpkeepIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var upkeepKeys []types.UpkeepKey
+	for _, k := range upkeepIDs {
+		upkeepKeys = append(upkeepKeys, chain.NewUpkeepKeyFromBlockAndID(blockKey, k))
+	}
+
+	return upkeepKeys, nil
 }
 
 type Service interface {
@@ -47,16 +69,14 @@ func NewPollingObserver(
 	logger *log.Logger,
 	registry types.Registry,
 	keys KeyProvider,
-	ratio Ratio,
 	workers int, // maximum number of workers in worker group
 	workerQueueLength int, // size of worker queue; set to approximately the number of items expected in workload
-	maxSamplingDuration time.Duration, // maximum amount of time allowed for RPC calls per head
-	coord KeyStatusCoordinator,
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
 	filterer coordinator.Coordinator,
 	eligibilityProvider encoder.EligibilityProvider,
 	upkeepProvider encoder.UpkeepProvider,
+	headSubscriber types.HeadSubscriber,
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -66,13 +86,11 @@ func NewPollingObserver(
 		logger:              logger,
 		workers:             pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		workerBatchLimit:    10, // TODO: hard coded for now
-		samplingDuration:    maxSamplingDuration,
 		registry:            registry,
 		keys:                keys,
+		heads:               headSubscriber,
 		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
-		ratio:               ratio,
 		stager:              &stager{},
-		coordinator:         coord,
 		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		filterer:            filterer,
@@ -91,6 +109,8 @@ func NewPollingObserver(
 	// automatically stop all services if the reference is no longer reachable
 	// this is a safety in the case Stop isn't called explicitly
 	runtime.SetFinalizer(ob, func(srv observer.Observer) { srv.Stop() })
+
+	ob.Start()
 
 	return ob
 }
@@ -118,11 +138,28 @@ type PollingObserver struct {
 	heads               types.HeadSubscriber        // provides new blocks to be operated on
 	registry            types.Registry              // abstracted access to contract and chain
 	keys                KeyProvider                 // provides keys to this block observer
-	coordinator         KeyStatusCoordinator        // key status coordinator tracks in-flight status
 	shuffler            Shuffler[types.UpkeepKey]   // provides shuffling logic for upkeep keys
 	filterer            coordinator.Coordinator     // provides filtering logic for upkeep keys
 	eligibilityProvider encoder.EligibilityProvider // provides an eligibility check for upkeep keys
 	upkeepProvider      encoder.UpkeepProvider
+
+	mercuryLookup bool
+}
+
+func (o *PollingObserver) SetSamplingRatio(r ratio.SampleRatio) {
+	o.ratio = r
+}
+
+func (o *PollingObserver) SetMercuryLookup(mercuryLookup bool) {
+	o.mercuryLookup = mercuryLookup
+}
+
+func (o *PollingObserver) SetSamplingDuration(duration time.Duration) {
+	o.samplingDuration = duration
+}
+
+func (o *PollingObserver) SetPerformLockoutWindow(duration time.Duration) {
+	o.filterer.InitialiseIDBlocks(duration)
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
@@ -130,18 +167,13 @@ type PollingObserver struct {
 // observed. All ids that are pending are filtered out.
 func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, error) {
 	bl, ids := o.stager.get()
+
 	filteredIDs := make([]types.UpkeepIdentifier, 0, len(ids))
 
 	for _, id := range ids {
 		key := o.upkeepProvider.MakeUpkeepKey(bl, id)
 
-		if pending, err := o.coordinator.IsPending(key); pending || err != nil {
-			o.logger.Printf("error checking pending state for '%s': %s", key, err)
-			continue
-		}
-
 		if !o.filterer.IsPending(key) {
-			o.logger.Printf("filtered out key '%s'", key)
 			continue
 		}
 
@@ -179,7 +211,7 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 
 	// check upkeep at block number in key
 	// return result including performData
-	checkResults, err := o.registry.CheckUpkeep(ctx, nonCachedKeys...)
+	checkResults, err := o.registry.CheckUpkeep(ctx, o.mercuryLookup, nonCachedKeys...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
@@ -240,12 +272,9 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 
 	// Get only the active upkeeps from the key provider. This should not include
 	// any cancelled upkeeps.
-	if keys, err = o.keys.ActiveKeys(ctx); err != nil {
-		o.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
+	if keys, err = o.keys.ActiveKeys(ctx, blockKey); err != nil {
 		return
 	}
-
-	o.logger.Printf("%d active upkeep keys found in registry", len(keys))
 
 	// reduce keys to ratio size and shuffle. this can return a nil array.
 	// in that case we have no keys so return.
@@ -258,7 +287,6 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 	// run checkupkeep on all keys. an error from this function should
 	// bubble up.
 	if err = o.parallelCheck(ctx, keys); err != nil {
-		o.logger.Printf("%s: failed to parallel check upkeeps", err)
 		return
 	}
 
@@ -273,8 +301,6 @@ func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []t
 	if len(keys) == 0 || size <= 0 {
 		return nil
 	}
-
-	o.logger.Printf("%d results selected by provided ratio %s", size, o.ratio)
 
 	return keys[:size]
 }
@@ -317,7 +343,7 @@ func (o *PollingObserver) wrapWorkerFunc() func(context.Context, []types.UpkeepK
 		start := time.Now()
 
 		// perform check and update cache with result
-		checkResults, err := o.registry.CheckUpkeep(ctx, keys...)
+		checkResults, err := o.registry.CheckUpkeep(ctx, o.mercuryLookup, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keys)
 		} else {

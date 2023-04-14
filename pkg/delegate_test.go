@@ -2,13 +2,13 @@ package ocr2keepers
 
 import (
 	"context"
+	"log"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
@@ -17,10 +17,11 @@ import (
 func TestStart(t *testing.T) {
 	t.Run("fails to create the delegate with an empty config", func(t *testing.T) {
 		logger := ktypes.NewMockLogger(t)
-		logger.On("Debug", mock.Anything, mock.Anything).Once()
+		//logger.On("Debug", mock.Anything, mock.Anything).Once()
 
 		_, err := NewDelegate(DelegateConfig{
-			Logger: logger,
+			Logger:         logger,
+			PrefixedLogger: log.Default(),
 		})
 
 		assert.Equal(t, err.Error(), "bad local config while creating new oracle: blockchain timeout must be between 1s and 20s, but is currently 0s; contract config tracker poll interval must be between 15s and 2m0s, but is currently 0s; contract transmitter transmit timeout must be between 1s and 1m0s, but is currently 0s; database timeout must be between 100ms and 10s, but is currently 0s; contract config block-depth confirmation threshold must be between 1 and 100, but is currently 0: failed to create new OCR oracle")
@@ -28,10 +29,11 @@ func TestStart(t *testing.T) {
 
 	t.Run("creates the delegate with the provided config", func(t *testing.T) {
 		logger := ktypes.NewMockLogger(t)
-		logger.On("Debug", mock.Anything, mock.Anything).Maybe()
+		//logger.On("Debug", mock.Anything, mock.Anything).Maybe()
 
 		_, err := NewDelegate(DelegateConfig{
-			Logger: logger,
+			Logger:         logger,
+			PrefixedLogger: log.Default(),
 			LocalConfig: types.LocalConfig{
 				BlockchainTimeout:                  1 * time.Second,
 				ContractConfigTrackerPollInterval:  15 * time.Second,
@@ -82,10 +84,11 @@ func TestStart(t *testing.T) {
 func TestClose(t *testing.T) {
 	t.Run("a not yet started oracle fails to close", func(t *testing.T) {
 		var mockLogger = ktypes.NewMockLogger(t)
-		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+		//mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 		d, err := NewDelegate(DelegateConfig{
-			Logger: mockLogger,
+			Logger:         mockLogger,
+			PrefixedLogger: log.Default(),
 			LocalConfig: types.LocalConfig{
 				BlockchainTimeout:                  1 * time.Second,
 				ContractConfigTrackerPollInterval:  15 * time.Second,

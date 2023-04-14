@@ -65,6 +65,7 @@ func (e *encoder) EncodeReport(toReport []types.UpkeepResult, _ ...encoders.Conf
 
 	var baseValuesIdx int
 	for i, rpt := range toReport {
+		// TODO AUTO-2863
 		if rpt.CheckBlockNumber > uint32(baseValuesIdx) {
 			baseValuesIdx = i
 		}
