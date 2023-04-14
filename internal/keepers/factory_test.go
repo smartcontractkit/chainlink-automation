@@ -25,6 +25,7 @@ func TestNewReportingPluginFactory(t *testing.T) {
 			nil,
 			nil,
 			nil,
+			nil,
 			ReportingFactoryConfig{},
 		)
 		assert.NotNil(t, f)

@@ -23,9 +23,8 @@ type upkeepService interface {
 	SampleUpkeeps(context.Context, ...func(types.UpkeepKey) bool) (types.BlockKey, types.UpkeepResults, error)
 	CheckUpkeep(context.Context, bool, ...types.UpkeepKey) (types.UpkeepResults, error)
 }
-
-type filterer interface {
-	Filter() func(types.UpkeepKey) bool
-	Accept(key types.UpkeepKey) error
+type Coordinator interface {
+	IsPending(key types.UpkeepKey) bool
+	Accept(keys types.UpkeepKey) error
 	IsTransmissionConfirmed(key types.UpkeepKey) bool
 }

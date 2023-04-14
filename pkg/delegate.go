@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
+	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
+
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 )
 
@@ -79,6 +80,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			c.Registry,
 			c.PerformLogProvider,
 			c.ReportEncoder,
+			c.Observers,
 			l,
 			conf,
 		),
