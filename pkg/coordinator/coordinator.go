@@ -30,7 +30,7 @@ import (
 )
 
 type Coordinator interface {
-	Filter() func(types.UpkeepKey) bool
+	IsPending(types.UpkeepKey) bool
 	Accept(key types.UpkeepKey) error
 	IsTransmissionConfirmed(key types.UpkeepKey) bool
 }

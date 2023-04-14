@@ -140,7 +140,7 @@ func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, e
 			continue
 		}
 
-		if !o.filterer.Filter()(key) {
+		if !o.filterer.IsPending(key) {
 			o.logger.Printf("filtered out key '%s'", key)
 			continue
 		}

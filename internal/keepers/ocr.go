@@ -133,7 +133,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	// pass the filter to the dedupe function
 	// ensure no locked keys come through
 	keyRandSource := getRandomKeySource(rt)
-	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.coordinator.Filter())
+	keysToCheck, err := filterDedupeShuffleObservations(upkeepKeys, keyRandSource, k.coordinator.IsPending)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 	}
