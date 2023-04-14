@@ -1,7 +1,6 @@
 package keepers
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -11,42 +10,20 @@ import (
 	rnd "math/rand"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"golang.org/x/crypto/sha3"
+
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
+	sampleratio "github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
-
-func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState) ktypes.UpkeepResults {
-	ret := make(ktypes.UpkeepResults, 0, len(upkeeps))
-
-	for _, up := range upkeeps {
-		if up.State == filter {
-			ret = append(ret, up)
-		}
-	}
-
-	return ret
-}
-
-func keyList(upkeeps ktypes.UpkeepResults) []ktypes.UpkeepKey {
-	ret := make([]ktypes.UpkeepKey, len(upkeeps))
-
-	for i, up := range upkeeps {
-		ret[i] = up.Key
-	}
-
-	sort.Sort(sortUpkeepKeys(ret))
-
-	return ret
-}
 
 type shuffler[T any] interface {
 	Shuffle([]T) []T
@@ -60,20 +37,6 @@ func (_ *cryptoShuffler[T]) Shuffle(a []T) []T {
 		a[i], a[j] = a[j], a[i]
 	})
 	return a
-}
-
-type sortUpkeepKeys []ktypes.UpkeepKey
-
-func (s sortUpkeepKeys) Less(i, j int) bool {
-	return s[i].String() < s[j].String()
-}
-
-func (s sortUpkeepKeys) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s sortUpkeepKeys) Len() int {
-	return len(s)
 }
 
 func filterAndDedupe[T fmt.Stringer](inputs [][]T, filters ...func(T) bool) ([]T, error) {
@@ -223,8 +186,8 @@ func calculateMedianBlock(blockNumbers []*big.Int, reportBlockLag int) ktypes.Bl
 	return chain.BlockKey(median.String())
 }
 
-func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {
-	var ratio sampleRatio
+func sampleFromProbability(rounds, nodes int, probability float32) (ratio.SampleRatio, error) {
+	var ratio sampleratio.SampleRatio
 
 	if rounds <= 0 {
 		return ratio, fmt.Errorf("number of rounds must be greater than 0")
@@ -246,7 +209,7 @@ func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio,
 	x := cmplx.Pow(cmplx.Pow(g, 1.0/r), 1.0/n)
 	rat := cmplx.Abs(-1.0 * (x - 1.0))
 	rat = math.Round(rat/0.01) * 0.01
-	ratio = sampleRatio(float32(rat))
+	ratio = sampleratio.SampleRatio(float32(rat))
 
 	return ratio, nil
 }
@@ -261,31 +224,6 @@ func lowest(values []int64) int64 {
 	})
 
 	return values[0]
-}
-
-type syncedArray[T any] struct {
-	data []T
-	mu   sync.RWMutex
-}
-
-func newSyncedArray[T any]() *syncedArray[T] {
-	return &syncedArray[T]{
-		data: []T{},
-	}
-}
-
-func (a *syncedArray[T]) Append(vals ...T) *syncedArray[T] {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	a.data = append(a.data, vals...)
-	return a
-}
-
-func (a *syncedArray[T]) Values() []T {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.data
 }
 
 func limitedLengthEncode(obs *chain.UpkeepObservation, limit int) ([]byte, error) {
@@ -344,37 +282,4 @@ func upkeepIdentifiersToString(ids []ktypes.UpkeepIdentifier) string {
 	}
 
 	return strings.Join(idsStr, ", ")
-}
-
-func createBatches[T any](b []T, size int) (batches [][]T) {
-	for i := 0; i < len(b); i += size {
-		j := i + size
-		if j > len(b) {
-			j = len(b)
-		}
-		batches = append(batches, b[i:j])
-	}
-	return
-}
-
-// buffer is a goroutine safe bytes.Buffer
-type buffer struct {
-	buffer bytes.Buffer
-	mutex  sync.Mutex
-}
-
-// Write appends the contents of p to the buffer, growing the buffer as needed. It returns
-// the number of bytes written.
-func (s *buffer) Write(p []byte) (n int, err error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.buffer.Write(p)
-}
-
-// String returns the contents of the unread portion of the buffer
-// as a string.  If the Buffer is a nil pointer, it returns "<nil>".
-func (s *buffer) String() string {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.buffer.String()
 }

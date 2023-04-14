@@ -2,6 +2,7 @@ package util
 
 import (
 	"crypto/cipher"
+	"math/rand"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -76,4 +77,11 @@ func TestNewKeyedCryptoRandSource(t *testing.T) {
 
 		NewKeyedCryptoRandSource([16]byte{1})
 	})
+}
+
+func TestShuffler_Shuffle(t *testing.T) {
+	shuffler := Shuffler[int]{Source: rand.NewSource(0)}
+	arr := []int{1, 2, 3}
+	arr = shuffler.Shuffle(arr)
+	assert.Equal(t, arr, []int{2, 1, 3})
 }

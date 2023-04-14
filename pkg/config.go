@@ -1,6 +1,7 @@
 package ocr2keepers
 
 import (
+	"log"
 	"runtime"
 	"time"
 
@@ -39,6 +40,7 @@ type DelegateConfig struct {
 	ContractTransmitter          types.ContractTransmitter
 	KeepersDatabase              types.Database
 	Logger                       commontypes.Logger
+	PrefixedLogger               *log.Logger
 	MonitoringEndpoint           commontypes.MonitoringEndpoint
 	OffchainConfigDigester       types.OffchainConfigDigester
 	OffchainKeyring              types.OffchainKeyring
