@@ -102,6 +102,14 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	if d.upkeepService != nil {
 		d.upkeepService.stop()
 	}
+
+	for _, obs := range d.observers {
+		obs.SetSamplingRatio(sample)
+		obs.SetMercuryLookup(offChainCfg.MercuryLookup)
+		obs.SetSamplingDuration(time.Duration(offChainCfg.SamplingJobDuration) * time.Millisecond)
+		obs.SetPerformLockoutWindow(time.Duration(offChainCfg.PerformLockoutWindow) * time.Millisecond)
+	}
+
 	d.upkeepService = newOnDemandUpkeepService(
 		sample,
 		d.headSubscriber,

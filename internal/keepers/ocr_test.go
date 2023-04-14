@@ -16,6 +16,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 )
@@ -173,7 +174,7 @@ func TestObservation(t *testing.T) {
 			mf := new(MockedFilterer)
 
 			// mock an observer here and return the necessary values
-			o := &mockObserver{
+			mockObserver := &mockObserver{
 				ObserveFn: func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
 					return test.LatestBlock, test.SampleIDs, test.SampleErr
 				},
@@ -182,7 +183,7 @@ func TestObservation(t *testing.T) {
 				logger:      log.New(io.Discard, "", 0),
 				coordinator: mf,
 				observers: []observer.Observer{
-					o,
+					mockObserver,
 				},
 			}
 
@@ -612,6 +613,9 @@ func TestReport(t *testing.T) {
 				AcceptFn: func(keys ktypes.UpkeepKey) error {
 					return nil
 				},
+				InitialiseIDBlocksFn: func(duration time.Duration) {
+
+				},
 			}
 
 			if len(test.Observations) > 0 && !errors.Is(test.ExpectedErr, ErrTooManyErrors) {
@@ -672,6 +676,7 @@ type mockFilter struct {
 	IsPendingFn               func(key ktypes.UpkeepKey) bool
 	AcceptFn                  func(keys ktypes.UpkeepKey) error
 	IsTransmissionConfirmedFn func(key ktypes.UpkeepKey) bool
+	InitialiseIDBlocksFn      func(time.Duration)
 }
 
 func (f *mockFilter) IsPending(key ktypes.UpkeepKey) bool {
@@ -684,6 +689,10 @@ func (f *mockFilter) Accept(key ktypes.UpkeepKey) error {
 
 func (f *mockFilter) IsTransmissionConfirmed(key ktypes.UpkeepKey) bool {
 	return f.IsTransmissionConfirmedFn(key)
+}
+
+func (f *mockFilter) InitialiseIDBlocks(duration time.Duration) {
+	f.InitialiseIDBlocksFn(duration)
 }
 
 func BenchmarkReport(b *testing.B) {
@@ -1163,10 +1172,14 @@ func mustEncodeUpkeepObservation(o *chain.UpkeepObservation) []byte {
 }
 
 type mockObserver struct {
-	ObserveFn     func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error)
-	CheckUpkeepFn func(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error)
-	StartFn       func()
-	StopFn        func()
+	ObserveFn                 func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error)
+	CheckUpkeepFn             func(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error)
+	StartFn                   func()
+	StopFn                    func()
+	SetSamplingRatioFn        func(ratio.SampleRatio)
+	SetMercuryLookupFn        func(bool)
+	SetSamplingDurationFn     func(time.Duration)
+	SetPerformLockoutWindowFn func(time.Duration)
 }
 
 func (m *mockObserver) Observe() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
@@ -1183,6 +1196,22 @@ func (m *mockObserver) Start() {
 
 func (m *mockObserver) Stop() {
 	m.StopFn()
+}
+
+func (m *mockObserver) SetSamplingRatio(r ratio.SampleRatio) {
+	m.SetSamplingRatioFn(r)
+}
+
+func (m *mockObserver) SetMercuryLookup(mercuryLookup bool) {
+	m.SetMercuryLookupFn(mercuryLookup)
+}
+
+func (m *mockObserver) SetSamplingDuration(duration time.Duration) {
+	m.SetSamplingDurationFn(duration)
+}
+
+func (m *mockObserver) SetPerformLockoutWindow(duration time.Duration) {
+	m.SetPerformLockoutWindowFn(duration)
 }
 
 type MockedFilterer struct {
@@ -1202,6 +1231,10 @@ func (_m *MockedFilterer) IsPending(key ktypes.UpkeepKey) bool {
 
 func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) error {
 	return _m.Mock.Called(key).Error(0)
+}
+
+func (_m *MockedFilterer) InitialiseIDBlocks(duration time.Duration) {
+	_m.Mock.Called(duration).Error(0)
 }
 
 func (_m *MockedFilterer) IsTransmissionConfirmed(key ktypes.UpkeepKey) bool {
@@ -1242,6 +1275,9 @@ func (_m *BenchmarkMockedRegistry) CheckUpkeep(ctx context.Context, keys ...ktyp
 }
 
 type BenchmarkMockedFilterer struct{}
+
+func (_m *BenchmarkMockedFilterer) InitialiseIDBlocks(s time.Duration) {
+}
 
 func (_m *BenchmarkMockedFilterer) IsPending(ktypes.UpkeepKey) bool {
 	return true

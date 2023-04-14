@@ -56,7 +56,10 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 // need to be executed.
 func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportTimestamp, _ types.Query) (types.Observation, error) {
 	lCtx := newOcrLogContext(reportTimestamp)
-	ctx = context.WithValue(ctx, ocrLogContextKey{}, lCtx)
+
+	if len(k.observers) == 0 {
+		return nil, fmt.Errorf("empty observer list: %s", lCtx)
+	}
 
 	allIDs := make([]ktypes.UpkeepIdentifier, 0)
 	var blocks []*big.Int
@@ -67,24 +70,37 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 			return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 		}
 
+		if block == nil {
+			k.logger.Printf("observed %d upkeep IDs with nil block", len(allIDs))
+		} else {
+			k.logger.Printf("observed %d upkeep IDs at block %s", len(allIDs), block)
+
+			if bigInt, ok := block.BigInt(); ok {
+				blocks = append(blocks, bigInt)
+			} else {
+				return nil, fmt.Errorf("%w: failed to parse block key for observation: %s", err, lCtx)
+			}
+		}
+
 		allIDs = append(allIDs, ids...)
 
-		if bigInt, ok := block.BigInt(); ok {
-			blocks = append(blocks, bigInt)
-		} else {
-			return nil, fmt.Errorf("%w: failed to parse block key for observation: %s", err, lCtx)
-		}
 	}
+
+	k.logger.Printf("observed a total of %d upkeep IDs", len(allIDs))
 
 	keyRandSource := getRandomKeySource(reportTimestamp)
 	allIDs = shuffleObservations(allIDs, keyRandSource)
+
 	// Check limit
 	if len(allIDs) > observationUpkeepsLimit {
 		allIDs = allIDs[:observationUpkeepsLimit]
 	}
 
-	medianBlock := calculateMedianBlock(blocks, k.reportBlockLag)
-	blockKey := chain.BlockKey(medianBlock.String())
+	var blockKey chain.BlockKey
+	if len(blocks) > 0 {
+		blockKey = chain.BlockKey(blocks[0].String())
+	}
+
 	observation := &chain.UpkeepObservation{
 		BlockKey:          blockKey,
 		UpkeepIdentifiers: allIDs,
