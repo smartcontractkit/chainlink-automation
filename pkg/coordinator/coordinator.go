@@ -1,3 +1,5 @@
+package coordinator
+
 /*
 The report coordinator provides 3 main functions:
 Filter
@@ -13,7 +15,6 @@ When an upkeep key is accepted using the Accept function, the upkeep key will
 return false on IsTransmissionConfirmed until a perform log is identified with
 the same key. This allows a coordinated effort on transmit fallbacks.
 */
-package keepers
 
 import (
 	"context"
@@ -27,6 +28,12 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
+
+type Coordinator interface {
+	IsPending(types.UpkeepKey) bool
+	Accept(key types.UpkeepKey) error
+	IsTransmissionConfirmed(key types.UpkeepKey) bool
+}
 
 var (
 	ErrKeyAlreadyAccepted = fmt.Errorf("key alredy accepted")
@@ -46,7 +53,7 @@ type reportCoordinator struct {
 	chStop         chan struct{}
 }
 
-func newReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
 		logger:         logger,
 		registry:       r,

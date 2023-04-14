@@ -5,5 +5,5 @@ import (
 )
 
 type EligibilityProvider interface {
-	Eligible(types.UpkeepResult) (bool, error)
+	Eligible(types.UpkeepResult) bool
 }

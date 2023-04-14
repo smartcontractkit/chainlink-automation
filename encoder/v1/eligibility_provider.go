@@ -7,6 +7,6 @@ import (
 type eligibilityProvider struct{}
 
 // Eligible returns whether an upkeep result is eligible
-func (p eligibilityProvider) Eligible(result types.UpkeepResult) (bool, error) {
-	return result.State == types.Eligible, nil
+func (p eligibilityProvider) Eligible(result types.UpkeepResult) bool {
+	return result.State == types.Eligible
 }

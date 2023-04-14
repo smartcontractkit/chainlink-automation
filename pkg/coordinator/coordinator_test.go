@@ -1,4 +1,4 @@
-package keepers
+package coordinator
 
 import (
 	"io"
