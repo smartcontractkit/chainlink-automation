@@ -133,7 +133,7 @@ func (bso *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier,
 			continue
 		}
 
-		if !bso.filterer.Filter()(key) {
+		if !bso.filterer.IsPending(key) {
 			bso.logger.Printf("filtered out key '%s'", key)
 			continue
 		}
