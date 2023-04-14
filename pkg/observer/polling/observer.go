@@ -1,4 +1,4 @@
-package ocr2keepers
+package polling
 
 import (
 	"context"
@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/encoder"
-	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -53,7 +54,7 @@ func NewPollingObserver(
 	coord KeyStatusCoordinator,
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
-	filterer keepers.Coordinator,
+	filterer coordinator.Coordinator,
 	eligibilityProvider encoder.EligibilityProvider,
 	upkeepProvider encoder.UpkeepProvider,
 ) *PollingObserver {
@@ -71,7 +72,7 @@ func NewPollingObserver(
 		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
 		ratio:               ratio,
 		stager:              &stager{},
-		coord:               coord,
+		coordinator:         coord,
 		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		filterer:            filterer,
@@ -82,14 +83,14 @@ func NewPollingObserver(
 	// make all go-routines started by this entity automatically recoverable
 	// on panics
 	ob.services = []Service{
-		util.NewRecoverableService(&simpleService{f: ob.runHeadTasks, c: cancel}, logger),
+		util.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: cancel}, logger),
 		// TODO: workers is not recoverable because it cannot restart yet
-		util.NewRecoverableService(&simpleService{f: func() error { return nil }, c: func() { ob.workers.Stop() }}, logger),
+		util.NewRecoverableService(&observer.SimpleService{F: func() error { return nil }, C: func() { ob.workers.Stop() }}, logger),
 	}
 
 	// automatically stop all services if the reference is no longer reachable
 	// this is a safety in the case Stop isn't called explicitly
-	runtime.SetFinalizer(ob, func(srv *PollingObserver) { srv.Stop() })
+	runtime.SetFinalizer(ob, func(srv observer.Observer) { srv.Stop() })
 
 	return ob
 }
@@ -117,9 +118,9 @@ type PollingObserver struct {
 	heads               types.HeadSubscriber        // provides new blocks to be operated on
 	registry            types.Registry              // abstracted access to contract and chain
 	keys                KeyProvider                 // provides keys to this block observer
-	coord               KeyStatusCoordinator        // key status coordinator tracks in-flight status
+	coordinator         KeyStatusCoordinator        // key status coordinator tracks in-flight status
 	shuffler            Shuffler[types.UpkeepKey]   // provides shuffling logic for upkeep keys
-	filterer            keepers.Coordinator         // provides filtering logic for upkeep keys
+	filterer            coordinator.Coordinator     // provides filtering logic for upkeep keys
 	eligibilityProvider encoder.EligibilityProvider // provides an eligibility check for upkeep keys
 	upkeepProvider      encoder.UpkeepProvider
 }
@@ -134,7 +135,7 @@ func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, e
 	for _, id := range ids {
 		key := o.upkeepProvider.MakeUpkeepKey(bl, id)
 
-		if pending, err := o.coord.IsPending(key); pending || err != nil {
+		if pending, err := o.coordinator.IsPending(key); pending || err != nil {
 			o.logger.Printf("error checking pending state for '%s': %s", key, err)
 			continue
 		}

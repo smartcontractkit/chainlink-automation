@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 )
@@ -48,7 +49,7 @@ func TestObservation(t *testing.T) {
 	tests := []struct {
 		Name                string
 		Ctx                 func() (context.Context, func())
-		SampleSet           ktypes.UpkeepResults
+		SampleIDs           []ktypes.UpkeepIdentifier
 		LatestBlock         ktypes.BlockKey
 		reportTimestamp     types.ReportTimestamp
 		ServiceError        bool
@@ -59,7 +60,6 @@ func TestObservation(t *testing.T) {
 		{
 			Name:        "Empty Set",
 			Ctx:         func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet:   ktypes.UpkeepResults{},
 			LatestBlock: chain.BlockKey("1"),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
 				BlockKey:          chain.BlockKey("1"),
@@ -69,7 +69,6 @@ func TestObservation(t *testing.T) {
 		{
 			Name:        "Timer Context",
 			Ctx:         func() (context.Context, func()) { return context.WithTimeout(context.Background(), time.Second) },
-			SampleSet:   ktypes.UpkeepResults{},
 			LatestBlock: chain.BlockKey("2"),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
 				BlockKey:          chain.BlockKey("2"),
@@ -78,7 +77,6 @@ func TestObservation(t *testing.T) {
 		{
 			Name:                "Upkeep Service Error",
 			Ctx:                 func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet:           ktypes.UpkeepResults{},
 			LatestBlock:         chain.BlockKey("3"),
 			SampleErr:           fmt.Errorf("test error"),
 			ExpectedObservation: nil,
@@ -86,12 +84,8 @@ func TestObservation(t *testing.T) {
 			ExpectedErr:         fmt.Errorf("test error: failed to sample upkeeps for observation"),
 		},
 		{
-			Name: "Filter to Empty Set",
-			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet: ktypes.UpkeepResults{
-				{Key: chain.UpkeepKey("1|1"), State: ktypes.NotEligible},
-				{Key: chain.UpkeepKey("1|2"), State: ktypes.NotEligible},
-			},
+			Name:        "Filter to Empty Set",
+			Ctx:         func() (context.Context, func()) { return context.Background(), func() {} },
 			LatestBlock: chain.BlockKey("1"),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
 				BlockKey:          chain.BlockKey("1"),
@@ -99,12 +93,9 @@ func TestObservation(t *testing.T) {
 			})),
 		},
 		{
-			Name: "Filter to Non-empty Set",
-			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet: ktypes.UpkeepResults{
-				{Key: chain.UpkeepKey("1|1"), State: ktypes.NotEligible},
-				{Key: chain.UpkeepKey("1|2"), State: ktypes.Eligible},
-			},
+			Name:        "Filter to Non-empty Set",
+			Ctx:         func() (context.Context, func()) { return context.Background(), func() {} },
+			SampleIDs:   []ktypes.UpkeepIdentifier{ktypes.UpkeepIdentifier("2")},
 			LatestBlock: chain.BlockKey("1"),
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
 				BlockKey: chain.BlockKey("1"),
@@ -116,22 +107,22 @@ func TestObservation(t *testing.T) {
 		{
 			Name: "Reduce Key List to Observation Limit",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet: ktypes.UpkeepResults{
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000001"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000002"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000003"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000004"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000005"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000006"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000007"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000008"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000009"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000010"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000011"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000012"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000013"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000014"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000015"), State: ktypes.Eligible},
+			SampleIDs: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000001"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000002"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000003"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000004"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000005"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000006"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000007"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000008"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000009"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000010"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000011"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000012"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000013"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000014"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000015"),
 			},
 			LatestBlock: bigBlockKey,
 			ExpectedObservation: types.Observation(mustEncodeUpkeepObservation(&chain.UpkeepObservation{
@@ -145,22 +136,22 @@ func TestObservation(t *testing.T) {
 		{
 			Name: "Reduce Key List to Observation Limit Shuffled",
 			Ctx:  func() (context.Context, func()) { return context.Background(), func() {} },
-			SampleSet: ktypes.UpkeepResults{
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000001"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000002"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000003"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000004"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000005"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000006"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000007"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000008"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000009"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000010"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000011"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000012"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000013"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000014"), State: ktypes.Eligible},
-				{Key: chain.UpkeepKey("100000000000100000000000100000000000100000000000100000000001|100000000000100000000000100000000000100000000015"), State: ktypes.Eligible},
+			SampleIDs: []ktypes.UpkeepIdentifier{
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000001"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000002"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000003"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000004"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000005"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000006"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000007"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000008"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000009"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000010"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000011"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000012"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000013"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000014"),
+				ktypes.UpkeepIdentifier("100000000000100000000000100000000000100000000015"),
 			},
 			LatestBlock: bigBlockKey,
 			reportTimestamp: types.ReportTimestamp{ // Changes the shuffle order from previous case
@@ -179,19 +170,25 @@ func TestObservation(t *testing.T) {
 
 	for i, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			ms := new(MockedUpkeepService)
 			mf := new(MockedFilterer)
 
+			// mock an observer here and return the necessary values
+			o := &mockObserver{
+				ObserveFn: func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
+					return test.LatestBlock, test.SampleIDs, test.SampleErr
+				},
+			}
 			plugin := &keepers{
-				service: ms,
-				logger:  log.New(io.Discard, "", 0),
-				filter:  mf,
+				logger:      log.New(io.Discard, "", 0),
+				coordinator: mf,
+				observers: []observer.Observer{
+					o,
+				},
 			}
 
 			mf.Mock.On("IsPending", mock.AnythingOfType("chain.UpkeepKey")).Return(true)
 
 			ctx, cancel := test.Ctx()
-			ms.Mock.On("SampleUpkeeps", mock.Anything).Return(test.LatestBlock, test.SampleSet, test.SampleErr)
 
 			b, err := plugin.Observation(ctx, test.reportTimestamp, types.Query{})
 			cancel()
@@ -204,9 +201,6 @@ func TestObservation(t *testing.T) {
 
 			assert.Equal(t, test.ExpectedObservation, b, "observation mismatch for test %d", i+1)
 			assert.LessOrEqual(t, len(b), 1000, "observation length should be less than expected")
-
-			// assert that the context passed to Observation is also passed to the service
-			ms.Mock.AssertExpectations(t)
 		})
 	}
 }
@@ -216,9 +210,9 @@ func BenchmarkObservation(b *testing.B) {
 	mf := &BenchmarkMockedFilterer{}
 
 	plugin := &keepers{
-		service: ms,
-		logger:  log.New(io.Discard, "", 0),
-		filter:  mf,
+		service:     ms,
+		logger:      log.New(io.Discard, "", 0),
+		coordinator: mf,
 	}
 
 	set := make(ktypes.UpkeepResults, 2, 100)
@@ -635,7 +629,7 @@ func TestReport(t *testing.T) {
 				service:        ms,
 				encoder:        me,
 				logger:         log.New(io.Discard, "", 0),
-				filter:         mf,
+				coordinator:    mf,
 				reportGasLimit: test.ReportGasLimit,
 			}
 			ctx, cancel := test.Ctx()
@@ -698,10 +692,10 @@ func BenchmarkReport(b *testing.B) {
 	mf := &BenchmarkMockedFilterer{}
 
 	plugin := &keepers{
-		service: ms,
-		encoder: me,
-		logger:  log.New(io.Discard, "", 0),
-		filter:  mf,
+		service:     ms,
+		encoder:     me,
+		logger:      log.New(io.Discard, "", 0),
+		coordinator: mf,
 	}
 
 	key1 := chain.UpkeepKey("1|1")
@@ -827,10 +821,10 @@ func TestShouldAcceptFinalizedReport(t *testing.T) {
 		mf := new(MockedFilterer)
 
 		plugin := &keepers{
-			logger:  log.New(io.Discard, "", 0),
-			encoder: me,
-			filter:  mf,
-			service: ms,
+			logger:      log.New(io.Discard, "", 0),
+			encoder:     me,
+			coordinator: mf,
+			service:     ms,
 		}
 
 		me.Mock.On("DecodeReport", []byte("abc")).Return(test.ReportContents, test.DecodeErr)
@@ -859,9 +853,9 @@ func BenchmarkShouldAcceptFinalizedReport(b *testing.B) {
 	mf := &BenchmarkMockedFilterer{}
 
 	plugin := &keepers{
-		logger:  log.New(io.Discard, "", 0),
-		encoder: me,
-		filter:  mf,
+		logger:      log.New(io.Discard, "", 0),
+		encoder:     me,
+		coordinator: mf,
 	}
 
 	// run the ShouldAcceptFinalizedReport function b.N times
@@ -985,10 +979,10 @@ func TestShouldTransmitAcceptedReport(t *testing.T) {
 		mf := new(MockedFilterer)
 
 		plugin := &keepers{
-			logger:  log.New(io.Discard, "", 0),
-			encoder: me,
-			filter:  mf,
-			service: ms,
+			logger:      log.New(io.Discard, "", 0),
+			encoder:     me,
+			coordinator: mf,
+			service:     ms,
 		}
 
 		me.Mock.On("DecodeReport", []byte("abc")).Return(test.ReportContents, test.DecodeErr)
@@ -1019,9 +1013,9 @@ func BenchmarkShouldTransmitAcceptedReport(b *testing.B) {
 	}
 
 	plugin := &keepers{
-		logger:  log.New(io.Discard, "", 0),
-		encoder: me,
-		filter:  mf,
+		logger:      log.New(io.Discard, "", 0),
+		encoder:     me,
+		coordinator: mf,
 	}
 
 	// run the ShouldTransmitAcceptedReport function b.N times
@@ -1166,6 +1160,29 @@ func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
 func mustEncodeUpkeepObservation(o *chain.UpkeepObservation) []byte {
 	b, _ := encode(o)
 	return b
+}
+
+type mockObserver struct {
+	ObserveFn     func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error)
+	CheckUpkeepFn func(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error)
+	StartFn       func()
+	StopFn        func()
+}
+
+func (m *mockObserver) Observe() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
+	return m.ObserveFn()
+}
+
+func (m *mockObserver) CheckUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error) {
+	return m.CheckUpkeepFn(ctx, keys...)
+}
+
+func (m *mockObserver) Start() {
+	m.StartFn()
+}
+
+func (m *mockObserver) Stop() {
+	m.StopFn()
 }
 
 type MockedFilterer struct {
