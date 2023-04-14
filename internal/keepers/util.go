@@ -25,18 +25,6 @@ var (
 	ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
 )
 
-func filterUpkeeps(upkeeps ktypes.UpkeepResults, filter ktypes.UpkeepState) ktypes.UpkeepResults {
-	ret := make(ktypes.UpkeepResults, 0, len(upkeeps))
-
-	for _, up := range upkeeps {
-		if up.State == filter {
-			ret = append(ret, up)
-		}
-	}
-
-	return ret
-}
-
 type shuffler[T any] interface {
 	Shuffle([]T) []T
 }
