@@ -68,11 +68,11 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	// should be more uniform for all nodes
 	filteredResults := filterUpkeeps(results, ktypes.Eligible)
 
-	k.logger.Printf("filterUpkeeps: results=%d", len(filteredResults))
+	k.logger.Printf("filterUpkeeps: blockKey=%s, results=%d", blockKey, len(filteredResults))
 
 	keys := keyList(filteredResults)
 
-	k.logger.Printf("keyList: keys=%v", keys)
+	k.logger.Printf("keyList: blockKey=%s, keys=%v", blockKey, keys)
 
 	obs := &chain.UpkeepObservation{
 		BlockKey: chain.BlockKey(blockKey.String()),
@@ -88,25 +88,25 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	keyRandSource := getRandomKeySource(rt)
 	identifiers = shuffleObservations(identifiers, keyRandSource)
 
-	k.logger.Printf("shuffleObservations: identifiers=%v", identifiers)
+	k.logger.Printf("shuffleObservations: blockKey=%s, identifiers=%v", blockKey, identifiers)
 
 	// Check limit
 	if len(identifiers) > observationUpkeepsLimit {
 		identifiers = identifiers[:observationUpkeepsLimit]
 	}
 
-	k.logger.Printf("observationUpkeepsLimit: identifiers=%v", identifiers)
+	k.logger.Printf("observationUpkeepsLimit: blockKey=%s, identifiers=%v", blockKey, identifiers)
 
 	obs.UpkeepIdentifiers = identifiers
 
-	k.logger.Printf("observation: obs=%#v", obs)
+	k.logger.Printf("observation: blockKey=%s, obs=%#v", blockKey, obs)
 
 	b, err := limitedLengthEncode(obs, maxObservationLength)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
 	}
 
-	k.logger.Printf("limitedLengthEncode: bytes=%d", len(b))
+	k.logger.Printf("limitedLengthEncode: blockKey=%s, bytes=%d", blockKey, len(b))
 
 	// write the number of keys returned from sampling to the debug log
 	// this offers a record of the number of performs the node has visibility
