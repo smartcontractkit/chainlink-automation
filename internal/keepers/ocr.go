@@ -2,6 +2,7 @@ package keepers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -71,8 +72,11 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	k.logger.Printf("filterUpkeeps: blockKey=%s, results=%d", blockKey, len(filteredResults))
 
 	keys := keyList(filteredResults)
-
-	k.logger.Printf("keyList: blockKey=%s, keys=%v", blockKey, keys)
+	keysJson, err := json.Marshal(keys)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
+	}
+	k.logger.Printf("keyList: blockKey=%s, keys=%s", blockKey, string(keysJson))
 
 	obs := &chain.UpkeepObservation{
 		BlockKey: chain.BlockKey(blockKey.String()),
@@ -88,18 +92,32 @@ func (k *keepers) Observation(ctx context.Context, rt types.ReportTimestamp, _ t
 	keyRandSource := getRandomKeySource(rt)
 	identifiers = shuffleObservations(identifiers, keyRandSource)
 
-	k.logger.Printf("shuffleObservations: blockKey=%s, identifiers=%v", blockKey, identifiers)
+	identifiersJson, err := json.Marshal(identifiers)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
+	}
+	k.logger.Printf("shuffleObservations: blockKey=%s, identifiers=%s", blockKey, string(identifiersJson))
 
 	// Check limit
 	if len(identifiers) > observationUpkeepsLimit {
 		identifiers = identifiers[:observationUpkeepsLimit]
 	}
 
-	k.logger.Printf("observationUpkeepsLimit: blockKey=%s, identifiers=%v", blockKey, identifiers)
+	identifiersJson, err = json.Marshal(identifiers)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
+	}
+
+	k.logger.Printf("observationUpkeepsLimit: blockKey=%s, identifiers=%s", blockKey, string(identifiersJson))
 
 	obs.UpkeepIdentifiers = identifiers
 
-	k.logger.Printf("observation: blockKey=%s, obs=%#v", blockKey, obs)
+	obsJson, err := json.Marshal(obs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to encode upkeep keys for observation: %s", err, lCtx)
+	}
+
+	k.logger.Printf("observation: blockKey=%s, obs=%s", blockKey, string(obsJson))
 
 	b, err := limitedLengthEncode(obs, maxObservationLength)
 	if err != nil {
