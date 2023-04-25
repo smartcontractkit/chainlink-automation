@@ -23,7 +23,7 @@ type KeyStatusCoordinator interface {
 }
 
 type KeyProvider interface {
-	ActiveKeys(context.Context) ([]types.UpkeepKey, error)
+	GetActiveUpkeepIDs(context.Context) ([]types.UpkeepKey, error)
 }
 
 type Service interface {
@@ -240,7 +240,7 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 
 	// Get only the active upkeeps from the key provider. This should not include
 	// any cancelled upkeeps.
-	if keys, err = o.keys.ActiveKeys(ctx); err != nil {
+	if keys, err = o.keys.GetActiveUpkeepIDs(ctx); err != nil {
 		o.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 		return
 	}
