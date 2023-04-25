@@ -67,6 +67,8 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 			return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 		}
 
+		k.logger.Printf("observed %d upkeep IDs at block %s", len(allIDs), block.String())
+
 		allIDs = append(allIDs, ids...)
 
 		if bigInt, ok := block.BigInt(); ok {
@@ -75,6 +77,8 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 			return nil, fmt.Errorf("%w: failed to parse block key for observation: %s", err, lCtx)
 		}
 	}
+
+	k.logger.Printf("observed a total of %d upkeep IDs : %s", len(allIDs))
 
 	keyRandSource := getRandomKeySource(reportTimestamp)
 	allIDs = shuffleObservations(allIDs, keyRandSource)
