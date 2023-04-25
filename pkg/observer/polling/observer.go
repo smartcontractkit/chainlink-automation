@@ -10,6 +10,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -23,7 +24,31 @@ type KeyStatusCoordinator interface {
 }
 
 type KeyProvider interface {
-	ActiveKeys(context.Context) ([]types.UpkeepKey, error)
+	ActiveKeys(context.Context, types.BlockKey) ([]types.UpkeepKey, error)
+}
+
+type keyProvider struct {
+	registry types.Registry
+}
+
+func NewKeyProvider(registry types.Registry) *keyProvider {
+	return &keyProvider{
+		registry: registry,
+	}
+}
+
+func (p *keyProvider) ActiveKeys(ctx context.Context, blockKey types.BlockKey) ([]types.UpkeepKey, error) {
+	upkeepIDs, err := p.registry.GetActiveUpkeepIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var upkeepKeys []types.UpkeepKey
+	for _, k := range upkeepIDs {
+		upkeepKeys = append(upkeepKeys, chain.NewUpkeepKeyFromBlockAndID(blockKey, k))
+	}
+
+	return upkeepKeys, nil
 }
 
 type Service interface {
@@ -240,7 +265,7 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 
 	// Get only the active upkeeps from the key provider. This should not include
 	// any cancelled upkeeps.
-	if keys, err = o.keys.ActiveKeys(ctx); err != nil {
+	if keys, err = o.keys.ActiveKeys(ctx, blockKey); err != nil {
 		o.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
 		return
 	}
