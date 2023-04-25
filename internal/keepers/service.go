@@ -10,6 +10,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	ratio2 "github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -24,7 +25,7 @@ var (
 
 type onDemandUpkeepService struct {
 	logger           *log.Logger
-	ratio            sampleRatio
+	ratio            ratio2.SampleRatio
 	headSubscriber   types.HeadSubscriber
 	registry         types.Registry
 	shuffler         shuffler[types.UpkeepIdentifier]
@@ -45,7 +46,7 @@ type onDemandUpkeepService struct {
 // of upkeeps can be checked. Be aware that network calls are not rate limited
 // from this service.
 func newOnDemandUpkeepService(
-	ratio sampleRatio,
+	ratio ratio2.SampleRatio,
 	headSubscriber types.HeadSubscriber,
 	registry types.Registry,
 	logger *log.Logger,

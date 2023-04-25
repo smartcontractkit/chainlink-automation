@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
@@ -121,7 +122,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	svcCtx, svcCancel := context.WithCancel(context.Background())
 	svc := &onDemandUpkeepService{
 		logger:           l,
-		ratio:            sampleRatio(0.5),
+		ratio:            ratio.SampleRatio(0.5),
 		registry:         rg,
 		shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 		cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
@@ -213,7 +214,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		svc := &onDemandUpkeepService{
 			logger:           l,
 			headSubscriber:   hs,
-			ratio:            sampleRatio(0.5),
+			ratio:            ratio.SampleRatio(0.5),
 			registry:         rg,
 			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
@@ -340,7 +341,7 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		svc := &onDemandUpkeepService{
 			logger:           l,
 			headSubscriber:   hs,
-			ratio:            sampleRatio(0.5),
+			ratio:            ratio.SampleRatio(0.5),
 			registry:         rg,
 			shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 			cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),

@@ -18,6 +18,8 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
+	sampleratio "github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -186,8 +188,8 @@ func calculateMedianBlock(blockNumbers []*big.Int, reportBlockLag int) ktypes.Bl
 	return chain.BlockKey(median.String())
 }
 
-func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio, error) {
-	var ratio sampleRatio
+func sampleFromProbability(rounds, nodes int, probability float32) (ratio.SampleRatio, error) {
+	var ratio sampleratio.SampleRatio
 
 	if rounds <= 0 {
 		return ratio, fmt.Errorf("number of rounds must be greater than 0")
@@ -209,7 +211,7 @@ func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio,
 	x := cmplx.Pow(cmplx.Pow(g, 1.0/r), 1.0/n)
 	rat := cmplx.Abs(-1.0 * (x - 1.0))
 	rat = math.Round(rat/0.01) * 0.01
-	ratio = sampleRatio(float32(rat))
+	ratio = sampleratio.SampleRatio(float32(rat))
 
 	return ratio, nil
 }

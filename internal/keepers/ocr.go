@@ -78,7 +78,7 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 		}
 	}
 
-	k.logger.Printf("observed a total of %d upkeep IDs : %s", len(allIDs))
+	k.logger.Printf("observed a total of %d upkeep IDs", len(allIDs))
 
 	keyRandSource := getRandomKeySource(reportTimestamp)
 	allIDs = shuffleObservations(allIDs, keyRandSource)

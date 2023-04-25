@@ -1,4 +1,4 @@
-package keepers
+package ratio
 
 import (
 	"testing"
@@ -47,7 +47,7 @@ func TestSampleRatio_OfInt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			assert.Equal(t, test.ExpectedResult, sampleRatio(test.Ratio).OfInt(test.Of))
+			assert.Equal(t, test.ExpectedResult, SampleRatio(test.Ratio).OfInt(test.Of))
 		})
 	}
 }
