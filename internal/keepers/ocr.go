@@ -71,15 +71,16 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 			k.logger.Printf("observed %d upkeep IDs with nil block", len(allIDs))
 		} else {
 			k.logger.Printf("observed %d upkeep IDs at block %s", len(allIDs), block)
+
+			if bigInt, ok := block.BigInt(); ok {
+				blocks = append(blocks, bigInt)
+			} else {
+				return nil, fmt.Errorf("%w: failed to parse block key for observation: %s", err, lCtx)
+			}
 		}
 
 		allIDs = append(allIDs, ids...)
 
-		if bigInt, ok := block.BigInt(); ok {
-			blocks = append(blocks, bigInt)
-		} else {
-			return nil, fmt.Errorf("%w: failed to parse block key for observation: %s", err, lCtx)
-		}
 	}
 
 	k.logger.Printf("observed a total of %d upkeep IDs", len(allIDs))

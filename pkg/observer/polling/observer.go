@@ -278,7 +278,11 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 		return
 	}
 
+	o.logger.Printf("shuffled and sliced keys, %d keys remaining", len(keys))
+
 	o.stager.prepareBlock(blockKey)
+
+	o.logger.Printf("prepared block key %s", blockKey)
 
 	// run checkupkeep on all keys. an error from this function should
 	// bubble up.
@@ -289,6 +293,8 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 
 	// advance the staged block/upkeep id list to the next in line
 	o.stager.advance()
+
+	o.logger.Printf("advanced stager")
 }
 
 func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
