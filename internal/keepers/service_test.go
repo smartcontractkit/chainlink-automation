@@ -88,7 +88,7 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 			cancel:           svcCancel,
 		}
 
-		result, err := svc.CheckUpkeep(ctx, test.Key)
+		result, err := svc.CheckUpkeep(ctx, false, test.Key)
 		cancel()
 
 		if test.ExpectedErr == nil {

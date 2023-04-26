@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -125,5 +126,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		upkeepGasOverhead:  offChainCfg.GasOverheadPerUpkeep,
 		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,
 		reportBlockLag:     offChainCfg.ReportBlockLag,
+		mercuryLookup:      offChainCfg.MercuryLookup,
 	}, info, nil
 }

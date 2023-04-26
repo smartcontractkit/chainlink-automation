@@ -101,7 +101,7 @@ EachKey:
 	return blockKey, filteredResults, nil
 }
 
-func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
+func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, _ bool, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
 	var (
 		wg                sync.WaitGroup
 		results           = make([]types.UpkeepResult, len(keys))

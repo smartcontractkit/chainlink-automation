@@ -154,6 +154,9 @@ type OffchainConfig struct {
 
 	// ReportBlockLag is the number to subtract from median block number during report phase.
 	ReportBlockLag int `json:"reportBlockLag"`
+
+	// MercuryLookup is the boolean which indicates if MercuryLookup feature is enabled.
+	MercuryLookup bool `json:"mercuryLookup"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {

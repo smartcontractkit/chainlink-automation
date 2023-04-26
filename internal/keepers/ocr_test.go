@@ -1073,7 +1073,7 @@ func (_m *MockedUpkeepService) SampleUpkeeps(ctx context.Context, filters ...fun
 	return r0, r1, ret.Error(2)
 }
 
-func (_m *MockedUpkeepService) CheckUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) (ktypes.UpkeepResults, error) {
+func (_m *MockedUpkeepService) CheckUpkeep(ctx context.Context, _ bool, keys ...ktypes.UpkeepKey) (ktypes.UpkeepResults, error) {
 	ret := _m.Mock.Called(ctx, keys)
 
 	var r0 ktypes.UpkeepResults
@@ -1119,7 +1119,7 @@ func (_m *BenchmarkMockUpkeepService) SampleUpkeeps(ctx context.Context, filters
 	return nil, nil, nil
 }
 
-func (_m *BenchmarkMockUpkeepService) CheckUpkeep(ctx context.Context, keys ...ktypes.UpkeepKey) (ktypes.UpkeepResults, error) {
+func (_m *BenchmarkMockUpkeepService) CheckUpkeep(ctx context.Context, _ bool, keys ...ktypes.UpkeepKey) (ktypes.UpkeepResults, error) {
 	return _m.rtnCheck, nil
 }
 

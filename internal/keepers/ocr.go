@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
@@ -146,7 +147,7 @@ func (k *keepers) Report(ctx context.Context, rt types.ReportTimestamp, _ types.
 	}
 
 	// Check all upkeeps from the given observation
-	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, keysToCheck...)
+	checkedUpkeeps, err := k.service.CheckUpkeep(ctx, k.mercuryLookup, keysToCheck...)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
 	}
