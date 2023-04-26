@@ -67,7 +67,11 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 			return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 		}
 
-		k.logger.Printf("observed %d upkeep IDs at block %s", len(allIDs), block.String())
+		if block == nil {
+			k.logger.Printf("observed %d upkeep IDs with nil block", len(allIDs))
+		} else {
+			k.logger.Printf("observed %d upkeep IDs at block %s", len(allIDs), block)
+		}
 
 		allIDs = append(allIDs, ids...)
 
@@ -82,6 +86,7 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 
 	keyRandSource := getRandomKeySource(reportTimestamp)
 	allIDs = shuffleObservations(allIDs, keyRandSource)
+
 	// Check limit
 	if len(allIDs) > observationUpkeepsLimit {
 		allIDs = allIDs[:observationUpkeepsLimit]
