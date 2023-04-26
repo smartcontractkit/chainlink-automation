@@ -275,6 +275,7 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 	// reduce keys to ratio size and shuffle. this can return a nil array.
 	// in that case we have no keys so return.
 	if keys = o.shuffleAndSliceKeysToRatio(keys); keys == nil {
+		o.logger.Printf("shuffle and slice returned nil keys, returning")
 		return
 	}
 
@@ -298,10 +299,14 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 }
 
 func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
+	o.logger.Printf("about to shuffle and slice %d keys", len(keys))
 	keys = o.shuffler.Shuffle(keys)
+	o.logger.Printf("shuffle returned %d keys", len(keys))
 	size := o.ratio.OfInt(len(keys))
+	o.logger.Printf("ratio returned %d size", size)
 
 	if len(keys) == 0 || size <= 0 {
+		o.logger.Printf("have %d keys, size is %d, returning", len(keys), size)
 		return nil
 	}
 
