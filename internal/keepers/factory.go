@@ -11,8 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -62,7 +61,7 @@ func NewReportingPluginFactory(
 	}
 }
 
-// NewReportingPlugin implements the libocr/offchainreporting2/types ReportingPluginFactory interface
+// NewReportingPlugin implements the libocr/offchainreporting2plus/types ReportingPluginFactory interface
 func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
 	offChainCfg, err := ktypes.DecodeOffchainConfig(c.OffchainConfig)
 	if err != nil {

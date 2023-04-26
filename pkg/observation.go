@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 var (

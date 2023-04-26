@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/smartcontractkit/libocr/commontypes"
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 type SimulatedBinaryNetworkEndpointFactory struct {

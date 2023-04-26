@@ -7,8 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
