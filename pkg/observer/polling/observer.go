@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -158,9 +159,8 @@ type PollingObserver struct {
 	upkeepProvider      encoder.UpkeepProvider
 }
 
-func (o *PollingObserver) SetLogger(logger *log.Logger) {
-	o.logger = logger
-	o.stager.logger = logger
+func (o *PollingObserver) SetSamplingRatio(r ratio.SampleRatio) {
+	o.ratio = r
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers

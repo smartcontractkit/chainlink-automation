@@ -2,8 +2,8 @@ package observer
 
 import (
 	"context"
-	"log"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -12,5 +12,5 @@ type Observer interface {
 	CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepResult, error)
 	Start()
 	Stop()
-	SetLogger(logger *log.Logger)
+	SetSamplingRatio(ratio ratio.SampleRatio)
 }

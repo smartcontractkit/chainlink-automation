@@ -102,6 +102,11 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	if d.upkeepService != nil {
 		d.upkeepService.stop()
 	}
+
+	for _, obs := range d.observers {
+		obs.SetSamplingRatio(sample)
+	}
+
 	d.upkeepService = newOnDemandUpkeepService(
 		sample,
 		d.headSubscriber,
