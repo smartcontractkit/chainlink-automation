@@ -121,6 +121,8 @@ func NewPollingObserver(
 	// this is a safety in the case Stop isn't called explicitly
 	runtime.SetFinalizer(ob, func(srv observer.Observer) { srv.Stop() })
 
+	ob.Start()
+
 	return ob
 }
 
