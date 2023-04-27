@@ -34,6 +34,7 @@ type onDemandUpkeepService struct {
 	workers          *util.WorkerGroup[types.UpkeepResults]
 	ctx              context.Context
 	cancel           context.CancelFunc
+	mercuryEnabled   bool
 }
 
 // newOnDemandUpkeepService provides an object that implements the UpkeepService
@@ -51,6 +52,7 @@ func newOnDemandUpkeepService(
 	cacheClean time.Duration,
 	workers int,
 	workerQueueLength int,
+	mercuryEnabled bool,
 ) *onDemandUpkeepService {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &onDemandUpkeepService{
@@ -65,6 +67,7 @@ func newOnDemandUpkeepService(
 		workers:          util.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		ctx:              ctx,
 		cancel:           cancel,
+		mercuryEnabled:   mercuryEnabled,
 	}
 
 	// stop the cleaner go-routine once the upkeep service is no longer reachable
@@ -101,7 +104,7 @@ EachKey:
 	return blockKey, filteredResults, nil
 }
 
-func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, _ bool, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
+func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
 	var (
 		wg                sync.WaitGroup
 		results           = make([]types.UpkeepResult, len(keys))
@@ -137,7 +140,7 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, _ bool, keys ..
 
 	// check upkeep at block number in key
 	// return result including performData
-	checkResults, err := s.registry.CheckUpkeep(ctx, nonCachedKeys...)
+	checkResults, err := s.registry.CheckUpkeep(ctx, mercuryEnabled, nonCachedKeys...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
@@ -303,7 +306,7 @@ func (s *onDemandUpkeepService) wrapWorkerFunc() func(context.Context, []types.U
 		start := time.Now()
 
 		// perform check and update cache with result
-		checkResults, err := s.registry.CheckUpkeep(ctx, keys...)
+		checkResults, err := s.registry.CheckUpkeep(ctx, s.mercuryEnabled, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keysStr)
 		} else {

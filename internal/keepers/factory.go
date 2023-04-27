@@ -107,6 +107,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.CacheEvictionInterval,
 		d.config.MaxServiceWorkers,
 		d.config.ServiceQueueLength,
+		offChainCfg.MercuryLookup,
 	)
 
 	return &keepers{
