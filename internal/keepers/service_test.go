@@ -73,7 +73,7 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 		ctx, cancel := test.Ctx()
 
 		rg := mocks.NewRegistry(t)
-		rg.Mock.On("CheckUpkeep", mock.Anything, test.Key).
+		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, test.Key).
 			Return(test.RegResult, test.Err)
 
 		l := log.New(io.Discard, "", 0)
@@ -318,17 +318,17 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 		rg.Mock.On("GetActiveUpkeepIDs", mock.Anything).
 			Return(upkeepIDs, nil)
 
-		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		rg.Mock.On("CheckUpkeep", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				a := make([]ktypes.UpkeepKey, 5)
 				copy(a, actives[:5])
 
 				checkKeys(t, a, []ktypes.UpkeepKey{
-					args.Get(1).(ktypes.UpkeepKey),
 					args.Get(2).(ktypes.UpkeepKey),
 					args.Get(3).(ktypes.UpkeepKey),
 					args.Get(4).(ktypes.UpkeepKey),
 					args.Get(5).(ktypes.UpkeepKey),
+					args.Get(6).(ktypes.UpkeepKey),
 				})
 				close(subscribed)
 			}).
