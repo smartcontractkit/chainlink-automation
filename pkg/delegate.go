@@ -3,7 +3,6 @@ package ocr2keepers
 import (
 	"context"
 	"fmt"
-	"log"
 
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
 
@@ -32,9 +31,6 @@ type Delegate struct {
 // built-in logger are written to the provided logger as Debug logs prefaced
 // with '[keepers-plugin] ' and a short file name.
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
-	wrapper := &logWriter{l: c.Logger}
-	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
-
 	// set some defaults
 	conf := keepers.ReportingFactoryConfig{
 		CacheExpiration:       DefaultCacheExpiration,
@@ -60,11 +56,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		conf.ServiceQueueLength = c.ServiceQueueLength
 	}
 
-	l.Printf("creating oracle with reporting factory config: %+v", conf)
-
-	for _, obs := range c.Observers {
-		obs.SetLogger(l)
-	}
+	c.Logger2.Printf("creating oracle with reporting factory config: %+v", conf)
 
 	// create the oracle from config values
 	keeper, err := newOracleFn(offchainreporting.OracleArgs{
@@ -85,7 +77,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			c.PerformLogProvider,
 			c.ReportEncoder,
 			c.Observers,
-			l,
+			c.Logger2,
 			conf,
 		),
 	})
