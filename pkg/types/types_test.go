@@ -25,7 +25,8 @@ func TestDecode(t *testing.T) {
 			"gasLimitPerReport": 10,
 			"gasOverheadPerUpkeep": 100,
 			"maxUpkeepBatchSize": 100,
-			"reportBlockLag": 100
+			"reportBlockLag": 100,
+			"mercuryLookup": true
 		}
 	`), ExpectedErrString: "", ExpectedConfig: OffchainConfig{
 			PerformLockoutWindow: 1000,
@@ -37,6 +38,7 @@ func TestDecode(t *testing.T) {
 			GasOverheadPerUpkeep: 100,
 			MaxUpkeepBatchSize:   100,
 			ReportBlockLag:       100,
+			MercuryLookup:        true,
 		}},
 
 		{Name: "Extra field uniqueReports", EncodedData: []byte(`
@@ -60,6 +62,7 @@ func TestDecode(t *testing.T) {
 			GasLimitPerReport:    10,
 			GasOverheadPerUpkeep: 100,
 			MaxUpkeepBatchSize:   100,
+			MercuryLookup:        false,
 		}},
 
 		{Name: "Missing values", EncodedData: []byte(`
@@ -75,6 +78,7 @@ func TestDecode(t *testing.T) {
 			GasOverheadPerUpkeep: 300_000,
 			MaxUpkeepBatchSize:   1,
 			ReportBlockLag:       0,
+			MercuryLookup:        false,
 		}},
 
 		{Name: "Negative values", EncodedData: []byte(`
@@ -99,6 +103,7 @@ func TestDecode(t *testing.T) {
 			GasOverheadPerUpkeep: 300_000,
 			MaxUpkeepBatchSize:   1,
 			ReportBlockLag:       0,
+			MercuryLookup:        false,
 		}},
 
 		{Name: "Unexpected type", EncodedData: []byte(`
@@ -160,10 +165,11 @@ func TestOffchainConfig_Encode(t *testing.T) {
 
 		config := OffchainConfig{
 			PerformLockoutWindow: 1,
+			MercuryLookup:        true,
 		}
 
 		bytes := config.Encode()
-		assert.Equal(t, bytes, []byte(`{"performLockoutWindow":1,"targetProbability":"","targetInRounds":0,"samplingJobDuration":0,"minConfirmations":0,"gasLimitPerReport":0,"gasOverheadPerUpkeep":0,"maxUpkeepBatchSize":0,"reportBlockLag":0}`))
+		assert.Equal(t, bytes, []byte(`{"performLockoutWindow":1,"targetProbability":"","targetInRounds":0,"samplingJobDuration":0,"minConfirmations":0,"gasLimitPerReport":0,"gasOverheadPerUpkeep":0,"maxUpkeepBatchSize":0,"reportBlockLag":0,"mercuryLookup":true}`))
 	})
 }
 

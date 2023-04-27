@@ -46,7 +46,7 @@ func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]types.Up
 	return keys, nil
 }
 
-func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
+func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
 	ct.mu.RLock()
 	defer ct.mu.RUnlock()
 

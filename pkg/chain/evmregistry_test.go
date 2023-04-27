@@ -140,7 +140,7 @@ func TestCheckUpkeep(t *testing.T) {
 				}
 			}).Return(nil)
 
-		upkeep, err := reg.CheckUpkeep(ctx, upkeepKey)
+		upkeep, err := reg.CheckUpkeep(ctx, false, upkeepKey)
 		assert.NoError(t, err)
 		assert.Len(t, upkeep, 1)
 		assert.Equal(t, types.Eligible, upkeep[0].State)
@@ -185,7 +185,7 @@ func TestCheckUpkeep(t *testing.T) {
 				}
 			}).Return(nil)
 
-		upkeep, err := reg.CheckUpkeep(ctx, upkeepKey)
+		upkeep, err := reg.CheckUpkeep(ctx, false, upkeepKey)
 		assert.NoError(t, err)
 		assert.Len(t, upkeep, 1)
 		assert.Equal(t, types.NotEligible, upkeep[0].State)
@@ -259,7 +259,7 @@ func TestCheckUpkeep(t *testing.T) {
 				}
 			}).Return(nil)
 
-		upkeep, err := reg.CheckUpkeep(ctx, upkeepKey)
+		upkeep, err := reg.CheckUpkeep(ctx, false, upkeepKey)
 		assert.NoError(t, err)
 		assert.Len(t, upkeep, 1)
 		assert.Equal(t, types.NotEligible, upkeep[0].State)
@@ -280,7 +280,7 @@ func TestCheckUpkeep(t *testing.T) {
 		require.NoError(t, err)
 
 		start := time.Now()
-		_, err = reg.CheckUpkeep(ctx, upkeepKey)
+		_, err = reg.CheckUpkeep(ctx, false, upkeepKey)
 
 		assert.LessOrEqual(t, time.Since(start), 60*time.Millisecond)
 

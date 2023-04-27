@@ -18,4 +18,5 @@ type keepers struct {
 	upkeepGasOverhead  uint32
 	maxUpkeepBatchSize int
 	reportBlockLag     int
+	mercuryLookup      bool
 }

@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func TestCheckUpkeep(t *testing.T) {
@@ -46,7 +47,7 @@ func TestCheckUpkeep(t *testing.T) {
 	mct.On("CheckKey", mock.Anything)
 
 	checkKey := chain.UpkeepKey([]byte("8|201"))
-	res, err := contract.CheckUpkeep(context.Background(), checkKey)
+	res, err := contract.CheckUpkeep(context.Background(), false, checkKey)
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, checkKey, res[0].Key)
@@ -54,7 +55,7 @@ func TestCheckUpkeep(t *testing.T) {
 
 	tel.On("RegisterCall", "checkUpkeep", mock.Anything, nil)
 	checkKey2 := chain.UpkeepKey([]byte("11|201"))
-	res, err = contract.CheckUpkeep(context.Background(), checkKey2)
+	res, err = contract.CheckUpkeep(context.Background(), false, checkKey2)
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, checkKey2, res[0].Key)

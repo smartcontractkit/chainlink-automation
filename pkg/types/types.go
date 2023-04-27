@@ -41,7 +41,7 @@ type EVMClient interface {
 //go:generate mockery --name Registry --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/types"   --case underscore --filename registry.generated.go
 type Registry interface {
 	GetActiveUpkeepIDs(context.Context) ([]UpkeepIdentifier, error)
-	CheckUpkeep(context.Context, ...UpkeepKey) (UpkeepResults, error)
+	CheckUpkeep(context.Context, bool, ...UpkeepKey) (UpkeepResults, error)
 }
 
 // ReportEncoder represents the report encoder behaviour
@@ -154,6 +154,9 @@ type OffchainConfig struct {
 
 	// ReportBlockLag is the number to subtract from median block number during report phase.
 	ReportBlockLag int `json:"reportBlockLag"`
+
+	// MercuryLookup is the boolean which indicates if MercuryLookup feature is enabled.
+	MercuryLookup bool `json:"mercuryLookup"`
 }
 
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
