@@ -154,6 +154,10 @@ type PollingObserver struct {
 	upkeepProvider      encoder.UpkeepProvider
 }
 
+func (o *PollingObserver) SetLogger(logger *log.Logger) {
+	o.logger = logger
+}
+
 // Observe implements the Observer interface and provides a slice of identifiers
 // that were observed to be performable along with the block at which they were
 // observed. All ids that are pending are filtered out.

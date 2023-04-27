@@ -62,6 +62,10 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 
 	l.Printf("creating oracle with reporting factory config: %+v", conf)
 
+	for _, obs := range c.Observers {
+		obs.SetLogger(l)
+	}
+
 	// create the oracle from config values
 	keeper, err := newOracleFn(offchainreporting.OracleArgs{
 		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
