@@ -82,6 +82,7 @@ func NewPollingObserver(
 	filterer coordinator.Coordinator,
 	eligibilityProvider encoder.EligibilityProvider,
 	upkeepProvider encoder.UpkeepProvider,
+	headSubscriber types.HeadSubscriber,
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -96,6 +97,7 @@ func NewPollingObserver(
 		samplingDuration: maxSamplingDuration,
 		registry:         registry,
 		keys:             keys,
+		heads:            headSubscriber,
 		shuffler:         util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
 		ratio:            ratio,
 		stager: &stager{
