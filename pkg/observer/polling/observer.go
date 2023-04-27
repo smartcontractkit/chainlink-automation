@@ -263,39 +263,41 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 		err  error
 	)
 
+	o.logger.Printf("polling observer processLatestHead")
+
 	// Get only the active upkeeps from the key provider. This should not include
 	// any cancelled upkeeps.
 	if keys, err = o.keys.ActiveKeys(ctx, blockKey); err != nil {
-		o.logger.Printf("%s: failed to get upkeeps from registry for sampling", err)
+		o.logger.Printf("polling observer %s: failed to get upkeeps from registry for sampling", err)
 		return
 	}
 
-	o.logger.Printf("%d active upkeep keys found in registry", len(keys))
+	o.logger.Printf("polling observer %d active upkeep keys found in registry", len(keys))
 
 	// reduce keys to ratio size and shuffle. this can return a nil array.
 	// in that case we have no keys so return.
 	if keys = o.shuffleAndSliceKeysToRatio(keys); keys == nil {
-		o.logger.Printf("shuffle and slice returned nil keys, returning")
+		o.logger.Printf("polling observer shuffle and slice returned nil keys, returning")
 		return
 	}
 
-	o.logger.Printf("shuffled and sliced keys, %d keys remaining", len(keys))
+	o.logger.Printf("polling observer shuffled and sliced keys, %d keys remaining", len(keys))
 
 	o.stager.prepareBlock(blockKey)
 
-	o.logger.Printf("prepared block key %s", blockKey)
+	o.logger.Printf("polling observer prepared block key %s", blockKey)
 
 	// run checkupkeep on all keys. an error from this function should
 	// bubble up.
 	if err = o.parallelCheck(ctx, keys); err != nil {
-		o.logger.Printf("%s: failed to parallel check upkeeps", err)
+		o.logger.Printf("polling observer %s: failed to parallel check upkeeps", err)
 		return
 	}
 
 	// advance the staged block/upkeep id list to the next in line
 	o.stager.advance()
 
-	o.logger.Printf("advanced stager")
+	o.logger.Printf("polling observer advanced stager")
 }
 
 func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
