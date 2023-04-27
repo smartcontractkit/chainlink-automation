@@ -156,6 +156,7 @@ type PollingObserver struct {
 
 func (o *PollingObserver) SetLogger(logger *log.Logger) {
 	o.logger = logger
+	o.stager.logger = logger
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
