@@ -66,6 +66,7 @@ func (m *RecoverableService) Stop() {
 }
 
 func (m *RecoverableService) serviceStart() {
+	m.run()
 	for {
 		select {
 		case err := <-m.stopped:
