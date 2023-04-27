@@ -192,17 +192,17 @@ func Test_onDemandUpkeepService_runSamplingUpkeeps(t *testing.T) {
 			}
 		}
 
-		rg.Mock.On("CheckUpkeep", mock.AnythingOfType("*util.mergedContext"), mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		rg.Mock.On("CheckUpkeep", mock.AnythingOfType("*util.mergedContext"), mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				a := make([]ktypes.UpkeepKey, 5)
 				copy(a, actives[:5])
 
 				checkKeys(t, a, []ktypes.UpkeepKey{
-					args.Get(1).(ktypes.UpkeepKey),
 					args.Get(2).(ktypes.UpkeepKey),
 					args.Get(3).(ktypes.UpkeepKey),
 					args.Get(4).(ktypes.UpkeepKey),
 					args.Get(5).(ktypes.UpkeepKey),
+					args.Get(6).(ktypes.UpkeepKey),
 				})
 				close(subscribed)
 			}).

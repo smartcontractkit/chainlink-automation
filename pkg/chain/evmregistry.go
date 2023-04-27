@@ -244,7 +244,7 @@ func (r *evmRegistryv2_0) simulatePerformUpkeeps(ctx context.Context, checkResul
 	return checkResults, nil
 }
 
-func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch chan outStruct) {
+func (r *evmRegistryv2_0) check(ctx context.Context, mercuryEnabled bool, keys []types.UpkeepKey, ch chan outStruct) {
 	upkeepResults, err := r.checkUpkeeps(ctx, keys)
 	if err != nil {
 		ch <- outStruct{
@@ -266,9 +266,9 @@ func (r *evmRegistryv2_0) check(ctx context.Context, keys []types.UpkeepKey, ch 
 	}
 }
 
-func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
+func (r *evmRegistryv2_0) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
 	chResult := make(chan outStruct, 1)
-	go r.check(ctx, keys, chResult)
+	go r.check(ctx, mercuryEnabled, keys, chResult)
 
 	select {
 	case rs := <-chResult:
