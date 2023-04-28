@@ -161,7 +161,6 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		10,
 		10,
 		20*time.Second,
-		nil,
 		time.Minute,
 		time.Minute,
 		coordinator.NewReportCoordinator(ct, time.Minute, time.Minute, ct, 5, l),

@@ -20,10 +20,6 @@ import (
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
-type KeyStatusCoordinator interface {
-	IsPending(types.UpkeepKey) (bool, error)
-}
-
 type KeyProvider interface {
 	ActiveKeys(context.Context, types.BlockKey) ([]types.UpkeepKey, error)
 }
@@ -77,7 +73,6 @@ func NewPollingObserver(
 	workers int, // maximum number of workers in worker group
 	workerQueueLength int, // size of worker queue; set to approximately the number of items expected in workload
 	maxSamplingDuration time.Duration, // maximum amount of time allowed for RPC calls per head
-	coord KeyStatusCoordinator,
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
 	filterer coordinator.Coordinator,
@@ -104,7 +99,6 @@ func NewPollingObserver(
 		stager: &stager{
 			logger: logger,
 		},
-		coordinator:         coord,
 		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		filterer:            filterer,
@@ -152,7 +146,6 @@ type PollingObserver struct {
 	heads               types.HeadSubscriber        // provides new blocks to be operated on
 	registry            types.Registry              // abstracted access to contract and chain
 	keys                KeyProvider                 // provides keys to this block observer
-	coordinator         KeyStatusCoordinator        // key status coordinator tracks in-flight status
 	shuffler            Shuffler[types.UpkeepKey]   // provides shuffling logic for upkeep keys
 	filterer            coordinator.Coordinator     // provides filtering logic for upkeep keys
 	eligibilityProvider encoder.EligibilityProvider // provides an eligibility check for upkeep keys
@@ -177,11 +170,6 @@ func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, e
 
 	for _, id := range ids {
 		key := o.upkeepProvider.MakeUpkeepKey(bl, id)
-
-		if pending, err := o.coordinator.IsPending(key); pending || err != nil {
-			o.logger.Printf("PollingObserver Observe error checking pending state for '%s': %s", key, err)
-			continue
-		}
 
 		if !o.filterer.IsPending(key) {
 			o.logger.Printf("PollingObserver Observe filtered out key '%s'", key)
