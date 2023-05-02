@@ -40,7 +40,7 @@ type DelegateConfig struct {
 	ContractTransmitter          types.ContractTransmitter
 	KeepersDatabase              types.Database
 	Logger                       commontypes.Logger
-	Logger2                      *log.Logger
+	PrefixedLogger               *log.Logger
 	MonitoringEndpoint           commontypes.MonitoringEndpoint
 	OffchainConfigDigester       types.OffchainConfigDigester
 	OffchainKeyring              types.OffchainKeyring

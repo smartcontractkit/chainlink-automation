@@ -151,10 +151,10 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		cLogger)
 	db := simulators.NewSimulatedDatabase()
 
-	enc := v1.NewEncoder()
-	l := log.Default()
+	encoder := v1.NewEncoder()
+	defaultLogger := log.Default()
 	pollingObserver := polling.NewPollingObserver(
-		l,
+		defaultLogger,
 		ct,
 		polling.NewKeyProvider(ct),
 		new(ratio.SampleRatio),
@@ -163,9 +163,9 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		20*time.Second,
 		time.Minute,
 		time.Minute,
-		coordinator.NewReportCoordinator(ct, time.Minute, time.Minute, ct, 5, l),
-		enc,
-		enc,
+		coordinator.NewReportCoordinator(ct, time.Minute, time.Minute, ct, 5, defaultLogger),
+		encoder,
+		encoder,
 		ct,
 	)
 
@@ -186,7 +186,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		},
 		HeadSubscriber:         ct,
 		Logger:                 slogger,
-		Logger2:                l,
+		PrefixedLogger:         defaultLogger,
 		MonitoringEndpoint:     g.monitor,
 		OffchainConfigDigester: g.digester,
 		OffchainKeyring:        offchainRing,
