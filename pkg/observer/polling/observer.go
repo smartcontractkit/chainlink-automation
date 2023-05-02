@@ -82,23 +82,19 @@ func NewPollingObserver(
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	logger.Printf("NewPollingObserver instantiated")
-
 	ob := &PollingObserver{
-		ctx:              ctx,
-		cancel:           cancel,
-		logger:           logger,
-		workers:          pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
-		workerBatchLimit: 10, // TODO: hard coded for now
-		samplingDuration: maxSamplingDuration,
-		registry:         registry,
-		keys:             keys,
-		heads:            headSubscriber,
-		shuffler:         util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
-		ratio:            ratio,
-		stager: &stager{
-			logger: logger,
-		},
+		ctx:                 ctx,
+		cancel:              cancel,
+		logger:              logger,
+		workers:             pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
+		workerBatchLimit:    10, // TODO: hard coded for now
+		samplingDuration:    maxSamplingDuration,
+		registry:            registry,
+		keys:                keys,
+		heads:               headSubscriber,
+		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
+		ratio:               ratio,
+		stager:              &stager{},
 		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		filterer:            filterer,
@@ -160,11 +156,7 @@ func (o *PollingObserver) SetSamplingRatio(r ratio.SampleRatio) {
 // that were observed to be performable along with the block at which they were
 // observed. All ids that are pending are filtered out.
 func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, error) {
-	o.logger.Printf("PollingObserver Observe called")
-
 	bl, ids := o.stager.get()
-
-	o.logger.Printf("PollingObserver Observe, got block %s and %d ids from stager", bl, len(ids))
 
 	filteredIDs := make([]types.UpkeepIdentifier, 0, len(ids))
 
@@ -172,14 +164,11 @@ func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, e
 		key := o.upkeepProvider.MakeUpkeepKey(bl, id)
 
 		if !o.filterer.IsPending(key) {
-			o.logger.Printf("PollingObserver Observe filtered out key '%s'", key)
 			continue
 		}
 
 		filteredIDs = append(filteredIDs, id)
 	}
-
-	o.logger.Printf("PollingObserver Observe, returning block %s and %d ids", bl, len(filteredIDs))
 
 	return bl, filteredIDs, nil
 }
@@ -187,8 +176,6 @@ func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, e
 // CheckUpkeep implements the Observer interface. It takes an number of upkeep
 // keys and returns upkeep results.
 func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepResult, error) {
-	o.logger.Printf("PollingObserver CheckUpkeep called for %d keys", len(keys))
-
 	var (
 		results           = make([]types.UpkeepResult, len(keys))
 		nonCachedKeysIdxs = make([]int, 0, len(keys))
@@ -209,7 +196,6 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 
 	// All keys are cached
 	if len(nonCachedKeys) == 0 {
-		o.logger.Printf("PollingObserver CheckUpkeep all keys are cached, returning")
 		return results, nil
 	}
 
@@ -217,7 +203,6 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 	// return result including performData
 	checkResults, err := o.registry.CheckUpkeep(ctx, nonCachedKeys...)
 	if err != nil {
-		o.logger.Printf("PollingObserver CheckUpkeep errored: %s", err.Error())
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
 
@@ -227,20 +212,14 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
-	o.logger.Printf("PollingObserver CheckUpkeep returning %d results", len(results))
-
 	return results, nil
 }
 
 // Start will start all required internal services. Calling this function again
 // after the first is a noop.
 func (o *PollingObserver) Start() {
-	o.logger.Printf("PollingObserver Start called")
-
 	o.startOnce.Do(func() {
 		for _, svc := range o.services {
-			o.logger.Printf("PollingObserver service started")
-
 			svc.Start()
 		}
 	})
@@ -261,8 +240,6 @@ func (o *PollingObserver) runHeadTasks() error {
 	for {
 		select {
 		case bl := <-ch:
-			o.logger.Printf("PollingObserver runHeadTasks block received")
-
 			// limit the context timeout to configured value
 			ctx, cancel := context.WithTimeout(o.ctx, o.samplingDuration)
 
@@ -284,56 +261,37 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 		err  error
 	)
 
-	o.logger.Printf("PollingObserver processLatestHead")
-
 	// Get only the active upkeeps from the key provider. This should not include
 	// any cancelled upkeeps.
 	if keys, err = o.keys.ActiveKeys(ctx, blockKey); err != nil {
-		o.logger.Printf("PollingObserver %s: failed to get upkeeps from registry for sampling", err)
 		return
 	}
-
-	o.logger.Printf("PollingObserver %d active upkeep keys found in registry", len(keys))
 
 	// reduce keys to ratio size and shuffle. this can return a nil array.
 	// in that case we have no keys so return.
 	if keys = o.shuffleAndSliceKeysToRatio(keys); keys == nil {
-		o.logger.Printf("PollingObserver shuffle and slice returned nil keys, returning")
 		return
 	}
 
-	o.logger.Printf("PollingObserver shuffled and sliced keys, %d keys remaining", len(keys))
-
 	o.stager.prepareBlock(blockKey)
-
-	o.logger.Printf("PollingObserver prepared block key %s", blockKey)
 
 	// run checkupkeep on all keys. an error from this function should
 	// bubble up.
 	if err = o.parallelCheck(ctx, keys); err != nil {
-		o.logger.Printf("PollingObserver %s: failed to parallel check upkeeps", err)
 		return
 	}
 
 	// advance the staged block/upkeep id list to the next in line
 	o.stager.advance()
-
-	o.logger.Printf("PollingObserver advanced stager")
 }
 
 func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
-	o.logger.Printf("about to shuffle and slice %d keys", len(keys))
 	keys = o.shuffler.Shuffle(keys)
-	o.logger.Printf("shuffle returned %d keys, about to ratio %s", len(keys), o.ratio.String())
 	size := o.ratio.OfInt(len(keys))
-	o.logger.Printf("ratio returned %d size", size)
 
 	if len(keys) == 0 || size <= 0 {
-		o.logger.Printf("have %d keys, size is %d, returning", len(keys), size)
 		return nil
 	}
-
-	o.logger.Printf("%d results selected by provided ratio %s", size, o.ratio)
 
 	return keys[:size]
 }
@@ -398,8 +356,6 @@ func (o *PollingObserver) wrapWorkerFunc() func(context.Context, []types.UpkeepK
 func (o *PollingObserver) wrapAggregate(r *util.Results) func(types.UpkeepResults, error) {
 	return func(result types.UpkeepResults, err error) {
 		if err == nil {
-			o.logger.Printf("PollingObserver wrapAggregate processing successful results")
-
 			r.Successes++
 
 			for _, res := range result {
@@ -412,20 +368,17 @@ func (o *PollingObserver) wrapAggregate(r *util.Results) func(types.UpkeepResult
 					}
 
 					o.stager.prepareIdentifier(id)
-				} else {
-					o.logger.Printf("PollingObserver wrapAggregate result not eligible")
 				}
 			}
 		} else {
 			r.Err = err
-			o.logger.Printf("PollingObserver wrapAggregate error received from worker result: %s", err)
+			o.logger.Printf("error received from worker result: %s", err)
 			r.Failures++
 		}
 	}
 }
 
 type stager struct {
-	logger       *log.Logger
 	currentIDs   []types.UpkeepIdentifier
 	currentBlock types.BlockKey
 	nextIDs      []types.UpkeepIdentifier
@@ -437,16 +390,12 @@ func (s *stager) prepareBlock(block types.BlockKey) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.logger.Printf("stager prepareBlock called: %v", block)
-
 	s.nextBlock = block
 }
 
 func (s *stager) prepareIdentifier(id types.UpkeepIdentifier) {
 	s.Lock()
 	defer s.Unlock()
-
-	s.logger.Printf("stager prepareIdentifier called: %v", id)
 
 	if s.nextIDs == nil {
 		s.nextIDs = []types.UpkeepIdentifier{}
@@ -459,8 +408,6 @@ func (s *stager) advance() {
 	s.Lock()
 	defer s.Unlock()
 
-	s.logger.Printf("stager advance called")
-
 	s.currentBlock = s.nextBlock
 	s.currentIDs = make([]types.UpkeepIdentifier, len(s.nextIDs))
 
@@ -472,8 +419,6 @@ func (s *stager) advance() {
 func (s *stager) get() (types.BlockKey, []types.UpkeepIdentifier) {
 	s.RLock()
 	defer s.RUnlock()
-
-	s.logger.Printf("stager get called")
 
 	return s.currentBlock, s.currentIDs
 }
