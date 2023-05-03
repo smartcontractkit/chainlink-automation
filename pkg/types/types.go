@@ -44,6 +44,15 @@ type Registry interface {
 	CheckUpkeep(context.Context, bool, ...UpkeepKey) (UpkeepResults, error)
 }
 
+// Executer provides a runtime layer for parallelized execution of upkeeps,
+// with a cache for executed/pending upkeeps.
+// It acts as a mediator between observers and registry contract / mercury lookup.
+type Executer interface {
+	// Run executes the pipeline for the given upkeeps and collects the results.
+	// checkData is changed based on trigger.
+	Run(ctx context.Context, upkeepKeys []UpkeepKey, checkData [][]byte) (UpkeepResults, error)
+}
+
 // ReportEncoder represents the report encoder behaviour
 //
 //go:generate mockery --name ReportEncoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/types"   --case underscore --filename report_encoder.generated.go
