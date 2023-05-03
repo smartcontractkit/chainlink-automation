@@ -12,26 +12,26 @@ import (
 
 func TestUpkeepsQueue_e2e(t *testing.T) {
 	q := NewUpkeepsQueue()
-
+	visited := q.Visited()
 	block := big.NewInt(1)
 	q.Push(randUpkeepResult(block), randUpkeepResult(block))
 	require.Equal(t, 2, q.Size())
-	require.Equal(t, 0, q.SizeVisited())
+	require.Equal(t, 0, visited.Size())
 
 	block = block.Add(block, big.NewInt(1))
 	q.Push(randUpkeepResult(block), randUpkeepResult(block))
 	require.Equal(t, 4, q.Size())
-	require.Equal(t, 0, q.SizeVisited())
+	require.Equal(t, 0, visited.Size())
 
 	results := q.Pop(2)
 	require.Len(t, results, 2)
 	require.Equal(t, 2, q.Size())
-	require.Equal(t, 2, q.SizeVisited())
+	require.Equal(t, 2, visited.Size())
 
-	results = q.PopVisited(2)
+	results = visited.Pop(2)
 	require.Len(t, results, 2)
 	require.Equal(t, 2, q.Size())
-	require.Equal(t, 0, q.SizeVisited())
+	require.Equal(t, 0, visited.Size())
 }
 
 func randUpkeepResult(block *big.Int) types.UpkeepResult {

@@ -38,6 +38,25 @@ func (q *Queue[V]) Pop(n int) []V {
 	return removed
 }
 
+func (q *Queue[V]) PopF(filter func(V) bool) []V {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	removed := make([]V, 0)
+	updated := make([]V, 0)
+	for i, v := range q.data {
+		if filter(v) {
+			removed = append(removed, q.data[i])
+		} else {
+			updated = append(updated, v)
+		}
+	}
+
+	q.data = updated
+
+	return removed
+}
+
 // Size returs the size of the list for a specific key
 func (q *Queue[V]) Size() int {
 	q.mu.RLock()

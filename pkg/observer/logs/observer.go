@@ -60,14 +60,14 @@ func (o *logTriggerObserver) Process(ctx context.Context, t time.Time) {
 
 // getExecutableUpkeeps returns a list of upkeeps to execute at the moment and the corresponding check data
 func (o *logTriggerObserver) getExecutableUpkeeps(ctx context.Context) ([]types.UpkeepKey, [][]byte, error) {
-	var upkeeps []types.UpkeepIdentifier // TODO: populate upkeeps
+	var upkeeps []types.UpkeepIdentifier // TODO: populate upkeeps to execute
 	logs, err := o.logProvider.GetLogsData(upkeeps...)
 	if err != nil {
 		return nil, nil, err
 	}
 	var upkeepKeys []types.UpkeepKey
 	var checkData [][]byte
-	// TODO: complete
+	// TODO: complete aggregation of keys and check data
 	for _, log := range logs {
 		checkData = append(checkData, log.Data)
 		// upkeepKeys = append(upkeepKeys, upkeepKey)
@@ -78,4 +78,18 @@ func (o *logTriggerObserver) getExecutableUpkeeps(ctx context.Context) ([]types.
 // Propose returns the results that exist in the queue at the moment
 func (o *logTriggerObserver) Propose(ctx context.Context) ([]types.UpkeepResult, error) {
 	return o.q.Pop(-1), nil
+}
+
+// Clean invokes a cleanup of visited upkeeps, it will re-push results that were not cleaned (TBD)
+func (o *logTriggerObserver) Clean(keys ...types.UpkeepKey) {
+	keysMap := make(map[types.UpkeepKey]bool)
+	for _, k := range keys {
+		keysMap[k] = true
+	}
+	_ = o.q.Visited().PopF(func(ur types.UpkeepResult) bool {
+		return keysMap[ur.Key]
+	})
+
+	leftovers := o.q.Visited().Pop(-1)
+	o.q.Push(leftovers...)
 }
