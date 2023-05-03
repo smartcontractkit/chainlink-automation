@@ -27,6 +27,19 @@ type logTriggerObserver struct {
 
 var _ observer.ObserverV2[time.Time] = &logTriggerObserver{}
 
+func NewLogTriggerObserver(
+	logger *log.Logger,
+	executer types.Executer,
+	logProvider LogProvider,
+) *logTriggerObserver {
+	return &logTriggerObserver{
+		logger:      logger,
+		executer:    executer,
+		logProvider: logProvider,
+		q:           NewUpkeepsQueue(),
+	}
+}
+
 func (o *logTriggerObserver) Process(ctx context.Context, t time.Time) {
 	upkeeps, checkData, err := o.getExecutableUpkeeps(ctx)
 	if err != nil {
