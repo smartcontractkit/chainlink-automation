@@ -235,7 +235,6 @@ func (o *PollingObserver) Stop() {
 }
 
 func (o *PollingObserver) runHeadTasks() error {
-	o.logger.Printf("RUNNING")
 	ch := o.heads.HeadTicker()
 	for {
 		select {
