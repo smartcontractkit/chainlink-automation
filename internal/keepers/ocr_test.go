@@ -16,6 +16,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 )
@@ -173,7 +174,7 @@ func TestObservation(t *testing.T) {
 			mf := new(MockedFilterer)
 
 			// mock an observer here and return the necessary values
-			o := &mockObserver{
+			mockObserver := &mockObserver{
 				ObserveFn: func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
 					return test.LatestBlock, test.SampleIDs, test.SampleErr
 				},
@@ -182,7 +183,7 @@ func TestObservation(t *testing.T) {
 				logger:      log.New(io.Discard, "", 0),
 				coordinator: mf,
 				observers: []observer.Observer{
-					o,
+					mockObserver,
 				},
 			}
 
@@ -1163,10 +1164,11 @@ func mustEncodeUpkeepObservation(o *chain.UpkeepObservation) []byte {
 }
 
 type mockObserver struct {
-	ObserveFn     func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error)
-	CheckUpkeepFn func(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error)
-	StartFn       func()
-	StopFn        func()
+	ObserveFn          func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error)
+	CheckUpkeepFn      func(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error)
+	StartFn            func()
+	StopFn             func()
+	SetSamplingRatioFn func(ratio.SampleRatio)
 }
 
 func (m *mockObserver) Observe() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
@@ -1183,6 +1185,10 @@ func (m *mockObserver) Start() {
 
 func (m *mockObserver) Stop() {
 	m.StopFn()
+}
+
+func (m *mockObserver) SetSamplingRatio(r ratio.SampleRatio) {
+	m.SetSamplingRatioFn(r)
 }
 
 type MockedFilterer struct {

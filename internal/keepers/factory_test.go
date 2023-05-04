@@ -202,9 +202,6 @@ func TestNewReportingPlugin(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		chHeads := make(chan ktypes.BlockKey, 1)
-		hs.Mock.On("HeadTicker").Return(chHeads)
-
 		p, i, err := f.NewReportingPlugin(types.ReportingPluginConfig{
 			ConfigDigest:   digest,
 			OracleID:       1,

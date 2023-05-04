@@ -162,18 +162,6 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, mercuryEnabled 
 func (s *onDemandUpkeepService) start() {
 	// TODO: if this process panics, restart it
 	go s.cacheCleaner.Run(s.cache)
-	//go func() {
-	//	ch := s.headSubscriber.HeadTicker()
-	//	for {
-	//		select {
-	//		case head := <-ch:
-	//			// run with new head
-	//			s.processLatestHead(s.ctx, head)
-	//		case <-s.ctx.Done():
-	//			return
-	//		}
-	//	}
-	//}()
 }
 
 func (s *onDemandUpkeepService) stop() {

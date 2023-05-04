@@ -56,7 +56,9 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		conf.ServiceQueueLength = c.ServiceQueueLength
 	}
 
-	c.PrefixedLogger.Printf("creating oracle with reporting factory config: %+v", conf)
+	if c.PrefixedLogger != nil {
+		c.PrefixedLogger.Printf("creating oracle with reporting factory config: %+v", conf)
+	}
 
 	// create the oracle from config values
 	keeper, err := newOracleFn(offchainreporting.OracleArgs{

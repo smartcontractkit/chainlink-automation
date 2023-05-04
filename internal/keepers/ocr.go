@@ -58,6 +58,10 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportTimestamp, _ types.Query) (types.Observation, error) {
 	lCtx := newOcrLogContext(reportTimestamp)
 
+	if len(k.observers) == 0 {
+		return nil, fmt.Errorf("empty observer list: %s", lCtx)
+	}
+
 	allIDs := make([]ktypes.UpkeepIdentifier, 0)
 	var blocks []*big.Int
 
