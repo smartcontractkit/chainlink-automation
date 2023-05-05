@@ -57,15 +57,3 @@ func (_ cryptoRandSource) Int63() int64 {
 func (_ cryptoRandSource) Seed(_ int64) {
 	panic("cryptoRandSource.Seed: Not supported")
 }
-
-type Shuffler[T any] struct {
-	Source rand.Source
-}
-
-func (s Shuffler[T]) Shuffle(a []T) []T {
-	r := rand.New(s.Source)
-	r.Shuffle(len(a), func(i, j int) {
-		a[i], a[j] = a[j], a[i]
-	})
-	return a
-}
