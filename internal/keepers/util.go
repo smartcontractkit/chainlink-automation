@@ -1,7 +1,6 @@
 package keepers
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -11,7 +10,6 @@ import (
 	rnd "math/rand"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"golang.org/x/crypto/sha3"
@@ -228,31 +226,6 @@ func lowest(values []int64) int64 {
 	return values[0]
 }
 
-type syncedArray[T any] struct {
-	data []T
-	mu   sync.RWMutex
-}
-
-func newSyncedArray[T any]() *syncedArray[T] {
-	return &syncedArray[T]{
-		data: []T{},
-	}
-}
-
-func (a *syncedArray[T]) Append(vals ...T) *syncedArray[T] {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	a.data = append(a.data, vals...)
-	return a
-}
-
-func (a *syncedArray[T]) Values() []T {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.data
-}
-
 func limitedLengthEncode(obs *chain.UpkeepObservation, limit int) ([]byte, error) {
 	if len(obs.UpkeepIdentifiers) == 0 {
 		return encode(obs)
@@ -309,37 +282,4 @@ func upkeepIdentifiersToString(ids []ktypes.UpkeepIdentifier) string {
 	}
 
 	return strings.Join(idsStr, ", ")
-}
-
-func createBatches[T any](b []T, size int) (batches [][]T) {
-	for i := 0; i < len(b); i += size {
-		j := i + size
-		if j > len(b) {
-			j = len(b)
-		}
-		batches = append(batches, b[i:j])
-	}
-	return
-}
-
-// buffer is a goroutine safe bytes.Buffer
-type buffer struct {
-	buffer bytes.Buffer
-	mutex  sync.Mutex
-}
-
-// Write appends the contents of p to the buffer, growing the buffer as needed. It returns
-// the number of bytes written.
-func (s *buffer) Write(p []byte) (n int, err error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.buffer.Write(p)
-}
-
-// String returns the contents of the unread portion of the buffer
-// as a string.  If the Buffer is a nil pointer, it returns "<nil>".
-func (s *buffer) String() string {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.buffer.String()
 }

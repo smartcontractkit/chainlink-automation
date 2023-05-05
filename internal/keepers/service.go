@@ -14,9 +14,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
-// maxWorkersBatchSize is the value of max workers batch size
-const maxWorkersBatchSize = 10
-
 var (
 	ErrTooManyErrors          = fmt.Errorf("too many errors in parallel worker process")
 	ErrSamplingNotInitialized = fmt.Errorf("sampling not initialized")
