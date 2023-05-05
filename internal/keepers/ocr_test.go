@@ -1169,6 +1169,7 @@ type mockObserver struct {
 	StartFn            func()
 	StopFn             func()
 	SetSamplingRatioFn func(ratio.SampleRatio)
+	SetMercuryLookupFn func(bool)
 }
 
 func (m *mockObserver) Observe() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
@@ -1189,6 +1190,10 @@ func (m *mockObserver) Stop() {
 
 func (m *mockObserver) SetSamplingRatio(r ratio.SampleRatio) {
 	m.SetSamplingRatioFn(r)
+}
+
+func (m *mockObserver) SetMercuryLookup(mercuryLookup bool) {
+	m.SetMercuryLookupFn(mercuryLookup)
 }
 
 type MockedFilterer struct {
