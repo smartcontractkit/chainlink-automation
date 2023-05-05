@@ -48,6 +48,7 @@ func NewExecuter(
 	}
 }
 
+// Run executes checkUpkeep for the given keys and their checkData that is used in log upkeeps scenario
 func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [][]byte) (types.UpkeepResults, error) {
 	if len(keys) == 0 {
 		return nil, nil
