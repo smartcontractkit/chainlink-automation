@@ -40,6 +40,8 @@ func NewLogTriggerObserver(
 	}
 }
 
+// Process will execute upkeeps and push it into the q.
+// this function is called from a background goroutine
 func (o *logTriggerObserver) Process(ctx context.Context, t time.Time) {
 	upkeeps, checkData, err := o.getExecutableUpkeeps(ctx)
 	if err != nil {
@@ -55,6 +57,7 @@ func (o *logTriggerObserver) Process(ctx context.Context, t time.Time) {
 		o.logger.Printf("failed to execute upkeeps: %s", err.Error())
 		return
 	}
+	o.logger.Printf("%d upkeeps executed successfully out of %d", len(results), len(upkeeps))
 	o.q.Push(results...)
 }
 
@@ -80,16 +83,14 @@ func (o *logTriggerObserver) Propose(ctx context.Context) ([]types.UpkeepResult,
 	return o.q.Pop(-1), nil
 }
 
-// Clean invokes a cleanup of visited upkeeps, it will re-push results that were not cleaned (TBD)
+// Clean cleans results by upkeep key
+// TBD: this might remove multiple results of the same upkeep
 func (o *logTriggerObserver) Clean(keys ...types.UpkeepKey) {
-	keysMap := make(map[types.UpkeepKey]bool)
+	keysMap := make(map[string]bool)
 	for _, k := range keys {
-		keysMap[k] = true
+		keysMap[k.String()] = true
 	}
-	_ = o.q.Visited().PopF(func(ur types.UpkeepResult) bool {
-		return keysMap[ur.Key]
+	o.q.Clean(func(ur types.UpkeepResult) bool {
+		return keysMap[ur.Key.String()]
 	})
-
-	leftovers := o.q.Visited().Pop(-1)
-	o.q.Push(leftovers...)
 }

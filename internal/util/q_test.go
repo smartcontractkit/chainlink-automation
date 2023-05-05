@@ -14,6 +14,7 @@ func TestQueue(t *testing.T) {
 		q.Push("a", "b", "c")
 		require.Equal(t, 3, q.Size())
 	})
+
 	t.Run("Pop", func(t *testing.T) {
 		q := NewQueue[string]()
 		added := []string{"a", "b", "c"}
@@ -51,27 +52,12 @@ func TestQueue_Concurrency(t *testing.T) {
 	defer cancel()
 
 	q := NewQueue[string]()
-	in := make(chan []string)
 
 	go func() {
-		ctx, cancel := context.WithCancel(pctx)
-		defer cancel()
-
-		for {
-			select {
-			case d := <-in:
-				q.Push(d...)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	go func() {
-		in <- []string{"a", "b", "c"}
+		q.Push("a", "b", "c")
 	}()
 	go func() {
-		in <- []string{"d", "e", "f"}
+		q.Push("d", "e", "f")
 	}()
 
 	acc := []string{}

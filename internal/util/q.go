@@ -20,6 +20,9 @@ func NewQueue[V any]() *Queue[V] {
 
 // Push adds items to the q, it is possible to add values of multiple buckets
 func (q *Queue[V]) Push(vals ...V) {
+	if len(vals) == 0 {
+		return
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
