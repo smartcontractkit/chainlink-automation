@@ -105,6 +105,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 
 	for _, obs := range d.observers {
 		obs.SetSamplingRatio(sample)
+		obs.SetMercuryLookup(offChainCfg.MercuryLookup)
 	}
 
 	d.upkeepService = newOnDemandUpkeepService(

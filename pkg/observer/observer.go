@@ -13,4 +13,5 @@ type Observer interface {
 	Start()
 	Stop()
 	SetSamplingRatio(ratio ratio.SampleRatio)
+	SetMercuryLookup(mercuryLookup bool)
 }

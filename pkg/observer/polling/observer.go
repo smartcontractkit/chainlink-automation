@@ -146,10 +146,16 @@ type PollingObserver struct {
 	filterer            coordinator.Coordinator     // provides filtering logic for upkeep keys
 	eligibilityProvider encoder.EligibilityProvider // provides an eligibility check for upkeep keys
 	upkeepProvider      encoder.UpkeepProvider
+
+	mercuryLookup bool
 }
 
 func (o *PollingObserver) SetSamplingRatio(r ratio.SampleRatio) {
 	o.ratio = r
+}
+
+func (o *PollingObserver) SetMercuryLookup(mercuryLookup bool) {
+	o.mercuryLookup = mercuryLookup
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
@@ -201,7 +207,7 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 
 	// check upkeep at block number in key
 	// return result including performData
-	checkResults, err := o.registry.CheckUpkeep(ctx, nonCachedKeys...)
+	checkResults, err := o.registry.CheckUpkeep(ctx, o.mercuryLookup, nonCachedKeys...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
@@ -333,7 +339,7 @@ func (o *PollingObserver) wrapWorkerFunc() func(context.Context, []types.UpkeepK
 		start := time.Now()
 
 		// perform check and update cache with result
-		checkResults, err := o.registry.CheckUpkeep(ctx, keys...)
+		checkResults, err := o.registry.CheckUpkeep(ctx, o.mercuryLookup, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keys)
 		} else {
