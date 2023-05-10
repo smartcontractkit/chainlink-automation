@@ -1,7 +1,6 @@
 package ocr2keepers
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -14,7 +13,6 @@ var (
 	ErrInvalidBlockKey         = fmt.Errorf("invalid block key")
 	ErrInvalidUpkeepIdentifier = fmt.Errorf("invalid upkeep identifier")
 	ErrTooManyErrors           = fmt.Errorf("too many errors in parallel worker process")
-	unmarshalFn                = json.Unmarshal
 )
 
 type Validator interface {
@@ -37,21 +35,6 @@ type Observation struct {
 	BlockKey          BlockKey           `json:"1"`
 	UpkeepIdentifiers []UpkeepIdentifier `json:"2"`
 }
-
-type upkeepObservation Observation
-
-/*
-func (u *Observation) UnmarshalJSON(b []byte) error {
-	var upkeep upkeepObservation
-	if err := unmarshalFn(b, &upkeep); err != nil {
-		return err
-	}
-
-	*u = Observation(upkeep)
-
-	return nil
-}
-*/
 
 func (u Observation) Validate(v Validator) error {
 	if ok, err := v.ValidateBlockKey(u.BlockKey); !ok || err != nil {
