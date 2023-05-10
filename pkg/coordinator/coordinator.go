@@ -54,13 +54,13 @@ type reportCoordinator struct {
 	chStop         chan struct{}
 }
 
-func NewReportCoordinator(r types.Registry, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
-		logger:   logger,
-		registry: r,
-		logs:     logs,
-		minConfs: minConfs,
-		//idBlocks:       ,
+		logger:         logger,
+		registry:       r,
+		logs:           logs,
+		minConfs:       minConfs,
+		idBlocks:       util.NewCache[idBlocker](s),
 		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
 		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),

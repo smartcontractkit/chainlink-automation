@@ -131,6 +131,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		logger:  d.logger,
 		coordinator: coordinator.NewReportCoordinator(
 			d.registry,
+			time.Duration(20*60*1000)*time.Millisecond,
 			d.config.CacheEvictionInterval,
 			d.perfLogs,
 			offChainCfg.MinConfirmations,
