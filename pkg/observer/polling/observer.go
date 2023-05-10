@@ -69,7 +69,6 @@ func NewPollingObserver(
 	logger *log.Logger,
 	registry types.Registry,
 	keys KeyProvider,
-	ratio Ratio,
 	workers int, // maximum number of workers in worker group
 	workerQueueLength int, // size of worker queue; set to approximately the number of items expected in workload
 	maxSamplingDuration time.Duration, // maximum amount of time allowed for RPC calls per head
@@ -93,7 +92,6 @@ func NewPollingObserver(
 		keys:                keys,
 		heads:               headSubscriber,
 		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
-		ratio:               ratio,
 		stager:              &stager{},
 		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),

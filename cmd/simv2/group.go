@@ -23,7 +23,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
-	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -157,7 +156,6 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		defaultLogger,
 		ct,
 		polling.NewKeyProvider(ct),
-		new(ratio.SampleRatio),
 		10,
 		10,
 		20*time.Second,
