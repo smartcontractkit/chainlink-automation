@@ -19,15 +19,15 @@ jobs:
         go-version: 1.19
 
     - name: golangci-lint
-        ##
-        # XXX: change this to the official action once multiple --out-format args are supported.
-        # See: https://github.com/golangci/golangci-lint-action/issues/612
-        ##
-        uses: smartcontractkit/golangci-lint-action@54ab6c5f11d66a92d14c3f7cc41ea13f676644bd # feature/multiple-output-formats-backup
-        with:
-          version: v1.52.1
-          allow-extra-out-format-args: true
-          args: --out-format checkstyle:golangci-lint-report.xml
+      ##
+      # XXX: change this to the official action once multiple --out-format args are supported.
+      # See: https://github.com/golangci/golangci-lint-action/issues/612
+      ##
+      uses: smartcontractkit/golangci-lint-action@54ab6c5f11d66a92d14c3f7cc41ea13f676644bd # feature/multiple-output-formats-backup
+      with:
+        version: v1.52.1
+        allow-extra-out-format-args: true
+        args: --out-format checkstyle:golangci-lint-report.xml
 
   unit-test:
     runs-on: ubuntu-latest
