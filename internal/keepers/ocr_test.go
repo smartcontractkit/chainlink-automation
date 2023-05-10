@@ -1164,12 +1164,13 @@ func mustEncodeUpkeepObservation(o *chain.UpkeepObservation) []byte {
 }
 
 type mockObserver struct {
-	ObserveFn          func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error)
-	CheckUpkeepFn      func(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error)
-	StartFn            func()
-	StopFn             func()
-	SetSamplingRatioFn func(ratio.SampleRatio)
-	SetMercuryLookupFn func(bool)
+	ObserveFn             func() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error)
+	CheckUpkeepFn         func(ctx context.Context, keys ...ktypes.UpkeepKey) ([]ktypes.UpkeepResult, error)
+	StartFn               func()
+	StopFn                func()
+	SetSamplingRatioFn    func(ratio.SampleRatio)
+	SetMercuryLookupFn    func(bool)
+	SetSamplingDurationFn func(time.Duration)
 }
 
 func (m *mockObserver) Observe() (ktypes.BlockKey, []ktypes.UpkeepIdentifier, error) {
@@ -1194,6 +1195,10 @@ func (m *mockObserver) SetSamplingRatio(r ratio.SampleRatio) {
 
 func (m *mockObserver) SetMercuryLookup(mercuryLookup bool) {
 	m.SetMercuryLookupFn(mercuryLookup)
+}
+
+func (m *mockObserver) SetSamplingDuration(duration time.Duration) {
+	m.SetSamplingDurationFn(duration)
 }
 
 type MockedFilterer struct {

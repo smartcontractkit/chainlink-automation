@@ -158,7 +158,6 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		polling.NewKeyProvider(ct),
 		10,
 		10,
-		20*time.Second,
 		time.Minute,
 		time.Minute,
 		coordinator.NewReportCoordinator(ct, time.Minute, time.Minute, ct, 5, defaultLogger),

@@ -71,7 +71,6 @@ func NewPollingObserver(
 	keys KeyProvider,
 	workers int, // maximum number of workers in worker group
 	workerQueueLength int, // size of worker queue; set to approximately the number of items expected in workload
-	maxSamplingDuration time.Duration, // maximum amount of time allowed for RPC calls per head
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
 	filterer coordinator.Coordinator,
@@ -87,7 +86,6 @@ func NewPollingObserver(
 		logger:              logger,
 		workers:             pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		workerBatchLimit:    10, // TODO: hard coded for now
-		samplingDuration:    maxSamplingDuration,
 		registry:            registry,
 		keys:                keys,
 		heads:               headSubscriber,
@@ -154,6 +152,10 @@ func (o *PollingObserver) SetSamplingRatio(r ratio.SampleRatio) {
 
 func (o *PollingObserver) SetMercuryLookup(mercuryLookup bool) {
 	o.mercuryLookup = mercuryLookup
+}
+
+func (o *PollingObserver) SetSamplingDuration(duration time.Duration) {
+	o.samplingDuration = duration
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
