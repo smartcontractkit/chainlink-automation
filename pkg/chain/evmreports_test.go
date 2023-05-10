@@ -2,8 +2,8 @@ package chain
 
 import (
 	"bytes"
+	"crypto/rand"
 	"math/big"
-	"math/rand"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -168,8 +168,8 @@ func BenchmarkEncodeReport(b *testing.B) {
 	largeData := make([]byte, 128)
 	zeroBigInt := big.NewInt(0)
 
-	rand.Read(smallData)
-	rand.Read(largeData)
+	_, _ = rand.Read(smallData)
+	_, _ = rand.Read(largeData)
 
 	encoder := NewEVMReportEncoder()
 	tests := []struct {
