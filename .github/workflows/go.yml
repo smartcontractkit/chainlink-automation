@@ -87,12 +87,14 @@ jobs:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         with:
           fetch-depth: 0 # fetches all history for all tags and branches to provide more metadata for sonar reports
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7 # v3.0.1
       - name: Set SonarQube Report Paths
         id: sonarqube_report_paths
         shell: bash
         run: |
-          echo "sonarqube_tests_report_paths=./output.txt" >> $GITHUB_OUTPUT
-          echo "sonarqube_coverage_report_paths=./coverage.txt" >> $GITHUB_OUTPUT
+          echo "sonarqube_tests_report_paths=output.txt" >> $GITHUB_OUTPUT
+          echo "sonarqube_coverage_report_paths=coverage.txt" >> $GITHUB_OUTPUT
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@a6ba0aafc293e03de5437af7edbc97f7d3ebc91a # v1.2.0
         with:
