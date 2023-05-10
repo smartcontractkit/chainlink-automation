@@ -121,7 +121,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 	svcCtx, svcCancel := context.WithCancel(context.Background())
 	svc := &onDemandUpkeepService{
 		logger:           l,
-		ratio:            ratio.SampleRatio(0.5),
+		sampleRatio:      ratio.SampleRatio(0.5),
 		registry:         rg,
 		shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
 		cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
