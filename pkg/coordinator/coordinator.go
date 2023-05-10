@@ -75,7 +75,7 @@ func NewReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Dur
 }
 
 func (rc *reportCoordinator) InitialiseIDBlocks(s time.Duration) {
-	rc.idBlocks = util.NewCache[idBlocker](s)
+	//rc.idBlocks = util.NewCache[idBlocker](s)
 }
 
 // IsPending returns false if a key should be filtered out.
