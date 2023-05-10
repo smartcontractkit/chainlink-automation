@@ -101,7 +101,7 @@ jobs:
           args: >
             -Dsonar.go.tests.reportPaths=${{ steps.sonarqube_report_paths.outputs.sonarqube_tests_report_paths }}
             -Dsonar.go.coverage.reportPaths=${{ steps.sonarqube_report_paths.outputs.sonarqube_coverage_report_paths }}
-            -Dsonar.go.golangci-lint.reportPaths=golangci-lint-report.xml
+            -Dsonar.go.golangci-lint.reportPaths=golangci-lint-report/golangci-lint-report.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
