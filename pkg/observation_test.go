@@ -2,10 +2,11 @@ package ocr2keepers
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestObservation_UnmarshalJSON(t *testing.T) {
@@ -21,53 +22,146 @@ func TestObservation_UnmarshalJSON(t *testing.T) {
 		}, observation)
 	})
 
-	t.Run("a mismatch in the original block key string and its parsed value causes an error", func(t *testing.T) {
+	t.Run("invalid bytes unmarshal unsuccessfully", func(t *testing.T) {
 		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"06","2":["NDU2"]}`), &observation)
-		assert.Equal(t, err, ErrInvalidBlockKey)
+		err := json.Unmarshal([]byte(`{"1":"123","2":"NDU2"}`), &observation)
+		assert.NotNil(t, err)
+	})
+}
+
+func TestObservation_Validate(t *testing.T) {
+	t.Run("returns error on block key validation error", func(t *testing.T) {
+		var observation Observation
+
+		errExpected := fmt.Errorf("expected error")
+		mv := new(MockObservationValidator)
+
+		mv.On("ValidateBlockKey", mock.Anything).Return(false, errExpected)
+
+		err := observation.Validate(mv)
+
+		assert.ErrorIs(t, err, errExpected)
+
+		mv.AssertExpectations(t)
 	})
 
-	t.Run("unparsable block key results in an error", func(t *testing.T) {
+	t.Run("returns error on block key invalid without error", func(t *testing.T) {
 		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"invalid","2":["NDU2"]}`), &observation)
-		assert.Equal(t, err, ErrBlockKeyNotParsable)
+
+		mv := new(MockObservationValidator)
+
+		mv.On("ValidateBlockKey", mock.Anything).Return(false, nil)
+
+		err := observation.Validate(mv)
+
+		assert.ErrorIs(t, err, ErrInvalidBlockKey)
+
+		mv.AssertExpectations(t)
 	})
 
-	t.Run("a negative block key in an error", func(t *testing.T) {
+	t.Run("does not return error on no upkeep identifiers in list", func(t *testing.T) {
 		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"-1","2":["NDU2"]}`), &observation) // "456"
-		assert.Equal(t, err, ErrInvalidBlockKey)
+
+		mv := new(MockObservationValidator)
+
+		mv.On("ValidateBlockKey", mock.Anything).Return(true, nil)
+		// no calls to ValidateUpkeepIdentifier because none in list
+
+		err := observation.Validate(mv)
+
+		assert.NoError(t, err)
+
+		mv.AssertExpectations(t)
 	})
 
-	t.Run("an invalid upkeep identifier causes an error", func(t *testing.T) {
-		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"123","2":["aW52YWxpZA=="]}`), &observation) // "invalid"
-		assert.Equal(t, err, ErrUpkeepKeyNotParsable)
-	})
-
-	t.Run("a mismatch in the original upkeep id string and its parsed value causes an error", func(t *testing.T) {
-		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"123","2":["MDY="]}`), &observation) // "06"
-		assert.Equal(t, err, ErrInvalidUpkeepIdentifier)
-	})
-
-	t.Run("a negative upkeep ID causes an error", func(t *testing.T) {
-		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"123","2":["LTE="]}`), &observation) // "-1"
-		assert.Equal(t, err, ErrInvalidUpkeepIdentifier)
-	})
-
-	t.Run("an error in json unmarshalling results in an error", func(t *testing.T) {
-		unmarshalErr := errors.New("unmarshal error")
-		oldUnmarshalFn := unmarshalFn
-		unmarshalFn = func(data []byte, v any) error {
-			return unmarshalErr
+	t.Run("returns error on 1st upkeep identifier validation error", func(t *testing.T) {
+		observation := Observation{
+			UpkeepIdentifiers: []UpkeepIdentifier{
+				UpkeepIdentifier([]byte("123")),
+				UpkeepIdentifier([]byte("345")),
+			},
 		}
-		defer func() {
-			unmarshalFn = oldUnmarshalFn
-		}()
-		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"123","2":["NDU2"]}`), &observation)
-		assert.Equal(t, err, unmarshalErr)
+
+		mv := new(MockObservationValidator)
+
+		errExpected := fmt.Errorf("expected error")
+
+		mv.On("ValidateBlockKey", mock.Anything).Return(true, nil)
+		mv.On("ValidateUpkeepIdentifier", mock.Anything).Return(false, errExpected).Once()
+
+		err := observation.Validate(mv)
+
+		assert.ErrorIs(t, err, errExpected)
+
+		mv.AssertExpectations(t)
 	})
+
+	t.Run("returns no validation error", func(t *testing.T) {
+		observation := Observation{
+			UpkeepIdentifiers: []UpkeepIdentifier{
+				UpkeepIdentifier([]byte("123")),
+				UpkeepIdentifier([]byte("345")),
+			},
+		}
+
+		mv := new(MockObservationValidator)
+
+		mv.On("ValidateBlockKey", mock.Anything).Return(true, nil)
+		mv.On("ValidateUpkeepIdentifier", mock.Anything).Return(true, nil).Twice()
+
+		err := observation.Validate(mv)
+
+		assert.NoError(t, err)
+
+		mv.AssertExpectations(t)
+	})
+}
+
+type MockObservationValidator struct {
+	mock.Mock
+}
+
+func (_m *MockObservationValidator) ValidateUpkeepKey(key UpkeepKey) (bool, error) {
+	ret := _m.Called(key)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(bool)
+		}
+	}
+
+	return r0, ret.Error(1)
+}
+
+func (_m *MockObservationValidator) ValidateUpkeepIdentifier(id UpkeepIdentifier) (bool, error) {
+	ret := _m.Called(id)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(bool)
+		}
+	}
+
+	return r0, ret.Error(1)
+}
+
+func (_m *MockObservationValidator) ValidateBlockKey(key BlockKey) (bool, error) {
+	ret := _m.Called(key)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(bool)
+		}
+	}
+
+	return r0, ret.Error(1)
 }
