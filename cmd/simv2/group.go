@@ -160,7 +160,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		10,
 		time.Minute,
 		time.Minute,
-		coordinator.NewReportCoordinator(ct, time.Minute, time.Minute, ct, 5, defaultLogger),
+		coordinator.NewReportCoordinator(ct, time.Minute, ct, 5, defaultLogger),
 		encoder,
 		encoder,
 		ct,

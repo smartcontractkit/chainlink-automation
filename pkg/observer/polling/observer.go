@@ -158,6 +158,10 @@ func (o *PollingObserver) SetSamplingDuration(duration time.Duration) {
 	o.samplingDuration = duration
 }
 
+func (o *PollingObserver) SetPerformLockoutWindow(duration time.Duration) {
+	o.filterer.InitialiseIDBlocks(duration)
+}
+
 // Observe implements the Observer interface and provides a slice of identifiers
 // that were observed to be performable along with the block at which they were
 // observed. All ids that are pending are filtered out.

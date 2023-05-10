@@ -16,4 +16,5 @@ type Observer interface {
 	SetSamplingRatio(ratio ratio.SampleRatio)
 	SetSamplingDuration(duration time.Duration)
 	SetMercuryLookup(mercuryLookup bool)
+	SetPerformLockoutWindow(duration time.Duration)
 }

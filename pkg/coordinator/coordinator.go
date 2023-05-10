@@ -33,6 +33,7 @@ type Coordinator interface {
 	IsPending(types.UpkeepKey) bool
 	Accept(key types.UpkeepKey) error
 	IsTransmissionConfirmed(key types.UpkeepKey) bool
+	InitialiseIDBlocks(s time.Duration)
 }
 
 var (
@@ -53,13 +54,13 @@ type reportCoordinator struct {
 	chStop         chan struct{}
 }
 
-func NewReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(r types.Registry, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	c := &reportCoordinator{
-		logger:         logger,
-		registry:       r,
-		logs:           logs,
-		minConfs:       minConfs,
-		idBlocks:       util.NewCache[idBlocker](s),
+		logger:   logger,
+		registry: r,
+		logs:     logs,
+		minConfs: minConfs,
+		//idBlocks:       ,
 		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
 		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
@@ -71,6 +72,10 @@ func NewReportCoordinator(r types.Registry, s time.Duration, cacheClean time.Dur
 	c.start()
 
 	return c
+}
+
+func (rc *reportCoordinator) InitialiseIDBlocks(s time.Duration) {
+	rc.idBlocks = util.NewCache[idBlocker](s)
 }
 
 // IsPending returns false if a key should be filtered out.
