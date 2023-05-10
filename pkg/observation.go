@@ -40,6 +40,7 @@ type Observation struct {
 
 type upkeepObservation Observation
 
+/*
 func (u *Observation) UnmarshalJSON(b []byte) error {
 	var upkeep upkeepObservation
 	if err := unmarshalFn(b, &upkeep); err != nil {
@@ -50,6 +51,7 @@ func (u *Observation) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
+*/
 
 func (u Observation) Validate(v Validator) error {
 	if ok, err := v.ValidateBlockKey(u.BlockKey); !ok || err != nil {
@@ -57,7 +59,7 @@ func (u Observation) Validate(v Validator) error {
 			return err
 		}
 
-		return fmt.Errorf("block key validation error")
+		return ErrInvalidBlockKey
 	}
 
 	for _, ui := range u.UpkeepIdentifiers {
@@ -66,7 +68,7 @@ func (u Observation) Validate(v Validator) error {
 				return err
 			}
 
-			return fmt.Errorf("upkeep identifier validation error")
+			return ErrInvalidUpkeepIdentifier
 		}
 	}
 

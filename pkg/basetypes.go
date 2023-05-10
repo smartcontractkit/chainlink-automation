@@ -6,7 +6,7 @@ import (
 
 type UpkeepIdentifier []byte
 
-type BlockKey []byte
+type BlockKey string
 
 type UpkeepKey []byte
 
