@@ -2,7 +2,6 @@ package keepers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -97,18 +96,14 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 		allIDs = allIDs[:observationUpkeepsLimit]
 	}
 
-	blockKey := chain.BlockKey(blocks[0].String())
-	observation := &chain.UpkeepObservation{
-		BlockKey:          blockKey,
-		UpkeepIdentifiers: allIDs,
+	var observation *chain.UpkeepObservation
+	if len(blocks) > 0 {
+		blockKey := chain.BlockKey(blocks[0].String())
+		observation = &chain.UpkeepObservation{
+			BlockKey:          blockKey,
+			UpkeepIdentifiers: allIDs,
+		}
 	}
-
-	jsonBlob, err := json.Marshal(observation)
-	if err != nil {
-		k.logger.Printf("Unable to marshal observation : %s", err.Error())
-	}
-
-	k.logger.Printf("Compiled observation : %s", string(jsonBlob))
 
 	observationBytes, err := limitedLengthEncode(observation, maxObservationLength)
 	if err != nil {
