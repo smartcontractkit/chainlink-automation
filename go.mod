@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/ocr2keepers
 
-go 1.19
+go 1.20
 
 replace (
 	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
