@@ -21,7 +21,7 @@ type executer struct {
 
 	eligibilityProvider encoder.EligibilityProvider
 
-	workers      *pkgutil.WorkerGroup[types.UpkeepResults]
+	workers      *pkgutil.WorkerGroup[[]types.UpkeepResult]
 	cache        *pkgutil.Cache[types.UpkeepResult]
 	cacheCleaner *pkgutil.IntervalCacheCleaner[types.UpkeepResult]
 
@@ -47,7 +47,7 @@ func NewExecuter(
 
 		eligibilityProvider: eligibilityProvider,
 
-		workers:      pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueSize),
+		workers:      pkgutil.NewWorkerGroup[[]types.UpkeepResult](workers, workerQueueSize),
 		cache:        pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner: pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 
@@ -56,7 +56,7 @@ func NewExecuter(
 }
 
 // Run executes checkUpkeep for the given keys and their checkData that is used in log upkeeps scenario
-func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [][]byte) (types.UpkeepResults, error) {
+func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [][]byte) ([]types.UpkeepResult, error) {
 	if len(keys) == 0 {
 		return nil, nil
 	}
@@ -97,8 +97,8 @@ func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [
 	return results, nil
 }
 
-func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (types.UpkeepResults, error) {
-	return func(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
+func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) ([]types.UpkeepResult, error) {
+	return func(ctx context.Context, keys []types.UpkeepKey) ([]types.UpkeepResult, error) {
 		start := time.Now()
 
 		// perform check and update cache with result
@@ -122,8 +122,8 @@ func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (t
 	}
 }
 
-func (ex *executer) wrapAggregate(r *util.Results) func(types.UpkeepResults, error) {
-	return func(result types.UpkeepResults, err error) {
+func (ex *executer) wrapAggregate(r *util.Results) func([]types.UpkeepResult, error) {
+	return func(result []types.UpkeepResult, err error) {
 		if err == nil {
 			r.Successes++
 		} else {
