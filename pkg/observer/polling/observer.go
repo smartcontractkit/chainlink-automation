@@ -179,7 +179,7 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 
 	// check upkeep at block number in key
 	// return result including performData
-	checkResults, err := o.registry.CheckUpkeep(ctx, nonCachedKeys...)
+	checkResults, err := o.registry.CheckUpkeep(ctx, false, nonCachedKeys...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
@@ -317,7 +317,7 @@ func (o *PollingObserver) wrapWorkerFunc() func(context.Context, []types.UpkeepK
 		start := time.Now()
 
 		// perform check and update cache with result
-		checkResults, err := o.registry.CheckUpkeep(ctx, keys...)
+		checkResults, err := o.registry.CheckUpkeep(ctx, false, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keys)
 		} else {
