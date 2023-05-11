@@ -97,8 +97,7 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 		allIDs = allIDs[:observationUpkeepsLimit]
 	}
 
-	medianBlock := calculateMedianBlock(blocks, k.reportBlockLag)
-	blockKey := chain.BlockKey(medianBlock.String())
+	blockKey := chain.BlockKey(blocks[0].String())
 	observation := &chain.UpkeepObservation{
 		BlockKey:          blockKey,
 		UpkeepIdentifiers: allIDs,
