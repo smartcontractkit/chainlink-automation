@@ -96,14 +96,14 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 		allIDs = allIDs[:observationUpkeepsLimit]
 	}
 
-	var observation *chain.UpkeepObservation
 	var blockKey chain.BlockKey
 	if len(blocks) > 0 {
 		blockKey = chain.BlockKey(blocks[0].String())
-		observation = &chain.UpkeepObservation{
-			BlockKey:          blockKey,
-			UpkeepIdentifiers: allIDs,
-		}
+	}
+
+	observation := &chain.UpkeepObservation{
+		BlockKey:          blockKey,
+		UpkeepIdentifiers: allIDs,
 	}
 
 	observationBytes, err := limitedLengthEncode(observation, maxObservationLength)
