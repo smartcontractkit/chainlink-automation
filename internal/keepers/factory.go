@@ -107,7 +107,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		obs.SetSamplingRatio(sample)
 		obs.SetMercuryLookup(offChainCfg.MercuryLookup)
 		obs.SetSamplingDuration(time.Duration(offChainCfg.SamplingJobDuration) * time.Millisecond)
-		obs.SetPerformLockoutWindow(time.Duration(20*60*1000) * time.Millisecond)
+		obs.SetPerformLockoutWindow(time.Duration(offChainCfg.PerformLockoutWindow) * time.Millisecond)
 	}
 
 	d.upkeepService = newOnDemandUpkeepService(
@@ -131,7 +131,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		logger:  d.logger,
 		coordinator: coordinator.NewReportCoordinator(
 			d.registry,
-			time.Duration(20*60*1000)*time.Millisecond,
+			time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
 			d.config.CacheEvictionInterval,
 			d.perfLogs,
 			offChainCfg.MinConfirmations,
