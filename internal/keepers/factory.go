@@ -108,7 +108,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	d.logger.Printf("updating %d observers", len(d.observers))
 
 	for i, obs := range d.observers {
-		d.logger.Printf("updating observer %i, sample: %s, mercury lookup: %t, sample duration: %d, perform lockout: %d", i, sample, offChainCfg.MercuryLookup, offChainCfg.SamplingJobDuration, offChainCfg.PerformLockoutWindow)
+		d.logger.Printf("updating observer %d, sample: %s, mercury lookup: %t, sample duration: %d, perform lockout: %d", i, sample, offChainCfg.MercuryLookup, offChainCfg.SamplingJobDuration, offChainCfg.PerformLockoutWindow)
 
 		obs.SetSamplingRatio(sample)
 		obs.SetMercuryLookup(offChainCfg.MercuryLookup)

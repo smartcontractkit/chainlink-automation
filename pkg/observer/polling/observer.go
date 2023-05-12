@@ -323,6 +323,8 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 }
 
 func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
+	o.logger.Printf("PollingObserver.shuffleAndSliceKeysToRatio shuffler: %t, ratio: %t", o.shuffler != nil, o.ratio != nil)
+
 	keys = o.shuffler.Shuffle(keys)
 	size := o.ratio.OfInt(len(keys))
 
