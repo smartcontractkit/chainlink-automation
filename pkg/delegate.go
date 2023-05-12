@@ -78,7 +78,6 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			c.Registry,
 			c.PerformLogProvider,
 			c.ReportEncoder,
-			c.Observers,
 			c.PrefixedLogger,
 			conf,
 		),

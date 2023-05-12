@@ -77,6 +77,9 @@ func NewPollingObserver(
 	eligibilityProvider encoder.EligibilityProvider,
 	upkeepProvider encoder.UpkeepProvider,
 	headSubscriber types.HeadSubscriber,
+	sampleRatio ratio.SampleRatio,
+	mercuryLookup bool,
+	samplingDuration time.Duration,
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -90,12 +93,15 @@ func NewPollingObserver(
 		keys:                keys,
 		heads:               headSubscriber,
 		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
+		ratio:               sampleRatio,
 		stager:              &stager{},
 		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		filterer:            filterer,
 		eligibilityProvider: eligibilityProvider,
 		upkeepProvider:      upkeepProvider,
+		mercuryLookup:       mercuryLookup,
+		samplingDuration:    samplingDuration,
 	}
 
 	// make all go-routines started by this entity automatically recoverable
@@ -144,22 +150,6 @@ type PollingObserver struct {
 	upkeepProvider      encoder.UpkeepProvider
 
 	mercuryLookup bool
-}
-
-func (o *PollingObserver) SetSamplingRatio(r ratio.SampleRatio) {
-	o.ratio = r
-}
-
-func (o *PollingObserver) SetMercuryLookup(mercuryLookup bool) {
-	o.mercuryLookup = mercuryLookup
-}
-
-func (o *PollingObserver) SetSamplingDuration(duration time.Duration) {
-	o.samplingDuration = duration
-}
-
-func (o *PollingObserver) SetPerformLockoutWindow(duration time.Duration) {
-	o.filterer.InitialiseIDBlocks(duration)
 }
 
 // Observe implements the Observer interface and provides a slice of identifiers
@@ -266,7 +256,7 @@ func (o *PollingObserver) runHeadTasks() error {
 	for {
 		select {
 		case bl := <-ch:
-			o.logger.Printf("PollingObserver.runHeadTasks block received")
+			o.logger.Printf("PollingObserver.runHeadTasks block received, sampling duration: %s", o.samplingDuration)
 
 			// limit the context timeout to configured value
 			ctx, cancel := context.WithTimeout(o.ctx, o.samplingDuration)
