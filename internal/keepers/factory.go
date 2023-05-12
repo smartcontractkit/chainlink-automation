@@ -100,10 +100,16 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	}
 
 	if d.upkeepService != nil {
+		d.logger.Printf("upkeepService is not nil, stopping")
+
 		d.upkeepService.stop()
 	}
 
-	for _, obs := range d.observers {
+	d.logger.Printf("updating %d observers", len(d.observers))
+
+	for i, obs := range d.observers {
+		d.logger.Printf("updating observer %i, sample: %s, mercury lookup: %t, sample duration: %d, perform lockout: %d", i, sample, offChainCfg.MercuryLookup, offChainCfg.SamplingJobDuration, offChainCfg.PerformLockoutWindow)
+
 		obs.SetSamplingRatio(sample)
 		obs.SetMercuryLookup(offChainCfg.MercuryLookup)
 		obs.SetSamplingDuration(time.Duration(offChainCfg.SamplingJobDuration) * time.Millisecond)

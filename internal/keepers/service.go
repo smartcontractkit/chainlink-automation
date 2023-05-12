@@ -83,10 +83,15 @@ func newOnDemandUpkeepService(
 var _ upkeepService = (*onDemandUpkeepService)(nil)
 
 func (s *onDemandUpkeepService) SampleUpkeeps(_ context.Context, filters ...func(types.UpkeepKey) bool) (types.BlockKey, types.UpkeepResults, error) {
+	s.logger.Printf("onDemandUpkeepService.SampleUpkeeps called")
+
 	blockKey, results, ok := s.samplingResults.get()
 	if !ok {
+		s.logger.Printf("sampling not initialized")
 		return nil, nil, ErrSamplingNotInitialized
 	}
+
+	s.logger.Printf("onDemandUpkeepService.SampleUpkeeps sampled blockKey %s and %d results", blockKey.String(), len(results))
 
 	filteredResults := make(types.UpkeepResults, 0, len(results))
 
@@ -101,6 +106,8 @@ EachKey:
 
 		filteredResults = append(filteredResults, result)
 	}
+
+	s.logger.Printf("onDemandUpkeepService.SampleUpkeeps returning blockKey %s and %d results", blockKey.String(), len(filteredResults))
 
 	return blockKey, filteredResults, nil
 }

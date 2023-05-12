@@ -57,6 +57,8 @@ func (k *keepers) Query(_ context.Context, _ types.ReportTimestamp) (types.Query
 func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportTimestamp, _ types.Query) (types.Observation, error) {
 	lCtx := newOcrLogContext(reportTimestamp)
 
+	k.logger.Printf("observing with %d observers", len(k.observers))
+
 	if len(k.observers) == 0 {
 		return nil, fmt.Errorf("empty observer list: %s", lCtx)
 	}
@@ -64,11 +66,16 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 	allIDs := make([]ktypes.UpkeepIdentifier, 0)
 	var blocks []*big.Int
 
-	for _, observer := range k.observers {
+	for i, observer := range k.observers {
+		k.logger.Printf("Executing observer %d", i)
+
 		block, ids, err := observer.Observe()
 		if err != nil {
+			k.logger.Printf("Observe errored with: %s", err.Error())
 			return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 		}
+
+		k.logger.Printf("Observe got block %s and %d ids", block.String(), len(ids))
 
 		if block == nil {
 			k.logger.Printf("observed %d upkeep IDs with nil block", len(allIDs))
@@ -77,7 +84,9 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 
 			if bigInt, ok := block.BigInt(); ok {
 				blocks = append(blocks, bigInt)
+				k.logger.Printf("appended block %s", block.String())
 			} else {
+				k.logger.Printf("%w: failed to parse block key for observation: %s", err, lCtx)
 				return nil, fmt.Errorf("%w: failed to parse block key for observation: %s", err, lCtx)
 			}
 		}

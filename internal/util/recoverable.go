@@ -97,7 +97,7 @@ func (m *RecoverableService) run() {
 
 		err := s.Do()
 
-		if l != nil {
+		if l != nil && err != nil {
 			l.Println(err)
 		}
 
