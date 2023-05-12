@@ -75,8 +75,6 @@ func (k *keepers) Observation(ctx context.Context, reportTimestamp types.ReportT
 			return nil, fmt.Errorf("%w: failed to sample upkeeps for observation: %s", err, lCtx)
 		}
 
-		k.logger.Printf("Observe got block %s and %d ids", block.String(), len(ids))
-
 		if block == nil {
 			k.logger.Printf("observed %d upkeep IDs with nil block", len(allIDs))
 		} else {
