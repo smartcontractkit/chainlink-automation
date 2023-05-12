@@ -20,7 +20,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain/client"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -238,9 +237,7 @@ func makePlugin(address common.Address, controller *OCRController, logger *log.L
 		ServiceQueueLength:    1000,
 	}
 
-	var observers []observer.Observer
-
-	factory := keepers.NewReportingPluginFactory(client, reg, pLogs, chain.NewEVMReportEncoder(), observers, logger, config)
+	factory := keepers.NewReportingPluginFactory(client, reg, pLogs, chain.NewEVMReportEncoder(), logger, config)
 	plugin, info, err := factory.NewReportingPlugin(types.ReportingPluginConfig{
 		ConfigDigest:   [32]byte{},
 		OracleID:       commontypes.OracleID(i),
