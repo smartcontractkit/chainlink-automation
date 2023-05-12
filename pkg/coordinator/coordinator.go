@@ -33,7 +33,6 @@ type Coordinator interface {
 	IsPending(types.UpkeepKey) bool
 	Accept(key types.UpkeepKey) error
 	IsTransmissionConfirmed(key types.UpkeepKey) bool
-	InitialiseIDBlocks(s time.Duration)
 }
 
 var (
@@ -84,10 +83,6 @@ func NewReportCoordinator(r types.Registry, lockoutWindow, cacheClean time.Durat
 	c.start()
 
 	return c
-}
-
-func (rc *reportCoordinator) InitialiseIDBlocks(s time.Duration) {
-	rc.idBlocks = util.NewCache[idBlocker](s)
 }
 
 // IsPending returns false if a key should be filtered out.

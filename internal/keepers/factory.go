@@ -8,8 +8,10 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 
+	v1 "github.com/smartcontractkit/ocr2keepers/encoder/v1"
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -45,7 +47,6 @@ func NewReportingPluginFactory(
 	registry ktypes.Registry,
 	perfLogs ktypes.PerformLogProvider,
 	encoder ktypes.ReportEncoder,
-	observers []observer.Observer,
 	logger *log.Logger,
 	config ReportingFactoryConfig,
 ) types.ReportingPluginFactory {
@@ -54,7 +55,6 @@ func NewReportingPluginFactory(
 		registry:       registry,
 		perfLogs:       perfLogs,
 		encoder:        encoder,
-		observers:      observers,
 		logger:         logger,
 		config:         config,
 	}
@@ -100,15 +100,35 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 	}
 
 	if d.upkeepService != nil {
+		d.logger.Printf("upkeepService is not nil, stopping")
+
 		d.upkeepService.stop()
 	}
 
-	for _, obs := range d.observers {
-		obs.SetSamplingRatio(sample)
-		obs.SetMercuryLookup(offChainCfg.MercuryLookup)
-		obs.SetSamplingDuration(time.Duration(offChainCfg.SamplingJobDuration) * time.Millisecond)
-		obs.SetPerformLockoutWindow(time.Duration(offChainCfg.PerformLockoutWindow) * time.Millisecond)
-	}
+	d.logger.Printf("updating %d observers", len(d.observers))
+
+	enc := v1.NewEncoder()
+
+	reportCoordinator := coordinator.NewReportCoordinator(d.registry, time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond, d.config.CacheEvictionInterval, d.perfLogs, 5, d.logger)
+
+	pollingObserver := polling.NewPollingObserver(
+		d.logger,
+		d.registry,
+		polling.NewKeyProvider(d.registry),
+		d.config.MaxServiceWorkers,
+		d.config.ServiceQueueLength,
+		d.config.CacheExpiration,
+		d.config.CacheEvictionInterval,
+		reportCoordinator,
+		enc,
+		enc,
+		d.headSubscriber,
+		sample,
+		offChainCfg.MercuryLookup,
+		time.Duration(offChainCfg.SamplingJobDuration)*time.Millisecond, // sampling duration
+	)
+
+	observers := []observer.Observer{pollingObserver}
 
 	d.upkeepService = newOnDemandUpkeepService(
 		sample,
@@ -121,7 +141,7 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		d.config.MaxServiceWorkers,
 		d.config.ServiceQueueLength,
 		offChainCfg.MercuryLookup,
-		d.observers,
+		observers,
 	)
 
 	return &keepers{
@@ -142,6 +162,6 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,
 		reportBlockLag:     offChainCfg.ReportBlockLag,
 		mercuryLookup:      offChainCfg.MercuryLookup,
-		observers:          d.observers,
+		observers:          observers,
 	}, info, nil
 }

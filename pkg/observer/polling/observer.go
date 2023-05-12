@@ -77,6 +77,9 @@ func NewPollingObserver(
 	eligibilityProvider encoder.EligibilityProvider,
 	upkeepProvider encoder.UpkeepProvider,
 	headSubscriber types.HeadSubscriber,
+	sampleRatio ratio.SampleRatio,
+	mercuryLookup bool,
+	samplingDuration time.Duration,
 ) *PollingObserver {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -90,12 +93,15 @@ func NewPollingObserver(
 		keys:                keys,
 		heads:               headSubscriber,
 		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
+		ratio:               sampleRatio,
 		stager:              &stager{},
 		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 		filterer:            filterer,
 		eligibilityProvider: eligibilityProvider,
 		upkeepProvider:      upkeepProvider,
+		mercuryLookup:       mercuryLookup,
+		samplingDuration:    samplingDuration,
 	}
 
 	// make all go-routines started by this entity automatically recoverable
@@ -146,22 +152,6 @@ type PollingObserver struct {
 	mercuryLookup bool
 }
 
-func (o *PollingObserver) SetSamplingRatio(r ratio.SampleRatio) {
-	o.ratio = r
-}
-
-func (o *PollingObserver) SetMercuryLookup(mercuryLookup bool) {
-	o.mercuryLookup = mercuryLookup
-}
-
-func (o *PollingObserver) SetSamplingDuration(duration time.Duration) {
-	o.samplingDuration = duration
-}
-
-func (o *PollingObserver) SetPerformLockoutWindow(duration time.Duration) {
-	o.filterer.InitialiseIDBlocks(duration)
-}
-
 // Observe implements the Observer interface and provides a slice of identifiers
 // that were observed to be performable along with the block at which they were
 // observed. All ids that are pending are filtered out.
@@ -192,6 +182,8 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 		nonCachedKeys     = make([]types.UpkeepKey, 0, len(keys))
 	)
 
+	o.logger.Printf("PollingObserver.CheckUpkeep called with %d keys", len(keys))
+
 	for i, key := range keys {
 		// the cache is a collection of keys (block & id) that map to cached
 		// results. if the same upkeep is checked at a block that has already been
@@ -206,6 +198,8 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 
 	// All keys are cached
 	if len(nonCachedKeys) == 0 {
+		o.logger.Printf("PollingObserver.CheckUpkeep all keys are cached, returning")
+
 		return results, nil
 	}
 
@@ -213,14 +207,19 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 	// return result including performData
 	checkResults, err := o.registry.CheckUpkeep(ctx, o.mercuryLookup, nonCachedKeys...)
 	if err != nil {
+		o.logger.Printf("PollingObserver.CheckUpkeep registry.CheckUpkeep got an error: %s", err.Error())
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}
+
+	o.logger.Printf("PollingObserver.CheckUpkeep registry.CheckUpkeep success, got %d results", len(results))
 
 	// Cache results
 	for i, u := range checkResults {
 		o.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, pkgutil.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
+
+	o.logger.Printf("PollingObserver.CheckUpkeep registry.CheckUpkeep returning %d results", len(results))
 
 	return results, nil
 }
@@ -230,6 +229,8 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 func (o *PollingObserver) Start() {
 	o.startOnce.Do(func() {
 		for _, svc := range o.services {
+			o.logger.Printf("PollingObserver service started")
+
 			svc.Start()
 		}
 	})
@@ -239,6 +240,8 @@ func (o *PollingObserver) Start() {
 func (o *PollingObserver) Stop() {
 	o.stopOnce.Do(func() {
 		for _, svc := range o.services {
+			o.logger.Printf("PollingObserver service stopped")
+
 			svc.Stop()
 		}
 	})
@@ -258,6 +261,8 @@ func (o *PollingObserver) runHeadTasks() error {
 			// clean up resources by canceling the context after processing
 			cancel()
 		case <-o.ctx.Done():
+			o.logger.Printf("PollingObserver.runHeadTasks ctx done")
+
 			return o.ctx.Err()
 		}
 	}
@@ -269,29 +274,36 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 		keys []types.UpkeepKey
 		err  error
 	)
+	o.logger.Printf("PollingObserver.processLatestHead")
 
 	// Get only the active upkeeps from the key provider. This should not include
 	// any cancelled upkeeps.
 	if keys, err = o.keys.ActiveKeys(ctx, blockKey); err != nil {
+		o.logger.Printf("PollingObserver.processLatestHead ActiveKeys error: %s", err.Error())
 		return
 	}
 
 	// reduce keys to ratio size and shuffle. this can return a nil array.
 	// in that case we have no keys so return.
 	if keys = o.shuffleAndSliceKeysToRatio(keys); keys == nil {
+		o.logger.Printf("PollingObserver.processLatestHead shuffleAndSliceKeysToRatio returned nil keys")
+
 		return
 	}
 
 	o.stager.prepareBlock(blockKey)
+	o.logger.Printf("PollingObserver.processLatestHead prepared block")
 
 	// run checkupkeep on all keys. an error from this function should
 	// bubble up.
 	if err = o.parallelCheck(ctx, keys); err != nil {
+		o.logger.Printf("PollingObserver.processLatestHead parallelCheck error: %s", err.Error())
 		return
 	}
 
 	// advance the staged block/upkeep id list to the next in line
 	o.stager.advance()
+	o.logger.Printf("PollingObserver.processLatestHead advanced stager")
 }
 
 func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
@@ -299,14 +311,19 @@ func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []t
 	size := o.ratio.OfInt(len(keys))
 
 	if len(keys) == 0 || size <= 0 {
+		o.logger.Printf("PollingObserver.shuffleAndSliceKeysToRatio returning nil")
 		return nil
 	}
+
+	o.logger.Printf("PollingObserver.shuffleAndSliceKeysToRatio returning %d keys", len(keys[:size]))
 
 	return keys[:size]
 }
 
 func (o *PollingObserver) parallelCheck(ctx context.Context, keys []types.UpkeepKey) error {
 	if len(keys) == 0 {
+		o.logger.Printf("PollingObserver.parallelCheck called with 0 keys, returning")
+
 		return nil
 	}
 
