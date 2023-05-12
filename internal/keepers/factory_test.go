@@ -25,7 +25,6 @@ func TestNewReportingPluginFactory(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			nil,
 			ReportingFactoryConfig{},
 		)
 		assert.NotNil(t, f)
@@ -191,6 +190,7 @@ func TestNewReportingPlugin(t *testing.T) {
 		mp.Mock.On("StaleReportLogs", mock.Anything).
 			Return([]ktypes.StaleReportLog{}, nil).
 			Maybe()
+		hs.Mock.On("HeadTicker").Return(make(chan ktypes.BlockKey)).Maybe()
 
 		digest := [32]byte{}
 		digestStr := fmt.Sprintf("%32s", "test")
