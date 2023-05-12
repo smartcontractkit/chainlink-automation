@@ -158,21 +158,17 @@ type PollingObserver struct {
 func (o *PollingObserver) Observe() (types.BlockKey, []types.UpkeepIdentifier, error) {
 	bl, ids := o.stager.get()
 
-	o.logger.Printf("PollingObserver.Observe called, got blockKey %s and %d ids", bl.String(), len(ids))
 	filteredIDs := make([]types.UpkeepIdentifier, 0, len(ids))
 
 	for _, id := range ids {
 		key := o.upkeepProvider.MakeUpkeepKey(bl, id)
 
 		if !o.filterer.IsPending(key) {
-			o.logger.Printf("PollingObserver.Observe filtered %s, continuing...", key.String())
 			continue
 		}
 
 		filteredIDs = append(filteredIDs, id)
 	}
-
-	o.logger.Printf("PollingObserver.Observe returning blockKey %s and %d ids", bl.String(), len(filteredIDs))
 
 	return bl, filteredIDs, nil
 }
@@ -256,8 +252,6 @@ func (o *PollingObserver) runHeadTasks() error {
 	for {
 		select {
 		case bl := <-ch:
-			o.logger.Printf("PollingObserver.runHeadTasks block received, sampling duration: %s", o.samplingDuration)
-
 			// limit the context timeout to configured value
 			ctx, cancel := context.WithTimeout(o.ctx, o.samplingDuration)
 
@@ -313,16 +307,11 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey types.
 }
 
 func (o *PollingObserver) shuffleAndSliceKeysToRatio(keys []types.UpkeepKey) []types.UpkeepKey {
-	o.logger.Printf("PollingObserver.shuffleAndSliceKeysToRatio shuffler ok: %t, ratio ok: %t", o.shuffler != nil, o.ratio != nil)
-
 	keys = o.shuffler.Shuffle(keys)
 	size := o.ratio.OfInt(len(keys))
 
-	o.logger.Printf("PollingObserver.shuffleAndSliceKeysToRatio keys: %d, size: %d", len(keys), size)
-
 	if len(keys) == 0 || size <= 0 {
 		o.logger.Printf("PollingObserver.shuffleAndSliceKeysToRatio returning nil")
-
 		return nil
 	}
 
