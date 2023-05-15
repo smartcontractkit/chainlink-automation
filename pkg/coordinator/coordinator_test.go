@@ -1,13 +1,5 @@
 package coordinator
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
-)
-
 /*
 func TestReportCoordinator(t *testing.T) {
 	setup := func(t *testing.T, l *log.Logger) (*reportCoordinator, *mocks.Registry, *mocks.PerformLogProvider) {
@@ -662,8 +654,8 @@ func TestReportCoordinator(t *testing.T) {
 
 }
 
-*/
 
 func assertFilter(t *testing.T, key types.UpkeepKey, exp bool, f func(types.UpkeepKey) bool) {
 	assert.Equal(t, exp, f(key), "filter should return '%v' to indicate key should not be filtered out at block %s", exp, key)
 }
+*/
