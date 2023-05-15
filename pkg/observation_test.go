@@ -3,8 +3,12 @@ package ocr2keepers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"testing"
 
+	"github.com/smartcontractkit/libocr/commontypes"
+	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -117,6 +121,97 @@ func TestObservation_Validate(t *testing.T) {
 	})
 }
 
+func TestObservationsToUpkeepKeys(t *testing.T) {
+	obs := []Observation{
+		{BlockKey: BlockKey("123"), UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
+		{BlockKey: BlockKey("124"), UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
+		{BlockKey: BlockKey("125"), UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
+	}
+
+	attr := make([]types.AttributedObservation, len(obs))
+	for i, o := range obs {
+		b, err := json.Marshal(o)
+		if err != nil {
+			t.Logf("json marshal error: %s", err)
+			t.FailNow()
+		}
+
+		attr[i] = types.AttributedObservation{
+			Observer:    commontypes.OracleID(i),
+			Observation: types.Observation(b),
+		}
+	}
+
+	logger := log.New(io.Discard, "", 0)
+	mv := new(MockObservationValidator)
+	mc := new(MockMedianCalculator)
+	mb := new(MockBuilder)
+
+	mv.On("ValidateBlockKey", mock.AnythingOfType("BlockKey")).Return(true, nil).Times(3)
+	mv.On("ValidateUpkeepIdentifier", mock.AnythingOfType("UpkeepIdentifier")).Return(true, nil).Times(3)
+	mc.On("GetMedian", mock.Anything).Return(BlockKey("124")).Once()
+	mb.On("MakeUpkeepKey", mock.AnythingOfType("BlockKey"), mock.AnythingOfType("UpkeepIdentifier")).Return(UpkeepKey("124|1234")).Times(3)
+
+	keys, err := observationsToUpkeepKeys(
+		attr,
+		mv,
+		mc,
+		mb,
+		logger,
+	)
+
+	expected := [][]UpkeepKey{
+		{UpkeepKey("124|1234")},
+		{UpkeepKey("124|1234")},
+		{UpkeepKey("124|1234")},
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected, keys)
+}
+
+func TestObservationsToUpkeepKeys_Empty(t *testing.T) {
+	obs := []Observation{
+		{BlockKey: BlockKey("123"), UpkeepIdentifiers: []UpkeepIdentifier{}},
+		{BlockKey: BlockKey("124"), UpkeepIdentifiers: []UpkeepIdentifier{}},
+		{BlockKey: BlockKey("125"), UpkeepIdentifiers: []UpkeepIdentifier{}},
+	}
+
+	attr := make([]types.AttributedObservation, len(obs))
+	for i, o := range obs {
+		b, err := json.Marshal(o)
+		if err != nil {
+			t.Logf("json marshal error: %s", err)
+			t.FailNow()
+		}
+
+		attr[i] = types.AttributedObservation{
+			Observer:    commontypes.OracleID(i),
+			Observation: types.Observation(b),
+		}
+	}
+
+	logger := log.New(io.Discard, "", 0)
+	mv := new(MockObservationValidator)
+	mc := new(MockMedianCalculator)
+
+	mv.On("ValidateBlockKey", mock.AnythingOfType("BlockKey")).Return(true, nil).Times(3)
+	mc.On("GetMedian", mock.Anything).Return(BlockKey("124")).Once()
+
+	keys, err := observationsToUpkeepKeys(
+		attr,
+		mv,
+		mc,
+		nil,
+		logger,
+	)
+
+	expected := [][]UpkeepKey{}
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected, keys)
+}
+
 type MockObservationValidator struct {
 	mock.Mock
 }
@@ -164,4 +259,42 @@ func (_m *MockObservationValidator) ValidateBlockKey(key BlockKey) (bool, error)
 	}
 
 	return r0, ret.Error(1)
+}
+
+type MockMedianCalculator struct {
+	mock.Mock
+}
+
+func (_m *MockMedianCalculator) GetMedian(keys []BlockKey) BlockKey {
+	ret := _m.Called(keys)
+
+	var r0 BlockKey
+	if rf, ok := ret.Get(0).(func() BlockKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(BlockKey)
+		}
+	}
+
+	return r0
+}
+
+type MockBuilder struct {
+	mock.Mock
+}
+
+func (_m *MockBuilder) MakeUpkeepKey(key BlockKey, id UpkeepIdentifier) UpkeepKey {
+	ret := _m.Called(key, id)
+
+	var r0 UpkeepKey
+	if rf, ok := ret.Get(0).(func() UpkeepKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(UpkeepKey)
+		}
+	}
+
+	return r0
 }

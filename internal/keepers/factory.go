@@ -8,8 +8,6 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -30,7 +28,7 @@ type keepersReportingFactory struct {
 	encoder        ktypes.ReportEncoder
 	perfLogs       ktypes.PerformLogProvider
 	logger         *log.Logger
-	observers      []observer.Observer
+	observers      []Observer
 	config         ReportingFactoryConfig
 	upkeepService  *onDemandUpkeepService
 }
@@ -45,7 +43,7 @@ func NewReportingPluginFactory(
 	registry ktypes.Registry,
 	perfLogs ktypes.PerformLogProvider,
 	encoder ktypes.ReportEncoder,
-	observers []observer.Observer,
+	observers []Observer,
 	logger *log.Logger,
 	config ReportingFactoryConfig,
 ) types.ReportingPluginFactory {
@@ -120,14 +118,16 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		service: d.upkeepService,
 		encoder: d.encoder,
 		logger:  d.logger,
-		coordinator: coordinator.NewReportCoordinator(
-			d.registry,
-			time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
-			d.config.CacheEvictionInterval,
-			d.perfLogs,
-			offChainCfg.MinConfirmations,
-			d.logger,
-		),
+		/*
+			coordinator: coordinator.NewReportCoordinator(
+				d.registry,
+				time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
+				d.config.CacheEvictionInterval,
+				d.perfLogs,
+				offChainCfg.MinConfirmations,
+				d.logger,
+			),
+		*/
 		reportGasLimit:     offChainCfg.GasLimitPerReport,
 		upkeepGasOverhead:  offChainCfg.GasOverheadPerUpkeep,
 		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,

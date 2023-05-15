@@ -22,7 +22,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/encoding"
 )
 
 var (
@@ -89,7 +89,7 @@ func main() {
 	}
 
 	// generic report encoder for testing evm encoding/decoding
-	enc := chain.NewEVMReportEncoder()
+	enc := FullEncoder{}
 
 	// generic config digester
 	digester := evmutil.EVMOffchainConfigDigester{
@@ -99,7 +99,7 @@ func main() {
 
 	rpcC := telemetry.NewNodeRPCCollector(*outputDirectory)
 	logC := telemetry.NewNodeLogCollector(*outputDirectory)
-	ctrC := telemetry.NewContractEventCollector(*outputDirectory)
+	ctrC := telemetry.NewContractEventCollector(*outputDirectory, enc)
 
 	ngConf := NodeGroupConfig{
 		Digester:      digester,
@@ -153,4 +153,9 @@ func main() {
 
 	cancel()
 	wg.Wait()
+}
+
+type FullEncoder struct {
+	simulators.SimulatedReportEncoder
+	encoding.KeyBuilder
 }

@@ -5,6 +5,8 @@ import (
 	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 )
 
 // an upkeep key is composed of a block number and upkeep id (~40 bytes)
@@ -22,35 +24,49 @@ const MaxObservationLength = 1_000
 const MaxReportLength = 10_000
 
 type CoordinatorFactory interface {
-	NewCoordinator() (Coordinator, error)
+	NewCoordinator(config.OffchainConfig) (Coordinator, error)
 }
 
 type ConditionalObserverFactory interface {
-	NewConditionalObserver() (ConditionalObserver, error)
+	NewConditionalObserver(config.OffchainConfig, types.ReportingPluginConfig, Coordinator) (ConditionalObserver, error)
 }
 
 func NewReportingPluginFactory(
 	encoder Encoder, // Encoder should be a static implementation with no state
+	executer Executer,
 	coordinatorFactory CoordinatorFactory,
 	condObserverFactory ConditionalObserverFactory,
 	logger *log.Logger,
 ) types.ReportingPluginFactory {
-	return &pluginFactory{}
+	factory := &pluginFactory{
+		encoder:             encoder,
+		executer:            executer,
+		coordinatorFactory:  coordinatorFactory,
+		condObserverFactory: condObserverFactory,
+		logger:              logger,
+	}
+
+	return factory
 }
 
-type PluginCloser interface {
+type PluginStarterCloser interface {
+	Start()
 	Close() error
 }
 
 type pluginFactory struct {
 	encoder             Encoder
+	executer            Executer
 	coordinatorFactory  CoordinatorFactory
 	condObserverFactory ConditionalObserverFactory
 	logger              *log.Logger
 }
 
 func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
-	// TODO: decode off-chain config
+	offChainCfg, err := config.DecodeOffchainConfig(c.OffchainConfig)
+	if err != nil {
+		return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
+	}
 
 	info := types.ReportingPluginInfo{
 		Name: fmt.Sprintf("Oracle %d: Keepers Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
@@ -68,14 +84,12 @@ func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types
 		UniqueReports: false,
 	}
 
-	// TODO: need to pass the off-chain config to the coordinator factory
-	coordinator, err := f.coordinatorFactory.NewCoordinator()
+	coordinator, err := f.coordinatorFactory.NewCoordinator(offChainCfg)
 	if err != nil {
 		return nil, info, err
 	}
 
-	// TODO: need to pass the off-chain config to the observer factory
-	condObserver, err := f.condObserverFactory.NewConditionalObserver()
+	condObserver, err := f.condObserverFactory.NewConditionalObserver(offChainCfg, c, coordinator)
 	if err != nil {
 		return nil, info, err
 	}
@@ -84,24 +98,21 @@ func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types
 	// interface. if so, add them to a services array so that the plugin can
 	// shut them down.
 	possibleSrvs := []interface{}{coordinator, condObserver}
-	subProcs := make([]PluginCloser, 0, len(possibleSrvs))
-	for x := 0; x < len(possibleSrvs); x++ {
-		sub, ok := possibleSrvs[x].(PluginCloser)
-		if ok {
+	subProcs := make([]PluginStarterCloser, 0, len(possibleSrvs))
+	for _, possibleSrv := range possibleSrvs {
+		if sub, ok := possibleSrv.(PluginStarterCloser); ok {
+			sub.Start()
 			subProcs = append(subProcs, sub)
 		}
 	}
 
-	// TODO: provide off-chain config to plugin
-
 	return &ocrPlugin{
-		encoder:            f.encoder,
-		coordinator:        coordinator, // coordinator is a service that should have a start / stop method
-		condObserver:       condObserver,
-		logger:             f.logger,
-		subProcs:           subProcs,
-		upkeepGasOverhead:  0, // TODO: needs to come from config
-		reportGasLimit:     0, // TODO: needs to come from config
-		maxUpkeepBatchSize: 0, // TODO: needs to come from config
+		encoder:      f.encoder,
+		executer:     f.executer,
+		coordinator:  coordinator, // coordinator is a service that should have a start / stop method
+		condObserver: condObserver,
+		logger:       f.logger,
+		subProcs:     subProcs,
+		conf:         offChainCfg,
 	}, info, nil
 }

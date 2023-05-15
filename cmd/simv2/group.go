@@ -19,7 +19,10 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/config"
+	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
+	"github.com/smartcontractkit/ocr2keepers/pkg/executer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
 )
 
 type Closable interface {
@@ -38,7 +41,7 @@ type ActiveNode struct {
 type NodeGroupConfig struct {
 	Digester      types.OffchainConfigDigester
 	Cadence       config.Blocks
-	Encoder       ktypes.ReportEncoder
+	Encoder       FullEncoder
 	Upkeeps       []simulators.SimulatedUpkeep
 	ConfigEvents  []config.ConfigEvent
 	RPCConfig     config.RPC
@@ -54,7 +57,7 @@ type NodeGroup struct {
 	network     *simulators.SimulatedNetwork
 	digester    types.OffchainConfigDigester
 	blockSrc    *blocks.BlockBroadcaster
-	encoder     ktypes.ReportEncoder
+	encoder     FullEncoder
 	transmitter *blocks.TransmitLoader
 	confLoader  *blocks.ConfigLoader
 	upkeeps     []simulators.SimulatedUpkeep
@@ -146,6 +149,31 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		cLogger)
 	db := simulators.NewSimulatedDatabase()
 
+	exec, _ := executer.NewExecuter(
+		cLogger, // TODO: pick different logger
+		ct,
+		g.encoder,
+		maxWorkers,
+		maxQueueSize,
+		pluginconfig.DefaultCacheExpiration,
+		pluginconfig.DefaultCacheClearInterval,
+	)
+
+	coordFac := &coordinator.CoordinatorFactory{
+		Logger:     cLogger, // TODO: pick different logger
+		Encoder:    g.encoder,
+		Logs:       ct,
+		CacheClean: time.Minute,
+	}
+
+	cObsFac := &polling.PollingObserverFactory{
+		Logger:   cLogger, // TODO: pick different logger
+		Source:   ct,
+		Heads:    ct,
+		Executer: exec,
+		Encoder:  g.encoder,
+	}
+
 	dConfig := ocr2keepers.DelegateConfig{
 		BinaryNetworkEndpointFactory: net,
 		V2Bootstrappers:              []commontypes.BootstrapperLocator{},
@@ -161,17 +189,17 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 			DatabaseTimeout:                    time.Second,
 			DevelopmentMode:                    "",
 		},
-		HeadSubscriber:         ct,
-		Logger:                 slogger,
-		MonitoringEndpoint:     g.monitor,
-		OffchainConfigDigester: g.digester,
-		OffchainKeyring:        offchainRing,
-		OnchainKeyring:         onchainRing,
-		Registry:               ct,
-		PerformLogProvider:     ct,
-		ReportEncoder:          g.encoder,
-		MaxServiceWorkers:      maxWorkers,
-		ServiceQueueLength:     maxQueueSize,
+		ConditionalObserverFactory: cObsFac,
+		CoordinatorFactory:         coordFac,
+		Encoder:                    g.encoder,
+		Executer:                   exec,
+		Logger:                     slogger,
+		MonitoringEndpoint:         g.monitor,
+		OffchainConfigDigester:     g.digester,
+		OffchainKeyring:            offchainRing,
+		OnchainKeyring:             onchainRing,
+		MaxServiceWorkers:          maxWorkers,
+		ServiceQueueLength:         maxQueueSize,
 	}
 
 	service, err := ocr2keepers.NewDelegate(dConfig)

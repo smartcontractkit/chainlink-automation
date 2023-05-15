@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
@@ -33,7 +32,7 @@ type onDemandUpkeepService struct {
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
 	workers          *util.WorkerGroup[types.UpkeepResults]
-	observers        []observer.Observer
+	observers        []Observer
 	ctx              context.Context
 	cancel           context.CancelFunc
 }
@@ -53,7 +52,7 @@ func newOnDemandUpkeepService(
 	cacheClean time.Duration,
 	workers int,
 	workerQueueLength int,
-	observers []observer.Observer,
+	observers []Observer,
 ) *onDemandUpkeepService {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &onDemandUpkeepService{

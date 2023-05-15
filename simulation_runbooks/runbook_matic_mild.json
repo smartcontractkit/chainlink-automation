@@ -13,7 +13,7 @@
         "genesisBlock": 128943862,
         "blockCadence": "3s",
         "blockCadenceJitter": "200ms",
-        "durationInBlocks": 100,
+        "durationInBlocks": 10,
         "endPadding": 20
     },
     "configEvents": [

@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
 )
@@ -181,7 +180,7 @@ func TestObservation(t *testing.T) {
 			plugin := &keepers{
 				logger:      log.New(io.Discard, "", 0),
 				coordinator: mf,
-				observers: []observer.Observer{
+				observers: []Observer{
 					o,
 				},
 			}

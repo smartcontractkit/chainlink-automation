@@ -49,6 +49,7 @@ func (m *RecoverableService) Start() {
 	}
 
 	go m.serviceStart()
+	m.run()
 	m.running = true
 }
 
