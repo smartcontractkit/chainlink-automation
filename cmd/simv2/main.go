@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	simulationFile  = flag.StringP("simulation-file", "f", "runbook.json", "file path to read simulation config from")
+	simulationFile  = flag.StringP("simulation-file", "f", "./runbook.json", "file path to read simulation config from")
 	outputDirectory = flag.StringP("output-directory", "o", "./runbook_logs", "directory path to output log files")
 	simulate        = flag.Bool("simulate", false, "run simulation")
 	displayCharts   = flag.Bool("charts", false, "create and serve charts")
