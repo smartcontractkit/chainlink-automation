@@ -3,6 +3,9 @@ package ocr2keepers
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
 
@@ -86,6 +89,8 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to create new OCR oracle", err)
 	}
+
+	log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 
 	return &Delegate{keeper: keeper}, nil
 }
