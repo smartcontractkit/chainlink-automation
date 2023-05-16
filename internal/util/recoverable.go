@@ -63,6 +63,7 @@ func (m *RecoverableService) Stop() {
 
 	m.service.Stop()
 	m.cancel()
+	close(m.stopped)
 	m.running = false
 }
 
@@ -91,7 +92,10 @@ func (m *RecoverableService) run() {
 					l.Println(string(debug.Stack()))
 				}
 
-				chStop <- errServiceStopped
+				select {
+				case chStop <- errServiceStopped:
+				default:
+				}
 			}
 		}()
 
@@ -101,6 +105,9 @@ func (m *RecoverableService) run() {
 			l.Println(err)
 		}
 
-		chStop <- err
+		select {
+		case chStop <- err:
+		default:
+		}
 	}(m.service, m.log, m.stopped, m.ctx)
 }
