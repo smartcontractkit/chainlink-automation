@@ -123,6 +123,7 @@ func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T], group int) erro
 		Item:  w,
 	}
 
+	wg.mu.Lock()
 	if _, ok := wg.resultData[group]; !ok {
 		wg.resultData[group] = make([]WorkItemResult[T], 0)
 	}
@@ -130,6 +131,7 @@ func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T], group int) erro
 	if _, ok := wg.resultNotify[group]; !ok {
 		wg.resultNotify[group] = make(chan struct{})
 	}
+	wg.mu.Unlock()
 
 	select {
 	case wg.input <- gi:
