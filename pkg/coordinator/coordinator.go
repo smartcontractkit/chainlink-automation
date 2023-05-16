@@ -55,15 +55,15 @@ type reportCoordinator struct {
 
 var (
 	DefaultLockoutWindow = time.Duration(20) * time.Minute
-	DefaultCacheClean    = time.Duration(30) * time.Second
+	DefaultCacheClean    = time.Duration(20) * time.Minute
 )
 
-func NewReportCoordinator(r types.Registry, lockoutWindow, cacheEvictionInterval time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(r types.Registry, lockoutWindow, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
 	if lockoutWindow < 1 {
 		lockoutWindow = DefaultLockoutWindow
 	}
-	if cacheEvictionInterval < 1 {
-		cacheEvictionInterval = DefaultCacheClean
+	if cacheClean < 1 {
+		cacheClean = DefaultCacheClean
 	}
 
 	c := &reportCoordinator{
@@ -73,8 +73,8 @@ func NewReportCoordinator(r types.Registry, lockoutWindow, cacheEvictionInterval
 		minConfs:       minConfs,
 		idBlocks:       util.NewCache[idBlocker](lockoutWindow),
 		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheEvictionInterval),
-		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheEvictionInterval),
+		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
+		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
 		chStop:         make(chan struct{}),
 	}
 
