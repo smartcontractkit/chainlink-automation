@@ -14,6 +14,7 @@ func TestQueue(t *testing.T) {
 		q.Push("a", "b", "c")
 		require.Equal(t, 3, q.Size())
 	})
+
 	t.Run("Pop", func(t *testing.T) {
 		q := NewQueue[string]()
 		added := []string{"a", "b", "c"}
@@ -25,6 +26,25 @@ func TestQueue(t *testing.T) {
 		require.Len(t, q.Pop(1), 0, "empty queue shouldn't have items")
 		require.Len(t, q.Pop(0), 0, "empty queue shouldn't have items")
 	})
+
+	t.Run("PopF", func(t *testing.T) {
+		q := NewQueue[string]()
+		added := []string{"a", "b", "c"}
+		q.Push(added...)
+
+		require.Equal(t, 3, q.Size())
+		require.Len(t, q.PopF(func(s string) bool {
+			return s == "a"
+		}), 1, "should pop a single item")
+		require.Equal(t, 2, q.Size())
+		require.Len(t, q.PopF(func(s string) bool {
+			return true
+		}), len(added)-1, "should pop the remaining items")
+		require.Equal(t, 0, q.Size())
+		require.Len(t, q.PopF(func(s string) bool {
+			return true
+		}), 0, "empty queue shouldn't have items")
+	})
 }
 
 func TestQueue_Concurrency(t *testing.T) {
@@ -32,27 +52,12 @@ func TestQueue_Concurrency(t *testing.T) {
 	defer cancel()
 
 	q := NewQueue[string]()
-	in := make(chan []string)
 
 	go func() {
-		ctx, cancel := context.WithCancel(pctx)
-		defer cancel()
-
-		for {
-			select {
-			case d := <-in:
-				q.Push(d...)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	go func() {
-		in <- []string{"a", "b", "c"}
+		q.Push("a", "b", "c")
 	}()
 	go func() {
-		in <- []string{"d", "e", "f"}
+		q.Push("d", "e", "f")
 	}()
 
 	acc := []string{}

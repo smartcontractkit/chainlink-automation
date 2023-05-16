@@ -26,9 +26,9 @@ type ObserverV2[Tick any] interface {
 	// Verify(ctx context.Context, keys ...UpkeepKey) (UpkeepResults, error)
 }
 
-// RegsiterObserver manages a pair of observer/ticker, upon each tick the observer is called
+// RegisterObservers manages a pair of observer/ticker, upon each tick the observer is called
 // with the data received from the channel.
-func RegsiterObservers[T any](
+func RegisterObservers[T any](
 	pctx context.Context,
 	cn <-chan T,
 	observers ...ObserverV2[T],

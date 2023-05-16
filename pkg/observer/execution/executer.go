@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
@@ -18,7 +19,9 @@ type executer struct {
 
 	registry types.Registry
 
-	workers      *pkgutil.WorkerGroup[types.UpkeepResults]
+	eligibilityProvider encoder.EligibilityProvider
+
+	workers      *pkgutil.WorkerGroup[[]types.UpkeepResult]
 	cache        *pkgutil.Cache[types.UpkeepResult]
 	cacheCleaner *pkgutil.IntervalCacheCleaner[types.UpkeepResult]
 
@@ -30,6 +33,7 @@ var _ types.Executer = &executer{}
 func NewExecuter(
 	logger *log.Logger,
 	registry types.Registry,
+	eligibilityProvider encoder.EligibilityProvider,
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
 	workers int, // maximum number of workers in worker group
@@ -37,10 +41,13 @@ func NewExecuter(
 	rpcBatchLimit int,
 ) *executer {
 	return &executer{
-		logger:   logger,
+		logger: logger,
+
 		registry: registry,
 
-		workers:      pkgutil.NewWorkerGroup[types.UpkeepResults](workers, workerQueueSize),
+		eligibilityProvider: eligibilityProvider,
+
+		workers:      pkgutil.NewWorkerGroup[[]types.UpkeepResult](workers, workerQueueSize),
 		cache:        pkgutil.NewCache[types.UpkeepResult](cacheExpire),
 		cacheCleaner: pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
 
@@ -48,7 +55,8 @@ func NewExecuter(
 	}
 }
 
-func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [][]byte) (types.UpkeepResults, error) {
+// Run executes checkUpkeep for the given keys and their checkData that is used in log upkeeps scenario
+func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [][]byte) ([]types.UpkeepResult, error) {
 	if len(keys) == 0 {
 		return nil, nil
 	}
@@ -80,7 +88,7 @@ func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [
 	for _, key := range keys {
 		res, ok := ex.cache.Get(key.String())
 		if !ok {
-			// TODO: handle?
+			// TODO: handle an upkeep that was not populated in cache?
 			continue
 		}
 		results = append(results, res)
@@ -89,17 +97,12 @@ func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [
 	return results, nil
 }
 
-func (ex *executer) eligible(result types.UpkeepResult) bool {
-	// TODO
-	// return ex.eligibilityProvider.Eligible(result)
-	return true
-}
-
-func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (types.UpkeepResults, error) {
-	return func(ctx context.Context, keys []types.UpkeepKey) (types.UpkeepResults, error) {
+func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) ([]types.UpkeepResult, error) {
+	return func(ctx context.Context, keys []types.UpkeepKey) ([]types.UpkeepResult, error) {
 		start := time.Now()
 
 		// perform check and update cache with result
+		// TODO: check data?
 		checkResults, err := ex.checkUpkeeps(ctx, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keys)
@@ -107,7 +110,7 @@ func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (t
 			ex.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
 
 			for _, result := range checkResults {
-				if ex.eligible(result) {
+				if ex.eligibilityProvider.Eligible(result) {
 					ex.logger.Printf("upkeep ready to perform for key %s", result.Key)
 				} else {
 					ex.logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
@@ -119,21 +122,10 @@ func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) (t
 	}
 }
 
-func (ex *executer) wrapAggregate(r *util.Results) func(types.UpkeepResults, error) {
-	return func(result types.UpkeepResults, err error) {
+func (ex *executer) wrapAggregate(r *util.Results) func([]types.UpkeepResult, error) {
+	return func(result []types.UpkeepResult, err error) {
 		if err == nil {
 			r.Successes++
-			// TODO: check eligibility?
-			// for _, res := range result {
-			// 	ex.cache.Set(res.Key.String(), res, pkgutil.DefaultCacheExpiration)
-			// 	// if ex.eligible(res) {
-			// 	// 	_, id, err := ex.upkeepProvider.SplitUpkeepKey(res.Key)
-			// 	// 	if err != nil {
-			// 	// 		continue
-			// 	// 	}
-			// 	// 	// ex.stager.prepareIdentifier(id) // TODO: check
-			// 	// }
-			// }
 		} else {
 			r.Err = err
 			ex.logger.Printf("error received from worker result: %s", err)
@@ -166,7 +158,7 @@ func (ex *executer) checkUpkeeps(ctx context.Context, keys ...types.UpkeepKey) (
 
 	// check upkeep at block number in key
 	// return result including performData
-	checkResults, err := ex.registry.CheckUpkeep(ctx, nonCachedKeys...)
+	checkResults, err := ex.registry.CheckUpkeep(ctx, false, nonCachedKeys...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
 	}

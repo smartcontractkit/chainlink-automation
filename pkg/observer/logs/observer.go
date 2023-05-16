@@ -40,6 +40,8 @@ func NewLogTriggerObserver(
 	}
 }
 
+// Process will execute upkeeps and push it into the q.
+// this function is called from a background goroutine
 func (o *logTriggerObserver) Process(ctx context.Context, t time.Time) {
 	upkeeps, checkData, err := o.getExecutableUpkeeps(ctx)
 	if err != nil {
@@ -55,19 +57,20 @@ func (o *logTriggerObserver) Process(ctx context.Context, t time.Time) {
 		o.logger.Printf("failed to execute upkeeps: %s", err.Error())
 		return
 	}
+	o.logger.Printf("%d upkeeps executed successfully out of %d", len(results), len(upkeeps))
 	o.q.Push(results...)
 }
 
 // getExecutableUpkeeps returns a list of upkeeps to execute at the moment and the corresponding check data
 func (o *logTriggerObserver) getExecutableUpkeeps(ctx context.Context) ([]types.UpkeepKey, [][]byte, error) {
-	var upkeeps []types.UpkeepIdentifier // TODO: populate upkeeps
+	var upkeeps []types.UpkeepIdentifier // TODO: populate upkeeps to execute
 	logs, err := o.logProvider.GetLogsData(upkeeps...)
 	if err != nil {
 		return nil, nil, err
 	}
 	var upkeepKeys []types.UpkeepKey
 	var checkData [][]byte
-	// TODO: complete
+	// TODO: complete aggregation of keys and check data
 	for _, log := range logs {
 		checkData = append(checkData, log.Data)
 		// upkeepKeys = append(upkeepKeys, upkeepKey)
@@ -78,4 +81,16 @@ func (o *logTriggerObserver) getExecutableUpkeeps(ctx context.Context) ([]types.
 // Propose returns the results that exist in the queue at the moment
 func (o *logTriggerObserver) Propose(ctx context.Context) ([]types.UpkeepResult, error) {
 	return o.q.Pop(-1), nil
+}
+
+// Clean cleans results by upkeep key
+// TBD: this might remove multiple results of the same upkeep
+func (o *logTriggerObserver) Clean(keys ...types.UpkeepKey) {
+	keysMap := make(map[string]bool)
+	for _, k := range keys {
+		keysMap[k.String()] = true
+	}
+	o.q.Clean(func(ur types.UpkeepResult) bool {
+		return keysMap[ur.Key.String()]
+	})
 }

@@ -23,7 +23,7 @@ func TestRegisterObservers(t *testing.T) {
 		require.Greater(t, o2.getCount(), int32(0))
 	})
 
-	RegsiterObservers[time.Time](ctx, tk.C, o1, o2)
+	RegisterObservers[time.Time](ctx, tk.C, o1, o2)
 }
 
 type mockObserver struct {

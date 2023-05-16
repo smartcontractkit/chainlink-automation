@@ -30,15 +30,20 @@ func (uq *LogUpkeepsQueue) Pop(n int) []types.UpkeepResult {
 	return removed
 }
 
-// Clean removes and returns the messages that were already visited in the past
-func (uq *LogUpkeepsQueue) PopVisited(n int) []types.UpkeepResult {
-	return uq.visited.Pop(n)
-}
-
+// Size returns the amount of items in the base q
 func (uq *LogUpkeepsQueue) Size() int {
 	return uq.base.Size()
 }
 
-func (uq *LogUpkeepsQueue) SizeVisited() int {
+// Visited returns the results that were already visited in the past
+func (uq *LogUpkeepsQueue) Visited() int {
 	return uq.visited.Size()
+}
+
+// Clean invokes a cleanup of visited upkeeps, it will re-push results that were not cleaned (TBD)
+func (uq *LogUpkeepsQueue) Clean(cleaner func(types.UpkeepResult) bool) {
+	_ = uq.visited.PopF(cleaner)
+
+	leftovers := uq.visited.Pop(-1)
+	uq.base.Push(leftovers...)
 }

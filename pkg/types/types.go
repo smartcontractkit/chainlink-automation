@@ -50,7 +50,7 @@ type Registry interface {
 type Executer interface {
 	// Run executes the pipeline for the given upkeeps and collects the results.
 	// checkData is changed based on trigger.
-	Run(ctx context.Context, upkeepKeys []UpkeepKey, checkData [][]byte) (UpkeepResults, error)
+	Run(ctx context.Context, upkeepKeys []UpkeepKey, checkData [][]byte) ([]UpkeepResult, error)
 }
 
 // ReportEncoder represents the report encoder behaviour
