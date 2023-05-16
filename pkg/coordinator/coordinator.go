@@ -55,7 +55,7 @@ type reportCoordinator struct {
 
 var (
 	DefaultLockoutWindow = time.Duration(20) * time.Minute
-	DefaultCacheClean    = time.Duration(20) * time.Minute
+	DefaultCacheClean    = time.Duration(30) * time.Second
 )
 
 func NewReportCoordinator(r types.Registry, lockoutWindow, cacheClean time.Duration, logs types.PerformLogProvider, minConfs int, logger *log.Logger) *reportCoordinator {
