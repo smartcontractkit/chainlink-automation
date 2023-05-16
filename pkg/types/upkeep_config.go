@@ -7,12 +7,19 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
-// UpkeepConfig is the interface for all upkeep configs
+// UpkeepConfig is the interface for all upkeep configs.
+// It is used to encode and decode the config into bytes,
+// and validate the config.
 type UpkeepConfig interface {
+	// validates the config values
 	Validate() error
+	// encodes the config into bytes
 	Encode() ([]byte, error)
+	// decodes the config from bytes
 	Decode(raw []byte) error
 }
+
+// TODO: implement ConditionalUpkeepConfig
 
 // LogUpkeepConfig holds the settings for a log upkeep
 type LogUpkeepConfig struct {
