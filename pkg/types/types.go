@@ -47,7 +47,7 @@ type Registry interface {
 // Executer provides a runtime layer for parallelized execution of upkeeps,
 // with a cache for executed/pending upkeeps.
 // It acts as a mediator between observers and registry contract / mercury lookup.
-type Executer interface {
+type UpkeepChecker interface {
 	// Run executes the pipeline for the given upkeeps and collects the results.
 	// checkData is changed based on trigger.
 	Run(ctx context.Context, upkeepKeys []UpkeepKey, checkData [][]byte) ([]UpkeepResult, error)

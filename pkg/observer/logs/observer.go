@@ -19,7 +19,7 @@ type LogProvider interface {
 type logTriggerObserver struct {
 	logger *log.Logger
 
-	executer    types.Executer
+	executer    types.UpkeepChecker
 	logProvider LogProvider
 
 	q *LogUpkeepsQueue
@@ -29,7 +29,7 @@ var _ observer.ObserverV2[time.Time] = &logTriggerObserver{}
 
 func NewLogTriggerObserver(
 	logger *log.Logger,
-	executer types.Executer,
+	executer types.UpkeepChecker,
 	logProvider LogProvider,
 ) *logTriggerObserver {
 	return &logTriggerObserver{

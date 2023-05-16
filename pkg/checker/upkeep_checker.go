@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/ocr2keepers/encoder"
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types"
@@ -14,7 +15,7 @@ import (
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
-type executer struct {
+type upkeepChecker struct {
 	logger *log.Logger
 
 	registry types.Registry
@@ -28,9 +29,9 @@ type executer struct {
 	rpcBatchLimit int
 }
 
-var _ types.Executer = &executer{}
+var _ types.UpkeepChecker = &upkeepChecker{}
 
-func NewExecuter(
+func New(
 	logger *log.Logger,
 	registry types.Registry,
 	eligibilityProvider encoder.EligibilityProvider,
@@ -39,8 +40,8 @@ func NewExecuter(
 	workers int, // maximum number of workers in worker group
 	workerQueueSize int, // size of worker queue; set to approximately the number of items expected in workload
 	rpcBatchLimit int,
-) *executer {
-	return &executer{
+) *upkeepChecker {
+	return &upkeepChecker{
 		logger: logger,
 
 		registry: registry,
@@ -56,7 +57,7 @@ func NewExecuter(
 }
 
 // Run executes checkUpkeep for the given keys and their checkData that is used in log upkeeps scenario
-func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [][]byte) ([]types.UpkeepResult, error) {
+func (uc *upkeepChecker) Run(ctx context.Context, keys []types.UpkeepKey, checkData [][]byte) ([]types.UpkeepResult, error) {
 	if len(keys) == 0 {
 		return nil, nil
 	}
@@ -65,16 +66,16 @@ func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [
 
 	pkgutil.RunJobs(
 		ctx,
-		ex.workers,
-		util.Unflatten(keys, ex.rpcBatchLimit),
-		ex.wrapWorkerFunc(),
-		ex.wrapAggregate(&wResults),
+		uc.workers,
+		util.Unflatten(keys, uc.rpcBatchLimit),
+		uc.wrapWorkerFunc(),
+		uc.wrapAggregate(&wResults),
 	)
 
 	if wResults.Total() == 0 {
-		ex.logger.Printf("no network calls were made for this sampling set")
+		uc.logger.Printf("no network calls were made for this sampling set")
 	} else {
-		ex.logger.Printf("worker call success rate: %.2f; failure rate: %.2f; total calls %d", wResults.SuccessRate(), wResults.FailureRate(), wResults.Total())
+		uc.logger.Printf("worker call success rate: %.2f; failure rate: %.2f; total calls %d", wResults.SuccessRate(), wResults.FailureRate(), wResults.Total())
 	}
 
 	// multiple network calls can result in an error while some can be successful
@@ -86,7 +87,7 @@ func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [
 
 	results := make([]types.UpkeepResult, 0)
 	for _, key := range keys {
-		res, ok := ex.cache.Get(key.String())
+		res, ok := uc.cache.Get(key.String())
 		if !ok {
 			// TODO: handle an upkeep that was not populated in cache?
 			continue
@@ -97,24 +98,21 @@ func (ex *executer) Run(ctx context.Context, keys []types.UpkeepKey, checkData [
 	return results, nil
 }
 
-func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) ([]types.UpkeepResult, error) {
+func (uc *upkeepChecker) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) ([]types.UpkeepResult, error) {
 	return func(ctx context.Context, keys []types.UpkeepKey) ([]types.UpkeepResult, error) {
 		start := time.Now()
 
-		// perform check and update cache with result
-		// TODO: check data?
-		checkResults, err := ex.checkUpkeeps(ctx, keys...)
+		// perform check and update cache with results
+		checkResults, err := uc.checkUpkeeps(ctx, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keys)
-		} else {
-			ex.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
-
-			for _, result := range checkResults {
-				if ex.eligibilityProvider.Eligible(result) {
-					ex.logger.Printf("upkeep ready to perform for key %s", result.Key)
-				} else {
-					ex.logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
-				}
+		}
+		uc.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
+		for _, result := range checkResults {
+			if uc.eligibilityProvider.Eligible(result) {
+				uc.logger.Printf("upkeep ready to perform for key %s", result.Key)
+			} else {
+				uc.logger.Printf("upkeep '%s' is not eligible with failure reason: %d", result.Key, result.FailureReason)
 			}
 		}
 
@@ -122,20 +120,20 @@ func (ex *executer) wrapWorkerFunc() func(context.Context, []types.UpkeepKey) ([
 	}
 }
 
-func (ex *executer) wrapAggregate(r *util.Results) func([]types.UpkeepResult, error) {
+func (uc *upkeepChecker) wrapAggregate(r *util.Results) func([]types.UpkeepResult, error) {
 	return func(result []types.UpkeepResult, err error) {
 		if err == nil {
 			r.Successes++
 		} else {
 			r.Err = err
-			ex.logger.Printf("error received from worker result: %s", err)
+			uc.logger.Printf("error received from worker result: %s", err)
 			r.Failures++
 		}
 	}
 }
 
 // checkUpkeeps does an upkeep check for the given keys, it utilizes a cache to avoid redundant calls.
-func (ex *executer) checkUpkeeps(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepResult, error) {
+func (uc *upkeepChecker) checkUpkeeps(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepResult, error) {
 	var (
 		results           = make([]types.UpkeepResult, len(keys))
 		nonCachedKeysIdxs = make([]int, 0, len(keys))
@@ -143,7 +141,7 @@ func (ex *executer) checkUpkeeps(ctx context.Context, keys ...types.UpkeepKey) (
 	)
 
 	for i, key := range keys {
-		if result, cached := ex.cache.Get(key.String()); cached {
+		if result, cached := uc.cache.Get(key.String()); cached {
 			results[i] = result
 		} else {
 			nonCachedKeysIdxs = append(nonCachedKeysIdxs, i)
@@ -157,16 +155,13 @@ func (ex *executer) checkUpkeeps(ctx context.Context, keys ...types.UpkeepKey) (
 	}
 
 	// check upkeep at block number in key
-	// return result including performData
-	checkResults, err := ex.registry.CheckUpkeep(ctx, false, nonCachedKeys...)
-	if err != nil {
-		return nil, fmt.Errorf("%w: service failed to check upkeep from registry", err)
-	}
+	// TODO: retry
+	checkResults, err := uc.registry.CheckUpkeep(ctx, false, nonCachedKeys...)
 
 	for i, u := range checkResults {
-		ex.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, pkgutil.DefaultCacheExpiration)
+		uc.cache.Set(keys[nonCachedKeysIdxs[i]].String(), u, pkgutil.DefaultCacheExpiration)
 		results[nonCachedKeysIdxs[i]] = u
 	}
 
-	return results, nil
+	return results, errors.Wrap(err, "failed to call registry for checking upkeeps")
 }
