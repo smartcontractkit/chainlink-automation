@@ -26,14 +26,6 @@ func TestLogTriggerUpkeepConfig_Validate(t *testing.T) {
 			err: ErrContractAddrIsMissing,
 		},
 		{
-			name: "invalid address",
-			cfg: &LogUpkeepConfig{
-				Address: "1234567890123456789012345678901234567890",
-				Topic:   "12345678901234567890123456789012",
-			},
-			err: ErrContractAddrNoPrefix,
-		},
-		{
 			name: "missing topic",
 			cfg: &LogUpkeepConfig{
 				Address: "0x1234567890123456789012345678901234567890",

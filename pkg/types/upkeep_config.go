@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/fxamacker/cbor/v2"
@@ -39,18 +40,15 @@ var _ UpkeepConfig = &LogUpkeepConfig{}
 
 var (
 	ErrContractAddrIsMissing = errors.New("missing required field: contract address")
-	ErrContractAddrNoPrefix  = errors.New("invalid contract address: not prefixed with 0x")
 	ErrTopicIsMissing        = errors.New("missing required field: topic")
 	ErrTopicPrefix           = errors.New("invalid topic: prefixed with 0x")
 )
 
 func (cfg *LogUpkeepConfig) Validate() error {
+	cfg.defaults()
+
 	if len(cfg.Address) == 0 {
 		return ErrContractAddrIsMissing
-	}
-	if strings.Index(cfg.Address, "0x") != 0 {
-		// cfg.Address = fmt.Sprintf("0x%s", cfg.Address)
-		return ErrContractAddrNoPrefix
 	}
 	if n := len(cfg.Topic); n == 0 {
 		return ErrTopicIsMissing
@@ -58,8 +56,6 @@ func (cfg *LogUpkeepConfig) Validate() error {
 	if strings.Index(cfg.Topic, "0x") == 0 {
 		return ErrTopicPrefix
 	}
-
-	// TODO: validate filters
 
 	return nil
 }
@@ -70,4 +66,20 @@ func (cfg *LogUpkeepConfig) Encode() ([]byte, error) {
 
 func (cfg *LogUpkeepConfig) Decode(raw []byte) error {
 	return cbor.Unmarshal(raw, cfg)
+}
+
+func (cfg *LogUpkeepConfig) defaults() {
+	if len(cfg.Address) > 0 && strings.Index(cfg.Address, "0x") != 0 {
+		cfg.Address = fmt.Sprintf("0x%s", cfg.Address)
+	}
+	if len(cfg.Filter1) > 0 && len(cfg.Filter1) < 32 {
+		cfg.Filter1 = pad(cfg.Filter1)
+	}
+	if len(cfg.Filter2) > 0 && len(cfg.Filter2) < 32 {
+		cfg.Filter2 = pad(cfg.Filter2)
+	}
+}
+
+func pad(s string) string {
+	return fmt.Sprintf("%032s", s)
 }
