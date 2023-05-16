@@ -107,9 +107,9 @@ func NewPollingObserver(
 	// make all go-routines started by this entity automatically recoverable
 	// on panics
 	ob.services = []Service{
-		util.NewRecoverableService(observer.NewSimpleService(ob.runHeadTasks, cancel), logger),
+		util.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: cancel}, logger),
 		// TODO: workers is not recoverable because it cannot restart yet
-		util.NewRecoverableService(observer.NewSimpleService(nil, ob.workers.Stop), logger),
+		util.NewRecoverableService(&observer.SimpleService{F: func() error { return nil }, C: func() { ob.workers.Stop() }}, logger),
 	}
 
 	// automatically stop all services if the reference is no longer reachable
