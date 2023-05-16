@@ -73,13 +73,14 @@ func (cfg *LogUpkeepConfig) defaults() {
 		cfg.Address = fmt.Sprintf("0x%s", cfg.Address)
 	}
 	if len(cfg.Filter1) > 0 && len(cfg.Filter1) < 32 {
-		cfg.Filter1 = pad(cfg.Filter1)
+		cfg.Filter1 = zeroPadding(cfg.Filter1)
 	}
 	if len(cfg.Filter2) > 0 && len(cfg.Filter2) < 32 {
-		cfg.Filter2 = pad(cfg.Filter2)
+		cfg.Filter2 = zeroPadding(cfg.Filter2)
 	}
 }
 
-func pad(s string) string {
+// padds the string with 32 0s to the left
+func zeroPadding(s string) string {
 	return fmt.Sprintf("%032s", s)
 }

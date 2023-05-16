@@ -1,6 +1,10 @@
 package types
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestLogTriggerUpkeepConfig_Validate(t *testing.T) {
 	tests := []struct {
@@ -13,9 +17,8 @@ func TestLogTriggerUpkeepConfig_Validate(t *testing.T) {
 			cfg: &LogUpkeepConfig{
 				Address: "0x1234567890123456789012345678901234567890",
 				Topic:   "12345678901234567890123456789012",
-				Filter1: "12345678901234567890123456789012",
-				Filter2: "12345678901234567890123456789012",
-				Filter3: "12345678901234567890123456789012",
+				Filter1: "123456789012345678",
+				Filter2: "123456789012345678901234",
 			},
 		},
 		{
@@ -54,6 +57,31 @@ func TestLogTriggerUpkeepConfig_Validate(t *testing.T) {
 			} else if tc.err != nil {
 				t.Errorf("expected error: %v, got: %v", tc.err, err)
 			}
+		})
+	}
+}
+
+func TestZeroPadding(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "empty",
+			in:   "",
+			want: "00000000000000000000000000000000",
+		},
+		{
+			name: "short",
+			in:   "129",
+			want: "00000000000000000000000000000129",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, zeroPadding(tc.in))
 		})
 	}
 }
