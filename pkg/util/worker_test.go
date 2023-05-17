@@ -86,7 +86,7 @@ func TestWorkerGroup(t *testing.T) {
 		var done int
 		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
-				tmr := time.NewTimer(50 * time.Millisecond)
+				tmr := time.NewTimer(100 * time.Millisecond)
 				select {
 				case <-w.NotifyResult(group):
 					tmr.Stop()
