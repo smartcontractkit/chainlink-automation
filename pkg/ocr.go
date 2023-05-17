@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 )
 
 const (
@@ -63,7 +64,7 @@ type Encoder interface {
 // Coordinator provides functions to track in-flight status of upkeeps as they
 // move through the OCR process
 type Coordinator interface {
-	IsPending(UpkeepKey) bool
+	IsPending(UpkeepKey) (bool, error)
 	Accept(key UpkeepKey) error
 	IsTransmissionConfirmed(key UpkeepKey) bool
 }
@@ -72,7 +73,11 @@ type Coordinator interface {
 // type is distinctly different from a log observer
 type ConditionalObserver interface {
 	Observe() (BlockKey, []UpkeepIdentifier, error)
-	CheckUpkeep(context.Context, ...UpkeepKey) ([]UpkeepResult, error)
+	// CheckUpkeep(context.Context, ...UpkeepKey) ([]UpkeepResult, error)
+}
+
+type Executer interface {
+	CheckUpkeep(context.Context, bool, ...UpkeepKey) ([]UpkeepResult, error)
 }
 
 type ocrPlugin struct {
@@ -80,12 +85,12 @@ type ocrPlugin struct {
 	encoder      Encoder
 	coordinator  Coordinator
 	condObserver ConditionalObserver
+	executer     Executer
 	logger       *log.Logger
-	subProcs     []PluginCloser
+	subProcs     []PluginStarterCloser
 	// configuration vars
-	upkeepGasOverhead  uint32
-	reportGasLimit     uint32
-	maxUpkeepBatchSize int
+	conf           config.OffchainConfig
+	mercuryEnabled bool
 }
 
 // Query implements the types.ReportingPlugin interface in OCR2. The query
@@ -131,6 +136,8 @@ func (p *ocrPlugin) Observation(_ context.Context, t types.ReportTimestamp, _ ty
 		BlockKey:          block,
 		UpkeepIdentifiers: allIDs,
 	}
+
+	p.logger.Printf("observation: %v", observation)
 
 	// observations can only be a limited size in bytes after encoding
 	// encode the observation and remove ids until encoded bytes is under the
@@ -192,6 +199,7 @@ func (p *ocrPlugin) Report(ctx context.Context, t types.ReportTimestamp, _ types
 		if err != nil {
 			return false, nil, fmt.Errorf("%w: failed to sort/dedupe attributed observations: %s", err, lCtx)
 		}
+
 		p.logger.Printf("Post filtering, deduping and shuffling, keys to check in report %s: %s", upkeepKeysToString(keysToCheck), lCtx)
 	}
 	// ------------- End getting keys from conditional Upkeeps ----------
@@ -210,7 +218,7 @@ func (p *ocrPlugin) Report(ctx context.Context, t types.ReportTimestamp, _ types
 	// ------------- End length check ----------
 
 	// -------------- Check Process Specific to Conditional Upkeeps ---------
-	checkedUpkeeps, err := p.condObserver.CheckUpkeep(ctx, keysToCheck...)
+	checkedUpkeeps, err := p.executer.CheckUpkeep(ctx, p.mercuryEnabled, keysToCheck...)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
 	}
@@ -249,21 +257,21 @@ func (p *ocrPlugin) Report(ctx context.Context, t types.ReportTimestamp, _ types
 			continue
 		}
 
-		upkeepMaxGas := gas + p.upkeepGasOverhead
-		if totalReportGas+upkeepMaxGas > p.reportGasLimit {
+		upkeepMaxGas := gas + p.conf.GasOverheadPerUpkeep
+		if totalReportGas+upkeepMaxGas > p.conf.GasLimitPerReport {
 			// We don't break here since there could be an upkeep with the lower
 			// gas limit so there could be a space for it in the report.
-			p.logger.Printf("skipping upkeep %s due to report limit, current capacity is %d, upkeep gas is %d with %d overhead", key, totalReportGas, gas, p.upkeepGasOverhead)
+			p.logger.Printf("skipping upkeep %s due to report limit, current capacity is %d, upkeep gas is %d with %d overhead", key, totalReportGas, gas, p.conf.GasOverheadPerUpkeep)
 			continue
 		}
 
-		p.logger.Printf("reporting %s to be performed with gas limit %d and %d overhead: %s", key, gas, p.upkeepGasOverhead, lCtx.Short())
+		p.logger.Printf("reporting %s to be performed with gas limit %d and %d overhead: %s", key, gas, p.conf.GasOverheadPerUpkeep, lCtx.Short())
 
 		toPerform = append(toPerform, result)
 		totalReportGas += upkeepMaxGas
 
 		// Don't exceed specified maxUpkeepBatchSize value in offchain config
-		if len(toPerform) >= p.maxUpkeepBatchSize {
+		if len(toPerform) >= p.conf.MaxUpkeepBatchSize {
 			break
 		}
 	}

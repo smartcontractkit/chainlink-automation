@@ -80,6 +80,7 @@ func TestWorkerGroup(t *testing.T) {
 	t.Run("All Work Done", func(t *testing.T) {
 		wg := NewWorkerGroup[bool](8, 1000)
 		ctx := context.Background()
+		group := 0
 
 		closed := make(chan struct{})
 		var done int
@@ -87,9 +88,9 @@ func TestWorkerGroup(t *testing.T) {
 			for {
 				tmr := time.NewTimer(50 * time.Millisecond)
 				select {
-				case <-w.NotifyResult():
+				case <-w.NotifyResult(group):
 					tmr.Stop()
-					for range w.Results() {
+					for range w.Results(group) {
 						done++
 					}
 					continue
@@ -103,7 +104,7 @@ func TestWorkerGroup(t *testing.T) {
 		for n := 0; n < 10; n++ {
 			err := wg.Do(ctx, func(c context.Context) (bool, error) {
 				return true, nil
-			})
+			}, group)
 			if err != nil {
 				t.FailNow()
 			}
@@ -120,6 +121,7 @@ func TestWorkerGroup(t *testing.T) {
 		// workers doesn't go below 0 causing the worker group to lock.
 		wg := NewWorkerGroup[bool](8, 1000)
 		ctx := context.Background()
+		group := 0
 
 		<-time.After(1500 * time.Millisecond)
 
@@ -129,9 +131,9 @@ func TestWorkerGroup(t *testing.T) {
 			for {
 				tmr := time.NewTimer(50 * time.Millisecond)
 				select {
-				case <-w.NotifyResult():
+				case <-w.NotifyResult(group):
 					tmr.Stop()
-					for range w.Results() {
+					for range w.Results(group) {
 						done++
 					}
 					continue
@@ -145,7 +147,7 @@ func TestWorkerGroup(t *testing.T) {
 		for n := 0; n < 10; n++ {
 			err := wg.Do(ctx, func(c context.Context) (bool, error) {
 				return true, nil
-			})
+			}, group)
 			if err != nil {
 				t.FailNow()
 			}
@@ -159,20 +161,26 @@ func TestWorkerGroup(t *testing.T) {
 	t.Run("Error on Cancel and Full Queue", func(t *testing.T) {
 		svcCtx, svcCancel := context.WithCancel(context.Background())
 		wg := &WorkerGroup[int]{
-			svcCtx:    svcCtx,
-			svcCancel: svcCancel,
-			queue:     make(chan WorkItem[int]), // unbuffered to block
-			drain:     make(chan struct{}),
+			svcCtx:           svcCtx,
+			svcCancel:        svcCancel,
+			input:            make(chan GroupedItem[int]), // unbuffered to block
+			resultData:       map[int][]WorkItemResult[int]{},
+			resultNotify:     map[int]chan struct{}{},
+			chStopInputs:     make(chan struct{}, 1),
+			chStopProcessing: make(chan struct{}, 1),
 		}
-		ctx, cancel := context.WithCancel(context.Background())
 
+		ctx, cancel := context.WithCancel(context.Background())
 		errors := make(chan error, 1)
-		go func() {
+		group := 0
+
+		go func(errs chan error, gp int) {
 			err := wg.Do(ctx, func(_ context.Context) (int, error) {
 				return 1, nil
-			})
-			errors <- err
-		}()
+			}, gp)
+
+			errs <- err
+		}(errors, group)
 
 		// wait for a short period to ensure function is in select statement
 		<-time.After(20 * time.Millisecond)
@@ -193,19 +201,25 @@ func TestWorkerGroup(t *testing.T) {
 	t.Run("Error on Stop and Full Queue", func(t *testing.T) {
 		svcCtx, svcCancel := context.WithCancel(context.Background())
 		wg := &WorkerGroup[int]{
-			svcCtx:    svcCtx,
-			svcCancel: svcCancel,
-			queue:     make(chan WorkItem[int]), // unbuffered to block
-			drain:     make(chan struct{}, 1),
+			svcCtx:           svcCtx,
+			svcCancel:        svcCancel,
+			input:            make(chan GroupedItem[int]), // unbuffered to block
+			resultData:       map[int][]WorkItemResult[int]{},
+			resultNotify:     map[int]chan struct{}{},
+			chStopInputs:     make(chan struct{}, 1),
+			chStopProcessing: make(chan struct{}, 1),
 		}
 
 		errors := make(chan error, 1)
-		go func() {
+		group := 0
+
+		go func(errs chan error, gp int) {
 			err := wg.Do(context.Background(), func(_ context.Context) (int, error) {
 				return 1, nil
-			})
-			errors <- err
-		}()
+			}, gp)
+
+			errs <- err
+		}(errors, group)
 
 		// wait for a short period to ensure function is in queue
 		<-time.After(20 * time.Millisecond)
@@ -226,21 +240,28 @@ func TestWorkerGroup(t *testing.T) {
 	t.Run("Error on Context Already Cancelled", func(t *testing.T) {
 		svcCtx, svcCancel := context.WithCancel(context.Background())
 		wg := &WorkerGroup[int]{
-			svcCtx:    svcCtx,
-			svcCancel: svcCancel,
-			queue:     make(chan WorkItem[int]), // unbuffered to block
-			drain:     make(chan struct{}),
+			svcCtx:           svcCtx,
+			svcCancel:        svcCancel,
+			input:            make(chan GroupedItem[int]), // unbuffered to block
+			resultData:       map[int][]WorkItemResult[int]{},
+			resultNotify:     map[int]chan struct{}{},
+			chStopInputs:     make(chan struct{}, 1),
+			chStopProcessing: make(chan struct{}, 1),
 		}
-		ctx, cancel := context.WithCancel(context.Background())
 
+		ctx, cancel := context.WithCancel(context.Background())
 		errors := make(chan error, 1)
+		group := 0
+
 		cancel()
-		go func() {
+
+		go func(errs chan error, gp int) {
 			err := wg.Do(ctx, func(_ context.Context) (int, error) {
 				return 1, nil
-			})
-			errors <- err
-		}()
+			}, gp)
+
+			errs <- err
+		}(errors, group)
 
 		// read errors to ensure errors are expected
 		tmr := time.NewTimer(20 * time.Millisecond)
@@ -256,8 +277,9 @@ func TestWorkerGroup(t *testing.T) {
 
 	t.Run("Stop Closes Queue and Ends Run Context", func(t *testing.T) {
 		wg := NewWorkerGroup[int](1, 1)
+		group := 0
 
-		go func() {
+		go func(gp int) {
 			err := wg.Do(context.Background(), func(ctx context.Context) (int, error) {
 				tmr := time.NewTimer(100 * time.Millisecond)
 				select {
@@ -267,10 +289,10 @@ func TestWorkerGroup(t *testing.T) {
 				case <-tmr.C:
 					return 1, nil
 				}
-			})
+			}, gp)
 
 			assert.NoError(t, err, "adding work to group should not return error")
-		}()
+		}(group)
 
 		// give some time for queue to start work
 		<-time.After(20 * time.Millisecond)
@@ -282,8 +304,8 @@ func TestWorkerGroup(t *testing.T) {
 		// may not have results, which is expected behavior
 		tmr := time.NewTimer(150 * time.Millisecond)
 		select {
-		case <-wg.NotifyResult():
-			for _, r := range wg.Results() {
+		case <-wg.NotifyResult(group):
+			for _, r := range wg.Results(group) {
 				// should have a result
 				assert.Equal(t, 0, r.Data, "data from work result should match")
 				assert.Equal(t, fmt.Errorf("error"), r.Err, "error from work result should match")
@@ -297,7 +319,7 @@ func TestWorkerGroup(t *testing.T) {
 		testAdd := func() error {
 			return wg.Do(context.Background(), func(ctx context.Context) (int, error) {
 				return 0, nil
-			})
+			}, group)
 		}
 
 		assert.ErrorIs(t, testAdd(), ErrProcessStopped, "queue should be closed")
@@ -496,8 +518,8 @@ func BenchmarkWorkerGroup(b *testing.B) {
 		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				select {
-				case <-w.NotifyResult():
-					for _, r := range w.Results() {
+				case <-w.NotifyResult(0):
+					for _, r := range w.Results(0) {
 						if r.Data {
 							count++
 						}
@@ -518,7 +540,7 @@ func BenchmarkWorkerGroup(b *testing.B) {
 				case <-c.Done():
 					return false, nil
 				}
-			})
+			}, 0)
 		}
 		b.StopTimer()
 
@@ -536,8 +558,8 @@ func BenchmarkWorkerGroup(b *testing.B) {
 		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				select {
-				case <-w.NotifyResult():
-					for _, r := range w.Results() {
+				case <-w.NotifyResult(0):
+					for _, r := range w.Results(0) {
 						if r.Data {
 							count++
 						}
@@ -558,7 +580,7 @@ func BenchmarkWorkerGroup(b *testing.B) {
 				case <-c.Done():
 					return false, nil
 				}
-			})
+			}, 0)
 		}
 		b.StopTimer()
 
@@ -576,8 +598,8 @@ func BenchmarkWorkerGroup(b *testing.B) {
 		go func(w *WorkerGroup[bool], c context.Context) {
 			for {
 				select {
-				case <-w.NotifyResult():
-					for _, r := range w.Results() {
+				case <-w.NotifyResult(0):
+					for _, r := range w.Results(0) {
 						if r.Data {
 							count++
 						}
@@ -598,7 +620,7 @@ func BenchmarkWorkerGroup(b *testing.B) {
 				case <-c.Done():
 					return false, nil
 				}
-			})
+			}, 0)
 		}
 		b.StopTimer()
 
