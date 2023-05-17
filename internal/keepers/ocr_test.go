@@ -1233,7 +1233,7 @@ func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) error {
 }
 
 func (_m *MockedFilterer) InitialiseIDBlocks(duration time.Duration) {
-	_m.Mock.Called(duration).Error(0)
+	_m.Mock.Called(duration)
 }
 
 func (_m *MockedFilterer) IsTransmissionConfirmed(key ktypes.UpkeepKey) bool {
