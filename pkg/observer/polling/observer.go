@@ -228,6 +228,7 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 // after the first is a noop.
 func (o *PollingObserver) Start() {
 	o.startOnce.Do(func() {
+		go o.cacheCleaner.Run(o.cache)
 		for _, svc := range o.services {
 			o.logger.Printf("PollingObserver service started")
 
@@ -239,6 +240,7 @@ func (o *PollingObserver) Start() {
 // Stop will stop all internal services allowing the observer to exit cleanly.
 func (o *PollingObserver) Stop() {
 	o.stopOnce.Do(func() {
+		o.cacheCleaner.Stop()
 		for _, svc := range o.services {
 			o.logger.Printf("PollingObserver service stopped")
 
