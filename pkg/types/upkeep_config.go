@@ -1,11 +1,16 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/fxamacker/cbor/v2"
+	"github.com/pkg/errors"
+)
+
+const (
+	zeroPrefix = "0x"
 )
 
 // UpkeepConfig is the interface for all upkeep configs.
@@ -27,7 +32,7 @@ type LogUpkeepConfig struct {
 	// Address is required, contract address w/ 0x prefix
 	Address string `cbor:"a"`
 	// Topic is required, 32 bytes, w/o 0x prefixed
-	Topic string `cbor:"sig"`
+	Topic string `cbor:"t"`
 	// Filter1 is optional, needs to be left-padded to 32 bytes
 	Filter1 string `cbor:"f1,omitempty"`
 	// Filter2 is optional, needs to be left-padded to 32 bytes
@@ -39,23 +44,30 @@ type LogUpkeepConfig struct {
 var _ UpkeepConfig = &LogUpkeepConfig{}
 
 var (
-	ErrContractAddrIsMissing = errors.New("missing required field: contract address")
-	ErrTopicIsMissing        = errors.New("missing required field: topic")
-	ErrTopicPrefix           = errors.New("invalid topic: prefixed with 0x")
+	errTopicPrefix = errors.New("invalid topic: prefixed with 0x")
 )
 
 func (cfg *LogUpkeepConfig) Validate() error {
 	cfg.defaults()
 
-	if len(cfg.Address) == 0 {
-		return ErrContractAddrIsMissing
+	if err := validateLength(cfg.Address, common.AddressLength+len(zeroPrefix)); err != nil {
+		return errors.Wrap(err, "invalid contract address")
 	}
-	if n := len(cfg.Topic); n == 0 {
-		return ErrTopicIsMissing
+	if err := validateLength(cfg.Topic, common.HashLength); err != nil {
+		return errors.Wrap(err, "invalid topic")
 	}
-	if strings.Index(cfg.Topic, "0x") == 0 {
-		return ErrTopicPrefix
+	if strings.HasPrefix(cfg.Topic, zeroPrefix) {
+		return errTopicPrefix
 	}
+
+	if err := validateLength(cfg.Filter1, common.HashLength); err != nil {
+		return errors.Wrap(err, "invalid filter1")
+	}
+	if err := validateLength(cfg.Filter2, common.HashLength); err != nil {
+		return errors.Wrap(err, "invalid filter2")
+	}
+
+	// TODO: filter3
 
 	return nil
 }
@@ -69,18 +81,28 @@ func (cfg *LogUpkeepConfig) Decode(raw []byte) error {
 }
 
 func (cfg *LogUpkeepConfig) defaults() {
-	if len(cfg.Address) > 0 && strings.Index(cfg.Address, "0x") != 0 {
-		cfg.Address = fmt.Sprintf("0x%s", cfg.Address)
+	if !strings.HasPrefix(cfg.Address, zeroPrefix) {
+		cfg.Address = fmt.Sprintf("%s%s", zeroPrefix, cfg.Address)
 	}
-	if len(cfg.Filter1) > 0 && len(cfg.Filter1) < 32 {
-		cfg.Filter1 = zeroPadding(cfg.Filter1)
-	}
-	if len(cfg.Filter2) > 0 && len(cfg.Filter2) < 32 {
-		cfg.Filter2 = zeroPadding(cfg.Filter2)
-	}
+	cfg.Filter1 = ensureHashLength(cfg.Filter1)
+	cfg.Filter2 = ensureHashLength(cfg.Filter2)
+
+	// TODO: filter3
 }
 
-// padds the string with 32 0s to the left
-func zeroPadding(s string) string {
-	return fmt.Sprintf("%032s", s)
+// ensureHashLength ensures the string is 32 bytes long, will pad with 0s if needed,
+// and will return the string as is if it's already 32 bytes long.
+func ensureHashLength(s string) string {
+	if len(s) < common.HashLength {
+		return fmt.Sprintf("%032s", s)
+	}
+	return s
+}
+
+// validateLength ensures the string is n bytes long
+func validateLength(s string, n int) error {
+	if len(s) != n {
+		return fmt.Errorf("expected %d bytes, got %d", n, len(s))
+	}
+	return nil
 }

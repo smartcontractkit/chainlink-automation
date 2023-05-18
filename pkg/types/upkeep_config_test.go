@@ -1,61 +1,77 @@
 package types
 
 import (
+	"crypto/rand"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLogTriggerUpkeepConfig_Validate(t *testing.T) {
+	// TODO: fix string convertion from common.Address and common.Hash
+
 	tests := []struct {
-		name string
-		cfg  *LogUpkeepConfig
-		err  error
+		name    string
+		cfg     *LogUpkeepConfig
+		errored bool
 	}{
 		{
 			name: "happy flow",
 			cfg: &LogUpkeepConfig{
-				Address: "0x1234567890123456789012345678901234567890",
-				Topic:   "12345678901234567890123456789012",
-				Filter1: "123456789012345678",
-				Filter2: "123456789012345678901234",
+				Address: string(common.BytesToAddress(randomBytes(common.AddressLength)).Bytes()),
+				Topic:   string(common.BytesToHash(randomBytes(common.HashLength)).Bytes()),
+				Filter1: string(randomBytes(common.HashLength / 2)), // left-padded to 32 bytes
+				Filter2: string(common.BytesToHash(randomBytes(common.HashLength)).Bytes()),
 			},
 		},
 		{
 			name: "missing address",
 			cfg: &LogUpkeepConfig{
-				Topic: "12345678901234567890123456789012",
+				Topic: string(common.BytesToHash(randomBytes(common.HashLength)).Bytes()),
 			},
-			err: ErrContractAddrIsMissing,
+			errored: true,
 		},
 		{
 			name: "missing topic",
 			cfg: &LogUpkeepConfig{
-				Address: "0x1234567890123456789012345678901234567890",
+				Address: string(common.BytesToAddress(randomBytes(common.AddressLength)).Bytes()),
 			},
-			err: ErrTopicIsMissing,
+			errored: true,
+		},
+		{
+			name: "invalid topic length: too short",
+			cfg: &LogUpkeepConfig{
+				Address: string(common.BytesToAddress(randomBytes(common.AddressLength)).Bytes()),
+				Topic:   string(randomBytes(common.HashLength / 2)),
+			},
+			errored: true,
+		},
+		{
+			name: "invalid topic length: too long",
+			cfg: &LogUpkeepConfig{
+				Address: string(common.BytesToAddress(randomBytes(common.AddressLength)).Bytes()),
+				Topic:   string(randomBytes(common.HashLength * 2)),
+			},
+			errored: true,
 		},
 		{
 			name: "invalid topic prefix",
 			cfg: &LogUpkeepConfig{
-				Address: "0x1234567890123456789012345678901234567890",
-				Topic:   "0x1234567890123456789012345678901234567890",
+				Address: string(common.BytesToAddress(randomBytes(common.AddressLength)).Bytes()),
+				Topic:   "0x" + string(randomBytes(common.HashLength-2)),
 			},
-			err: ErrTopicPrefix,
+			errored: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.cfg.Validate()
-			if err != nil {
-				if tc.err == nil {
-					t.Errorf("unexpected error: %v", err)
-				} else if tc.err != err {
-					t.Errorf("expected error: %v, got: %v", tc.err, err)
-				}
-			} else if tc.err != nil {
-				t.Errorf("expected error: %v, got: %v", tc.err, err)
+			if tc.errored {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -77,11 +93,22 @@ func TestZeroPadding(t *testing.T) {
 			in:   "129",
 			want: "00000000000000000000000000000129",
 		},
+		{
+			name: "long",
+			in:   "00000000000000000000000000000129111",
+			want: "00000000000000000000000000000129111",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, zeroPadding(tc.in))
+			require.Equal(t, tc.want, ensureHashLength(tc.in))
 		})
 	}
+}
+
+func randomBytes(n int) []byte {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return b
 }
