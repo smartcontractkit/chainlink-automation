@@ -50,6 +50,7 @@ func (m *RecoverableService) Start() {
 	}
 
 	go m.serviceStart()
+	m.run()
 	m.running = true
 }
 
@@ -67,7 +68,6 @@ func (m *RecoverableService) Stop() {
 }
 
 func (m *RecoverableService) serviceStart() {
-	m.run()
 	for {
 		select {
 		case err := <-m.stopped:
