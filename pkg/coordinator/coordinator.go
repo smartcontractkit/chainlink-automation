@@ -34,11 +34,13 @@ var (
 	IndefiniteBlockingKey = ocr2keepers.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
 )
 
+//go:generate mockery --name LogProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename log_provider.generated.go
 type LogProvider interface {
 	PerformLogs(context.Context) ([]ocr2keepers.PerformLog, error)
 	StaleReportLogs(context.Context) ([]ocr2keepers.StaleReportLog, error)
 }
 
+//go:generate mockery --name Encoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename encoder.generated.go
 type Encoder interface {
 	// SplitUpkeepKey ...
 	SplitUpkeepKey(ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error)
@@ -51,8 +53,8 @@ type Encoder interface {
 type reportCoordinator struct {
 	logger *log.Logger
 	// registry       types.Registry
-	logs LogProvider
-	enc  Encoder
+	logs    LogProvider
+	encoder Encoder
 
 	minConfs       int
 	idBlocks       *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
@@ -74,7 +76,7 @@ func NewReportCoordinator(
 	logs LogProvider,
 	minConfs int,
 	logger *log.Logger,
-	enc Encoder,
+	encoder Encoder,
 ) *reportCoordinator {
 	if lockoutWindow < 1 {
 		lockoutWindow = DefaultLockoutWindow
@@ -93,7 +95,7 @@ func NewReportCoordinator(
 		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
 		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
 		chStop:         make(chan struct{}),
-		enc:            enc,
+		encoder:        encoder,
 	}
 
 	// TODO: maybe remove finalizer
@@ -104,16 +106,16 @@ func NewReportCoordinator(
 
 // IsPending returns true if a key should be filtered out.
 func (rc *reportCoordinator) IsPending(key ocr2keepers.UpkeepKey) (bool, error) {
-	blockKey, id, err := rc.enc.SplitUpkeepKey(key)
+	blockKey, id, err := rc.encoder.SplitUpkeepKey(key)
 	if err != nil {
-		return true, fmt.Errorf("key parse error")
+		return true, fmt.Errorf("%w: key parse error", err)
 	}
 
 	// only apply filter if key id is registered in the cache
 	if bl, ok := rc.idBlocks.Get(string(id)); ok {
-		isAfter, err := rc.enc.After(blockKey, bl.TransmitBlockNumber)
+		isAfter, err := rc.encoder.After(blockKey, bl.TransmitBlockNumber)
 		if err != nil {
-			return true, fmt.Errorf("not after transmit number")
+			return true, fmt.Errorf("%w: not after transmit number", err)
 		}
 
 		// do not filter the key out if key block is after block in cache
@@ -124,7 +126,7 @@ func (rc *reportCoordinator) IsPending(key ocr2keepers.UpkeepKey) (bool, error) 
 }
 
 func (rc *reportCoordinator) Accept(key ocr2keepers.UpkeepKey) error {
-	blockKey, id, err := rc.enc.SplitUpkeepKey(key)
+	blockKey, id, err := rc.encoder.SplitUpkeepKey(key)
 	if err != nil {
 		return err
 	}
@@ -138,7 +140,7 @@ func (rc *reportCoordinator) Accept(key ocr2keepers.UpkeepKey) error {
 
 		// Set idBlocks with the key as checkBlockNumber and IndefiniteBlockingKey as TransmitBlockNumber
 		rc.updateIdBlock(string(id), idBlocker{
-			Encoder:             rc.enc,
+			Encoder:             rc.encoder,
 			CheckBlockNumber:    blockKey,
 			TransmitBlockNumber: IndefiniteBlockingKey,
 		})
@@ -173,7 +175,7 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		logCheckBlockKey, id, err := rc.enc.SplitUpkeepKey(l.Key)
+		logCheckBlockKey, id, err := rc.encoder.SplitUpkeepKey(l.Key)
 		if err != nil {
 			continue
 		}
@@ -187,7 +189,7 @@ func (rc *reportCoordinator) checkLogs() {
 				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
-					Encoder:             rc.enc,
+					Encoder:             rc.encoder,
 					CheckBlockNumber:    logCheckBlockKey,
 					TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
 				})
@@ -203,7 +205,7 @@ func (rc *reportCoordinator) checkLogs() {
 					rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 					rc.updateIdBlock(string(id), idBlocker{
-						Encoder:             rc.enc,
+						Encoder:             rc.encoder,
 						CheckBlockNumber:    logCheckBlockKey,
 						TransmitBlockNumber: l.TransmitBlock,
 					})
@@ -232,11 +234,11 @@ func (rc *reportCoordinator) checkLogs() {
 			continue
 		}
 
-		logCheckBlockKey, id, err := rc.enc.SplitUpkeepKey(l.Key)
+		logCheckBlockKey, id, err := rc.encoder.SplitUpkeepKey(l.Key)
 		if err != nil {
 			continue
 		}
-		nextKey, err := rc.enc.Increment(logCheckBlockKey)
+		nextKey, err := rc.encoder.Increment(logCheckBlockKey)
 		if err != nil {
 			continue
 		}
@@ -249,7 +251,7 @@ func (rc *reportCoordinator) checkLogs() {
 				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
-					Encoder:             rc.enc,
+					Encoder:             rc.encoder,
 					CheckBlockNumber:    logCheckBlockKey,
 					TransmitBlockNumber: nextKey, // Removes the id from filters after logCheckBlockKey+1
 					// We add one here as this filter is applied on RPC checkBlockNumber (which will be atleast logCheckBlockKey+1+1)
@@ -267,7 +269,7 @@ func (rc *reportCoordinator) checkLogs() {
 					rc.logger.Printf("Got a stale report log for previously accepted key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 					rc.updateIdBlock(string(id), idBlocker{
-						Encoder:             rc.enc,
+						Encoder:             rc.encoder,
 						CheckBlockNumber:    logCheckBlockKey,
 						TransmitBlockNumber: nextKey,
 					})
