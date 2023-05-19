@@ -155,7 +155,6 @@ func (o *PollingObserver) Observe() (ocr2keepers.BlockKey, []ocr2keepers.UpkeepI
 // after the first is a noop.
 func (o *PollingObserver) Start() {
 	o.startOnce.Do(func() {
-		go o.cacheCleaner.Run(o.cache)
 		for _, svc := range o.services {
 			o.logger.Printf("PollingObserver service started")
 
@@ -167,7 +166,6 @@ func (o *PollingObserver) Start() {
 // Stop will stop all internal services allowing the observer to exit cleanly.
 func (o *PollingObserver) Close() error {
 	o.stopOnce.Do(func() {
-		o.cacheCleaner.Stop()
 		for _, svc := range o.services {
 			o.logger.Printf("PollingObserver service stopped")
 
