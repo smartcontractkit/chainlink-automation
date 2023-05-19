@@ -88,7 +88,7 @@ func (o *Executer) Start() {
 	}
 }
 
-func (o *Executer) Stop() {
+func (o *Executer) Close() error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -96,6 +96,8 @@ func (o *Executer) Stop() {
 		o.cacheCleaner.Stop()
 		o.workers.Stop()
 	}
+
+	return nil
 }
 
 // parallelCheck should be satisfied by the executer
