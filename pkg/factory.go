@@ -63,6 +63,8 @@ type pluginFactory struct {
 }
 
 func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
+	f.logger.Printf("creating new reporting plugin instance")
+
 	offChainCfg, err := config.DecodeOffchainConfig(c.OffchainConfig)
 	if err != nil {
 		return nil, types.ReportingPluginInfo{}, fmt.Errorf("%w: failed to decode off chain config", err)
@@ -105,6 +107,8 @@ func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types
 			subProcs = append(subProcs, sub)
 		}
 	}
+
+	f.logger.Printf("all supporting services started")
 
 	return &ocrPlugin{
 		encoder:        f.encoder,

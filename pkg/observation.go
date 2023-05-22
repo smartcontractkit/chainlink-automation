@@ -89,7 +89,8 @@ func observationsToUpkeepKeys(
 
 		// validate the observation using the provided validator
 		if err := upkeepObservation.Validate(v); err != nil {
-			logger.Printf("unable to decode observation: %s", err.Error())
+			logger.Printf("%s", string(obs.Observation))
+			logger.Printf("failed to validate observation: %s", err.Error())
 			parseErrors++
 			continue
 		}

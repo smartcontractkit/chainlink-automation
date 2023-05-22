@@ -20,6 +20,8 @@ type UpkeepProvider interface {
 }
 
 type Encoder interface {
+	// Eligible returns whether or not the upkeep result should be performed
+	Eligible(ocr2keepers.UpkeepResult) (bool, error)
 	// MakeUpkeepKey combines a block and upkeep id into an upkeep key. This
 	// will probably go away with a more structured static upkeep type.
 	MakeUpkeepKey(ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepKey
@@ -213,7 +215,7 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey ocr2ke
 		return
 	}
 
-	o.logger.Printf("%d active upkeep ids found in registry", len(keys))
+	o.logger.Printf("%d active upkeep ids found in registry", len(ids))
 
 	keys = make([]ocr2keepers.UpkeepKey, len(ids))
 	for i, id := range ids {
@@ -240,6 +242,16 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey ocr2ke
 	}
 
 	for _, res := range results {
+		eligible, err := o.enc.Eligible(res)
+		if err != nil {
+			o.logger.Printf("error testing result eligibility: %s", err)
+			continue
+		}
+
+		if !eligible {
+			continue
+		}
+
 		key, _, err := o.enc.Detail(res)
 		if err != nil {
 			o.logger.Printf("error getting result detail: %s", err)

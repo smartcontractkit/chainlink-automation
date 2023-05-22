@@ -7,6 +7,10 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
+var (
+	ErrUnexpectedResult = fmt.Errorf("unexpected result struct")
+)
+
 type SimulatedReportEncoder struct {
 	ReportGasLimit uint64
 }
@@ -15,7 +19,7 @@ type SimulatedReportEncoder struct {
 func (re SimulatedReportEncoder) Eligible(result ocr2keepers.UpkeepResult) (bool, error) {
 	res, ok := result.(SimulatedResult)
 	if !ok {
-		return false, fmt.Errorf("parse error")
+		return false, ErrUnexpectedResult
 	}
 
 	return res.Eligible, nil
@@ -25,7 +29,7 @@ func (re SimulatedReportEncoder) Eligible(result ocr2keepers.UpkeepResult) (bool
 func (re SimulatedReportEncoder) Detail(result ocr2keepers.UpkeepResult) (ocr2keepers.UpkeepKey, uint32, error) {
 	res, ok := result.(SimulatedResult)
 	if !ok {
-		return nil, 0, fmt.Errorf("unexpected result struct")
+		return nil, 0, ErrUnexpectedResult
 	}
 
 	return res.Key, res.ExecuteGas, nil

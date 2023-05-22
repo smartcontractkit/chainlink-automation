@@ -126,12 +126,16 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	// general logger
 	var slogger *simpleLogger
 	var cLogger *log.Logger
+	var gLogger *log.Logger
+
 	if logTel != nil {
 		slogger = NewSimpleLogger(logTel.GeneralLog(net.PeerID()), Debug)
 		cLogger = log.New(logTel.ContractLog(net.PeerID()), "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+		gLogger = log.New(logTel.GeneralLog(net.PeerID()), "[general] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 	} else {
 		slogger = NewSimpleLogger(io.Discard, Critical)
 		cLogger = log.New(io.Discard, "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+		gLogger = log.New(io.Discard, "[general] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 	}
 
 	ct := simulators.NewSimulatedContract(
@@ -150,7 +154,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	db := simulators.NewSimulatedDatabase()
 
 	exec, _ := executer.NewExecuter(
-		cLogger, // TODO: pick different logger
+		gLogger,
 		ct,
 		g.encoder,
 		maxWorkers,
@@ -160,14 +164,14 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	)
 
 	coordFac := &coordinator.CoordinatorFactory{
-		Logger:     cLogger, // TODO: pick different logger
+		Logger:     gLogger,
 		Encoder:    g.encoder,
 		Logs:       ct,
 		CacheClean: time.Minute,
 	}
 
 	cObsFac := &polling.PollingObserverFactory{
-		Logger:   cLogger, // TODO: pick different logger
+		Logger:   gLogger,
 		Source:   ct,
 		Heads:    ct,
 		Executer: exec,

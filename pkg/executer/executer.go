@@ -66,7 +66,7 @@ func NewExecuter(
 		cache:            pkgutil.NewCache[ocr2keepers.UpkeepResult](cacheExpire),
 		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[ocr2keepers.UpkeepResult](cacheClean),
 		workerBatchLimit: 10,
-	}, fmt.Errorf("not implemented")
+	}, nil
 }
 
 func (o *Executer) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error) {
@@ -83,7 +83,7 @@ func (o *Executer) Start() {
 	defer o.mu.Unlock()
 
 	if o.runState == 0 {
-		o.cacheCleaner.Run(o.cache)
+		go o.cacheCleaner.Run(o.cache)
 		o.runState = 1
 	}
 }
