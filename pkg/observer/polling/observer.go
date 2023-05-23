@@ -95,8 +95,7 @@ func NewPollingObserver(
 		shuffler:            util.Shuffler[types.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
 		ratio:               sampleRatio,
 		stager:              &stager{},
-		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire),
-		cacheCleaner:        pkgutil.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
+		cache:               pkgutil.NewCache[types.UpkeepResult](cacheExpire, cacheClean),
 		filterer:            filterer,
 		eligibilityProvider: eligibilityProvider,
 		upkeepProvider:      upkeepProvider,
@@ -133,11 +132,10 @@ type PollingObserver struct {
 	ratio            Ratio         // ratio for limiting sample size
 
 	// initialized components inside a constructor
-	services     []Service
-	stager       *stager
-	workers      *pkgutil.WorkerGroup[types.UpkeepResults] // parallelizer for RPC calls
-	cache        *pkgutil.Cache[types.UpkeepResult]
-	cacheCleaner *pkgutil.IntervalCacheCleaner[types.UpkeepResult]
+	services []Service
+	stager   *stager
+	workers  *pkgutil.WorkerGroup[types.UpkeepResults] // parallelizer for RPC calls
+	cache    *pkgutil.Cache[types.UpkeepResult]
 
 	// dependency interfaces required by the polling observer
 	logger              *log.Logger
@@ -228,7 +226,6 @@ func (o *PollingObserver) CheckUpkeep(ctx context.Context, keys ...types.UpkeepK
 // after the first is a noop.
 func (o *PollingObserver) Start() {
 	o.startOnce.Do(func() {
-		go o.cacheCleaner.Run(o.cache)
 		for _, svc := range o.services {
 			o.logger.Printf("PollingObserver service started")
 
@@ -240,7 +237,7 @@ func (o *PollingObserver) Start() {
 // Stop will stop all internal services allowing the observer to exit cleanly.
 func (o *PollingObserver) Stop() {
 	o.stopOnce.Do(func() {
-		o.cacheCleaner.Stop()
+		o.cache.Stop()
 		for _, svc := range o.services {
 			o.logger.Printf("PollingObserver service stopped")
 

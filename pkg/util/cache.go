@@ -10,13 +10,6 @@ const (
 	DefaultCacheExpiration time.Duration = 0
 )
 
-func NewCache[T any](expiration time.Duration) *Cache[T] {
-	return &Cache[T]{
-		defaultExpiration: expiration,
-		data:              make(map[string]CacheItem[T]),
-	}
-}
-
 type CacheItem[T any] struct {
 	Item    T
 	Expires int64
@@ -26,6 +19,21 @@ type Cache[T any] struct {
 	defaultExpiration time.Duration
 	mu                sync.RWMutex
 	data              map[string]CacheItem[T]
+	cleaner           *IntervalCacheCleaner[T]
+}
+
+func NewCache[T any](expiration, clean time.Duration) *Cache[T] {
+	cleaner := NewIntervalCacheCleaner[T](clean)
+
+	cache := &Cache[T]{
+		defaultExpiration: expiration,
+		data:              make(map[string]CacheItem[T]),
+		cleaner:           cleaner,
+	}
+
+	go cleaner.Run(cache)
+
+	return cache
 }
 
 func (c *Cache[T]) Set(key string, value T, expire time.Duration) {
@@ -111,6 +119,10 @@ func (c *Cache[T]) ClearAll() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.data = make(map[string]CacheItem[T])
+}
+
+func (c *Cache[T]) Stop() {
+	c.cleaner.Stop()
 }
 
 func getZero[T any]() T {

@@ -23,8 +23,8 @@ func TestReportCoordinator(t *testing.T) {
 			logger:     l,
 			registry:   mr,
 			logs:       mp,
-			idBlocks:   util.NewCache[idBlocker](time.Second),
-			activeKeys: util.NewCache[bool](time.Minute),
+			idBlocks:   util.NewCache[idBlocker](time.Second, 5*time.Second),
+			activeKeys: util.NewCache[bool](time.Minute, 5*time.Second),
 			minConfs:   1,
 			chStop:     make(chan struct{}),
 		}, mr, mp

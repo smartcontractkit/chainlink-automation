@@ -26,7 +26,6 @@ type onDemandUpkeepService struct {
 	registry         types.Registry
 	shuffler         shuffler[types.UpkeepIdentifier]
 	cache            *util.Cache[types.UpkeepResult]
-	cacheCleaner     *util.IntervalCacheCleaner[types.UpkeepResult]
 	samplingResults  samplingUpkeepsResults
 	samplingDuration time.Duration
 	workers          *util.WorkerGroup[types.UpkeepResults]
@@ -62,8 +61,7 @@ func newOnDemandUpkeepService(
 		registry:         registry,
 		samplingDuration: samplingDuration,
 		shuffler:         new(cryptoShuffler[types.UpkeepIdentifier]),
-		cache:            util.NewCache[types.UpkeepResult](cacheExpire),
-		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](cacheClean),
+		cache:            util.NewCache[types.UpkeepResult](cacheExpire, cacheClean),
 		workers:          util.NewWorkerGroup[types.UpkeepResults](workers, workerQueueLength),
 		observers:        observers,
 		ctx:              ctx,
@@ -73,9 +71,6 @@ func newOnDemandUpkeepService(
 
 	// stop the cleaner go-routine once the upkeep service is no longer reachable
 	runtime.SetFinalizer(s, func(srv *onDemandUpkeepService) { srv.stop() })
-
-	// start background services
-	s.start()
 
 	return s
 }
@@ -162,15 +157,10 @@ func (s *onDemandUpkeepService) CheckUpkeep(ctx context.Context, mercuryEnabled 
 	return results, nil
 }
 
-func (s *onDemandUpkeepService) start() {
-	// TODO: if this process panics, restart it
-	go s.cacheCleaner.Run(s.cache)
-}
-
 func (s *onDemandUpkeepService) stop() {
 	s.cancel()
 	s.workers.Stop()
-	s.cacheCleaner.Stop()
+	s.cache.Stop()
 }
 
 type samplingUpkeepsResults struct {

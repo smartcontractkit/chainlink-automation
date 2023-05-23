@@ -80,7 +80,7 @@ func Test_onDemandUpkeepService_CheckUpkeep(t *testing.T) {
 		svcCtx, svcCancel := context.WithCancel(context.Background())
 		svc := &onDemandUpkeepService{
 			logger:           l,
-			cache:            util.NewCache[ktypes.UpkeepResult](20 * time.Millisecond),
+			cache:            util.NewCache[ktypes.UpkeepResult](20*time.Millisecond, 50*time.Millisecond),
 			registry:         rg,
 			workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 			samplingDuration: time.Second * 5,
@@ -124,8 +124,7 @@ func Test_onDemandUpkeepService_SampleUpkeeps(t *testing.T) {
 		sampleRatio:      ratio.SampleRatio(0.5),
 		registry:         rg,
 		shuffler:         new(noShuffleShuffler[ktypes.UpkeepIdentifier]),
-		cache:            util.NewCache[ktypes.UpkeepResult](1 * time.Second),
-		cacheCleaner:     util.NewIntervalCacheCleaner[types.UpkeepResult](time.Second),
+		cache:            util.NewCache[ktypes.UpkeepResult](1*time.Second, 5*time.Millisecond),
 		workers:          util.NewWorkerGroup[ktypes.UpkeepResults](2, 10),
 		samplingDuration: time.Second * 5,
 		ctx:              svcCtx,

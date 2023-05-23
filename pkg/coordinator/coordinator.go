@@ -41,16 +41,14 @@ var (
 )
 
 type reportCoordinator struct {
-	logger         *log.Logger
-	registry       types.Registry
-	logs           types.PerformLogProvider
-	minConfs       int
-	idBlocks       *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
-	activeKeys     *util.Cache[bool]
-	cacheCleaner   *util.IntervalCacheCleaner[bool]
-	idCacheCleaner *util.IntervalCacheCleaner[idBlocker]
-	starter        sync.Once
-	chStop         chan struct{}
+	logger     *log.Logger
+	registry   types.Registry
+	logs       types.PerformLogProvider
+	minConfs   int
+	idBlocks   *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
+	activeKeys *util.Cache[bool]
+	starter    sync.Once
+	chStop     chan struct{}
 }
 
 var (
@@ -67,15 +65,13 @@ func NewReportCoordinator(r types.Registry, lockoutWindow, cacheClean time.Durat
 	}
 
 	c := &reportCoordinator{
-		logger:         logger,
-		registry:       r,
-		logs:           logs,
-		minConfs:       minConfs,
-		idBlocks:       util.NewCache[idBlocker](lockoutWindow),
-		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
-		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
-		chStop:         make(chan struct{}),
+		logger:     logger,
+		registry:   r,
+		logs:       logs,
+		minConfs:   minConfs,
+		idBlocks:   util.NewCache[idBlocker](lockoutWindow, cacheClean),
+		activeKeys: util.NewCache[bool](time.Hour, cacheClean), // 1 hour allows the cleanup routine to clear stale data
+		chStop:     make(chan struct{}),
 	}
 
 	runtime.SetFinalizer(c, func(srv *reportCoordinator) { srv.stop() })
@@ -319,15 +315,13 @@ func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
 func (rc *reportCoordinator) start() {
 	rc.starter.Do(func() {
 		go rc.run()
-		go rc.idCacheCleaner.Run(rc.idBlocks)
-		go rc.cacheCleaner.Run(rc.activeKeys)
 	})
 }
 
 func (rc *reportCoordinator) stop() {
 	rc.chStop <- struct{}{}
-	rc.idCacheCleaner.Stop()
-	rc.cacheCleaner.Stop()
+	rc.idBlocks.Stop()
+	rc.activeKeys.Stop()
 }
 
 func (rc *reportCoordinator) run() {

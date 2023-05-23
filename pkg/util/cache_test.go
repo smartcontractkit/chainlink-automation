@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewCache(t *testing.T) {
-	c := NewCache[int](time.Second)
+	c := NewCache[int](time.Second, 2*time.Second)
 
 	assert.Equal(t, time.Second, c.defaultExpiration, "must set default expiration from provided value")
 	assert.Equal(t, make(map[string]CacheItem[int]), c.data, "must initialize empty data value")
@@ -28,7 +28,7 @@ func TestCacheSet(t *testing.T) {
 		{Name: "Overwrite Key", Key: "key1", Value: 40, Expiration: 3 * time.Minute},
 	}
 
-	c := NewCache[int](20 * time.Millisecond)
+	c := NewCache[int](20*time.Millisecond, 50*time.Millisecond)
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
@@ -58,7 +58,7 @@ func TestCacheGet(t *testing.T) {
 		{Name: "Missing Key", Key: "key3", Expiration: 1 * time.Millisecond, Expected: false},
 	}
 
-	c := NewCache[int](20 * time.Millisecond)
+	c := NewCache[int](20*time.Millisecond, 50*time.Millisecond)
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestCacheGet(t *testing.T) {
 }
 
 func TestCacheClearExpired(t *testing.T) {
-	c := NewCache[int](1 * time.Millisecond)
+	c := NewCache[int](1*time.Millisecond, 5*time.Millisecond)
 	n := time.Now()
 
 	// add values that expire quickly
@@ -104,7 +104,7 @@ func TestCacheClearExpired(t *testing.T) {
 }
 
 func BenchmarkCacheParallelism(b *testing.B) {
-	c := NewCache[int](10 * time.Millisecond)
+	c := NewCache[int](10*time.Millisecond, 50*time.Millisecond)
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
