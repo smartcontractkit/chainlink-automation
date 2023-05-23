@@ -99,7 +99,7 @@ func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types
 	// for each of the provided dependencies, check if they satisfy a start/stop
 	// interface. if so, add them to a services array so that the plugin can
 	// shut them down.
-	possibleSrvs := []interface{}{coordinator, condObserver, f.executer}
+	possibleSrvs := []interface{}{coordinator, condObserver}
 	subProcs := make([]PluginStarterCloser, 0, len(possibleSrvs))
 	for _, possibleSrv := range possibleSrvs {
 		if sub, ok := possibleSrv.(PluginStarterCloser); ok {

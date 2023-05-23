@@ -78,7 +78,7 @@ func (o *Executer) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ..
 	return r.Values(), nil
 }
 
-func (o *Executer) Start() {
+func (o *Executer) Start() error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -86,6 +86,8 @@ func (o *Executer) Start() {
 		go o.cacheCleaner.Run(o.cache)
 		o.runState = 1
 	}
+
+	return nil
 }
 
 func (o *Executer) Close() error {
