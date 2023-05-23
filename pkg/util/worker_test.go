@@ -363,7 +363,11 @@ func TestRunJobs(t *testing.T) {
 		var result int
 		var errors int
 
-		RunJobs(context.Background(), wg, jobs, jobFunc, resultFuncWrapper(&result, &errors))
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+		RunJobs(ctx, wg, jobs, jobFunc, resultFuncWrapper(&result, &errors))
+
+		cancel()
 
 		wg.Stop()
 

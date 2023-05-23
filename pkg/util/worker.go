@@ -68,7 +68,7 @@ type WorkerGroup[T any] struct {
 	input         chan GroupedItem[T]
 	chInputNotify chan struct{}
 	// TODO: make result data a cache instead of a map
-	mu           sync.RWMutex
+	mu           sync.Mutex
 	resultData   map[int][]WorkItemResult[T]
 	resultNotify map[int]chan struct{}
 
@@ -129,7 +129,7 @@ func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T], group int) erro
 	}
 
 	if _, ok := wg.resultNotify[group]; !ok {
-		wg.resultNotify[group] = make(chan struct{})
+		wg.resultNotify[group] = make(chan struct{}, 1)
 	}
 	wg.mu.Unlock()
 
@@ -144,13 +144,13 @@ func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T], group int) erro
 }
 
 func (wg *WorkerGroup[T]) NotifyResult(group int) <-chan struct{} {
-	wg.mu.RLock()
-	defer wg.mu.RUnlock()
+	wg.mu.Lock()
+	defer wg.mu.Unlock()
 
 	ch, ok := wg.resultNotify[group]
 	if !ok {
 		// if a channel isn't found for the group, create it
-		wg.resultNotify[group] = make(chan struct{})
+		wg.resultNotify[group] = make(chan struct{}, 1)
 
 		return wg.resultNotify[group]
 	}
@@ -169,10 +169,14 @@ func (wg *WorkerGroup[T]) Results(group int) []WorkItemResult[T] {
 		return wg.resultData[group]
 	}
 
-	wg.resultData[group] = nil
+	wg.resultData[group] = []WorkItemResult[T]{}
 
-	for i, j := 0, len(resultData)-1; i < j; i, j = i+1, j-1 {
-		resultData[i], resultData[j] = resultData[j], resultData[i]
+	// results are stored as latest first
+	// switch the order to provide oldest first
+	if len(resultData) > 1 {
+		for i, j := 0, len(resultData)-1; i < j; i, j = i+1, j-1 {
+			resultData[i], resultData[j] = resultData[j], resultData[i]
+		}
 	}
 
 	return resultData
@@ -275,6 +279,16 @@ func (wg *WorkerGroup[T]) storeResult(group int) func(result WorkItemResult[T]) 
 		wg.mu.Lock()
 		defer wg.mu.Unlock()
 
+		_, ok := wg.resultData[group]
+		if !ok {
+			wg.resultData[group] = make([]WorkItemResult[T], 0)
+		}
+
+		_, ok = wg.resultNotify[group]
+		if !ok {
+			wg.resultNotify[group] = make(chan struct{}, 1)
+		}
+
 		wg.resultData[group] = append([]WorkItemResult[T]{result}, wg.resultData[group]...)
 
 		select {
@@ -297,6 +311,7 @@ func RunJobs[T, K any](ctx context.Context, wg *WorkerGroup[T], jobs []K, jobFun
 		for {
 			select {
 			case <-g.NotifyResult(group):
+				//fmt.Println("NotifyResult")
 				for _, r := range g.Results(group) {
 					resFunc(r.Data, r.Err)
 					w.Done()
@@ -346,17 +361,6 @@ func (q *Queue[T]) Add(values ...T) {
 	defer q.mu.Unlock()
 
 	q.values = append(q.values, values...)
-}
-
-func (q *Queue[T]) Peak() (T, error) {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-
-	if len(q.values) == 0 {
-		return getZero[T](), fmt.Errorf("no values to return")
-	}
-
-	return q.values[0], nil
 }
 
 func (q *Queue[T]) Pop() (T, error) {
