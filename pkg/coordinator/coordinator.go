@@ -174,12 +174,10 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 		err             error
 	)
 
-	// don't return error immediately. if there is a database error, both calls
-	// will likely have the same error or indicate the same issue. returned logs
-	// can still be processed if a nil result is returned. return any error at
-	// the end.
-
 	performLogs, err = rc.logs.PerformLogs(ctx)
+	if err != nil {
+		return err
+	}
 	// Perform log entries indicate that a perform exists on chain in some
 	// capacity. the existance of an entry means that the transaction
 	// was broadcast by at least one node. reorgs can still happen
