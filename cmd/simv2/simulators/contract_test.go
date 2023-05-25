@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
 func TestLatestConfig(t *testing.T) {
@@ -150,7 +151,31 @@ type MockEncoder struct {
 	mock.Mock
 }
 
-func (_m *MockEncoder) EncodeReport(r []ktypes.UpkeepResult) ([]byte, error) {
+func (_m *MockEncoder) SplitUpkeepKey(r ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error) {
+	ret := _m.Mock.Called(r)
+
+	var r0 ocr2keepers.BlockKey
+	if rf, ok := ret.Get(0).(func() ocr2keepers.BlockKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ocr2keepers.BlockKey)
+		}
+	}
+
+	var r1 ocr2keepers.UpkeepIdentifier
+	if rf, ok := ret.Get(1).(func() ocr2keepers.UpkeepIdentifier); ok {
+		r1 = rf()
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(ocr2keepers.UpkeepIdentifier)
+		}
+	}
+
+	return r0, r1, ret.Error(1)
+}
+
+func (_m *MockEncoder) EncodeReport(r []ocr2keepers.UpkeepResult) ([]byte, error) {
 	ret := _m.Mock.Called(r)
 
 	var r0 []byte
@@ -165,15 +190,15 @@ func (_m *MockEncoder) EncodeReport(r []ktypes.UpkeepResult) ([]byte, error) {
 	return r0, ret.Error(1)
 }
 
-func (_m *MockEncoder) DecodeReport(b []byte) ([]ktypes.UpkeepResult, error) {
+func (_m *MockEncoder) DecodeReport(b []byte) ([]ocr2keepers.UpkeepResult, error) {
 	ret := _m.Mock.Called(b)
 
-	var r0 []ktypes.UpkeepResult
-	if rf, ok := ret.Get(0).(func() []ktypes.UpkeepResult); ok {
+	var r0 []ocr2keepers.UpkeepResult
+	if rf, ok := ret.Get(0).(func() []ocr2keepers.UpkeepResult); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]ktypes.UpkeepResult)
+			r0 = ret.Get(0).([]ocr2keepers.UpkeepResult)
 		}
 	}
 

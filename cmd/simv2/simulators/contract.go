@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 type BlockBroadcaster interface {
@@ -29,7 +28,7 @@ type Digester interface {
 }
 
 type ContractTelemetry interface {
-	CheckKey(ktypes.UpkeepKey)
+	CheckKey(ocr2keepers.UpkeepKey)
 }
 
 type RPCTelemetry interface {
@@ -37,10 +36,19 @@ type RPCTelemetry interface {
 	AddRateDataPoint(int)
 }
 
+type Encoder interface {
+	// SplitUpkeepKey ...
+	SplitUpkeepKey(ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error)
+	// EncodeReport	...
+	EncodeReport([]ocr2keepers.UpkeepResult) ([]byte, error)
+	// DecodeReport ...
+	DecodeReport([]byte) ([]ocr2keepers.UpkeepResult, error)
+}
+
 type SimulatedContract struct {
 	mu     sync.RWMutex
 	src    BlockBroadcaster
-	enc    ktypes.ReportEncoder
+	enc    Encoder
 	logger *log.Logger
 	dgst   Digester
 	// blocks come from a simulated block provider. this value is to store
@@ -60,9 +68,9 @@ type SimulatedContract struct {
 	subscription int
 	// upkeep mapping of big int id to simulated upkeep
 	upkeeps    map[string]SimulatedUpkeep
-	perLogs    *sortedKeyMap[[]ktypes.PerformLog]
+	perLogs    *sortedKeyMap[[]ocr2keepers.PerformLog]
 	avgLatency int
-	chHeads    chan ktypes.BlockKey
+	chHeads    chan ocr2keepers.BlockKey
 
 	telemetry ContractTelemetry
 
@@ -78,7 +86,7 @@ func NewSimulatedContract(
 	src BlockBroadcaster,
 	d Digester,
 	sym []SimulatedUpkeep,
-	enc ktypes.ReportEncoder,
+	enc Encoder,
 	transmitter Transmitter,
 	avgLatency int,
 	account string,
@@ -90,7 +98,7 @@ func NewSimulatedContract(
 ) *SimulatedContract {
 	upkeeps := make(map[string]SimulatedUpkeep)
 	for _, upkeep := range sym {
-		upkeep.Performs = make(map[string]ktypes.PerformLog)
+		upkeep.Performs = make(map[string]ocr2keepers.PerformLog)
 		upkeeps[upkeep.ID.String()] = upkeep
 	}
 
@@ -106,9 +114,9 @@ func NewSimulatedContract(
 		transmitter: transmitter,
 		runConfigs:  make(map[string]types.ContractConfig),
 		blocks:      make(map[string]config.SymBlock),
-		perLogs:     newSortedKeyMap[[]ktypes.PerformLog](),
+		perLogs:     newSortedKeyMap[[]ocr2keepers.PerformLog](),
 		upkeeps:     upkeeps,
-		chHeads:     make(chan ktypes.BlockKey, 1),
+		chHeads:     make(chan ocr2keepers.BlockKey, 1),
 		telemetry:   telemetry,
 		rpc:         rpc,
 		notify:      make(chan struct{}, 1000),
@@ -160,15 +168,17 @@ func (ct *SimulatedContract) run() {
 						continue
 					}
 
-					logs := make([]ktypes.PerformLog, len(results))
+					logs := make([]ocr2keepers.PerformLog, len(results))
 					for i, result := range results {
-						logs[i] = ktypes.PerformLog{
-							Key:           result.Key,
-							TransmitBlock: chain.BlockKey(block.BlockNumber.String()),
+						res := result.(SimulatedResult)
+
+						logs[i] = ocr2keepers.PerformLog{
+							Key:           res.Key,
+							TransmitBlock: ocr2keepers.BlockKey(block.BlockNumber.String()),
 							Confirmations: 0,
 						}
 
-						_, id, err := result.Key.BlockKeyAndUpkeepID()
+						_, id, err := ct.enc.SplitUpkeepKey(res.Key)
 						if err != nil {
 							continue
 						}
@@ -178,7 +188,7 @@ func (ct *SimulatedContract) run() {
 							//result.PerformData
 							up.Performs[block.BlockNumber.String()] = logs[i]
 						}
-						ct.logger.Printf("log for key '%s' found in block '%s'", result.Key, block.BlockNumber)
+						ct.logger.Printf("log for key '%s' found in block '%s'", res.Key, block.BlockNumber)
 					}
 
 					lgs, ok := ct.perLogs.Get(block.BlockNumber.String())

@@ -20,3 +20,17 @@ func upkeepKeysToString(keys []UpkeepKey) string {
 
 	return strings.Join(keysStr, ", ")
 }
+
+type PerformLog struct {
+	Key             UpkeepKey
+	TransmitBlock   BlockKey
+	Confirmations   int64
+	TransactionHash string
+}
+
+type StaleReportLog struct {
+	Key             UpkeepKey
+	TransmitBlock   BlockKey
+	Confirmations   int64
+	TransactionHash string
+}

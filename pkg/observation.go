@@ -30,7 +30,8 @@ type MedianCalculator interface {
 	GetMedian([]BlockKey) BlockKey
 }
 
-// TODO (AUTO-2014), find a better place for these concrete types than chain package
+// Observation defines the data structure that nodes use to communication the
+// details of observed upkeeps
 type Observation struct {
 	BlockKey          BlockKey           `json:"1"`
 	UpkeepIdentifiers []UpkeepIdentifier `json:"2"`
@@ -73,9 +74,9 @@ func observationsToUpkeepKeys(
 		allBlockKeys []BlockKey
 	)
 
-	upkeepIDs := make([][]UpkeepIdentifier, len(attr))
+	upkeepIDs := make([][]UpkeepIdentifier, 0, len(attr))
 
-	for i, obs := range attr {
+	for _, obs := range attr {
 		// a single observation returning an error here can void all other
 		// good observations. ensure this loop continues on error, but collect
 		// them and throw an error if ALL observations fail at this point.
@@ -88,7 +89,7 @@ func observationsToUpkeepKeys(
 
 		// validate the observation using the provided validator
 		if err := upkeepObservation.Validate(v); err != nil {
-			logger.Printf("unable to decode observation: %s", err.Error())
+			logger.Printf("failed to validate observation: %s", err.Error())
 			parseErrors++
 			continue
 		}
@@ -99,11 +100,12 @@ func observationsToUpkeepKeys(
 		// we take to observationUpkeepsLimit
 		if len(upkeepObservation.UpkeepIdentifiers) > 0 {
 			ids := upkeepObservation.UpkeepIdentifiers[:]
+
 			if len(ids) > ObservationUpkeepsLimit {
 				ids = ids[:ObservationUpkeepsLimit]
 			}
 
-			upkeepIDs[i] = ids
+			upkeepIDs = append(upkeepIDs, ids)
 		}
 	}
 

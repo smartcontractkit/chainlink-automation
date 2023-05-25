@@ -15,3 +15,10 @@ type Coordinator interface {
 	Accept(keys types.UpkeepKey) error
 	IsTransmissionConfirmed(key types.UpkeepKey) bool
 }
+
+type Observer interface {
+	Observe() (types.BlockKey, []types.UpkeepIdentifier, error)
+	CheckUpkeep(ctx context.Context, keys ...types.UpkeepKey) ([]types.UpkeepResult, error)
+	Start()
+	Stop()
+}

@@ -8,25 +8,25 @@ import (
 
 	"go.uber.org/multierr"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
 type SimulatedUpkeep struct {
 	ID         *big.Int
 	EligibleAt []*big.Int
-	Performs   map[string]types.PerformLog // performs at block number
+	Performs   map[string]ocr2keepers.PerformLog // performs at block number
 }
 
-func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]types.UpkeepIdentifier, error) {
+func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]ocr2keepers.UpkeepIdentifier, error) {
 
 	ct.mu.RLock()
 	ct.logger.Printf("getting keys at block %s", ct.lastBlock)
 
-	keys := []types.UpkeepIdentifier{}
+	keys := []ocr2keepers.UpkeepIdentifier{}
 
 	// TODO: filter out cancelled upkeeps
 	for key := range ct.upkeeps {
-		keys = append(keys, types.UpkeepIdentifier(key))
+		keys = append(keys, ocr2keepers.UpkeepIdentifier(key))
 	}
 	ct.mu.RUnlock()
 
@@ -46,27 +46,27 @@ func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]types.Up
 	return keys, nil
 }
 
-func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...types.UpkeepKey) (types.UpkeepResults, error) {
+func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error) {
 	ct.mu.RLock()
 	defer ct.mu.RUnlock()
 
 	var (
 		mErr    error
 		wg      sync.WaitGroup
-		results = make(types.UpkeepResults, len(keys))
+		results = make([]SimulatedResult, len(keys))
 	)
 
 	for i, key := range keys {
 		wg.Add(1)
-		go func(i int, key types.UpkeepKey) {
+		go func(i int, key ocr2keepers.UpkeepKey, en Encoder) {
 			defer wg.Done()
 
-			blockKey, upkeepID, err := key.BlockKeyAndUpkeepID()
+			blockKey, upkeepID, err := en.SplitUpkeepKey(key)
 			if err != nil {
 				panic(err.Error())
 			}
 
-			block, ok := new(big.Int).SetString(blockKey.String(), 10)
+			block, ok := new(big.Int).SetString(string(blockKey), 10)
 			if !ok {
 				mErr = multierr.Append(mErr, fmt.Errorf("block in key not parsable as big int"))
 				return
@@ -79,10 +79,10 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled boo
 			}
 
 			var bl [32]byte
-			results[i] = types.UpkeepResult{
-				Key:     key,
-				State:   types.NotEligible,
-				GasUsed: big.NewInt(0),
+			results[i] = SimulatedResult{
+				Key:      key,
+				Eligible: false,
+				GasUsed:  big.NewInt(0),
 				/*
 					FailureReason    uint8
 				*/
@@ -103,7 +103,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled boo
 				e := up.EligibleAt[j]
 
 				if block.Cmp(e) >= 0 {
-					results[i].State = types.Eligible
+					results[i].Eligible = true
 
 					// check that upkeep has not been recently performed between two
 					// points of eligibility
@@ -114,7 +114,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled boo
 						c := new(big.Int).Add(e, big.NewInt(t))
 						_, ok := up.Performs[c.String()]
 						if ok {
-							results[i].State = types.NotEligible
+							results[i].Eligible = false
 							return
 						}
 					}
@@ -122,7 +122,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled boo
 					return
 				}
 			}
-		}(i, key)
+		}(i, key, ct.enc)
 	}
 
 	wg.Wait()
@@ -143,5 +143,10 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled boo
 		return nil, err
 	}
 
-	return results, nil
+	output := make([]ocr2keepers.UpkeepResult, len(results))
+	for i, res := range results {
+		output[i] = res
+	}
+
+	return output, nil
 }
