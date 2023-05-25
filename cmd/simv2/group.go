@@ -21,8 +21,8 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
-	"github.com/smartcontractkit/ocr2keepers/pkg/executer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
+	"github.com/smartcontractkit/ocr2keepers/pkg/runner"
 )
 
 type Closable interface {
@@ -41,7 +41,7 @@ type ActiveNode struct {
 type NodeGroupConfig struct {
 	Digester      types.OffchainConfigDigester
 	Cadence       config.Blocks
-	Encoder       FullEncoder
+	Encoder       fullEncoder
 	Upkeeps       []simulators.SimulatedUpkeep
 	ConfigEvents  []config.ConfigEvent
 	RPCConfig     config.RPC
@@ -57,7 +57,7 @@ type NodeGroup struct {
 	network     *simulators.SimulatedNetwork
 	digester    types.OffchainConfigDigester
 	blockSrc    *blocks.BlockBroadcaster
-	encoder     FullEncoder
+	encoder     fullEncoder
 	transmitter *blocks.TransmitLoader
 	confLoader  *blocks.ConfigLoader
 	upkeeps     []simulators.SimulatedUpkeep
@@ -153,7 +153,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		cLogger)
 	db := simulators.NewSimulatedDatabase()
 
-	exec, _ := executer.NewExecuter(
+	runr, _ := runner.NewRunner(
 		gLogger,
 		ct,
 		g.encoder,
@@ -171,11 +171,11 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	}
 
 	cObsFac := &polling.PollingObserverFactory{
-		Logger:   gLogger,
-		Source:   ct,
-		Heads:    ct,
-		Executer: exec,
-		Encoder:  g.encoder,
+		Logger:  gLogger,
+		Source:  ct,
+		Heads:   ct,
+		Runner:  runr,
+		Encoder: g.encoder,
 	}
 
 	dConfig := ocr2keepers.DelegateConfig{
@@ -196,7 +196,7 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		ConditionalObserverFactory: cObsFac,
 		CoordinatorFactory:         coordFac,
 		Encoder:                    g.encoder,
-		Executer:                   exec,
+		Runner:                     runr,
 		Logger:                     slogger,
 		MonitoringEndpoint:         g.monitor,
 		OffchainConfigDigester:     g.digester,

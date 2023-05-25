@@ -1,10 +1,10 @@
-package executer
+package runner
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
@@ -30,11 +30,12 @@ type Encoder interface {
 	SplitUpkeepKey(ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error)
 }
 
-type Executer struct {
+// Runner ...
+type Runner struct {
 	// injected dependencies
-	logger *log.Logger
-	reg    Registry
-	enc    Encoder
+	logger   *log.Logger
+	registry Registry
+	encoder  Encoder
 
 	// initialized by the constructor
 	workers      *pkgutil.WorkerGroup[[]ocr2keepers.UpkeepResult] // parallelizer for RPC calls
@@ -45,23 +46,23 @@ type Executer struct {
 	workerBatchLimit int // the maximum number of items in RPC batch call
 
 	// run state data
-	mu       sync.Mutex
-	runState int
+	running atomic.Bool
 }
 
-func NewExecuter(
+// NewRunner ...
+func NewRunner(
 	logger *log.Logger,
-	reg Registry,
-	enc Encoder,
+	registry Registry,
+	encoder Encoder,
 	workers int, // maximum number of workers in worker group
 	workerQueueLength int, // size of worker queue; set to approximately the number of items expected in workload
 	cacheExpire time.Duration,
 	cacheClean time.Duration,
-) (*Executer, error) {
-	return &Executer{
+) (*Runner, error) {
+	return &Runner{
 		logger:           logger,
-		reg:              reg,
-		enc:              enc,
+		registry:         registry,
+		encoder:          encoder,
 		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.UpkeepResult](workers, workerQueueLength),
 		cache:            pkgutil.NewCache[ocr2keepers.UpkeepResult](cacheExpire),
 		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[ocr2keepers.UpkeepResult](cacheClean),
@@ -69,7 +70,7 @@ func NewExecuter(
 	}, nil
 }
 
-func (o *Executer) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error) {
+func (o *Runner) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error) {
 	r, err := o.parallelCheck(ctx, mercuryEnabled, keys)
 	if err != nil {
 		return nil, err
@@ -78,32 +79,28 @@ func (o *Executer) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ..
 	return r.Values(), nil
 }
 
-func (o *Executer) Start() error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	if o.runState == 0 {
+func (o *Runner) Start() error {
+	if !o.running.Load() {
+		// TODO: create way to restart worker group
 		go o.cacheCleaner.Run(o.cache)
-		o.runState = 1
+		o.running.Swap(true)
 	}
 
 	return nil
 }
 
-func (o *Executer) Close() error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	if o.runState == 1 {
+func (o *Runner) Close() error {
+	if o.running.Load() {
 		o.cacheCleaner.Stop()
 		o.workers.Stop()
+		o.running.Swap(false)
 	}
 
 	return nil
 }
 
-// parallelCheck should be satisfied by the executer
-func (o *Executer) parallelCheck(ctx context.Context, mercuryEnabled bool, keys []ocr2keepers.UpkeepKey) (*Result, error) {
+// parallelCheck should be satisfied by the Runner
+func (o *Runner) parallelCheck(ctx context.Context, mercuryEnabled bool, keys []ocr2keepers.UpkeepKey) (*Result, error) {
 	result := NewResult()
 
 	if len(keys) == 0 {
@@ -154,19 +151,19 @@ func (o *Executer) parallelCheck(ctx context.Context, mercuryEnabled bool, keys 
 	return result, nil
 }
 
-func (o *Executer) wrapWorkerFunc(mercuryEnabled bool) func(context.Context, []ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error) {
+func (o *Runner) wrapWorkerFunc(mercuryEnabled bool) func(context.Context, []ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error) {
 	return func(ctx context.Context, keys []ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error) {
 		start := time.Now()
 
 		// perform check and update cache with result
-		checkResults, err := o.reg.CheckUpkeep(ctx, mercuryEnabled, keys...)
+		checkResults, err := o.registry.CheckUpkeep(ctx, mercuryEnabled, keys...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep keys: %s", err, keys)
 		} else {
 			o.logger.Printf("check %d upkeeps took %dms to perform", len(keys), time.Since(start)/time.Millisecond)
 
 			for _, result := range checkResults {
-				ok, err := o.enc.Eligible(result)
+				ok, err := o.encoder.Eligible(result)
 				if err != nil {
 					o.logger.Printf("eligibility check error: %s", err)
 					continue
@@ -175,7 +172,7 @@ func (o *Executer) wrapWorkerFunc(mercuryEnabled bool) func(context.Context, []o
 				// TODO: ok might be assumed here???
 				if ok {
 					// TODO: try something other than using `Detail`
-					key, _, _ := o.enc.Detail(result)
+					key, _, _ := o.encoder.Detail(result)
 					o.logger.Printf("upkeep ready to perform for key %s", key)
 				}
 			}
@@ -185,14 +182,14 @@ func (o *Executer) wrapWorkerFunc(mercuryEnabled bool) func(context.Context, []o
 	}
 }
 
-func (o *Executer) wrapAggregate(r *Result) func([]ocr2keepers.UpkeepResult, error) {
+func (o *Runner) wrapAggregate(r *Result) func([]ocr2keepers.UpkeepResult, error) {
 	return func(result []ocr2keepers.UpkeepResult, err error) {
 		if err == nil {
 			r.AddSuccesses(1)
 
 			for _, res := range result {
 				// TODO: find another way to do this
-				key, _, _ := o.enc.Detail(res)
+				key, _, _ := o.encoder.Detail(res)
 				// TODO: using string again
 				o.cache.Set(string(key), res, pkgutil.DefaultCacheExpiration)
 

@@ -33,14 +33,14 @@ type ConditionalObserverFactory interface {
 
 func NewReportingPluginFactory(
 	encoder Encoder, // Encoder should be a static implementation with no state
-	executer Executer,
+	runner Runner,
 	coordinatorFactory CoordinatorFactory,
 	condObserverFactory ConditionalObserverFactory,
 	logger *log.Logger,
 ) types.ReportingPluginFactory {
 	factory := &pluginFactory{
 		encoder:             encoder,
-		executer:            executer,
+		runner:              runner,
 		coordinatorFactory:  coordinatorFactory,
 		condObserverFactory: condObserverFactory,
 		logger:              logger,
@@ -56,7 +56,7 @@ type PluginStarterCloser interface {
 
 type pluginFactory struct {
 	encoder             Encoder
-	executer            Executer
+	runner              Runner
 	coordinatorFactory  CoordinatorFactory
 	condObserverFactory ConditionalObserverFactory
 	logger              *log.Logger
@@ -112,7 +112,7 @@ func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types
 
 	return &ocrPlugin{
 		encoder:        f.encoder,
-		executer:       f.executer,
+		runner:         f.runner,
 		coordinator:    coordinator, // coordinator is a service that should have a start / stop method
 		condObserver:   condObserver,
 		logger:         f.logger,

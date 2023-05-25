@@ -1,6 +1,7 @@
 package coordinator
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -152,7 +153,7 @@ func TestReportCoordinator(t *testing.T) {
 		}, nil).Once()
 		mp.Mock.On("StaleReportLogs", mock.Anything).Return([]ocr2keepers.StaleReportLog{}, nil).Once()
 
-		rc.checkLogs()
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// perform log didn't have the threshold number of confirmations
 		// making the key still locked at all blocks
@@ -189,7 +190,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// because the transmit block is block 2, the filter should continue
 		// to filter out key up to block 2
@@ -275,7 +277,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk2).Return(false, nil).Once()
 		mr.On("After", bk2, bk1).Return(true, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// 3a. key 1|1 IsPending returns true
 		// 3c. key 2|1 IsPending returns true
@@ -308,7 +311,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk2, id1, nil).Once()
 		mr.On("After", bk2, bk2).Return(false, nil).Once()
 		mr.On("After", bk2, bk2).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// 4a. key 1|1 IsPending returns true
 		// 4c. key 2|1 IsPending returns true
@@ -351,7 +355,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// Transmit should be confirmed as perform log is found
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
@@ -382,7 +387,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk3, bk2).Return(true, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// Transmit confirmed should not change
 		assert.Equal(t, true, rc.IsTransmissionConfirmed(key1Block1), "1|1 transmit should be confirmed")
@@ -446,7 +452,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// reason: the node unblocks id 1 after block 2
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
@@ -518,7 +525,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("Increment", bk1).Return(bk2, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// reason: the node unblocks id 1 after block 2 (checkBlock(1) + 1)
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
@@ -559,7 +567,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// reason: the node unblocks id 1 after block 3
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
@@ -594,7 +603,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("After", bk2, bk3).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk3).Return(false, nil).Once()
@@ -634,7 +644,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("Increment", bk1).Return(bk2, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
 		mr.On("After", bk1, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// reason: the node unblocks id 1 after block 2
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
@@ -660,7 +671,8 @@ func TestReportCoordinator(t *testing.T) {
 
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("Increment", bk1).Return(bk2, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// Filters should not change as checkBlockNumber of stale report log remains unchanged
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
@@ -718,7 +730,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk2).Return(false, nil).Once()
 		mr.On("After", bk2, bk1).Return(false, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// the node sees id 1 as 'in-flight' and blocks for all block numbers
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
@@ -746,7 +759,8 @@ func TestReportCoordinator(t *testing.T) {
 
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk1).Return(true, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// ID unblocked from block 4
 		mr.On("SplitUpkeepKey", key1Block1).Return(bk1, id1, nil).Once()
@@ -802,7 +816,8 @@ func TestReportCoordinator(t *testing.T) {
 
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk2, id1, nil).Once()
 		mr.On("After", bk2, bk2).Return(true, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		// ID unblocked from block 4
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
@@ -831,7 +846,8 @@ func TestReportCoordinator(t *testing.T) {
 		mr.On("After", bk1, bk2).Return(false, nil).Once()
 		mr.On("After", bk2, bk1).Return(false, nil).Once()
 		mr.On("After", bk4, bk3).Return(true, nil).Once()
-		rc.checkLogs()
+
+		assert.NoError(t, rc.checkLogs(context.Background()))
 
 		mr.On("SplitUpkeepKey", mock.Anything).Return(bk1, id1, nil).Once()
 		mr.On("After", bk1, bk4).Return(false, nil).Once()

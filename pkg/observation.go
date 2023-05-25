@@ -30,8 +30,8 @@ type MedianCalculator interface {
 	GetMedian([]BlockKey) BlockKey
 }
 
-// Observation is a defines the data structure that nodes use to communication
-// the details of observed upkeeps
+// Observation defines the data structure that nodes use to communication the
+// details of observed upkeeps
 type Observation struct {
 	BlockKey          BlockKey           `json:"1"`
 	UpkeepIdentifiers []UpkeepIdentifier `json:"2"`

@@ -16,11 +16,11 @@ import (
 
 // PollingObserverFactory ...
 type PollingObserverFactory struct {
-	Logger   *log.Logger
-	Source   UpkeepProvider
-	Heads    HeadProvider
-	Executer Executer
-	Encoder  Encoder
+	Logger  *log.Logger
+	Source  UpkeepProvider
+	Heads   HeadProvider
+	Runner  Runner
+	Encoder Encoder
 }
 
 // NewConditionalObserver ...
@@ -48,7 +48,7 @@ func (f *PollingObserverFactory) NewConditionalObserver(oc config.OffchainConfig
 		f.Logger,
 		f.Source,
 		f.Heads,
-		f.Executer,
+		f.Runner,
 		f.Encoder,
 		sample,
 		time.Duration(oc.SamplingJobDuration)*time.Millisecond,

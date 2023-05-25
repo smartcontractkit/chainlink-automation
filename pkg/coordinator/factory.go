@@ -8,7 +8,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 )
 
-// CoordinatorFactory ...
+// CoordinatorFactory provides a single method to create a new coordinator
 type CoordinatorFactory struct {
 	Logger     *log.Logger
 	Encoder    Encoder
@@ -16,7 +16,8 @@ type CoordinatorFactory struct {
 	CacheClean time.Duration
 }
 
-// NewConditionalObserver ...
+// NewCoordinator returns a new coordinator with provided dependencies and
+// config. The new coordinator is not automatically started.
 func (f *CoordinatorFactory) NewCoordinator(c config.OffchainConfig) (ocr2keepers.Coordinator, error) {
 	return NewReportCoordinator(
 		time.Duration(c.PerformLockoutWindow),

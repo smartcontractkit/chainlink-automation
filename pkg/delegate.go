@@ -48,8 +48,8 @@ type DelegateConfig struct {
 	// Encoder provides chain specific encode/decode functions to the plugin
 	Encoder Encoder
 
-	// Executer provides multi-threaded upkeep checks with results caching
-	Executer Executer
+	// Runner provides multi-threaded upkeep checks with results caching
+	Runner Runner
 
 	// legacy config params
 
@@ -140,7 +140,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OnchainKeyring:               c.OnchainKeyring,
 		ReportingPluginFactory: NewReportingPluginFactory(
 			c.Encoder,
-			c.Executer,
+			c.Runner,
 			c.CoordinatorFactory,
 			c.ConditionalObserverFactory,
 			l,

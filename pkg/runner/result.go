@@ -1,4 +1,4 @@
-package executer
+package runner
 
 import (
 	"sync"
@@ -7,7 +7,9 @@ import (
 )
 
 type Result struct {
-	// mutex not expressly needed but added for safety
+	// this struct type isn't expressly defined to run in a single thread or
+	// multiple threads so internally a mutex provides the thread safety
+	// guarantees in the case it is used in a multi-threaded way
 	mu        sync.RWMutex
 	successes int
 	failures  int

@@ -89,7 +89,7 @@ func main() {
 	}
 
 	// generic report encoder for testing evm encoding/decoding
-	enc := FullEncoder{}
+	enc := fullEncoder{}
 
 	// generic config digester
 	digester := evmutil.EVMOffchainConfigDigester{
@@ -155,7 +155,7 @@ func main() {
 	wg.Wait()
 }
 
-type FullEncoder struct {
+type fullEncoder struct {
 	simulators.SimulatedReportEncoder
-	encoding.KeyBuilder
+	encoding.BasicEncoder
 }

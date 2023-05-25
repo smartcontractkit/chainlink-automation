@@ -22,7 +22,7 @@ func newUpkeepStatsBuilder(
 	upkeeps []simulators.SimulatedUpkeep,
 	transmits []blocks.TransmitEvent,
 	checks map[string][]string,
-	encoder FullEncoder,
+	encoder fullEncoder,
 ) (*upkeepStatsBuilder, error) {
 
 	// count the number of transmits per account

@@ -1,27 +1,33 @@
-package coordinator
-
 /*
+A coordinator provides the ability to filter upkeeps based on some type of
+in-flight status.
+
 The report coordinator provides 3 main functions:
-Filter
+IsPending
 Accept
 IsTransmissionConfirmed
 
 This has 2 purposes:
 When an id is accepted using the Accept function, the upkeep id should be
-included in the Filter function. This allows an upkeep id to be filtered out
-of a list of upkeep keys.
+indicated as pending in the IsPending function. This allows an upkeep id to be
+filtered out of a list of upkeep keys.
 
 When an upkeep key is accepted using the Accept function, the upkeep key will
 return false on IsTransmissionConfirmed until a perform log is identified with
 the same key. This allows a coordinated effort on transmit fallbacks.
+
+The report coordinator relies on two log types:
+PerformLog - this log type indicates that an upkeep was completed
+StaleReportLog - this log type indicates that an upkeep failed and can be
+attempted again at a later block height
 */
+package coordinator
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"runtime"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -29,6 +35,8 @@ import (
 )
 
 var (
+	DefaultLockoutWindow  = time.Duration(20) * time.Minute
+	DefaultCacheClean     = time.Duration(30) * time.Second
 	ErrKeyAlreadyAccepted = fmt.Errorf("key already accepted")
 	// TODO: still chain specific code
 	IndefiniteBlockingKey = ocr2keepers.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
@@ -51,25 +59,27 @@ type Encoder interface {
 }
 
 type reportCoordinator struct {
-	logger *log.Logger
-	// registry       types.Registry
+	// injected dependencies
+	logger  *log.Logger
 	logs    LogProvider
 	encoder Encoder
 
-	minConfs       int
+	// initialised by the constructor
 	idBlocks       *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
 	activeKeys     *util.Cache[bool]
 	cacheCleaner   *util.IntervalCacheCleaner[bool]
 	idCacheCleaner *util.IntervalCacheCleaner[idBlocker]
-	starter        sync.Once
-	chStop         chan struct{}
+
+	// configurations
+	minConfs int
+
+	// run state data
+	running atomic.Bool
+	chStop  chan struct{}
 }
 
-var (
-	DefaultLockoutWindow = time.Duration(20) * time.Minute
-	DefaultCacheClean    = time.Duration(30) * time.Second
-)
-
+// NewReportCoordinator provides a new report coordinator. The coordinator
+// should be started before use.
 func NewReportCoordinator(
 	lockoutWindow time.Duration,
 	cacheClean time.Duration,
@@ -98,9 +108,6 @@ func NewReportCoordinator(
 		encoder:        encoder,
 	}
 
-	// TODO: maybe remove finalizer
-	runtime.SetFinalizer(c, func(srv *reportCoordinator) { _ = srv.Close() })
-
 	return c
 }
 
@@ -125,6 +132,7 @@ func (rc *reportCoordinator) IsPending(key ocr2keepers.UpkeepKey) (bool, error) 
 	return false, nil
 }
 
+// Accept sets the pending status for a key
 func (rc *reportCoordinator) Accept(key ocr2keepers.UpkeepKey) error {
 	blockKey, id, err := rc.encoder.SplitUpkeepKey(key)
 	if err != nil {
@@ -149,6 +157,8 @@ func (rc *reportCoordinator) Accept(key ocr2keepers.UpkeepKey) error {
 	return nil
 }
 
+// IsTransmissionConfirmed returns whether the upkeep was successfully
+// completed or not
 func (rc *reportCoordinator) IsTransmissionConfirmed(key ocr2keepers.UpkeepKey) bool {
 	// key is confirmed if it both exists and has been confirmed by the log
 	// poller
@@ -156,9 +166,20 @@ func (rc *reportCoordinator) IsTransmissionConfirmed(key ocr2keepers.UpkeepKey) 
 	return !ok || (ok && confirmed)
 }
 
-func (rc *reportCoordinator) checkLogs() {
-	// TODO: maybe use something other than context background here
-	performLogs, _ := rc.logs.PerformLogs(context.Background())
+func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
+
+	var (
+		performLogs     []ocr2keepers.PerformLog
+		staleReportLogs []ocr2keepers.StaleReportLog
+		err             error
+	)
+
+	// don't return error immediately. if there is a database error, both calls
+	// will likely have the same error or indicate the same issue. returned logs
+	// can still be processed if a nil result is returned. return any error at
+	// the end.
+
+	performLogs, err = rc.logs.PerformLogs(ctx)
 	// Perform log entries indicate that a perform exists on chain in some
 	// capacity. the existance of an entry means that the transaction
 	// was broadcast by at least one node. reorgs can still happen
@@ -214,7 +235,7 @@ func (rc *reportCoordinator) checkLogs() {
 		}
 	}
 
-	staleReportLogs, _ := rc.logs.StaleReportLogs(context.Background())
+	staleReportLogs, err = rc.logs.StaleReportLogs(context.Background())
 	// It can happen that in between the time the report is generated and it gets
 	// confirmed on chain something changes and it becomes stale. Current scenarios are:
 	//    - Another report for the upkeep is transmitted making this report stale
@@ -277,6 +298,8 @@ func (rc *reportCoordinator) checkLogs() {
 			}
 		}
 	}
+
+	return err
 }
 
 type idBlocker struct {
@@ -347,25 +370,31 @@ func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
 	rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
 }
 
+// Start starts all subprocesses
 func (rc *reportCoordinator) Start() {
-	rc.starter.Do(func() {
+	if !rc.running.Load() {
 		go rc.run()
 		go rc.idCacheCleaner.Run(rc.idBlocks)
 		go rc.cacheCleaner.Run(rc.activeKeys)
-	})
+
+		rc.running.Swap(true)
+	}
 }
 
+// Close terminates all subprocesses
 func (rc *reportCoordinator) Close() error {
-	rc.chStop <- struct{}{}
-	rc.idCacheCleaner.Stop()
-	rc.cacheCleaner.Stop()
+	if rc.running.Load() {
+		rc.chStop <- struct{}{}
+		rc.idCacheCleaner.Stop()
+		rc.cacheCleaner.Stop()
+		rc.running.Swap(false)
+	}
 
 	return nil
 }
 
 func (rc *reportCoordinator) run() {
 	// TODO: handle panics by restarting this process
-
 	cadence := time.Second
 	timer := time.NewTimer(cadence)
 
@@ -374,9 +403,15 @@ func (rc *reportCoordinator) run() {
 		case <-timer.C:
 			startTime := time.Now()
 
-			rc.checkLogs()
+			// limit the check process to 5 times the cadence as an upper bound
+			ctx, cancel := context.WithTimeout(context.Background(), 5*cadence)
+			if err := rc.checkLogs(ctx); err != nil {
+				rc.logger.Printf("failed to check perform and stale report logs: %s", err)
+			}
 
-			// attempt to ahere to a cadence of at least every second
+			cancel()
+
+			// attempt to adhere to a cadence of at least every second
 			// a slow DB will cause the cadence to increase. these cases are logged
 			diff := time.Since(startTime)
 			if diff > cadence {

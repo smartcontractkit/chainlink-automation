@@ -76,7 +76,8 @@ type ConditionalObserver interface {
 	// CheckUpkeep(context.Context, ...UpkeepKey) ([]UpkeepResult, error)
 }
 
-type Executer interface {
+// Runner ...
+type Runner interface {
 	CheckUpkeep(context.Context, bool, ...UpkeepKey) ([]UpkeepResult, error)
 }
 
@@ -85,7 +86,7 @@ type ocrPlugin struct {
 	encoder      Encoder
 	coordinator  Coordinator
 	condObserver ConditionalObserver
-	executer     Executer
+	runner       Runner
 	logger       *log.Logger
 	subProcs     []PluginStarterCloser
 	// configuration vars
@@ -218,7 +219,7 @@ func (p *ocrPlugin) Report(ctx context.Context, t types.ReportTimestamp, _ types
 	// ------------- End length check ----------
 
 	// -------------- Check Process Specific to Conditional Upkeeps ---------
-	checkedUpkeeps, err := p.executer.CheckUpkeep(ctx, p.mercuryEnabled, keysToCheck...)
+	checkedUpkeeps, err := p.runner.CheckUpkeep(ctx, p.mercuryEnabled, keysToCheck...)
 	if err != nil {
 		return false, nil, fmt.Errorf("%w: failed to check upkeeps from attributed observation: %s", err, lCtx)
 	}

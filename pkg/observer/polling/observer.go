@@ -1,3 +1,7 @@
+/*
+A polling observer is an Observer that continuously polls every block, samples
+available upkeeps, and surfaces upkeeps that should be agreed on by a network.
+*/
 package polling
 
 import (
@@ -15,10 +19,13 @@ import (
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
+// UpkeepProvider is a dependency used by the observer to get upkeeps
+// available for polling
 type UpkeepProvider interface {
 	GetActiveUpkeepIDs(context.Context) ([]ocr2keepers.UpkeepIdentifier, error)
 }
 
+// Encoder is a dependency that provides helper functions for results and keys
 type Encoder interface {
 	// Eligible returns whether or not the upkeep result should be performed
 	Eligible(ocr2keepers.UpkeepResult) (bool, error)
@@ -32,19 +39,24 @@ type Encoder interface {
 	Detail(ocr2keepers.UpkeepResult) (ocr2keepers.UpkeepKey, uint32, error)
 }
 
-type Executer interface {
+// Runner is a dependency that provides the caching and parallelization
+// for checking eligibility of upkeeps
+type Runner interface {
 	CheckUpkeep(context.Context, bool, ...ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error)
 }
 
+// HeadProvider is a dependency for a block data source channel
 type HeadProvider interface {
 	HeadTicker() chan ocr2keepers.BlockKey
 }
 
+// Service ...
 type Service interface {
 	Start()
 	Stop()
 }
 
+// Shuffler ...
 type Shuffler[T any] interface {
 	Shuffle([]T) []T
 }
@@ -57,12 +69,13 @@ type Ratio interface {
 	fmt.Stringer
 }
 
+// NewPollingObserver ...
 func NewPollingObserver(
 	logger *log.Logger,
 	src UpkeepProvider,
 	heads HeadProvider,
-	exe Executer,
-	enc Encoder,
+	runner Runner,
+	encoder Encoder,
 	ratio Ratio,
 	maxSamplingDuration time.Duration, // maximum amount of time allowed for RPC calls per head
 	coord ocr2keepers.Coordinator,
@@ -80,8 +93,8 @@ func NewPollingObserver(
 		stager:           &stager{},
 		coordinator:      coord,
 		src:              src,
-		exe:              exe,
-		enc:              enc,
+		runner:           runner,
+		encoder:          encoder,
 		heads:            heads,
 		mercuryLookup:    mercuryLookup,
 	}
@@ -122,8 +135,8 @@ type PollingObserver struct {
 	shuffler    Shuffler[ocr2keepers.UpkeepKey] // provides shuffling logic for upkeep keys
 
 	src           UpkeepProvider
-	exe           Executer
-	enc           Encoder
+	runner        Runner
+	encoder       Encoder
 	mercuryLookup bool
 }
 
@@ -135,7 +148,7 @@ func (o *PollingObserver) Observe() (ocr2keepers.BlockKey, []ocr2keepers.UpkeepI
 	filteredIDs := make([]ocr2keepers.UpkeepIdentifier, 0, len(ids))
 
 	for _, id := range ids {
-		key := o.enc.MakeUpkeepKey(bl, id)
+		key := o.encoder.MakeUpkeepKey(bl, id)
 
 		if pending, err := o.coordinator.IsPending(key); pending || err != nil {
 			if err != nil {
@@ -219,7 +232,7 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey ocr2ke
 
 	keys = make([]ocr2keepers.UpkeepKey, len(ids))
 	for i, id := range ids {
-		keys[i] = o.enc.MakeUpkeepKey(blockKey, id)
+		keys[i] = o.encoder.MakeUpkeepKey(blockKey, id)
 	}
 
 	// reduce keys to ratio size and shuffle. this can return a nil array.
@@ -235,14 +248,14 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey ocr2ke
 
 	// run checkupkeep on all keys. an error from this function should
 	// bubble up.
-	results, err := o.exe.CheckUpkeep(ctx, o.mercuryLookup, keys...)
+	results, err := o.runner.CheckUpkeep(ctx, o.mercuryLookup, keys...)
 	if err != nil {
 		o.logger.Printf("%s: failed to parallel check upkeeps", err)
 		return
 	}
 
 	for _, res := range results {
-		eligible, err := o.enc.Eligible(res)
+		eligible, err := o.encoder.Eligible(res)
 		if err != nil {
 			o.logger.Printf("error testing result eligibility: %s", err)
 			continue
@@ -252,13 +265,13 @@ func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey ocr2ke
 			continue
 		}
 
-		key, _, err := o.enc.Detail(res)
+		key, _, err := o.encoder.Detail(res)
 		if err != nil {
 			o.logger.Printf("error getting result detail: %s", err)
 			continue
 		}
 
-		_, id, err := o.enc.SplitUpkeepKey(key)
+		_, id, err := o.encoder.SplitUpkeepKey(key)
 		if err != nil {
 			o.logger.Printf("error splitting upkeep key: %s", err)
 		}
