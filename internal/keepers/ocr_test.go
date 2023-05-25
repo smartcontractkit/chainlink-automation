@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
 	"github.com/smartcontractkit/ocr2keepers/pkg/ratio"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
@@ -182,7 +181,7 @@ func TestObservation(t *testing.T) {
 			plugin := &keepers{
 				logger:      log.New(io.Discard, "", 0),
 				coordinator: mf,
-				observers: []observer.Observer{
+				observers: []Observer{
 					mockObserver,
 				},
 			}
@@ -1234,7 +1233,7 @@ func (_m *MockedFilterer) Accept(key ktypes.UpkeepKey) error {
 }
 
 func (_m *MockedFilterer) InitialiseIDBlocks(duration time.Duration) {
-	_m.Mock.Called(duration).Error(0)
+	_m.Mock.Called(duration)
 }
 
 func (_m *MockedFilterer) IsTransmissionConfirmed(key ktypes.UpkeepKey) bool {

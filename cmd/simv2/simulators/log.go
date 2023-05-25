@@ -6,11 +6,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLog, error) {
-	logs := []types.PerformLog{}
+func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]ocr2keepers.PerformLog, error) {
+	logs := []ocr2keepers.PerformLog{}
 	if ct.lastBlock == nil {
 		return logs, nil
 	}
@@ -20,7 +20,7 @@ func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLo
 		lgs, ok := ct.perLogs.Get(key)
 		if ok {
 			for _, log := range lgs {
-				trBlock, trOk := new(big.Int).SetString(log.TransmitBlock.String(), 10)
+				trBlock, trOk := new(big.Int).SetString(string(log.TransmitBlock), 10)
 				if trOk {
 					log.Confirmations = new(big.Int).Sub(ct.lastBlock, trBlock).Int64()
 					logs = append(logs, log)
@@ -32,7 +32,7 @@ func (ct *SimulatedContract) PerformLogs(ctx context.Context) ([]types.PerformLo
 	return logs, nil
 }
 
-func (ct *SimulatedContract) StaleReportLogs(ctx context.Context) ([]types.StaleReportLog, error) {
+func (ct *SimulatedContract) StaleReportLogs(ctx context.Context) ([]ocr2keepers.StaleReportLog, error) {
 	// Not implemented in simulated contract yet
 	return nil, nil
 }

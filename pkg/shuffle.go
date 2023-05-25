@@ -6,7 +6,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 )
 
-func filterDedupeShuffleObservations(upkeepKeys [][]UpkeepKey, keyRandSource [16]byte, filters ...func(UpkeepKey) bool) ([]UpkeepKey, error) {
+func filterDedupeShuffleObservations(upkeepKeys [][]UpkeepKey, keyRandSource [16]byte, filters ...func(UpkeepKey) (bool, error)) ([]UpkeepKey, error) {
 	uniqueKeys, err := filterAndDedupe(upkeepKeys, filters...)
 	if err != nil {
 		return nil, err
@@ -19,7 +19,7 @@ func filterDedupeShuffleObservations(upkeepKeys [][]UpkeepKey, keyRandSource [16
 	return uniqueKeys, nil
 }
 
-func filterAndDedupe(inputs [][]UpkeepKey, filters ...func(UpkeepKey) bool) ([]UpkeepKey, error) {
+func filterAndDedupe(inputs [][]UpkeepKey, filters ...func(UpkeepKey) (bool, error)) ([]UpkeepKey, error) {
 	var max int
 	for _, input := range inputs {
 		max += len(input)
@@ -27,18 +27,14 @@ func filterAndDedupe(inputs [][]UpkeepKey, filters ...func(UpkeepKey) bool) ([]U
 
 	output := make([]UpkeepKey, 0, max)
 	matched := make(map[string]struct{})
-	for _, input := range inputs {
-		for _, val := range input {
-			add := true
-			for _, filter := range filters {
-				if !filter(val) {
-					add = false
-					break
-				}
-			}
 
-			if !add {
-				continue
+	for _, input := range inputs {
+	InnerLoop:
+		for _, val := range input {
+			for _, filter := range filters {
+				if ok, err := filter(val); ok || err != nil {
+					continue InnerLoop
+				}
 			}
 
 			key := string(val)

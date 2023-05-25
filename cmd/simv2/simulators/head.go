@@ -3,11 +3,10 @@ package simulators
 import (
 	"context"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-func (ct *SimulatedContract) HeadTicker() chan ktypes.BlockKey {
+func (ct *SimulatedContract) HeadTicker() chan ocr2keepers.BlockKey {
 	return ct.chHeads
 }
 
@@ -22,13 +21,13 @@ func (ct *SimulatedContract) forwardHeads(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case block := <-blocksCh:
-			send(ct.chHeads, chain.BlockKey(block.BlockNumber.String()))
+			send(ct.chHeads, ocr2keepers.BlockKey(block.BlockNumber.String()))
 		}
 	}
 }
 
 // send does a non-blocking send of the key on c.
-func send(c chan ktypes.BlockKey, k ktypes.BlockKey) {
+func send(c chan ocr2keepers.BlockKey, k ocr2keepers.BlockKey) {
 	select {
 	case c <- k:
 	default:

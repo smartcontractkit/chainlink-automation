@@ -135,3 +135,13 @@ func NewMonitorToWriter(w io.Writer) *MonitorToWriter {
 func (m *MonitorToWriter) SendLog(log []byte) {
 	_, _ = m.w.Write(log)
 }
+
+type WrappedLogger struct {
+	logger *simpleLogger
+}
+
+func (l *WrappedLogger) Write(p []byte) (n int, err error) {
+	l.logger.Debug(string(p), nil)
+	n = len(p)
+	return
+}

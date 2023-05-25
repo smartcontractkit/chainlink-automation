@@ -3,10 +3,14 @@ package ocr2keepers
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
 
+	"github.com/smartcontractkit/libocr/commontypes"
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
+	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 )
 
 var (
@@ -16,6 +20,64 @@ var (
 type oracle interface {
 	Start() error
 	Close() error
+}
+
+// DelegateConfig provides a single configuration struct for all options
+// to be passed to the oracle, oracle factory, and underlying plugin/services.
+type DelegateConfig struct {
+	BinaryNetworkEndpointFactory types.BinaryNetworkEndpointFactory
+	V2Bootstrappers              []commontypes.BootstrapperLocator
+	ContractConfigTracker        types.ContractConfigTracker
+	ContractTransmitter          types.ContractTransmitter
+	KeepersDatabase              types.Database
+	Logger                       commontypes.Logger
+	MonitoringEndpoint           commontypes.MonitoringEndpoint
+	OffchainConfigDigester       types.OffchainConfigDigester
+	OffchainKeyring              types.OffchainKeyring
+	OnchainKeyring               types.OnchainKeyring
+	LocalConfig                  types.LocalConfig
+
+	// ConditionalObserverFactory creates a new instance of a conditional
+	// observer during plugin startup
+	ConditionalObserverFactory ConditionalObserverFactory
+
+	// CoordinatorFactory creates a new instance of a coordinator during plugin
+	// startup
+	CoordinatorFactory CoordinatorFactory
+
+	// Encoder provides chain specific encode/decode functions to the plugin
+	Encoder Encoder
+
+	// Runner provides multi-threaded upkeep checks with results caching
+	Runner Runner
+
+	// legacy config params
+
+	// CacheExpiration is the duration of time a cached key is available. Use
+	// this value to balance memory usage and RPC calls. A new set of keys is
+	// generated with every block so a good setting might come from block time
+	// times number of blocks of history to support not replaying reports.
+	CacheExpiration time.Duration
+
+	// CacheEvictionInterval is a parameter for how often the cache attempts to
+	// evict expired keys. This value should be short enough to ensure key
+	// eviction doesn't block for too long, and long enough that it doesn't
+	// cause frequent blocking.
+	CacheEvictionInterval time.Duration
+
+	// MaxServiceWorkers is the total number of go-routines allowed to make RPC
+	// simultaneous calls on behalf of the sampling operation. This parameter
+	// is 10x the number of available CPUs by default. The RPC calls are memory
+	// heavy as opposed to CPU heavy as most of the work involves waiting on
+	// network responses.
+	MaxServiceWorkers int
+
+	// ServiceQueueLength is the buffer size for the RPC service queue. Fewer
+	// workers or slower RPC responses will cause this queue to build up.
+	// Adding new items to the queue will block if the queue becomes full.
+	ServiceQueueLength int
+
+	// Observers []observer.Observer
 }
 
 // Delegate is a container struct for an Oracle plugin. This struct provides
@@ -32,11 +94,11 @@ type Delegate struct {
 // with '[keepers-plugin] ' and a short file name.
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	// set some defaults
-	conf := keepers.ReportingFactoryConfig{
-		CacheExpiration:       DefaultCacheExpiration,
-		CacheEvictionInterval: DefaultCacheClearInterval,
-		MaxServiceWorkers:     DefaultMaxServiceWorkers,
-		ServiceQueueLength:    DefaultServiceQueueLength,
+	conf := config.ReportingFactoryConfig{
+		CacheExpiration:       config.DefaultCacheExpiration,
+		CacheEvictionInterval: config.DefaultCacheClearInterval,
+		MaxServiceWorkers:     config.DefaultMaxServiceWorkers,
+		ServiceQueueLength:    config.DefaultServiceQueueLength,
 	}
 
 	// override if set in config
@@ -56,9 +118,12 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		conf.ServiceQueueLength = c.ServiceQueueLength
 	}
 
-	if c.PrefixedLogger != nil {
-		c.PrefixedLogger.Printf("creating oracle with reporting factory config: %+v", conf)
-	}
+	// the log wrapper is to be able to use a log.Logger everywhere instead of
+	// a variety of logger types. all logs write to the Debug method.
+	wrapper := &logWriter{l: c.Logger}
+	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
+
+	l.Printf("creating oracle with reporting factory config: %+v", conf)
 
 	// create the oracle from config values
 	keeper, err := newOracleFn(offchainreporting.OCR2OracleArgs{
@@ -73,13 +138,13 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester:       c.OffchainConfigDigester,
 		OffchainKeyring:              c.OffchainKeyring,
 		OnchainKeyring:               c.OnchainKeyring,
-		ReportingPluginFactory: keepers.NewReportingPluginFactory(
-			c.HeadSubscriber,
-			c.Registry,
-			c.PerformLogProvider,
-			c.ReportEncoder,
-			c.PrefixedLogger,
-			conf,
+		ReportingPluginFactory: NewReportingPluginFactory(
+			c.Encoder,
+			c.Runner,
+			c.CoordinatorFactory,
+			c.ConditionalObserverFactory,
+			l,
+			// TODO: Provide node configuration options ???
 		),
 	})
 

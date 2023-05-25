@@ -1,3 +1,8 @@
+/*
+The keepers package is deprecated and will no longer be expected to function. It
+will be kept for a short period of time for reference. Use functions in the
+base `pkg` instead.
+*/
 package keepers
 
 import (
@@ -8,10 +13,6 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	v1 "github.com/smartcontractkit/ocr2keepers/encoder/v1"
-	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
 	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
@@ -32,7 +33,7 @@ type keepersReportingFactory struct {
 	encoder        ktypes.ReportEncoder
 	perfLogs       ktypes.PerformLogProvider
 	logger         *log.Logger
-	observers      []observer.Observer
+	observers      []Observer
 	config         ReportingFactoryConfig
 	upkeepService  *onDemandUpkeepService
 }
@@ -47,6 +48,7 @@ func NewReportingPluginFactory(
 	registry ktypes.Registry,
 	perfLogs ktypes.PerformLogProvider,
 	encoder ktypes.ReportEncoder,
+	observers []Observer,
 	logger *log.Logger,
 	config ReportingFactoryConfig,
 ) types.ReportingPluginFactory {
@@ -107,28 +109,26 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 
 	d.logger.Printf("updating %d observers", len(d.observers))
 
-	enc := v1.NewEncoder()
+	/*
+		pollingObserver := polling.NewPollingObserver(
+			d.logger,
+			d.registry,
+			polling.NewKeyProvider(d.registry),
+			d.config.MaxServiceWorkers,
+			d.config.ServiceQueueLength,
+			d.config.CacheExpiration,
+			d.config.CacheEvictionInterval,
+			reportCoordinator,
+			enc,
+			enc,
+			d.headSubscriber,
+			sample,
+			offChainCfg.MercuryLookup,
+			time.Duration(offChainCfg.SamplingJobDuration)*time.Millisecond, // sampling duration
+		)
+	*/
 
-	reportCoordinator := coordinator.NewReportCoordinator(d.registry, time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond, d.config.CacheEvictionInterval, d.perfLogs, 5, d.logger)
-
-	pollingObserver := polling.NewPollingObserver(
-		d.logger,
-		d.registry,
-		polling.NewKeyProvider(d.registry),
-		d.config.MaxServiceWorkers,
-		d.config.ServiceQueueLength,
-		d.config.CacheExpiration,
-		d.config.CacheEvictionInterval,
-		reportCoordinator,
-		enc,
-		enc,
-		d.headSubscriber,
-		sample,
-		offChainCfg.MercuryLookup,
-		time.Duration(offChainCfg.SamplingJobDuration)*time.Millisecond, // sampling duration
-	)
-
-	observers := []observer.Observer{pollingObserver}
+	observers := []Observer{}
 
 	d.upkeepService = newOnDemandUpkeepService(
 		sample,
@@ -149,14 +149,16 @@ func (d *keepersReportingFactory) NewReportingPlugin(c types.ReportingPluginConf
 		service: d.upkeepService,
 		encoder: d.encoder,
 		logger:  d.logger,
-		coordinator: coordinator.NewReportCoordinator(
-			d.registry,
-			time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
-			d.config.CacheEvictionInterval,
-			d.perfLogs,
-			offChainCfg.MinConfirmations,
-			d.logger,
-		),
+		/*
+			coordinator: coordinator.NewReportCoordinator(
+				d.registry,
+				time.Duration(offChainCfg.PerformLockoutWindow)*time.Millisecond,
+				d.config.CacheEvictionInterval,
+				d.perfLogs,
+				offChainCfg.MinConfirmations,
+				d.logger,
+			),
+		*/
 		reportGasLimit:     offChainCfg.GasLimitPerReport,
 		upkeepGasOverhead:  offChainCfg.GasOverheadPerUpkeep,
 		maxUpkeepBatchSize: offChainCfg.MaxUpkeepBatchSize,
