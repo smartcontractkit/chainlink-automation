@@ -73,7 +73,6 @@ type Coordinator interface {
 // type is distinctly different from a log observer
 type ConditionalObserver interface {
 	Observe() (BlockKey, []UpkeepIdentifier, error)
-	// CheckUpkeep(context.Context, ...UpkeepKey) ([]UpkeepResult, error)
 }
 
 // Runner ...

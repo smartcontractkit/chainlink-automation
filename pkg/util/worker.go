@@ -101,8 +101,6 @@ func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
 
 	go wg.run()
 
-	// runtime.SetFinalizer(wg, func(g *WorkerGroup[T]) { g.Stop() })
-
 	return wg
 }
 
