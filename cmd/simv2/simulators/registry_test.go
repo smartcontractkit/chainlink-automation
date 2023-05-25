@@ -19,7 +19,7 @@ func TestCheckUpkeep(t *testing.T) {
 
 	type enc struct {
 		SimulatedReportEncoder
-		encoding.KeyBuilder
+		encoding.BasicEncoder
 	}
 
 	rpc := NewSimulatedRPC(0, 1000, 0, tel)
