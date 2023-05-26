@@ -189,6 +189,7 @@ func (rc *reportCoordinator) checkLogs() {
 	// gas if this node tries to transmit it again, however we prioritise the upkeep performance
 	// and clear the idBlocks for this upkeep.
 	for _, l := range staleReportLogs {
+		continue
 		if l.Confirmations < int64(rc.minConfs) {
 			rc.logger.Printf("Skipping stale report log in transaction %s as confirmations (%d) is less than min confirmations (%d)", l.TransactionHash, l.Confirmations, rc.minConfs)
 			continue
