@@ -38,4 +38,5 @@ sequenceDiagram
     RN-->>OB: []CheckResult, error
 
     OB->>P: Run([]CheckResult)
+    P-->>OB: error
 ```
