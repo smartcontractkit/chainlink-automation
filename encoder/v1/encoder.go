@@ -64,10 +64,11 @@ func (e *encoder) EncodeReport(toReport []types.UpkeepResult, _ ...encoders.Conf
 	}
 
 	var baseValuesIdx int
+	var highestBlockNumber uint32
 	for i, rpt := range toReport {
-		// TODO AUTO-2863
-		if rpt.CheckBlockNumber > uint32(baseValuesIdx) {
+		if rpt.CheckBlockNumber > highestBlockNumber {
 			baseValuesIdx = i
+			highestBlockNumber = rpt.CheckBlockNumber
 		}
 	}
 
