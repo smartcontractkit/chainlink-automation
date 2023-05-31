@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
+	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
 	"github.com/smartcontractkit/ocr2keepers/internal/keepers"
 )
 
@@ -62,7 +62,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	l.Printf("creating oracle with reporting factory config: %+v", conf)
 
 	// create the oracle from config values
-	keeper, err := newOracleFn(offchainreporting.OracleArgs{
+	keeper, err := newOracleFn(offchainreporting.OCR2OracleArgs{
 		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
 		V2Bootstrappers:              c.V2Bootstrappers,
 		ContractConfigTracker:        c.ContractConfigTracker,

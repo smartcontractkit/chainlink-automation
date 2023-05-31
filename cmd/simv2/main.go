@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/libocr/offchainreporting2/chains/evmutil"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/chains/evmutil"
 	flag "github.com/spf13/pflag"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
