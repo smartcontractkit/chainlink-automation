@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"

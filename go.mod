@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
-	github.com/smartcontractkit/libocr v0.0.0-20221209172631-568a30f68407
+	github.com/smartcontractkit/libocr v0.0.0-20230531174957-6e75d6e613d1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/multierr v1.9.0
@@ -29,6 +29,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

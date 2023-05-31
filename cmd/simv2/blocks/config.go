@@ -4,9 +4,9 @@ import (
 	"log"
 	"sync"
 
-	ocr2config "github.com/smartcontractkit/libocr/offchainreporting2/confighelper"
+	ocr2config "github.com/smartcontractkit/libocr/offchainreporting2plus/confighelper"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 )
 
