@@ -132,7 +132,10 @@ also indicate that an upkeep does not need to be performed. In this case, both
 observations would achieve a valid quorum, but produce different outcomes. 
 Comparing the observations against each other, accounting for both the positive 
 *AND* negative, a final unified outcome can be achieved that is resistant to
-node restarts or fresh nodes entering the network. (shown)
+node restarts or fresh nodes entering the network. (not shown)
+
+Approach #3: f+1 'votes' required to perform an upkeep. this is the simplest
+approach with the least unknowns and is the one we're going with. (shown)
 ```
 for each round
     // Observation -------------------
@@ -163,13 +166,8 @@ for each round
         update median block number with observation latest
         add observation id samples to sampled id list
 
-    for each attributedObservation
-        for each flattened check pipeline result
-            if check pipeline result is not in observation
-                decrement count for check pipeline result
-
     for each flattened check pipeline result
-        if count is greater than 0
+        if count is greater than f+1
             add to outcome
 
     flatten and dedupe sampled ids
