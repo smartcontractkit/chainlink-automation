@@ -136,15 +136,13 @@ node restarts or fresh nodes entering the network. (shown)
 ```
 for each round
     // Observation -------------------
-    for each check pipeline result in previous outcome
-        add check pipeline result to in-flight cache
-        remove check pipeline result from ocr staging
+    for each outcome hook
+        call hook run with previous outcome
 
     // filtering can be applied within ocr staging such that the previous add
     // to in-flight is immediately applied to results being pulled
-    get check pipeline results from ocr staging
-    
-    for each check pipeline result
+    for each check pipeline result from ocr staging
+        call peek on ocr staging queue to get result // does not remove
         add check pipeline result to observation
 
     get latest block from sample staging
@@ -188,4 +186,39 @@ for each round
             start new report
 
     return array of reports
+```
+
+### Outcome Hooks
+Multiple processes need to be run on the outcomes from the OCR observation. To
+simplify and modularize this, the OCR process will run multiple hooks passing
+the previous round's outcome to each hook.
+
+### Coordinator Hook
+```
+get check pipeline results from outcome
+
+for each check pipeline result
+    call accept on coordinator with check pipeline result
+```
+
+### Check Pipeline Result Staging Hook
+To allow results to be added to outcomes over multiple rounds, a result is 
+pulled from the ocr staging queue using `peek` instead of `pop`. If a result is
+in an outcome, the result should be popped from the queue so that it doesn't get
+added to the next observation.
+```
+get check pipeline results from outcome
+
+for each check pipeline result
+    call pop on ocr staging queue for check pipeline result
+```
+
+### Create Coordinated Tick Hook
+The coordinated ticker runs the check pipeline, producing results for 
+coordinated candidates. 
+```
+get median block from outcome
+get sample ids from outcome
+
+call run on coordinated ticker with median block and sample ids
 ```
