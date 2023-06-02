@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/libocr/commontypes"
-	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2"
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 )
