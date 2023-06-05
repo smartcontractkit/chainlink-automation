@@ -37,4 +37,6 @@ type StaleReportLog struct {
 
 type UpkeepPayload interface{}
 
-type CheckResult interface{}
+type CheckResult interface {
+	IsEligible() bool
+}
