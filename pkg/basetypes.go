@@ -40,3 +40,5 @@ type UpkeepPayload interface{}
 type CheckResult struct {
 	Eligible bool
 }
+
+type UpkeepPayload interface{}
