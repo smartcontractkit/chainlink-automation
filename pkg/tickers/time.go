@@ -1,4 +1,4 @@
-package time
+package tickers
 
 import (
 	"context"
@@ -39,9 +39,9 @@ type timeTicker struct {
 	cancelFn context.CancelFunc
 }
 
-func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) *timeTicker {
+func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) timeTicker {
 	ctx, cancelFn := context.WithCancel(context.Background())
-	t := &timeTicker{
+	t := timeTicker{
 		interval: interval,
 		ticker:   time.NewTicker(interval),
 		observer: observer,
@@ -49,11 +49,11 @@ func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeep
 		ctx:      ctx,
 		cancelFn: cancelFn,
 	}
-	go t.Start()
+
 	return t
 }
 
-func (t *timeTicker) Start() {
+func (t timeTicker) Start() {
 	for tm := range t.ticker.C {
 		func() {
 			ctx, cancelFn := context.WithTimeout(t.ctx, t.interval)
@@ -71,7 +71,7 @@ func (t *timeTicker) Start() {
 	}
 }
 
-func (t *timeTicker) Stop() {
+func (t timeTicker) Stop() {
 	t.cancelFn()
 	t.ticker.Stop()
 }

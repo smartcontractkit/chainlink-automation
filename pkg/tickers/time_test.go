@@ -1,4 +1,4 @@
-package time
+package tickers
 
 import (
 	"context"
@@ -47,6 +47,7 @@ func TestNewTimeTicker(t *testing.T) {
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		go ticker.Start()
 
 		time.Sleep(450 * time.Millisecond)
 
@@ -93,6 +94,7 @@ func TestNewTimeTicker(t *testing.T) {
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		go ticker.Start()
 
 		time.Sleep(450 * time.Millisecond)
 
@@ -121,6 +123,7 @@ func TestNewTimeTicker(t *testing.T) {
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		go ticker.Start()
 
 		time.Sleep(450 * time.Millisecond)
 
@@ -153,6 +156,7 @@ func TestNewTimeTicker(t *testing.T) {
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		go ticker.Start()
 
 		time.Sleep(450 * time.Millisecond)
 
@@ -195,6 +199,7 @@ func TestNewTimeTicker(t *testing.T) {
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		go ticker.Start()
 
 		time.Sleep(450 * time.Millisecond)
 
