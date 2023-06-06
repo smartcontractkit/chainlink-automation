@@ -28,7 +28,7 @@ type Tick interface {
 	GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error)
 }
 
-type getUpkeepsFn func(context.Context, time.Time) ([]ocr2keepers.UpkeepPayload, error)
+type getUpkeepsFn func(context.Context, time.Time) (Tick, error)
 
 type timeTicker struct {
 	interval time.Duration
@@ -56,10 +56,12 @@ func (t *timeTicker) Start() {
 				ctx, cancelFn := context.WithTimeout(context.Background(), t.interval)
 				defer cancelFn()
 
-				if err := t.observer.Process(ctx, tick{
-					getter: t.getterFn,
-					tm:     tm,
-				}); err != nil {
+				tick, err := t.getterFn(ctx, tm)
+				if err != nil {
+					logPrintf("error fetching tick: %s", err.Error())
+				}
+
+				if err := t.observer.Process(ctx, tick); err != nil {
 					logPrintf("error processing observer: %s", err.Error())
 				}
 			}()
@@ -69,16 +71,4 @@ func (t *timeTicker) Start() {
 
 func (t *timeTicker) Stop() {
 	t.ticker.Stop()
-}
-
-// tick is the specific implementation for a Ticker that runs on a time
-// interval
-type tick struct {
-	tm time.Time
-	// getter gets wrapped by the tick.GetUpkeeps function
-	getter func(context.Context, time.Time) ([]ocr2keepers.UpkeepPayload, error)
-}
-
-func (t tick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
-	return t.getter(ctx, t.tm)
 }

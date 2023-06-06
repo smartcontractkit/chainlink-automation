@@ -25,6 +25,14 @@ type mockUpkeepPayload struct {
 	data string
 }
 
+type mockTick struct {
+	getUpkeepsFn func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error)
+}
+
+func (t *mockTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	return t.getUpkeepsFn(ctx)
+}
+
 func TestNewTimeTicker(t *testing.T) {
 	t.Run("creates new time ticker with a counting observer", func(t *testing.T) {
 		callCount := 0
@@ -34,8 +42,12 @@ func TestNewTimeTicker(t *testing.T) {
 				return nil
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) ([]ocr2keepers.UpkeepPayload, error) {
-			return nil, nil
+		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+			return &mockTick{
+				getUpkeepsFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+					return nil, nil
+				},
+			}, nil
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
@@ -76,8 +88,12 @@ func TestNewTimeTicker(t *testing.T) {
 				return nil
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) ([]ocr2keepers.UpkeepPayload, error) {
-			return upkeepPayloads, nil
+		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+			return &mockTick{
+				getUpkeepsFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+					return upkeepPayloads, nil
+				},
+			}, nil
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
@@ -104,8 +120,12 @@ func TestNewTimeTicker(t *testing.T) {
 				return errors.New("boom")
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) ([]ocr2keepers.UpkeepPayload, error) {
-			return nil, nil
+		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+			return &mockTick{
+				getUpkeepsFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+					return nil, nil
+				},
+			}, nil
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
@@ -142,8 +162,12 @@ func TestNewTimeTicker(t *testing.T) {
 				return nil
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) ([]ocr2keepers.UpkeepPayload, error) {
-			return nil, nil
+		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+			return &mockTick{
+				getUpkeepsFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+					return nil, nil
+				},
+			}, nil
 		}
 
 		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
