@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2/types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 // Transmit sends the report to the on-chain OCR2Aggregator smart
@@ -49,9 +49,9 @@ func (ct *SimulatedContract) LatestConfigDigestAndEpoch(
 }
 
 // Account from which the transmitter invokes the contract
-func (ct *SimulatedContract) FromAccount() types.Account {
+func (ct *SimulatedContract) FromAccount() (types.Account, error) {
 	ct.mu.RLock()
 	defer ct.mu.RUnlock()
 
-	return types.Account(ct.account)
+	return types.Account(ct.account), nil
 }
