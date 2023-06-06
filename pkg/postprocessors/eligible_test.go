@@ -10,24 +10,15 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-type checkResult struct {
-	eligible bool
-	data     string
-}
-
-func (r *checkResult) IsEligible() bool {
-	return r.eligible
-}
-
 func TestNewEligiblePostProcessor(t *testing.T) {
 	t.Run("create a new eligible post processor", func(t *testing.T) {
 		resultsStore := ocr2keepers.NewResultStore[ocr2keepers.CheckResult]()
 		processor := NewEligiblePostProcessor(resultsStore)
 
 		t.Run("process eligible results", func(t *testing.T) {
-			result1 := &checkResult{eligible: false, data: "result 1 data"}
-			result2 := &checkResult{eligible: true, data: "result 2 data"}
-			result3 := &checkResult{eligible: false, data: "result 3 data"}
+			result1 := ocr2keepers.CheckResult{Eligible: false}
+			result2 := ocr2keepers.CheckResult{Eligible: true}
+			result3 := ocr2keepers.CheckResult{Eligible: false}
 
 			err := processor.PostProcess(context.Background(), []ocr2keepers.CheckResult{
 				result1,

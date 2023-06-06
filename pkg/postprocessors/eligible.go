@@ -31,7 +31,7 @@ func NewEligiblePostProcessor(resultsAdder checkResultAdder) *eligiblePostProces
 
 func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
 	for _, res := range results {
-		if res.IsEligible() {
+		if res.Eligible {
 			p.resultsAdder.Add(res)
 		}
 	}
