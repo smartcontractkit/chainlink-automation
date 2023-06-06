@@ -34,3 +34,7 @@ type StaleReportLog struct {
 	Confirmations   int64
 	TransactionHash string
 }
+
+type UpkeepPayload interface{}
+
+type CheckResult interface{}

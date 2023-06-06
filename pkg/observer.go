@@ -2,19 +2,9 @@ package ocr2keepers
 
 import "context"
 
-type UpkeepPayload interface{}
-type CheckResult interface{}
-
 type Tick interface {
 	// GetUpkeeps provides an array of upkeeps scoped to the individual tick
 	GetUpkeeps(ctx context.Context) ([]UpkeepPayload, error)
-}
-
-// Runner2 is the interface for an object that should determine eligibility state
-// (I didn't want to mess with the existing runner and was unsure if we wanted to reuse that)
-type Runner2 interface {
-	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
-	CheckUpkeeps(context.Context, []UpkeepPayload) ([]CheckResult, error)
 }
 
 // Preprocessor is the general interface for middleware used to filter, add, or modify upkeep
@@ -30,20 +20,15 @@ type Postprocessor interface {
 	PostProcess(context.Context, []CheckResult) error
 }
 
-type Observer interface {
-	// Process should use an arbitrary tick as input
-	Process(context.Context, Tick) error
-}
-
-type Observe struct {
+type Observer struct {
 	Preprocessors []Preprocessor
 	Postprocessor Postprocessor
-	Runner        Runner2
+	Runner        Runner
 }
 
 // NewObserver creates a new Observer with the given pre-processors, post-processor, and runner
-func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runner Runner2) Observer {
-	return &Observe{
+func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runner Runner) Observer {
+	return Observer{
 		Preprocessors: preprocessors,
 		Postprocessor: postprocessor,
 		Runner:        runner,
@@ -51,7 +36,7 @@ func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runn
 }
 
 // Process - receives a tick and runs it through the eligibility pipeline. Calls all pre-processors, runs the check pipeline, and calls the post-processor.
-func (o *Observe) Process(ctx context.Context, tick Tick) error {
+func (o *Observer) Process(ctx context.Context, tick Tick) error {
 	// Get upkeeps from tick
 	upkeeps, err := tick.GetUpkeeps(ctx)
 	if err != nil {
@@ -74,10 +59,5 @@ func (o *Observe) Process(ctx context.Context, tick Tick) error {
 	}
 
 	// Run post-processor
-	err = o.Postprocessor.PostProcess(ctx, results)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return o.Postprocessor.PostProcess(ctx, results)
 }

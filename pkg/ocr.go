@@ -76,9 +76,11 @@ type ConditionalObserver interface {
 	Observe() (BlockKey, []UpkeepIdentifier, error)
 }
 
-// Runner ...
+// Runner is the interface for an object that should determine eligibility state
 type Runner interface {
 	CheckUpkeep(context.Context, bool, ...UpkeepKey) ([]UpkeepResult, error)
+	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
+	CheckUpkeeps(context.Context, []UpkeepPayload) ([]CheckResult, error)
 }
 
 type ocrPlugin struct {
@@ -110,7 +112,7 @@ func (p *ocrPlugin) Observation(_ context.Context, t types.ReportTimestamp, _ ty
 	// var blocks []BlockKey
 
 	// naive implementation of getting observations
-	// Observe may be too simple and we need a queue mechanism to distribute
+	// Observer may be too simple and we need a queue mechanism to distribute
 	// pulling from multiple observers and their respective queues
 	// TODO: maybe make this into a centralized queue? possibly run encoding
 	// estimates as items are popped from the queue
