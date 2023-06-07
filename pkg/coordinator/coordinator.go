@@ -104,7 +104,7 @@ func NewReportCoordinator(
 		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
 		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
-		chStop:         make(chan struct{}),
+		chStop:         make(chan struct{}, 1),
 		encoder:        encoder,
 	}
 
