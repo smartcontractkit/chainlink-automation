@@ -2,6 +2,7 @@ package types
 
 import (
 	"crypto/rand"
+	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -108,7 +109,15 @@ func TestZeroPadding(t *testing.T) {
 }
 
 func randomBytes(n int) []byte {
+	source := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVwxyz"
+
 	b := make([]byte, n)
-	_, _ = rand.Read(b)
+
+	for i := range b {
+		p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(source))))
+
+		b[i] = byte(source[p.Int64()])
+	}
+
 	return b
 }
