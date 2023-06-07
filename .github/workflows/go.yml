@@ -61,4 +61,4 @@ jobs:
         go-version-file: "go.mod"
 
     - name: Run Keepers Package Fuzz Tests
-      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/internal/keepers
+      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/pkg

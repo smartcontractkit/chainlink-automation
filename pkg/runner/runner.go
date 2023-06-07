@@ -81,7 +81,6 @@ func (o *Runner) CheckUpkeep(ctx context.Context, mercuryEnabled bool, keys ...o
 
 func (o *Runner) Start() error {
 	if !o.running.Load() {
-		// TODO: create way to restart worker group
 		go o.cacheCleaner.Run(o.cache)
 		o.running.Swap(true)
 	}
@@ -169,9 +168,7 @@ func (o *Runner) wrapWorkerFunc(mercuryEnabled bool) func(context.Context, []ocr
 					continue
 				}
 
-				// TODO: ok might be assumed here???
 				if ok {
-					// TODO: try something other than using `Detail`
 					key, _, _ := o.encoder.Detail(result)
 					o.logger.Printf("upkeep ready to perform for key %s", key)
 				}
@@ -188,9 +185,7 @@ func (o *Runner) wrapAggregate(r *Result) func([]ocr2keepers.UpkeepResult, error
 			r.AddSuccesses(1)
 
 			for _, res := range result {
-				// TODO: find another way to do this
 				key, _, _ := o.encoder.Detail(res)
-				// TODO: using string again
 				o.cache.Set(string(key), res, pkgutil.DefaultCacheExpiration)
 
 				r.Add(res)

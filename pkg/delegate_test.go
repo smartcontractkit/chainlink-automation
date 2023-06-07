@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/mocks"
 )
 
 func TestStart(t *testing.T) {
 	t.Run("fails to create the delegate with an empty config", func(t *testing.T) {
-		logger := ktypes.NewMockLogger(t)
+		logger := mocks.NewMockLogger(t)
 		logger.On("Debug", mock.Anything, mock.Anything).Once()
 
 		_, err := NewDelegate(DelegateConfig{
@@ -27,7 +27,7 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("creates the delegate with the provided config", func(t *testing.T) {
-		logger := ktypes.NewMockLogger(t)
+		logger := mocks.NewMockLogger(t)
 		logger.On("Debug", mock.Anything, mock.Anything).Maybe()
 
 		_, err := NewDelegate(DelegateConfig{
@@ -81,7 +81,7 @@ func TestStart(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	t.Run("a not yet started oracle fails to close", func(t *testing.T) {
-		var mockLogger = ktypes.NewMockLogger(t)
+		var mockLogger = mocks.NewMockLogger(t)
 		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 		d, err := NewDelegate(DelegateConfig{

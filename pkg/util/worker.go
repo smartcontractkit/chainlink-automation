@@ -67,10 +67,9 @@ type WorkerGroup[T any] struct {
 	queue         *Queue[GroupedItem[T]]
 	input         chan GroupedItem[T]
 	chInputNotify chan struct{}
-	// TODO: make result data a cache instead of a map
-	mu           sync.Mutex
-	resultData   map[int][]WorkItemResult[T]
-	resultNotify map[int]chan struct{}
+	mu            sync.Mutex
+	resultData    map[int][]WorkItemResult[T]
+	resultNotify  map[int]chan struct{}
 
 	// channels used to stop processing
 	chStopInputs     chan struct{}

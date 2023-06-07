@@ -112,7 +112,6 @@ func (p *ocrPlugin) Observation(_ context.Context, t types.ReportTimestamp, _ ty
 	// naive implementation of getting observations
 	// Observer may be too simple and we need a queue mechanism to distribute
 	// pulling from multiple observers and their respective queues
-	// TODO: maybe make this into a centralized queue? possibly run encoding
 	// estimates as items are popped from the queue
 	block, ids, err := p.condObserver.Observe()
 	if err != nil {
@@ -360,7 +359,6 @@ func (p *ocrPlugin) ShouldTransmitAcceptedReport(_ context.Context, rt types.Rep
 }
 
 // Close implements the types.ReportingPlugin interface in OCR2.
-// TODO: research when libOCR calls this function to see if we need to shut down
 // internal services before or after libOCR calls this function. Also, does this
 // function get called before or after a new instance is created.
 func (p *ocrPlugin) Close() error {

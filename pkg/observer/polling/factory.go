@@ -25,9 +25,6 @@ type PollingObserverFactory struct {
 
 // NewConditionalObserver ...
 func (f *PollingObserverFactory) NewConditionalObserver(oc config.OffchainConfig, c types.ReportingPluginConfig, coord ocr2keepers.Coordinator) (ocr2keepers.ConditionalObserver, error) {
-	// TODO: the factory might need to spin down previous instances before
-	// the OCR process fully stops them
-
 	var (
 		p      float64
 		err    error
