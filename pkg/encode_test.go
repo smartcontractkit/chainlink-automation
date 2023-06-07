@@ -4,21 +4,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
 )
 
 func BenchmarkDecode(b *testing.B) {
-	key1 := chain.UpkeepKey([]byte("1239487928374|18768923479234987"))
-	key2 := chain.UpkeepKey([]byte("1239487928374|18768923479234989"))
-	key3 := chain.UpkeepKey([]byte("1239487928375|18768923479234987"))
+	key1 := UpkeepKey([]byte("1239487928374|18768923479234987"))
+	key2 := UpkeepKey([]byte("1239487928374|18768923479234989"))
+	key3 := UpkeepKey([]byte("1239487928375|18768923479234987"))
 
-	encoded := mustEncodeKeys([]ktypes.UpkeepKey{key1, key2, key3})
+	encoded := mustEncodeKeys([]UpkeepKey{key1, key2, key3})
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		var keys []ktypes.UpkeepKey
+		var keys []UpkeepKey
 
 		b.StartTimer()
 		err := decode(encoded, &keys)
@@ -46,7 +43,7 @@ func Test_encode(t *testing.T) {
 	})
 }
 
-func mustEncodeKeys(keys []ktypes.UpkeepKey) []byte {
+func mustEncodeKeys(keys []UpkeepKey) []byte {
 	b, _ := encode(keys)
 	return b
 }

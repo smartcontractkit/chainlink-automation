@@ -8,6 +8,10 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
+// Generate types from third-party repos:
+//
+//go:generate mockery --name Logger --structname MockLogger --srcpkg "github.com/smartcontractkit/libocr/commontypes" --case underscore --filename logger.generated.go
+
 type logWriter struct {
 	l commontypes.Logger
 }
