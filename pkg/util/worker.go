@@ -180,6 +180,14 @@ func (wg *WorkerGroup[T]) Results(group int) []WorkItemResult[T] {
 	return resultData
 }
 
+func (wg *WorkerGroup[T]) RemoveGroup(group int) {
+	wg.mu.Lock()
+	defer wg.mu.Unlock()
+
+	delete(wg.resultData, group)
+	delete(wg.resultNotify, group)
+}
+
 func (wg *WorkerGroup[T]) Stop() {
 	wg.once.Do(func() {
 		wg.svcCancel()
@@ -333,6 +341,9 @@ func RunJobs[T, K any](ctx context.Context, wg *WorkerGroup[T], jobs []K, jobFun
 
 	// wait for all results to be read
 	wait.Wait()
+
+	// clean up run group resources
+	wg.RemoveGroup(group)
 
 	// close the results reader process to clean up resources
 	close(end)
