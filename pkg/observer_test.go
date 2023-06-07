@@ -22,11 +22,6 @@ type mockRunner struct {
 	mock.Mock
 }
 
-func (m *mockRunner) CheckUpkeep(ctx context.Context, b bool, key ...UpkeepKey) ([]UpkeepResult, error) {
-	ret := m.Called(ctx, b, key)
-	return ret.Get(0).([]UpkeepResult), ret.Error(1)
-}
-
 func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads []UpkeepPayload) ([]CheckResult, error) {
 	ret := m.Called(ctx, payloads)
 	return ret.Get(0).([]CheckResult), ret.Error(1)
@@ -54,7 +49,7 @@ func TestNewObserver(t *testing.T) {
 	type args struct {
 		preprocessors []Preprocessor
 		postprocessor Postprocessor
-		runner        Runner
+		runner        Runner2
 	}
 	tests := []struct {
 		name string
@@ -86,7 +81,7 @@ func TestObserve_Process(t *testing.T) {
 	type fields struct {
 		Preprocessors []Preprocessor
 		Postprocessor Postprocessor
-		Runner        Runner
+		Runner        Runner2
 	}
 	type args struct {
 		ctx  context.Context
