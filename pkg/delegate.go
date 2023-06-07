@@ -144,7 +144,6 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			c.CoordinatorFactory,
 			c.ConditionalObserverFactory,
 			l,
-			// TODO: Provide node configuration options ???
 		),
 	})
 

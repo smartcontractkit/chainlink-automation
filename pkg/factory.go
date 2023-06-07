@@ -17,10 +17,6 @@ const MaxObservationLength = 1_000
 
 // a report is composed of 1 or more abi encoded perform calls
 // with performData of arbitrary length
-// TODO (config): pick sane limit based on expected performData size. Maybe set
-// this to block size limit or 2/3 block size limit?
-// TODO (config): Also might need to be part of the off-chain config instead of
-// a constant.
 const MaxReportLength = 10_000
 
 type CoordinatorFactory interface {

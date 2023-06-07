@@ -38,7 +38,6 @@ var (
 	DefaultLockoutWindow  = time.Duration(20) * time.Minute
 	DefaultCacheClean     = time.Duration(30) * time.Second
 	ErrKeyAlreadyAccepted = fmt.Errorf("key already accepted")
-	// TODO: still chain specific code
 	IndefiniteBlockingKey = ocr2keepers.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
 )
 
@@ -141,7 +140,6 @@ func (rc *reportCoordinator) Accept(key ocr2keepers.UpkeepKey) error {
 
 	// If a key is already active then don't update filters, but also not throw errors as
 	// there might be other keys in the same report which can get accepted
-	// TODO: key to string again
 	if _, ok := rc.activeKeys.Get(string(key)); !ok {
 		// Set the key as accepted within activeKeys
 		rc.activeKeys.Set(string(key), false, util.DefaultCacheExpiration)
@@ -392,7 +390,6 @@ func (rc *reportCoordinator) Close() error {
 }
 
 func (rc *reportCoordinator) run() {
-	// TODO: handle panics by restarting this process
 	cadence := time.Second
 	timer := time.NewTimer(cadence)
 

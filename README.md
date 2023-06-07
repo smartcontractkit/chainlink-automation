@@ -46,57 +46,6 @@ The strategy of logging in this repo is to have two types of outcomes from logs:
 
 If an error cannot be handled, it should be bubbled up. If it cannot be bubbled up, it should panic. The plugin shouldn't be concerned with managing runtime errors, log severity, or panic recovery unless it cannot be handled by the chainlink node process. An example might be a background service that is created a plugin startup but not managed by the chainlink node. If there is such a service, it should handle its own recovery within the context of a Start/Stop service.
 
-## Simulator
-The simulator exists to create 1 or more 'nodes' and run an integration test where the simulator steps through basic OCR rounds calling functions on the plugin interface (Query, Observation, Report, ShouldAcceptFinalizedReport) and logs the reports collected from each round.
-
-The simulator does not sign reports and many other features of OCR such as report selection or slow node handling are heavily simplified.
-
-Each 'node' is configured using the given contract address (registry) and RPC. Limit rounds, round time, and number of nodes to run a simple integration test between the plugin, contract, and OCR interface.
-
-Use this simulator to test how the plugin responds to the time limits enforced by OCR and to verify the pipeline of data from upkeeps to reports.
-
-### Usage
-
-Start with building the simulator by running `make simulator`. The output will be `bin/simulator`. This can be added to your path or you can call the program directly.
-
-To run the simulator, you can use the defaults for most inputs. The two most important are the contract address and the RPC client for calling the contract.
-
-Example:
-```
-$ ./bin/simulator --contract 0x02777053d6764996e594c3E88AF1D58D5363a2e6 --rpc-node https://rinkeby.infura.io/v3/[your key]
-```
-
-Other options include:
-- `--nodes | -n [int]`: default 3, the number of parallel nodes to simulate. minimum of 1
-- `--round-time | -t [int]`: default 5, the time in seconds a round should take. this is a hard limit and the round context will be cancelled at the end of the round
-- `--query-time | -qt [int]`: default 0, the max time in seconds to run an OCR Query operation. use this for a more fine-grained simulation to OCR
-- `--observation-time | -ot [int]`: default 0, the max time in seconds to run an OCR Observation operation. use this for a more fine-grained simulation to OCR
-- `--report-time | -rt [int]`: default 0, the max time in seconds to run an OCR Report operation. use this for a more fine-grained simulation to OCR
-- `--rounds | -r [int]`: default 2, defines the number of rounds the simulator should run. 0 is unlimited
-- `--max-run-time | -m [int]`: default 0, the number of seconds to run the simulation. use this in place of number of rounds to do a time based simulation instead of a round based simulation. use 0 for no limit
-
-The simulation will end when one of the following occurs:
-1. Defined number of rounds occurs
-2. Defined simulation time limit is reached
-3. SIGTERM syscall is encountered
-
-### Profiling
-
-Execute profiling using `pprof` to see things like heap allocation, goroutines, and more.
-- `--pprof`: default false, add to turn on profiling
-- `--pprof-port [int]`: default 6060, the port on localhost to listen for pprof requests
-
-**Example:**
-Start the service in one terminal window and run the pprof tool in another. For more information on pprof, view some docs [here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
-
-```
-# terminal 1
-$ ./bin/simulator --pprof --contract 0x02777053d6764996e594c3E88AF1D58D5363a2e6 --rpc-node https://rinkeby.infura.io/v3/[your key]
-
-# terminal 2
-$ go tool pprof -top http://localhost:6060/debug/pprof/heap
-```
-
 ## Simulator V2
 
 The goal of the simulator is to complete a full run of the automation plugin
@@ -139,6 +88,18 @@ $ ./bin/simv2 --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
 - `--charts [bool]`: default false, start and run charts service to display results
 - `--pprof [bool]`: default false, run pprof server on simulation startup
 - `--pprof-port [int]`: default 6060, port to serve pprof profiler on
+
+### Profiling
+
+Start the service in one terminal window and run the pprof tool in another. For more information on pprof, view some docs [here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
+
+```
+# terminal 1
+$ ./bin/simv2 --pprof --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
+
+# terminal 2
+$ go tool pprof -top http://localhost:6060/debug/pprof/heap
+```
 
 ### Runbook Options
 
