@@ -79,8 +79,6 @@ type ConditionalObserver interface {
 // Runner is the interface for an object that should determine eligibility state
 type Runner interface {
 	CheckUpkeep(context.Context, bool, ...UpkeepKey) ([]UpkeepResult, error)
-	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
-	CheckUpkeeps(context.Context, []UpkeepPayload) ([]CheckResult, error)
 }
 
 type ocrPlugin struct {

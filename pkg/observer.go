@@ -20,14 +20,20 @@ type Postprocessor interface {
 	PostProcess(context.Context, []CheckResult) error
 }
 
+// Runner2 is the interface for an object that should determine eligibility state
+type Runner2 interface {
+	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
+	CheckUpkeeps(context.Context, []UpkeepPayload) ([]CheckResult, error)
+}
+
 type Observer struct {
 	Preprocessors []Preprocessor
 	Postprocessor Postprocessor
-	Runner        Runner
+	Runner        Runner2
 }
 
 // NewObserver creates a new Observer with the given pre-processors, post-processor, and runner
-func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runner Runner) Observer {
+func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runner Runner2) Observer {
 	return Observer{
 		Preprocessors: preprocessors,
 		Postprocessor: postprocessor,
