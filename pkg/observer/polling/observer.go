@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"runtime"
 	"sync"
 	"time"
 
@@ -104,12 +103,6 @@ func NewPollingObserver(
 	ob.services = []Service{
 		util.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: cancel}, logger),
 	}
-
-	// automatically stop all services if the reference is no longer reachable
-	// this is a safety in the case Stop isn't called explicitly
-	runtime.SetFinalizer(ob, func(srv *PollingObserver) { _ = srv.Close() })
-
-	ob.Start()
 
 	return ob
 }
