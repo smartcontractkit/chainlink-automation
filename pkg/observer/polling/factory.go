@@ -50,7 +50,7 @@ func (f *PollingObserverFactory) NewConditionalObserver(oc config.OffchainConfig
 		sample,
 		time.Duration(oc.SamplingJobDuration)*time.Millisecond,
 		coord,
-		false,
+		oc.MercuryLookup,
 	)
 
 	return ob, nil

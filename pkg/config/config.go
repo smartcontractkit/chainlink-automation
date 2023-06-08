@@ -71,6 +71,9 @@ type OffchainConfig struct {
 
 	// ReportBlockLag is the number to subtract from median block number during report phase.
 	ReportBlockLag int `json:"reportBlockLag"`
+
+	// MercuryLookup is a flag to use mercury lookup in the plugin
+	MercuryLookup bool `json:"mercuryLookup"`
 }
 
 // DecodeOffchainConfig ...
