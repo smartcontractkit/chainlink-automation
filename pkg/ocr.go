@@ -107,7 +107,6 @@ func (p *ocrPlugin) Observation(_ context.Context, t types.ReportTimestamp, _ ty
 	lCtx := newOcrLogContext(t)
 
 	allIDs := make([]UpkeepIdentifier, 0)
-	// var blocks []BlockKey
 
 	// naive implementation of getting observations
 	// Observer may be too simple and we need a queue mechanism to distribute
@@ -119,7 +118,6 @@ func (p *ocrPlugin) Observation(_ context.Context, t types.ReportTimestamp, _ ty
 	}
 
 	allIDs = append(allIDs, ids...)
-	// blocks = append(blocks, block)
 
 	allIDs = shuffleObservations(allIDs, getRandomKeySource(t))
 
@@ -127,9 +125,6 @@ func (p *ocrPlugin) Observation(_ context.Context, t types.ReportTimestamp, _ ty
 	if len(allIDs) > ObservationUpkeepsLimit {
 		allIDs = allIDs[:ObservationUpkeepsLimit]
 	}
-
-	// use the encoder to get the median block from the list of all blocks
-	// median := p.encoder.GetMedian(blocks)
 
 	// build the observation using the median block and all ids
 	observation := Observation{
