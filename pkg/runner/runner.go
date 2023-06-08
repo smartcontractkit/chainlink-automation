@@ -168,9 +168,11 @@ func (o *Runner) wrapWorkerFunc(mercuryEnabled bool) func(context.Context, []ocr
 					continue
 				}
 
+				key, _, _ := o.encoder.Detail(result)
 				if ok {
-					key, _, _ := o.encoder.Detail(result)
 					o.logger.Printf("upkeep ready to perform for key %s", key)
+				} else {
+					o.logger.Printf("upkeep not ready to perform for key %s", key)
 				}
 			}
 		}
