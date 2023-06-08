@@ -12,7 +12,9 @@ import (
 const separator string = "|"
 
 var (
-	ErrUpkeepKeyNotParsable = fmt.Errorf("upkeep key not parsable")
+	ErrInvalidBlockKey         = fmt.Errorf("invalid block key")
+	ErrInvalidUpkeepIdentifier = fmt.Errorf("invalid upkeep identifier")
+	ErrUpkeepKeyNotParsable    = fmt.Errorf("upkeep key not parsable")
 )
 
 type BasicEncoder struct{}
@@ -56,13 +58,20 @@ func (kb BasicEncoder) ValidateUpkeepKey(key ocr2keepers.UpkeepKey) (bool, error
 
 // ValidateUpkeepIdentifier returns true if the types.UpkeepIdentifier is valid, false otherwise
 func (kb BasicEncoder) ValidateUpkeepIdentifier(identifier ocr2keepers.UpkeepIdentifier) (bool, error) {
+	maxUpkeepIdentifer := new(big.Int)
+	maxUpkeepIdentifer, _ = maxUpkeepIdentifer.SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10) // 2 ** 256 -1
+
 	identifierInt, ok := new(big.Int).SetString(string(identifier), 10)
 	if !ok {
-		return false, fmt.Errorf("upkeep identifier is not a big int")
+		return false, fmt.Errorf("%w: upkeep identifier is not a big int", ErrInvalidUpkeepIdentifier)
 	}
 
-	if identifierInt.Cmp(big.NewInt(0)) == -1 {
-		return false, fmt.Errorf("upkeep identifier is not a positive integer")
+	if identifierInt.String() != string(identifier) {
+		return false, fmt.Errorf("%w: upkeep identifier stringify mismatch", ErrInvalidUpkeepIdentifier)
+	}
+
+	if identifierInt.Cmp(big.NewInt(0)) == -1 || identifierInt.Cmp(maxUpkeepIdentifer) > 0 {
+		return false, fmt.Errorf("%w: upkeep identifier exceeds lower or upper bounds", ErrInvalidUpkeepIdentifier)
 	}
 
 	return true, nil
@@ -70,13 +79,20 @@ func (kb BasicEncoder) ValidateUpkeepIdentifier(identifier ocr2keepers.UpkeepIde
 
 // ValidateBlockKey returns true if the types.BlockKey is valid, false otherwise
 func (kb BasicEncoder) ValidateBlockKey(key ocr2keepers.BlockKey) (bool, error) {
+	maxBlockNumber := new(big.Int)
+	maxBlockNumber, _ = maxBlockNumber.SetString("18446744073709551615", 10) // 2 ** 64 -1
+
 	keyInt, ok := new(big.Int).SetString(string(key), 10)
 	if !ok {
-		return false, fmt.Errorf("block key is not a big int")
+		return false, fmt.Errorf("%w: block key is not a big int", ErrInvalidBlockKey)
 	}
 
-	if keyInt.Cmp(big.NewInt(0)) == -1 {
-		return false, fmt.Errorf("block key is not a positive integer")
+	if keyInt.String() != string(key) {
+		return false, fmt.Errorf("%w: block key stringify mismatch", ErrInvalidBlockKey)
+	}
+
+	if keyInt.Cmp(big.NewInt(0)) == -1 || keyInt.Cmp(maxBlockNumber) > 0 {
+		return false, fmt.Errorf("%w: block key exceeds lower or upper bounds", ErrInvalidBlockKey)
 	}
 
 	return true, nil
