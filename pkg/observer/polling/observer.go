@@ -192,7 +192,8 @@ func (o *PollingObserver) runHeadTasks() error {
 			// limit the context timeout to configured value
 			ctx, cancel := context.WithTimeout(o.ctx, o.samplingDuration)
 
-			// run sampling with latest head
+			// run sampling with latest head, the head ticker will drop heads
+			// if the following process blocks for an extended period of time
 			o.processLatestHead(ctx, bl)
 
 			// clean up resources by canceling the context after processing
