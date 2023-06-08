@@ -392,13 +392,9 @@ func (rc *reportCoordinator) run() {
 		case <-timer.C:
 			startTime := time.Now()
 
-			// limit the check process to 5 times the cadence as an upper bound
-			ctx, cancel := context.WithTimeout(context.Background(), 5*cadence)
-			if err := rc.checkLogs(ctx); err != nil {
+			if err := rc.checkLogs(context.Background()); err != nil {
 				rc.logger.Printf("failed to check perform and stale report logs: %s", err)
 			}
-
-			cancel()
 
 			// attempt to adhere to a cadence of at least every second
 			// a slow DB will cause the cadence to increase. these cases are logged
