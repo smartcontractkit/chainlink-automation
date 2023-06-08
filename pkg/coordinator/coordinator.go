@@ -146,7 +146,6 @@ func (rc *reportCoordinator) Accept(key ocr2keepers.UpkeepKey) error {
 
 		// Set idBlocks with the key as checkBlockNumber and IndefiniteBlockingKey as TransmitBlockNumber
 		rc.updateIdBlock(string(id), idBlocker{
-			Encoder:             rc.encoder,
 			CheckBlockNumber:    blockKey,
 			TransmitBlockNumber: IndefiniteBlockingKey,
 		})
@@ -206,7 +205,6 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
-					Encoder:             rc.encoder,
 					CheckBlockNumber:    logCheckBlockKey,
 					TransmitBlockNumber: l.TransmitBlock, // Removes the id from filters from higher blocks
 				})
@@ -222,7 +220,6 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 					rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 					rc.updateIdBlock(string(id), idBlocker{
-						Encoder:             rc.encoder,
 						CheckBlockNumber:    logCheckBlockKey,
 						TransmitBlockNumber: l.TransmitBlock,
 					})
@@ -268,7 +265,6 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
-					Encoder:             rc.encoder,
 					CheckBlockNumber:    logCheckBlockKey,
 					TransmitBlockNumber: nextKey, // Removes the id from filters after logCheckBlockKey+1
 					// We add one here as this filter is applied on RPC checkBlockNumber (which will be atleast logCheckBlockKey+1+1)
@@ -286,7 +282,6 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 					rc.logger.Printf("Got a stale report log for previously accepted key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 					rc.updateIdBlock(string(id), idBlocker{
-						Encoder:             rc.encoder,
 						CheckBlockNumber:    logCheckBlockKey,
 						TransmitBlockNumber: nextKey,
 					})
@@ -299,7 +294,6 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 }
 
 type idBlocker struct {
-	Encoder             Encoder
 	CheckBlockNumber    ocr2keepers.BlockKey
 	TransmitBlockNumber ocr2keepers.BlockKey
 }
@@ -311,8 +305,8 @@ type idBlocker struct {
 // For a sequence of updates, updateIdBlock can be called in any order
 // on different nodes, but by maintaining this invariant it results in
 // an eventually consistent value across nodes.
-func (b idBlocker) shouldUpdate(val idBlocker) (bool, error) {
-	isAfter, err := b.Encoder.After(val.CheckBlockNumber, b.CheckBlockNumber)
+func (b idBlocker) shouldUpdate(val idBlocker, e Encoder) (bool, error) {
+	isAfter, err := e.After(val.CheckBlockNumber, b.CheckBlockNumber)
 	if err != nil {
 		return false, err
 	}
@@ -322,7 +316,7 @@ func (b idBlocker) shouldUpdate(val idBlocker) (bool, error) {
 		return true, nil
 	}
 
-	isAfter, err = b.Encoder.After(b.CheckBlockNumber, val.CheckBlockNumber)
+	isAfter, err = e.After(b.CheckBlockNumber, val.CheckBlockNumber)
 	if err != nil {
 		return false, err
 	}
@@ -345,13 +339,13 @@ func (b idBlocker) shouldUpdate(val idBlocker) (bool, error) {
 	}
 
 	// return true if val.TransmitBlockNumber is higher
-	return b.Encoder.After(val.TransmitBlockNumber, b.TransmitBlockNumber)
+	return e.After(val.TransmitBlockNumber, b.TransmitBlockNumber)
 }
 
 func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
 	idBlock, ok := rc.idBlocks.Get(key)
 	if ok {
-		shouldUpdate, err := idBlock.shouldUpdate(val)
+		shouldUpdate, err := idBlock.shouldUpdate(val, rc.encoder)
 		if err != nil {
 			// Don't update on errors
 			return
