@@ -1,4 +1,4 @@
-package ocr2keepers
+package v3
 
 import (
 	"context"
@@ -7,40 +7,42 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
 type mockTick struct {
 	mock.Mock
 }
 
-func (m *mockTick) GetUpkeeps(ctx context.Context) ([]UpkeepPayload, error) {
+func (m *mockTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
 	ret := m.Called(ctx)
-	return ret.Get(0).([]UpkeepPayload), ret.Error(1)
+	return ret.Get(0).([]ocr2keepers.UpkeepPayload), ret.Error(1)
 }
 
 type mockRunner struct {
 	mock.Mock
 }
 
-func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads []UpkeepPayload) ([]CheckResult, error) {
+func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	ret := m.Called(ctx, payloads)
-	return ret.Get(0).([]CheckResult), ret.Error(1)
+	return ret.Get(0).([]ocr2keepers.CheckResult), ret.Error(1)
 }
 
 type mockPreprocessor struct {
 	mock.Mock
 }
 
-func (m *mockPreprocessor) PreProcess(ctx context.Context, payloads []UpkeepPayload) ([]UpkeepPayload, error) {
+func (m *mockPreprocessor) PreProcess(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
 	ret := m.Called(ctx, payloads)
-	return ret.Get(0).([]UpkeepPayload), ret.Error(1)
+	return ret.Get(0).([]ocr2keepers.UpkeepPayload), ret.Error(1)
 }
 
 type mockPostprocessor struct {
 	mock.Mock
 }
 
-func (m *mockPostprocessor) PostProcess(ctx context.Context, results []CheckResult) error {
+func (m *mockPostprocessor) PostProcess(ctx context.Context, results []ocr2keepers.CheckResult) error {
 	ret := m.Called(ctx, results)
 	return ret.Error(0)
 }
@@ -88,16 +90,16 @@ func TestObserve_Process(t *testing.T) {
 		tick Tick
 	}
 	type expectations struct {
-		tickReturn         []UpkeepPayload
+		tickReturn         []ocr2keepers.UpkeepPayload
 		tickErr            error
-		runnerReturn       []CheckResult
+		runnerReturn       []ocr2keepers.CheckResult
 		runnerErr          error
-		preprocessorReturn []UpkeepPayload
+		preprocessorReturn []ocr2keepers.UpkeepPayload
 		preprocessorErr    error
 		postprocessorErr   error
 	}
-	expectedPayload := []UpkeepPayload{}
-	expectedCheckResults := []CheckResult{}
+	expectedPayload := []ocr2keepers.UpkeepPayload{}
+	expectedCheckResults := []ocr2keepers.CheckResult{}
 	tests := []struct {
 		name         string
 		fields       fields
