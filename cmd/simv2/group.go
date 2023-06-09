@@ -19,7 +19,10 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	ktypes "github.com/smartcontractkit/ocr2keepers/pkg/types"
+	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/config"
+	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
+	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
+	"github.com/smartcontractkit/ocr2keepers/pkg/runner"
 )
 
 type Closable interface {
@@ -38,7 +41,7 @@ type ActiveNode struct {
 type NodeGroupConfig struct {
 	Digester      types.OffchainConfigDigester
 	Cadence       config.Blocks
-	Encoder       ktypes.ReportEncoder
+	Encoder       fullEncoder
 	Upkeeps       []simulators.SimulatedUpkeep
 	ConfigEvents  []config.ConfigEvent
 	RPCConfig     config.RPC
@@ -54,7 +57,7 @@ type NodeGroup struct {
 	network     *simulators.SimulatedNetwork
 	digester    types.OffchainConfigDigester
 	blockSrc    *blocks.BlockBroadcaster
-	encoder     ktypes.ReportEncoder
+	encoder     fullEncoder
 	transmitter *blocks.TransmitLoader
 	confLoader  *blocks.ConfigLoader
 	upkeeps     []simulators.SimulatedUpkeep
@@ -123,12 +126,16 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 	// general logger
 	var slogger *simpleLogger
 	var cLogger *log.Logger
+	var gLogger *log.Logger
+
 	if logTel != nil {
 		slogger = NewSimpleLogger(logTel.GeneralLog(net.PeerID()), Debug)
 		cLogger = log.New(logTel.ContractLog(net.PeerID()), "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+		gLogger = log.New(logTel.GeneralLog(net.PeerID()), "[general] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 	} else {
 		slogger = NewSimpleLogger(io.Discard, Critical)
 		cLogger = log.New(io.Discard, "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+		gLogger = log.New(io.Discard, "[general] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 	}
 
 	ct := simulators.NewSimulatedContract(
@@ -146,6 +153,31 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 		cLogger)
 	db := simulators.NewSimulatedDatabase()
 
+	runr, _ := runner.NewRunner(
+		gLogger,
+		ct,
+		g.encoder,
+		maxWorkers,
+		maxQueueSize,
+		pluginconfig.DefaultCacheExpiration,
+		pluginconfig.DefaultCacheClearInterval,
+	)
+
+	coordFac := &coordinator.CoordinatorFactory{
+		Logger:     gLogger,
+		Encoder:    g.encoder,
+		Logs:       ct,
+		CacheClean: time.Minute,
+	}
+
+	cObsFac := &polling.PollingObserverFactory{
+		Logger:  gLogger,
+		Source:  ct,
+		Heads:   ct,
+		Runner:  runr,
+		Encoder: g.encoder,
+	}
+
 	dConfig := ocr2keepers.DelegateConfig{
 		BinaryNetworkEndpointFactory: net,
 		V2Bootstrappers:              []commontypes.BootstrapperLocator{},
@@ -161,17 +193,17 @@ func (g *NodeGroup) Add(maxWorkers int, maxQueueSize int) {
 			DatabaseTimeout:                    time.Second,
 			DevelopmentMode:                    "",
 		},
-		HeadSubscriber:         ct,
-		Logger:                 slogger,
-		MonitoringEndpoint:     g.monitor,
-		OffchainConfigDigester: g.digester,
-		OffchainKeyring:        offchainRing,
-		OnchainKeyring:         onchainRing,
-		Registry:               ct,
-		PerformLogProvider:     ct,
-		ReportEncoder:          g.encoder,
-		MaxServiceWorkers:      maxWorkers,
-		ServiceQueueLength:     maxQueueSize,
+		ConditionalObserverFactory: cObsFac,
+		CoordinatorFactory:         coordFac,
+		Encoder:                    g.encoder,
+		Runner:                     runr,
+		Logger:                     slogger,
+		MonitoringEndpoint:         g.monitor,
+		OffchainConfigDigester:     g.digester,
+		OffchainKeyring:            offchainRing,
+		OnchainKeyring:             onchainRing,
+		MaxServiceWorkers:          maxWorkers,
+		ServiceQueueLength:         maxQueueSize,
 	}
 
 	service, err := ocr2keepers.NewDelegate(dConfig)

@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/blocks"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
 	"math/big"
 	"sort"
+
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/blocks"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 )
 
 type upkeepStatsBuilder struct {
@@ -22,7 +22,7 @@ func newUpkeepStatsBuilder(
 	upkeeps []simulators.SimulatedUpkeep,
 	transmits []blocks.TransmitEvent,
 	checks map[string][]string,
-	encoder types.ReportEncoder,
+	encoder fullEncoder,
 ) (*upkeepStatsBuilder, error) {
 
 	// count the number of transmits per account
@@ -52,7 +52,12 @@ func newUpkeepStatsBuilder(
 
 		// tr.SendingAddress
 		for _, trResult := range reported {
-			_, upkeepID, _ := trResult.Key.BlockKeyAndUpkeepID()
+			key, _, err := encoder.Detail(trResult)
+			if err != nil {
+				continue
+			}
+
+			_, upkeepID, _ := encoder.SplitUpkeepKey(key)
 			performsByID[string(upkeepID)] = append(performsByID[string(upkeepID)], block.String())
 			trsByID[string(upkeepID)] = append(trsByID[string(upkeepID)], tr)
 		}

@@ -4,22 +4,24 @@ import (
 	"io"
 	"sync"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/types"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
 type ContractEventCollector struct {
+	Splitter KeySplitter
 	baseCollector
 	filePath string
 	nodes    map[string]*WrappedContractCollector
 }
 
-func NewContractEventCollector(path string) *ContractEventCollector {
+func NewContractEventCollector(path string, s KeySplitter) *ContractEventCollector {
 	return &ContractEventCollector{
 		baseCollector: baseCollector{
 			t:        NodeLogType,
 			io:       []io.WriteCloser{},
 			ioLookup: make(map[string]int),
 		},
+		Splitter: s,
 		filePath: path,
 		nodes:    make(map[string]*WrappedContractCollector),
 	}
@@ -78,6 +80,7 @@ func (c *ContractEventCollector) Data() (map[string]int, map[string][]string) {
 
 func (c *ContractEventCollector) AddNode(node string) error {
 	wc := &WrappedContractCollector{
+		Splitter:    c.Splitter,
 		keyChecks:   make(map[string]int),
 		keyIDLookup: make(map[string][]string),
 	}
@@ -87,19 +90,25 @@ func (c *ContractEventCollector) AddNode(node string) error {
 	return nil
 }
 
+type KeySplitter interface {
+	// SplitUpkeepKey ...
+	SplitUpkeepKey(ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error)
+}
+
 type WrappedContractCollector struct {
+	Splitter    KeySplitter
 	mu          sync.Mutex
 	keyChecks   map[string]int
 	keyIDLookup map[string][]string
 }
 
-func (wc *WrappedContractCollector) CheckKey(key types.UpkeepKey) {
+func (wc *WrappedContractCollector) CheckKey(key ocr2keepers.UpkeepKey) {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
-	k := key.String()
+	k := string(key)
 
-	blockKey, upkeepID, _ := key.BlockKeyAndUpkeepID()
+	blockKey, upkeepID, _ := wc.Splitter.SplitUpkeepKey(key)
 
 	_, ok := wc.keyChecks[k]
 	if !ok {
@@ -109,17 +118,17 @@ func (wc *WrappedContractCollector) CheckKey(key types.UpkeepKey) {
 
 	val, ok := wc.keyIDLookup[string(upkeepID)]
 	if !ok {
-		wc.keyIDLookup[string(upkeepID)] = []string{blockKey.String()}
+		wc.keyIDLookup[string(upkeepID)] = []string{string(blockKey)}
 	} else {
 		var found bool
 		for _, v := range val {
-			if v == blockKey.String() {
+			if v == string(blockKey) {
 				found = true
 			}
 		}
 
 		if !found {
-			wc.keyIDLookup[string(upkeepID)] = append(val, blockKey.String())
+			wc.keyIDLookup[string(upkeepID)] = append(val, string(blockKey))
 		}
 	}
 }

@@ -22,11 +22,11 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/chain"
+	"github.com/smartcontractkit/ocr2keepers/pkg/encoding"
 )
 
 var (
-	simulationFile  = flag.StringP("simulation-file", "f", "runbook.json", "file path to read simulation config from")
+	simulationFile  = flag.StringP("simulation-file", "f", "./runbook.json", "file path to read simulation config from")
 	outputDirectory = flag.StringP("output-directory", "o", "./runbook_logs", "directory path to output log files")
 	simulate        = flag.Bool("simulate", false, "run simulation")
 	displayCharts   = flag.Bool("charts", false, "create and serve charts")
@@ -89,7 +89,7 @@ func main() {
 	}
 
 	// generic report encoder for testing evm encoding/decoding
-	enc := chain.NewEVMReportEncoder()
+	enc := fullEncoder{}
 
 	// generic config digester
 	digester := evmutil.EVMOffchainConfigDigester{
@@ -99,7 +99,7 @@ func main() {
 
 	rpcC := telemetry.NewNodeRPCCollector(*outputDirectory)
 	logC := telemetry.NewNodeLogCollector(*outputDirectory)
-	ctrC := telemetry.NewContractEventCollector(*outputDirectory)
+	ctrC := telemetry.NewContractEventCollector(*outputDirectory, enc)
 
 	ngConf := NodeGroupConfig{
 		Digester:      digester,
@@ -153,4 +153,9 @@ func main() {
 
 	cancel()
 	wg.Wait()
+}
+
+type fullEncoder struct {
+	simulators.SimulatedReportEncoder
+	encoding.BasicEncoder
 }
