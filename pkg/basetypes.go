@@ -35,6 +35,11 @@ type StaleReportLog struct {
 	TransactionHash string
 }
 
-type UpkeepPayload interface{}
+type CheckResult struct {
+	Payload   UpkeepPayload
+	Retryable bool
+}
 
-type CheckResult interface{}
+type UpkeepPayload struct {
+	ID string // ID uniquely identifies the upkeep payload
+}
