@@ -54,23 +54,20 @@ func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeep
 }
 
 func (t *timeTicker) Start() {
-	for {
-		select {
-		case tm := <-t.ticker.C:
-			func() {
-				ctx, cancelFn := context.WithTimeout(t.ctx, t.interval)
-				defer cancelFn()
+	for tm := range t.ticker.C {
+		func() {
+			ctx, cancelFn := context.WithTimeout(t.ctx, t.interval)
+			defer cancelFn()
 
-				tick, err := t.getterFn(ctx, tm)
-				if err != nil {
-					logPrintf("error fetching tick: %s", err.Error())
-				}
+			tick, err := t.getterFn(ctx, tm)
+			if err != nil {
+				logPrintf("error fetching tick: %s", err.Error())
+			}
 
-				if err := t.observer.Process(ctx, tick); err != nil {
-					logPrintf("error processing observer: %s", err.Error())
-				}
-			}()
-		}
+			if err := t.observer.Process(ctx, tick); err != nil {
+				logPrintf("error processing observer: %s", err.Error())
+			}
+		}()
 	}
 }
 
