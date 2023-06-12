@@ -105,7 +105,7 @@ func TestNewTimeTicker(t *testing.T) {
 		assert.Equal(t, callCount, 4)
 	})
 
-	t.Run("creates a ticker with an observer that errors on processing", func(t *testing.T) {
+	t.Run("creates a ticker with an observer that errors when the getter errors", func(t *testing.T) {
 		var msg string
 		oldLogPrintf := logPrintf
 		logPrintf = func(format string, v ...any) {
@@ -118,6 +118,34 @@ func TestNewTimeTicker(t *testing.T) {
 		observr := &mockObserver{
 			processFn: func(ctx context.Context, tick Tick) error {
 				return errors.New("boom")
+			},
+		}
+		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+			return nil, errors.New("error fetching tick")
+		}
+
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+
+		time.Sleep(450 * time.Millisecond)
+
+		ticker.Stop()
+
+		assert.Equal(t, msg, "error processing observer: boom")
+	})
+
+	t.Run("creates a ticker with an observer that errors on processing", func(t *testing.T) {
+		var msg string
+		oldLogPrintf := logPrintf
+		logPrintf = func(format string, v ...any) {
+			msg = fmt.Sprintf(format, v...)
+		}
+		defer func() {
+			logPrintf = oldLogPrintf
+		}()
+
+		observr := &mockObserver{
+			processFn: func(ctx context.Context, tick Tick) error {
+				return errors.New("process error")
 			},
 		}
 		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
@@ -134,7 +162,7 @@ func TestNewTimeTicker(t *testing.T) {
 
 		ticker.Stop()
 
-		assert.Equal(t, msg, "error processing observer: boom")
+		assert.Equal(t, msg, "error processing observer: process error")
 	})
 
 	t.Run("creates a ticker with an observer that exceeds the processing timeout", func(t *testing.T) {

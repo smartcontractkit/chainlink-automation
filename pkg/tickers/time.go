@@ -35,14 +35,19 @@ type timeTicker struct {
 	ticker   *time.Ticker
 	observer observer
 	getterFn getUpkeepsFn
+	ctx      context.Context
+	cancelFn context.CancelFunc
 }
 
 func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) *timeTicker {
+	ctx, cancelFn := context.WithCancel(context.Background())
 	t := &timeTicker{
 		interval: interval,
 		ticker:   time.NewTicker(interval),
 		observer: observer,
 		getterFn: getterFn,
+		ctx:      ctx,
+		cancelFn: cancelFn,
 	}
 	go t.Start()
 	return t
@@ -53,7 +58,7 @@ func (t *timeTicker) Start() {
 		select {
 		case tm := <-t.ticker.C:
 			func() {
-				ctx, cancelFn := context.WithTimeout(context.Background(), t.interval)
+				ctx, cancelFn := context.WithTimeout(t.ctx, t.interval)
 				defer cancelFn()
 
 				tick, err := t.getterFn(ctx, tm)
@@ -70,5 +75,6 @@ func (t *timeTicker) Start() {
 }
 
 func (t *timeTicker) Stop() {
+	t.cancelFn()
 	t.ticker.Stop()
 }
