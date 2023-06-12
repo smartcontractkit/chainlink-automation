@@ -14,17 +14,17 @@ type checkResult struct {
 func TestNewResultStore(t *testing.T) {
 	t.Run("add", func(t *testing.T) {
 		store := NewResultStore[checkResult]()
-		result := checkResult{
+		result1 := checkResult{
 			Retryable: false,
 			Data:      "some data",
 		}
 
-		store.Add(result)
+		store.Add(result1)
 		results, err := store.View()
 		assert.Nil(t, err)
 		assert.Len(t, results, 1)
 
-		store.Add(result)
+		store.Add(result1)
 		results, err = store.View()
 		assert.Nil(t, err)
 		assert.Len(t, results, 1)
@@ -47,6 +47,11 @@ func TestNewResultStore(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Len(t, results, 2)
 
+		store.Add(result1, result2, result3)
+		results, err = store.View()
+		assert.Nil(t, err)
+		assert.Len(t, results, 2)
+
 		t.Run("remove", func(t *testing.T) {
 			store.Remove(result2)
 			results, err = store.View()
@@ -54,6 +59,11 @@ func TestNewResultStore(t *testing.T) {
 			assert.Len(t, results, 1)
 
 			store.Remove(result2)
+			results, err = store.View()
+			assert.Nil(t, err)
+			assert.Len(t, results, 1)
+
+			store.Remove(result2, result2)
 			results, err = store.View()
 			assert.Nil(t, err)
 			assert.Len(t, results, 1)
