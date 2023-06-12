@@ -18,14 +18,18 @@ func NewResultStore[T any]() *resultStore[T] {
 	}
 }
 
-func (s *resultStore[T]) Add(result T) {
-	key := fmt.Sprintf("%v", result)
-	s.data[key] = result
+func (s *resultStore[T]) Add(results ...T) {
+	for _, result := range results {
+		key := fmt.Sprintf("%v", result)
+		s.data[key] = result
+	}
 }
 
-func (s *resultStore[T]) Remove(result T) {
-	key := fmt.Sprintf("%v", result)
-	delete(s.data, key)
+func (s *resultStore[T]) Remove(results ...T) {
+	for _, result := range results {
+		key := fmt.Sprintf("%v", result)
+		delete(s.data, key)
+	}
 }
 
 func (s *resultStore[T]) View() ([]T, error) {
