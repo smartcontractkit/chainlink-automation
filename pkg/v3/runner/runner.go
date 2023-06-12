@@ -26,7 +26,14 @@ type Runnable interface {
 // the runner simply wraps the underlying runnable with extra features
 var _ Runnable = &Runner{}
 
-// Runner ...
+// Runner is a component that parallelizes calls to the provided runnable both
+// by batching tasks to individual calls as well as using parallel threads to
+// execute calls to the runnable. All results are cached such that the same
+// input job from a previous run will provide a cached response instead of
+// calling the runnable.
+//
+// The Runner is structured as a direct replacement where the runnable is used
+// as a dependency.
 type Runner struct {
 	// injected dependencies
 	logger   *log.Logger
@@ -44,7 +51,7 @@ type Runner struct {
 	running atomic.Bool
 }
 
-// NewRunner ...
+// NewRunner provides a new configured runner
 func NewRunner(
 	logger *log.Logger,
 	runnable Runnable,
@@ -63,6 +70,10 @@ func NewRunner(
 	}, nil
 }
 
+// CheckUpkeeps accepts an array of payloads, splits the workload into separate
+// threads, executes the underlying runnable, and returns all results from all
+// threads. If previous runs were already completed for the same one or more
+// payloads, results will be pulled from the cache where available.
 func (o *Runner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	r, err := o.parallelCheck(ctx, payloads)
 	if err != nil {
@@ -72,6 +83,7 @@ func (o *Runner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.Upkeep
 	return r.Values(), nil
 }
 
+// Start starts up the cache cleaner
 func (o *Runner) Start() error {
 	if !o.running.Load() {
 		go o.cacheCleaner.Run(o.cache)
@@ -81,6 +93,7 @@ func (o *Runner) Start() error {
 	return nil
 }
 
+// Close stops the cache cleaner and the parallel worker process
 func (o *Runner) Close() error {
 	if o.running.Load() {
 		o.cacheCleaner.Stop()
