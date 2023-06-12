@@ -9,7 +9,7 @@ import (
 // checkResultAdder is a general interface for a result store that accepts check results
 type checkResultAdder interface {
 	// Add inserts the provided check result in the store
-	Add(ocr2keepers.CheckResult)
+	Add(...ocr2keepers.CheckResult)
 }
 
 // PostProcessor is the general interface for a processing function after checking eligibility
