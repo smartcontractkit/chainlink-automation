@@ -21,10 +21,6 @@ func (o *mockObserver) Process(ctx context.Context, t Tick) error {
 	return o.processFn(ctx, t)
 }
 
-type mockUpkeepPayload struct {
-	data string
-}
-
 type mockTick struct {
 	getUpkeepsFn func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error)
 }
@@ -65,11 +61,11 @@ func TestNewTimeTicker(t *testing.T) {
 		callCount := 0
 
 		upkeepPayloads := []ocr2keepers.UpkeepPayload{
-			&mockUpkeepPayload{
-				data: "first mock data payload",
+			{
+				ID: "first mock data payload",
 			},
-			&mockUpkeepPayload{
-				data: "second mock data payload",
+			{
+				ID: "second mock data payload",
 			},
 		}
 
