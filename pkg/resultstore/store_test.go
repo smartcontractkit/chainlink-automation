@@ -1,9 +1,12 @@
 package resultstore
 
 import (
+	"context"
 	"log"
 	"os"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -122,5 +125,72 @@ func TestResultStore_Sanity(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestNotifications(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	lggr := log.New(os.Stdout, "", 0)
+	key := func(t checkResult) string {
+		return t.Data
+	}
+	store := NewResultStore(lggr, key)
+	store.Add(checkResult{
+		Retryable: false,
+		Data:      "some data 1",
+	}, checkResult{
+		Retryable: false,
+		Data:      "some data 2",
+	}, checkResult{
+		Retryable: false,
+		Data:      "some data 3",
+	})
+
+	var notifications []Notification[checkResult]
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		lctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		notify := store.Notifications()
+		for {
+			select {
+			case n := <-notify:
+				if n.Op == NotifyOpNil {
+					return
+				}
+				notifications = append(notifications, n)
+			case <-lctx.Done():
+				return
+			}
+		}
+	}()
+
+	store.Remove(checkResult{
+		Retryable: false,
+		Data:      "some data 1",
+	})
+	store.Remove(checkResult{
+		Retryable: false,
+		Data:      "some data 2",
+	})
+
+	store.lock.Lock()
+	el := store.data["some data 3"]
+	el.addedAt = time.Now().Add(-2 * storeTTL)
+	store.data["some data 3"] = el
+	store.lock.Unlock()
+
+	store.gc()
+	end := new(Notification[checkResult])
+	end.Op = NotifyOpNil
+	store.notifications <- *end
+
+	wg.Wait()
+
+	assert.Len(t, notifications, 3)
 }

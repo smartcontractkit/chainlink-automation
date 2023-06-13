@@ -8,13 +8,29 @@ import (
 
 type KeyFunc[T any] func(t T) string
 
+type NotifyOp uint8
+
+const (
+	NotifyOpNil NotifyOp = iota
+	NotifyOpEvict
+	NotifyOpRemove
+)
+
+type Notification[T any] struct {
+	Op NotifyOp
+	T  T
+}
+
 type ResultStore[T any] interface {
 	Add(...T)
 	Remove(...T)
 	View() ([]T, error)
 }
 
-var notifyQBufferSize = 128
+var (
+	notifyQBufferSize = 128
+	storeTTL          = time.Minute
+)
 
 type element[T any] struct {
 	t       T
@@ -29,18 +45,16 @@ type resultStore[T any] struct {
 
 	keyFn KeyFunc[T]
 
-	evictQ   chan T
-	removedQ chan T
+	notifications chan Notification[T]
 }
 
 func NewResultStore[T any](lggr *log.Logger, keyFn KeyFunc[T]) *resultStore[T] {
 	return &resultStore[T]{
-		lggr:     lggr,
-		data:     make(map[string]element[T]),
-		lock:     sync.RWMutex{},
-		keyFn:    keyFn,
-		evictQ:   make(chan T, notifyQBufferSize),
-		removedQ: make(chan T, notifyQBufferSize),
+		lggr:          lggr,
+		data:          make(map[string]element[T]),
+		lock:          sync.RWMutex{},
+		keyFn:         keyFn,
+		notifications: make(chan Notification[T], notifyQBufferSize),
 	}
 }
 
@@ -51,19 +65,26 @@ func (s *resultStore[T]) gc() {
 	s.lggr.Println("garbage collecting result store")
 
 	for k, v := range s.data {
-		if time.Since(v.addedAt) > 5*time.Second {
+		if time.Since(v.addedAt) > storeTTL {
 			delete(s.data, k)
-			s.notify(s.evictQ, v.t)
+			s.notify(NotifyOpEvict, v.t)
 		}
 	}
 }
 
-func (s *resultStore[T]) notify(q chan T, t T) {
+func (s *resultStore[T]) notify(op NotifyOp, t T) {
+	n := new(Notification[T])
+	n.Op = op
+	n.T = t
 	select {
-	case q <- t:
+	case s.notifications <- *n:
 	default:
 		s.lggr.Println("q full, dropping result")
 	}
+}
+
+func (s *resultStore[T]) Notifications() <-chan Notification[T] {
+	return s.notifications
 }
 
 func (s *resultStore[T]) Add(results ...T) {
@@ -91,7 +112,7 @@ func (s *resultStore[T]) Remove(results ...T) {
 		key := s.keyFn(result)
 		v := s.data[key]
 		delete(s.data, key)
-		s.notify(s.removedQ, v.t)
+		s.notify(NotifyOpRemove, v.t)
 	}
 }
 
