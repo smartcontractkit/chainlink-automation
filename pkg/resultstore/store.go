@@ -8,6 +8,8 @@ import (
 
 type KeyFunc[T any] func(t T) string
 
+type Filter[T any] func(t T) bool
+
 type NotifyOp uint8
 
 const (
@@ -24,7 +26,7 @@ type Notification[T any] struct {
 type ResultStore[T any] interface {
 	Add(...T)
 	Remove(...T)
-	View() ([]T, error)
+	View(...Filter[T]) ([]T, error)
 }
 
 var (
@@ -116,13 +118,20 @@ func (s *resultStore[T]) Remove(results ...T) {
 	}
 }
 
-func (s *resultStore[T]) View() ([]T, error) {
+func (s *resultStore[T]) View(filters ...Filter[T]) ([]T, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	var result []T
+resultLoop:
 	for _, r := range s.data {
+		for _, filter := range filters {
+			if !filter(r.t) {
+				continue resultLoop
+			}
+		}
 		result = append(result, r.t)
 	}
+
 	return result, nil
 }
