@@ -35,11 +35,12 @@ type StaleReportLog struct {
 	TransactionHash string
 }
 
-type UpkeepPayload struct {
-	ID string
+type CheckResult struct {
+	Eligible  bool
+	Retryable bool
+	Payload   UpkeepPayload
 }
 
-type CheckResult struct {
-	Eligible bool
-	Payload  UpkeepPayload
+type UpkeepPayload struct {
+	ID string // Hash uniquely identifies the upkeep payload
 }
