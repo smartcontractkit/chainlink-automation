@@ -51,6 +51,8 @@ func (s *resultStore) Start(pctx context.Context) error {
 		defer cancel()
 
 		ticker := time.NewTicker(gcInterval)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ticker.C:
@@ -79,12 +81,11 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 	for _, result := range results {
 		id := result.Payload.ID
 		_, ok := s.data[id]
-		if ok {
-			// if the element is already exists, we do noting
-			continue
+		if !ok {
+			added++
+			s.data[id] = element{data: result, addedAt: time.Now()}
 		}
-		added++
-		s.data[id] = element{data: result, addedAt: time.Now()}
+		// if the element is already exists, we do noting
 	}
 }
 
@@ -104,8 +105,38 @@ func (s *resultStore) Remove(ids ...string) {
 func (s *resultStore) View(opts ...ocr2keepers.ViewOpt) ([]ocr2keepers.CheckResult, error) {
 	filters, comparators, limit := ocr2keepers.ViewOpts(opts).Apply()
 
-	var results []ocr2keepers.CheckResult
+	results, limit := s.viewResults(limit, filters, comparators)
+	s.orderResults(results, comparators)
+
+	if limit > len(results) {
+		limit = len(results)
+	}
+
+	return results[:limit], nil
+}
+
+func (s *resultStore) orderResults(results []ocr2keepers.CheckResult, comparators []ocr2keepers.ResultComparator) {
+	if len(comparators) > 0 {
+		sort.SliceStable(results, func(i, j int) bool {
+			for _, comparator := range comparators {
+				if !comparator(results[i], results[j]) {
+					return false
+				}
+			}
+			return true
+		})
+	}
+}
+
+func (s *resultStore) viewResults(
+	limit int,
+	filters []ocr2keepers.ResultFilter,
+	comparators []ocr2keepers.ResultComparator,
+) ([]ocr2keepers.CheckResult, int) {
 	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	var results []ocr2keepers.CheckResult
 	if limit == 0 {
 		limit = len(s.data)
 	}
@@ -129,25 +160,7 @@ resultLoop:
 			break
 		}
 	}
-	s.lock.RUnlock()
-
-	// apply comparators
-	if len(comparators) > 0 {
-		sort.SliceStable(results, func(i, j int) bool {
-			for _, comparator := range comparators {
-				if !comparator(results[i], results[j]) {
-					return false
-				}
-			}
-			return true
-		})
-	}
-
-	if limit > len(results) {
-		limit = len(results)
-	}
-
-	return results[:limit], nil
+	return results, limit
 }
 
 func (s *resultStore) gc() {
@@ -173,7 +186,7 @@ func (s *resultStore) notify(op ocr2keepers.NotifyOp, data ocr2keepers.CheckResu
 		Data: data,
 	}:
 	default:
-		s.lggr.Println("q is full, dropping result")
+		s.lggr.Println("notifications queue is full, dropping result")
 	}
 }
 
