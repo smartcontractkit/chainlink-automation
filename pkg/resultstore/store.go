@@ -17,8 +17,8 @@ var (
 	gcInterval        = time.Minute * 5
 )
 
-// element is an internal representation of a result.
-type element struct {
+// result is an internal representation of a check result, with added time for TTL.
+type result struct {
 	data    ocr2keepers.CheckResult
 	addedAt time.Time
 }
@@ -27,7 +27,7 @@ type element struct {
 type resultStore struct {
 	lggr *log.Logger
 
-	data map[string]element
+	data map[string]result
 	lock sync.RWMutex
 
 	notifications chan ocr2keepers.Notification
@@ -36,7 +36,7 @@ type resultStore struct {
 func New(lggr *log.Logger) *resultStore {
 	return &resultStore{
 		lggr:          lggr,
-		data:          make(map[string]element),
+		data:          make(map[string]result),
 		lock:          sync.RWMutex{},
 		notifications: make(chan ocr2keepers.Notification, notifyQBufferSize),
 	}
@@ -78,12 +78,12 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 	defer s.lock.Unlock()
 
 	added := 0
-	for _, result := range results {
-		id := result.Payload.ID
+	for _, r := range results {
+		id := r.Payload.ID
 		_, ok := s.data[id]
 		if !ok {
 			added++
-			s.data[id] = element{data: result, addedAt: time.Now()}
+			s.data[id] = result{data: r, addedAt: time.Now()}
 		}
 		// if the element is already exists, we do noting
 	}
