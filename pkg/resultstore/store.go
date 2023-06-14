@@ -1,6 +1,7 @@
 package resultstore
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ type ResultStore interface {
 var (
 	notifyQBufferSize = 128
 	storeTTL          = time.Minute
+	gcInterval        = time.Minute * 5
 )
 
 type element struct {
@@ -57,31 +59,23 @@ func NewResultStore(lggr *log.Logger) *resultStore {
 	}
 }
 
-func (s *resultStore) gc() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *resultStore) Start(pctx context.Context) error {
+	go func() {
+		ctx, cancel := context.WithCancel(pctx)
+		defer cancel()
 
-	s.lggr.Println("garbage collecting result store")
-
-	for k, v := range s.data {
-		if time.Since(v.addedAt) > storeTTL {
-			delete(s.data, k)
-			s.notify(NotifyOpEvict, v.data)
+		ticker := time.NewTicker(gcInterval)
+		for {
+			select {
+			case <-ticker.C:
+				s.gc()
+			case <-ctx.Done():
+				return
+			}
 		}
-	}
-}
+	}()
 
-// notify writes to the notifications channel.
-// NOTE: we drop notifications in case the channel is full
-func (s *resultStore) notify(op NotifyOp, data ocr2keepers.CheckResult) {
-	select {
-	case s.notifications <- Notification{
-		Op:   op,
-		Data: data,
-	}:
-	default:
-		s.lggr.Println("q is full, dropping result")
-	}
+	return nil
 }
 
 func (s *resultStore) Notifications() <-chan Notification {
@@ -135,4 +129,31 @@ resultLoop:
 	}
 
 	return result, nil
+}
+
+func (s *resultStore) gc() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.lggr.Println("garbage collecting result store")
+
+	for k, v := range s.data {
+		if time.Since(v.addedAt) > storeTTL {
+			delete(s.data, k)
+			s.notify(NotifyOpEvict, v.data)
+		}
+	}
+}
+
+// notify writes to the notifications channel.
+// NOTE: we drop notifications in case the channel is full
+func (s *resultStore) notify(op NotifyOp, data ocr2keepers.CheckResult) {
+	select {
+	case s.notifications <- Notification{
+		Op:   op,
+		Data: data,
+	}:
+	default:
+		s.lggr.Println("q is full, dropping result")
+	}
 }

@@ -109,6 +109,7 @@ func TestResultStore_GC(t *testing.T) {
 	store.lock.Unlock()
 
 	store.gc()
+
 	// using nil notification to signal end of notifications
 	store.notifications <- Notification{
 		Op: NotifyOpNil,
@@ -121,6 +122,34 @@ func TestResultStore_GC(t *testing.T) {
 	for i, notification := range notifications {
 		assert.Equal(t, ops[i], notification.Op)
 	}
+}
+
+func TestResultStore_Start(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	lggr := log.New(io.Discard, "", 0)
+
+	store := NewResultStore(lggr)
+	origGcInterval := gcInterval
+	origStoreTTL := storeTTL
+	defer func() {
+		gcInterval = origGcInterval
+		storeTTL = origStoreTTL
+	}()
+	storeTTL = time.Millisecond * 2
+	gcInterval = time.Millisecond * 5
+
+	store.Start(ctx)
+	store.Add(mockItems(0, 2)...)
+	view, err := store.View()
+	assert.NoError(t, err)
+	assert.Len(t, view, 2)
+
+	<-time.After(gcInterval * 2)
+
+	view, err = store.View()
+	assert.NoError(t, err)
+	assert.Len(t, view, 0)
 }
 
 func TestResultStore_Concurrency(t *testing.T) {
