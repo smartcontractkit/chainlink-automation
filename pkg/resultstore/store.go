@@ -3,6 +3,7 @@ package resultstore
 import (
 	"context"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -97,22 +98,46 @@ func (s *resultStore) Remove(ids ...string) {
 // View returns a copy of the data in the store.
 // It accepts filters that can be used to prepare the results view.
 // NOTE: we apply filters while holding the read lock, these functions must not block.
-func (s *resultStore) View(filters ...ocr2keepers.Filter) ([]ocr2keepers.CheckResult, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+func (s *resultStore) View(opts ...ocr2keepers.ViewOpt) ([]ocr2keepers.CheckResult, error) {
+	filters, comparators, limit := ocr2keepers.ViewOpts(opts).Apply()
 
-	var result []ocr2keepers.CheckResult
+	var results []ocr2keepers.CheckResult
+	s.lock.RLock()
+	if limit == 0 {
+		limit = len(s.data)
+	}
+
 resultLoop:
 	for _, r := range s.data {
+		// apply filters
 		for _, filter := range filters {
 			if !filter(r.data) {
 				continue resultLoop
 			}
 		}
-		result = append(result, r.data)
+		results = append(results, r.data)
+		// if we reached the limit and there are no comparators, we can stop here
+		if len(results) == limit && len(comparators) == 0 {
+			break
+		}
+	}
+	s.lock.RUnlock()
+
+	// apply comparators
+	sort.SliceStable(results, func(i, j int) bool {
+		for _, comparator := range comparators {
+			if !comparator(results[i], results[j]) {
+				return false
+			}
+		}
+		return true
+	})
+
+	if limit > len(results) {
+		limit = len(results)
 	}
 
-	return result, nil
+	return results[:limit], nil
 }
 
 func (s *resultStore) gc() {
