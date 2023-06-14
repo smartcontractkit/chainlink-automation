@@ -50,7 +50,7 @@ func TestResultStore_Sanity(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			store := NewResultStore(lggr)
+			store := New(lggr)
 			view, err := store.View()
 			assert.NoError(t, err)
 			assert.Len(t, view, 0)
@@ -72,11 +72,11 @@ func TestResultStore_GC(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	lggr := log.New(io.Discard, "", 0)
-	store := NewResultStore(lggr)
+	store := New(lggr)
 
 	store.Add(mockItems(0, 3)...)
 
-	var notifications []Notification
+	var notifications []ocr2keepers.Notification
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -90,7 +90,7 @@ func TestResultStore_GC(t *testing.T) {
 		for {
 			select {
 			case n := <-notify:
-				if n.Op == NotifyOpNil {
+				if n.Op == ocr2keepers.NotifyOpNil {
 					return
 				}
 				notifications = append(notifications, n)
@@ -111,14 +111,14 @@ func TestResultStore_GC(t *testing.T) {
 	store.gc()
 
 	// using nil notification to signal end of notifications
-	store.notifications <- Notification{
-		Op: NotifyOpNil,
+	store.notifications <- ocr2keepers.Notification{
+		Op: ocr2keepers.NotifyOpNil,
 	}
 
 	wg.Wait()
 
 	assert.Len(t, notifications, 3)
-	ops := []NotifyOp{NotifyOpRemove, NotifyOpRemove, NotifyOpEvict}
+	ops := []ocr2keepers.NotifyOp{ocr2keepers.NotifyOpRemove, ocr2keepers.NotifyOpRemove, ocr2keepers.NotifyOpEvict}
 	for i, notification := range notifications {
 		assert.Equal(t, ops[i], notification.Op)
 	}
@@ -129,7 +129,7 @@ func TestResultStore_Start(t *testing.T) {
 	defer cancel()
 	lggr := log.New(io.Discard, "", 0)
 
-	store := NewResultStore(lggr)
+	store := New(lggr)
 	origGcInterval := gcInterval
 	origStoreTTL := storeTTL
 	defer func() {
@@ -154,7 +154,7 @@ func TestResultStore_Start(t *testing.T) {
 
 func TestResultStore_Concurrency(t *testing.T) {
 	lggr := log.New(io.Discard, "", 0)
-	store := NewResultStore(lggr)
+	store := New(lggr)
 
 	workers := 4
 	items := 1000
@@ -191,7 +191,7 @@ func TestResultStore_Concurrency(t *testing.T) {
 
 func TestResultStore_View(t *testing.T) {
 	lggr := log.New(io.Discard, "", 0)
-	store := NewResultStore(lggr)
+	store := New(lggr)
 
 	store.Add(mockItems(0, 10)...)
 

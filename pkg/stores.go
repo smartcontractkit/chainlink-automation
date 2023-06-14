@@ -1,41 +1,28 @@
 package ocr2keepers
 
-import "fmt"
-
-type ResultStore[T any] interface {
-	Add(T)
-	Remove(T)
-	View() ([]T, error)
+// ResultStore stores check results and allows for querying and removing result
+type ResultStore interface {
+	Add(...CheckResult)
+	Remove(...string)
+	View(...Filter) ([]CheckResult, error)
 }
 
-type resultStore[T any] struct {
-	data map[string]T
-}
+// Filter is a function that filters check results from a ResultStore
+type Filter func(CheckResult) bool
 
-func NewResultStore[T any]() *resultStore[T] {
-	return &resultStore[T]{
-		data: make(map[string]T),
-	}
-}
+// NotifyOp is an operation that can be notified by the ResultStore
+type NotifyOp uint8
 
-func (s *resultStore[T]) Add(results ...T) {
-	for _, result := range results {
-		key := fmt.Sprintf("%v", result)
-		s.data[key] = result
-	}
-}
+const (
+	NotifyOpNil NotifyOp = iota
+	// NotifyOpEvict is a notification that a result has been evicted from the store after TTL has passed
+	NotifyOpEvict
+	// NotifyOpRemove is a notification that a result has been removed from the store
+	NotifyOpRemove
+)
 
-func (s *resultStore[T]) Remove(results ...T) {
-	for _, result := range results {
-		key := fmt.Sprintf("%v", result)
-		delete(s.data, key)
-	}
-}
-
-func (s *resultStore[T]) View() ([]T, error) {
-	var result []T
-	for _, r := range s.data {
-		result = append(result, r)
-	}
-	return result, nil
+// Notification is a struct that will be sent by the ResultStore upon certain events happening
+type Notification struct {
+	Op   NotifyOp
+	Data CheckResult
 }
