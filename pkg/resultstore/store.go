@@ -27,6 +27,8 @@ type result struct {
 type resultStore struct {
 	lggr *log.Logger
 
+	close chan bool
+
 	data map[string]result
 	lock sync.RWMutex
 
@@ -36,6 +38,7 @@ type resultStore struct {
 func New(lggr *log.Logger) *resultStore {
 	return &resultStore{
 		lggr:          lggr,
+		close:         make(chan bool, 1),
 		data:          make(map[string]result),
 		lock:          sync.RWMutex{},
 		notifications: make(chan ocr2keepers.Notification, notifyQBufferSize),
@@ -44,26 +47,30 @@ func New(lggr *log.Logger) *resultStore {
 
 // Start starts the store, it spins up a goroutine that runs the garbage collector every gcInterval.
 func (s *resultStore) Start(pctx context.Context) error {
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
 	s.lggr.Println("starting result store")
 
-	go func() {
-		ctx, cancel := context.WithCancel(pctx)
-		defer cancel()
+	ticker := time.NewTicker(gcInterval)
+	defer ticker.Stop()
 
-		ticker := time.NewTicker(gcInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				s.gc()
-			case <-ctx.Done():
-				s.lggr.Println("result store context done, stopping gc")
-				return
-			}
+	for {
+		select {
+		case <-ticker.C:
+			s.gc()
+		case <-ctx.Done():
+			s.lggr.Println("result store context done, stopping gc")
+			return nil
+		case <-s.close:
+			s.lggr.Println("result store close signal received, stopping gc")
+			return nil
 		}
-	}()
+	}
+}
 
+func (s *resultStore) Close() error {
+	s.close <- true
 	return nil
 }
 
