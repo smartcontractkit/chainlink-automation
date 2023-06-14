@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -157,24 +158,28 @@ func TestResultStore_Concurrency(t *testing.T) {
 	store := New(lggr)
 
 	workers := 4
-	items := 1000
+	nitems := int32(1000)
 
 	var wg sync.WaitGroup
 
 	for i := 0; i < workers; i++ {
+		doneWrite := make(chan bool)
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
+			items := int(atomic.LoadInt32(&nitems))
 			n := items * (i + 1)
 			for j := items * i; j < n; j++ {
 				store.Add(mockItems(j, 1)...)
 			}
+			doneWrite <- true
 		}(i)
 
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			<-time.After(time.Millisecond * 10)
+			<-doneWrite
+			items := int(atomic.LoadInt32(&nitems))
 			n := items * (i + 1)
 			for j := items * i; j < n; j++ {
 				store.Remove(mockIDs(j, 1)...)
