@@ -12,6 +12,7 @@ import (
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -79,7 +80,7 @@ func TestResultStore_GC(t *testing.T) {
 
 	store.Add(mockItems(0, 3)...)
 
-	var notifications []ocr2keepers.Notification
+	var notifications []ocr2keepersv3.Notification
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -93,7 +94,7 @@ func TestResultStore_GC(t *testing.T) {
 		for {
 			select {
 			case n := <-notify:
-				if n.Op == ocr2keepers.NotifyOpNil {
+				if n.Op == ocr2keepersv3.NotifyOpNil {
 					return
 				}
 				notifications = append(notifications, n)
@@ -114,14 +115,14 @@ func TestResultStore_GC(t *testing.T) {
 	store.gc()
 
 	// using nil notification to signal end of notifications
-	store.notifications <- ocr2keepers.Notification{
-		Op: ocr2keepers.NotifyOpNil,
+	store.notifications <- ocr2keepersv3.Notification{
+		Op: ocr2keepersv3.NotifyOpNil,
 	}
 
 	wg.Wait()
 
 	assert.Len(t, notifications, 3)
-	ops := []ocr2keepers.NotifyOp{ocr2keepers.NotifyOpRemove, ocr2keepers.NotifyOpRemove, ocr2keepers.NotifyOpEvict}
+	ops := []ocr2keepersv3.NotifyOp{ocr2keepersv3.NotifyOpRemove, ocr2keepersv3.NotifyOpRemove, ocr2keepersv3.NotifyOpEvict}
 	for i, notification := range notifications {
 		assert.Equal(t, ops[i], notification.Op)
 	}
@@ -235,17 +236,17 @@ func TestResultStore_View(t *testing.T) {
 	t.Run("filter 1/2 of items with limit of 1/4", func(t *testing.T) {
 		i := 0
 		limit := int(atomic.LoadInt32(&nitems)) / 4
-		v, err := store.View(ocr2keepers.WithFilter(func(res ocr2keepers.CheckResult) bool {
+		v, err := store.View(ocr2keepersv3.WithFilter(func(res ocr2keepers.CheckResult) bool {
 			even := i%2 == 0
 			i++
 			return even
-		}), ocr2keepers.WithLimit(limit))
+		}), ocr2keepersv3.WithLimit(limit))
 		assert.NoError(t, err)
 		assert.Len(t, v, limit)
 	})
 
 	t.Run("filter all items", func(t *testing.T) {
-		v, err := store.View(ocr2keepers.WithFilter(func(cr ocr2keepers.CheckResult) bool {
+		v, err := store.View(ocr2keepersv3.WithFilter(func(cr ocr2keepers.CheckResult) bool {
 			return false
 		}))
 		assert.NoError(t, err)
@@ -255,7 +256,7 @@ func TestResultStore_View(t *testing.T) {
 	t.Run("combined filters", func(t *testing.T) {
 		i := 0
 		beforeLast := int(atomic.LoadInt32(&nitems)) - 1
-		v, err := store.View(ocr2keepers.WithFilter(func(res ocr2keepers.CheckResult) bool {
+		v, err := store.View(ocr2keepersv3.WithFilter(func(res ocr2keepers.CheckResult) bool {
 			i++
 			return i > 6
 		}, func(res ocr2keepers.CheckResult) bool {
@@ -274,7 +275,7 @@ func TestResultStore_View(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				i := 0
-				v, err := store.View(ocr2keepers.WithFilter(func(res ocr2keepers.CheckResult) bool {
+				v, err := store.View(ocr2keepersv3.WithFilter(func(res ocr2keepers.CheckResult) bool {
 					even := i%2 == 0
 					i++
 					return even
@@ -287,7 +288,7 @@ func TestResultStore_View(t *testing.T) {
 	})
 
 	t.Run("sort items by id desc", func(t *testing.T) {
-		v, err := store.View(ocr2keepers.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
+		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
 			return a.Payload.ID > b.Payload.ID
 		}))
 		assert.NoError(t, err)
@@ -296,9 +297,9 @@ func TestResultStore_View(t *testing.T) {
 	})
 
 	t.Run("sort items by id desc with limit", func(t *testing.T) {
-		v, err := store.View(ocr2keepers.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
+		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
 			return a.Payload.ID > b.Payload.ID
-		}), ocr2keepers.WithLimit(3))
+		}), ocr2keepersv3.WithLimit(3))
 		assert.NoError(t, err)
 		assert.Len(t, v, 3)
 		assert.Equal(t, "test-id-9", v[0].Payload.ID)
@@ -312,9 +313,9 @@ func TestResultStore_View(t *testing.T) {
 		el.addedAt = time.Now().Add(-2 * storeTTL)
 		store.data["test-id-0"] = el
 		store.lock.Unlock()
-		v, err := store.View(ocr2keepers.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
+		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
 			return a.Payload.ID < b.Payload.ID
-		}), ocr2keepers.WithLimit(3))
+		}), ocr2keepersv3.WithLimit(3))
 		assert.NoError(t, err)
 		assert.Len(t, v, 3)
 		assert.Equal(t, "test-id-1", v[0].Payload.ID)

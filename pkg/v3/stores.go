@@ -1,5 +1,9 @@
 package ocr2keepers
 
+import (
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+)
+
 // NotifyOp is an operation that can be notified by the ResultStore
 type NotifyOp uint8
 
@@ -13,24 +17,24 @@ const (
 
 // ResultStore stores check results and allows for querying and removing result
 type ResultStore interface {
-	Add(...CheckResult)
+	Add(...ocr2keepers.CheckResult)
 	Remove(...string)
-	View(...ViewOpt) ([]CheckResult, error)
+	View(...ViewOpt) ([]ocr2keepers.CheckResult, error)
 	Notifications() <-chan Notification
 }
 
 // Notification is a struct that will be sent by the ResultStore upon certain events happening
 type Notification struct {
 	Op   NotifyOp
-	Data CheckResult
+	Data ocr2keepers.CheckResult
 }
 
 // Filter is a function that filters check results from a ResultStore
-type ResultFilter func(CheckResult) bool
+type ResultFilter func(ocr2keepers.CheckResult) bool
 
 // Comparator is a function that is used for ordering of results from a ResultStore.
 // It should return true if the first result should be ordered before the second result.
-type ResultComparator func(i, j CheckResult) bool
+type ResultComparator func(i, j ocr2keepers.CheckResult) bool
 
 // ViewOpts is a set of options that can be passed to the View method of a ResultStore
 type viewOpts struct {
