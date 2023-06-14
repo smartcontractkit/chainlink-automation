@@ -280,6 +280,21 @@ func TestResultStore_View(t *testing.T) {
 		assert.Equal(t, "test-id-8", v[1].Payload.ID)
 		assert.Equal(t, "test-id-7", v[2].Payload.ID)
 	})
+
+	t.Run("ignore expired items", func(t *testing.T) {
+		store.lock.Lock()
+		el := store.data["test-id-0"]
+		el.addedAt = time.Now().Add(-2 * storeTTL)
+		store.data["test-id-0"] = el
+		store.lock.Unlock()
+		v, err := store.View(ocr2keepers.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
+			return a.Payload.ID < b.Payload.ID
+		}), ocr2keepers.WithLimit(3))
+		assert.NoError(t, err)
+		assert.Len(t, v, 3)
+		assert.Equal(t, "test-id-1", v[0].Payload.ID)
+
+	})
 }
 
 func mockItems(i, count int) []ocr2keepers.CheckResult {

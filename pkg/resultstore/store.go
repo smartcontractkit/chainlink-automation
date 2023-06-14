@@ -129,14 +129,16 @@ resultLoop:
 	s.lock.RUnlock()
 
 	// apply comparators
-	sort.SliceStable(results, func(i, j int) bool {
-		for _, comparator := range comparators {
-			if !comparator(results[i], results[j]) {
-				return false
+	if len(comparators) > 0 {
+		sort.SliceStable(results, func(i, j int) bool {
+			for _, comparator := range comparators {
+				if !comparator(results[i], results[j]) {
+					return false
+				}
 			}
-		}
-		return true
-	})
+			return true
+		})
+	}
 
 	if limit > len(results) {
 		limit = len(results)
