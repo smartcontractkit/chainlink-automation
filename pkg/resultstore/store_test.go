@@ -2,113 +2,55 @@ package resultstore
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/stretchr/testify/assert"
 )
 
-type checkResult struct {
-	Retryable bool
-	Data      string
-}
-
 func TestResultStore_Sanity(t *testing.T) {
-	lggr := log.New(os.Stdout, "", 0)
-	key := func(t checkResult) string {
-		return t.Data
-	}
+	lggr := log.New(io.Discard, "", 0)
 
 	tests := []struct {
 		name          string
-		itemsToAdd    []checkResult
-		itemsToRemove []checkResult
-		expected      []checkResult
+		itemsToAdd    []ocr2keepers.CheckResult
+		itemsToRemove []string
+		expected      []ocr2keepers.CheckResult
 	}{
 		{
-			name: "happy path 5 items",
-			itemsToAdd: []checkResult{
-				{
-					Retryable: false,
-					Data:      "some data 1",
-				},
-				{
-					Retryable: false,
-					Data:      "some data 2",
-				},
-				{
-					Retryable: false,
-					Data:      "some data 3",
-				},
-				{
-					Retryable: false,
-					Data:      "some data 4",
-				},
-				{
-					Retryable: false,
-					Data:      "some data 5",
-				},
-			},
-			itemsToRemove: []checkResult{
-				{
-					Retryable: false,
-					Data:      "some data 1",
-				},
-				{
-					Retryable: false,
-					Data:      "some data 3",
-				},
-				{
-					Retryable: false,
-					Data:      "some data 5",
-				},
-			},
-			expected: []checkResult{
-				{
-					Retryable: false,
-					Data:      "some data 2",
-				},
-				{
-					Retryable: false,
-					Data:      "some data 4",
-				},
-			},
+			name:          "happy path",
+			itemsToAdd:    mockItems(0, 5),
+			itemsToRemove: append(mockIDs(1, 1), mockIDs(3, 1)...),
+			expected:      append(mockItems(0, 1), append(mockItems(2, 1), mockItems(4, 1)...)...),
 		},
 		{
-			name: "remove non-existent item",
-			itemsToAdd: []checkResult{
-				{
-					Retryable: false,
-					Data:      "some data 1",
-				},
-			},
-			itemsToRemove: []checkResult{
-				{
-					Retryable: false,
-					Data:      "some data 2",
-				},
-			},
-			expected: []checkResult{
-				{
-					Retryable: false,
-					Data:      "some data 1",
-				},
-			},
+			name:          "remove non-existent item",
+			itemsToAdd:    mockItems(0, 2),
+			itemsToRemove: []string{"boo"},
+			expected:      mockItems(0, 2),
 		},
 		{
 			name:          "no items",
-			itemsToAdd:    []checkResult{},
-			itemsToRemove: []checkResult{},
-			expected:      []checkResult{},
+			itemsToAdd:    []ocr2keepers.CheckResult{},
+			itemsToRemove: []string{"boo"},
+			expected:      []ocr2keepers.CheckResult{},
+		},
+		{
+			name:          "no items to remove",
+			itemsToAdd:    mockItems(0, 1),
+			itemsToRemove: []string{},
+			expected:      mockItems(0, 1),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			store := NewResultStore(lggr, key)
+			store := NewResultStore(lggr)
 			view, err := store.View()
 			assert.NoError(t, err)
 			assert.Len(t, view, 0)
@@ -121,32 +63,20 @@ func TestResultStore_Sanity(t *testing.T) {
 			assert.NoError(t, err)
 			for _, v := range view {
 				assert.Contains(t, tc.expected, v)
-				assert.NotContains(t, tc.itemsToRemove, v)
 			}
 		})
 	}
 }
 
-func TestNotifications(t *testing.T) {
+func TestResultStore_GC(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	lggr := log.New(os.Stdout, "", 0)
-	key := func(t checkResult) string {
-		return t.Data
-	}
-	store := NewResultStore(lggr, key)
-	store.Add(checkResult{
-		Retryable: false,
-		Data:      "some data 1",
-	}, checkResult{
-		Retryable: false,
-		Data:      "some data 2",
-	}, checkResult{
-		Retryable: false,
-		Data:      "some data 3",
-	})
+	lggr := log.New(io.Discard, "", 0)
+	store := NewResultStore(lggr)
 
-	var notifications []Notification[checkResult]
+	store.Add(mockItems(0, 3)...)
+
+	var notifications []Notification
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -170,27 +100,127 @@ func TestNotifications(t *testing.T) {
 		}
 	}()
 
-	store.Remove(checkResult{
-		Retryable: false,
-		Data:      "some data 1",
-	})
-	store.Remove(checkResult{
-		Retryable: false,
-		Data:      "some data 2",
-	})
+	store.Remove(mockIDs(0, 2)...)
 
 	store.lock.Lock()
-	el := store.data["some data 3"]
+	el := store.data["test-id-2"]
 	el.addedAt = time.Now().Add(-2 * storeTTL)
-	store.data["some data 3"] = el
+	store.data["test-id-2"] = el
 	store.lock.Unlock()
 
 	store.gc()
-	end := new(Notification[checkResult])
-	end.Op = NotifyOpNil
-	store.notifications <- *end
+	// using nil notification to signal end of notifications
+	store.notifications <- Notification{
+		Op: NotifyOpNil,
+	}
 
 	wg.Wait()
 
 	assert.Len(t, notifications, 3)
+	ops := []NotifyOp{NotifyOpRemove, NotifyOpRemove, NotifyOpEvict}
+	for i, notification := range notifications {
+		assert.Equal(t, ops[i], notification.Op)
+	}
+}
+
+func TestResultStore_Concurrency(t *testing.T) {
+	lggr := log.New(io.Discard, "", 0)
+	store := NewResultStore(lggr)
+
+	workers := 4
+	items := 1000
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			n := items * (i + 1)
+			for j := items * i; j < n; j++ {
+				store.Add(mockItems(j, 1)...)
+			}
+		}(i)
+
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-time.After(time.Millisecond * 10)
+			n := items * (i + 1)
+			for j := items * i; j < n; j++ {
+				store.Remove(mockIDs(j, 1)...)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	view, err := store.View()
+	assert.NoError(t, err)
+	assert.Len(t, view, 0)
+}
+
+func TestResultStore_View(t *testing.T) {
+	lggr := log.New(io.Discard, "", 0)
+	store := NewResultStore(lggr)
+
+	store.Add(mockItems(0, 10)...)
+
+	t.Run("no filters", func(t *testing.T) {
+		v, err := store.View()
+		assert.NoError(t, err)
+		assert.Len(t, v, 10)
+	})
+
+	t.Run("filter half of items", func(t *testing.T) {
+		i := 0
+		v, err := store.View(func(res ocr2keepers.CheckResult) bool {
+			even := i%2 == 0
+			i++
+			return even
+		})
+		assert.NoError(t, err)
+		assert.Len(t, v, 5)
+	})
+
+	t.Run("filter all items", func(t *testing.T) {
+		v, err := store.View(func(res ocr2keepers.CheckResult) bool {
+			return false
+		})
+		assert.NoError(t, err)
+		assert.Len(t, v, 0)
+	})
+
+	t.Run("combined filters", func(t *testing.T) {
+		i := 0
+		v, err := store.View(func(res ocr2keepers.CheckResult) bool {
+			i++
+			return i > 6
+		}, func(res ocr2keepers.CheckResult) bool {
+			return i > 9
+		})
+		assert.NoError(t, err)
+		assert.Len(t, v, 1)
+	})
+}
+
+func mockItems(i, count int) []ocr2keepers.CheckResult {
+	items := make([]ocr2keepers.CheckResult, count)
+	for j := 0; j < count; j++ {
+		items[j] = ocr2keepers.CheckResult{
+			Retryable: false,
+			Payload: ocr2keepers.UpkeepPayload{
+				ID: fmt.Sprintf("test-id-%d", i+j),
+			},
+		}
+	}
+	return items
+}
+
+func mockIDs(i, count int) []string {
+	items := make([]string, count)
+	for j := 0; j < count; j++ {
+		items[j] = fmt.Sprintf("test-id-%d", i+j)
+	}
+	return items
 }
