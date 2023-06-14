@@ -74,14 +74,12 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 
 	for _, result := range results {
 		id := result.Payload.ID
-		el, ok := s.data[id]
-		if !ok {
-			el = element{}
+		_, ok := s.data[id]
+		if ok {
+			// if the element is already exists, we do noting
+			return
 		}
-		// TBD: what if the element is already exists?
-		el.data = result
-		el.addedAt = time.Now()
-		s.data[id] = el
+		s.data[id] = element{data: result, addedAt: time.Now()}
 	}
 }
 
