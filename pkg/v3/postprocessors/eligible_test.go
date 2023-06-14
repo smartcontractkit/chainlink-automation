@@ -2,17 +2,20 @@ package postprocessors
 
 import (
 	"context"
+	"io"
+	"log"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/resultstore"
 )
 
 func TestNewEligiblePostProcessor(t *testing.T) {
 	t.Run("create a new eligible post processor", func(t *testing.T) {
-		resultsStore := ocr2keepers.NewResultStore[ocr2keepers.CheckResult]()
+		resultsStore := resultstore.New(log.New(io.Discard, "", 0))
 		processor := NewEligiblePostProcessor(resultsStore)
 
 		t.Run("process eligible results", func(t *testing.T) {
