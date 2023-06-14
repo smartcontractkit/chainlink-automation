@@ -10,6 +10,11 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
+var (
+	ErrNotRetryable   = fmt.Errorf("payload is not retryable")
+	ErrTooManyRetries = fmt.Errorf("payload has had too many retries")
+)
+
 const (
 	retryDelay              = 500 * time.Millisecond
 	totalAttempt            = 3
@@ -33,8 +38,7 @@ func (rt *retryTicker) Retry(result ocr2keepers.CheckResult) error {
 		}
 
 		if attemptCount >= totalAttempt {
-			fmt.Printf("Payload %s has already been tried %d times. Skipping.\n", payload.ID, totalAttempt)
-			return nil
+			return fmt.Errorf("%w: %s was already tried %d", ErrTooManyRetries, payload.ID, totalAttempt)
 		}
 
 		attemptCount++
@@ -43,7 +47,7 @@ func (rt *retryTicker) Retry(result ocr2keepers.CheckResult) error {
 		nextRunTime := time.Now().Add(retryDelay)
 		rt.nextRetries.Store(nextRunTime, payload)
 	} else {
-		return fmt.Errorf("Payload %s is not retryable. Skipping.\n", payload.ID)
+		return fmt.Errorf("%w: %s", ErrNotRetryable, payload.ID)
 	}
 
 	return nil
@@ -79,7 +83,7 @@ func NewRetryTicker(interval time.Duration, observer observer) *retryTicker {
 		payloadAttempts: util.NewCache[int](attemptsCacheExpiration),
 	}
 
-	rt.timeTicker = NewTimeTicker(interval, observer, rt.getterFn)
+	rt.timeTicker = *NewTimeTicker(interval, observer, rt.getterFn)
 
 	return rt
 }

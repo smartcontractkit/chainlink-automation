@@ -7,7 +7,7 @@ import (
 )
 
 type checkResultRetryer interface {
-	Retry(ocr2keepers.CheckResult)
+	Retry(ocr2keepers.CheckResult) error
 }
 
 type retryPostProcessor struct {
@@ -17,7 +17,9 @@ type retryPostProcessor struct {
 func (p *retryPostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
 	for _, res := range results {
 		if res.Retryable {
-			p.retryer.Retry(res)
+			if err := p.retryer.Retry(res); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

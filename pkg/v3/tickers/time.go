@@ -16,12 +16,6 @@ type observer interface {
 	Process(context.Context, Tick) error
 }
 
-// Ticker is a process that runs interval ticks.
-type Ticker interface {
-	Start() error
-	Stop() error
-}
-
 // Tick is the container for the individual tick
 type Tick interface {
 	// GetUpkeeps provides upkeeps scoped to the tick
@@ -35,28 +29,38 @@ type timeTicker struct {
 	ticker   *time.Ticker
 	observer observer
 	getterFn getUpkeepsFn
-	ctx      context.Context
-	cancelFn context.CancelFunc
+	chClose  chan struct{}
 }
 
-func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) timeTicker {
-	ctx, cancelFn := context.WithCancel(context.Background())
-	t := timeTicker{
+func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) *timeTicker {
+	t := &timeTicker{
 		interval: interval,
 		ticker:   time.NewTicker(interval),
 		observer: observer,
 		getterFn: getterFn,
-		ctx:      ctx,
-		cancelFn: cancelFn,
+		chClose:  make(chan struct{}, 1),
 	}
 
 	return t
 }
 
-func (t timeTicker) Start() {
+// Start uses the provided context for each call to the getter function with the
+// configured interval as a timeout. This function blocks until Close is called
+// or the parent context is cancelled.
+func (t *timeTicker) Start(ctx context.Context) error {
 	for tm := range t.ticker.C {
+		ctx, cancelFn := context.WithTimeout(ctx, t.interval)
+
+		go func() {
+			select {
+			case <-ctx.Done():
+				cancelFn()
+			case <-t.chClose:
+				cancelFn()
+			}
+		}()
+
 		func() {
-			ctx, cancelFn := context.WithTimeout(t.ctx, t.interval)
 			defer cancelFn()
 
 			tick, err := t.getterFn(ctx, tm)
@@ -69,9 +73,13 @@ func (t timeTicker) Start() {
 			}
 		}()
 	}
+
+	return nil
 }
 
-func (t timeTicker) Stop() {
-	t.cancelFn()
+func (t *timeTicker) Close() error {
 	t.ticker.Stop()
+	t.chClose <- struct{}{}
+
+	return nil
 }

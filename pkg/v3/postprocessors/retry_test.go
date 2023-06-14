@@ -13,8 +13,9 @@ type mockRetryer struct {
 	retryCalled bool
 }
 
-func (m *mockRetryer) Retry(result ocr2keepers.CheckResult) {
+func (m *mockRetryer) Retry(result ocr2keepers.CheckResult) error {
 	m.retryCalled = true
+	return nil
 }
 
 func TestRetryPostProcessor_PostProcess(t *testing.T) {

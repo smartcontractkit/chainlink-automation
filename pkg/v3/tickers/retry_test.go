@@ -18,7 +18,9 @@ func TestRetryTicker_Retry(t *testing.T) {
 	}
 	// Create a retryTicker instance
 	rt := NewRetryTicker(1*time.Second, mockObserver)
-	go rt.Start()
+	go func() {
+		assert.NoError(t, rt.Start(context.Background()))
+	}()
 
 	// Create a retryable CheckResult
 	retryableResult1 := ocr2keepers.CheckResult{
@@ -47,7 +49,8 @@ func TestRetryTicker_Retry(t *testing.T) {
 
 	// Retry the result again, it should be skipped due to reaching the maximum attempt count
 	err = rt.Retry(retryableResult1)
-	assert.NoError(t, err)
+	// should return an error
+	assert.ErrorIs(t, err, ErrTooManyRetries)
 	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
 
 	// Create another retryable CheckResult
@@ -77,13 +80,15 @@ func TestRetryTicker_Retry(t *testing.T) {
 	// Assert that the above non-retryable payload is not added to retryTicker
 	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
 
-	rt.Stop()
+	assert.NoError(t, rt.Close())
 }
 
 func TestRetryTicker_getterFn(t *testing.T) {
 	// Create a retryTicker instance
 	rt := NewRetryTicker(1*time.Second, nil)
-	go rt.Start()
+	go func() {
+		assert.NoError(t, rt.Start(context.Background()))
+	}()
 
 	// Add a retryable payload to the retryTicker
 	payload := ocr2keepers.UpkeepPayload{ID: "payload1"}
@@ -98,19 +103,21 @@ func TestRetryTicker_getterFn(t *testing.T) {
 
 	// Assert that the retryTicker is empty after retrieval
 	assert.Equal(t, 0, rt.nextRetriesLen())
-	rt.Stop()
+	assert.NoError(t, rt.Close())
 }
 
 func TestNewRetryTicker(t *testing.T) {
 	// Create a retryTicker instance
 	rt := NewRetryTicker(1*time.Second, nil)
-	go rt.Start()
+	go func() {
+		assert.NoError(t, rt.Start(context.Background()))
+	}()
 
 	// Assert that the retryTicker is initialized correctly
 	assert.NotNil(t, rt.timeTicker)
 	assert.Equal(t, 0, rt.nextRetriesLen())
 	assert.NotNil(t, rt.payloadAttempts)
-	rt.Stop()
+	assert.NoError(t, rt.Close())
 }
 
 func TestRetryTick_GetUpkeeps(t *testing.T) {
