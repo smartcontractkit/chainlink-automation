@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -193,6 +194,22 @@ func TestResultStore_Concurrency(t *testing.T) {
 	view, err := store.View()
 	assert.NoError(t, err)
 	assert.Len(t, view, 0)
+}
+
+func TestResultStore_Add(t *testing.T) {
+	lggr := log.New(os.Stdout, "", 0)
+	store := New(lggr)
+
+	t.Run("happy flow", func(t *testing.T) {
+		store.Add(mockItems(0, 10)...)
+		assert.Len(t, store.data, 10)
+	})
+
+	t.Run("ignore existing items", func(t *testing.T) {
+		store.Add(mockItems(0, 10)...)
+		store.Add(mockItems(0, 11)...)
+		assert.Len(t, store.data, 11)
+	})
 }
 
 func TestResultStore_View(t *testing.T) {

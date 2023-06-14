@@ -44,6 +44,8 @@ func New(lggr *log.Logger) *resultStore {
 
 // Start starts the store, it spins up a goroutine that runs the garbage collector every gcInterval.
 func (s *resultStore) Start(pctx context.Context) error {
+	s.lggr.Println("starting result store")
+
 	go func() {
 		ctx, cancel := context.WithCancel(pctx)
 		defer cancel()
@@ -54,6 +56,7 @@ func (s *resultStore) Start(pctx context.Context) error {
 			case <-ticker.C:
 				s.gc()
 			case <-ctx.Done():
+				s.lggr.Println("result store context done, stopping gc")
 				return
 			}
 		}
@@ -72,13 +75,15 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	added := 0
 	for _, result := range results {
 		id := result.Payload.ID
 		_, ok := s.data[id]
 		if ok {
 			// if the element is already exists, we do noting
-			return
+			continue
 		}
+		added++
 		s.data[id] = element{data: result, addedAt: time.Now()}
 	}
 }
