@@ -49,7 +49,7 @@ const (
 // with retry attempts.
 type LogTriggerEligibility struct {
 	// created in the constructor
-	services []*service.Recoverer
+	services []service.Recoverable
 
 	// state variables
 	running atomic.Bool
@@ -62,7 +62,7 @@ func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner
 	svc2 := newLogTriggerFlow(rStore, runner, retryer, logLookup)
 
 	return &LogTriggerEligibility{
-		services: []*service.Recoverer{
+		services: []service.Recoverable{
 			service.NewRecoverer(svc, logger),
 			service.NewRecoverer(svc2, logger),
 		},
@@ -70,7 +70,7 @@ func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner
 	}
 }
 
-// Start passes the proveded context to dependent services and blocks until
+// Start passes the provided context to dependent services and blocks until
 // Close is called. If any errors are encountered in starting services, the
 // errors will be joined and returned immediately.
 func (flow *LogTriggerEligibility) Start(ctx context.Context) error {
@@ -120,12 +120,10 @@ func (flow *LogTriggerEligibility) Close() error {
 }
 
 func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner) (service.Recoverable, Retryer) {
-	// no preprocessors required for retry flow at this point
-	pre := []ocr2keepersv3.Preprocessor{}
-
 	// create observer
+	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
-	retryObserver := ocr2keepersv3.NewObserver(pre, nil, rn)
+	retryObserver := ocr2keepersv3.NewObserver(nil, nil, rn)
 
 	// create retry ticker
 	ticker := tickers.NewRetryTicker(RetryCheckInterval, retryObserver)

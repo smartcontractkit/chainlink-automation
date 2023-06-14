@@ -57,14 +57,12 @@ func (o *Observer) Process(ctx context.Context, tick tickers.Tick) error {
 		}
 	}
 
-	results := make([]ocr2keepers.CheckResult, 0)
+	var results []ocr2keepers.CheckResult
 
 	// Run check pipeline
-	if len(upkeepPayloads) > 0 {
-		results, err = o.Runner.CheckUpkeeps(ctx, upkeepPayloads)
-		if err != nil {
-			return err
-		}
+	results, err = o.Runner.CheckUpkeeps(ctx, upkeepPayloads)
+	if err != nil {
+		return err
 	}
 
 	// Run post-processor

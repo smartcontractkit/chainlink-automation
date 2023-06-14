@@ -99,12 +99,8 @@ func TestObserve_Process(t *testing.T) {
 		preprocessorErr    error
 		postprocessorErr   error
 	}
-	expectedPayload := []ocr2keepers.UpkeepPayload{
-		{}, // non-empty to make CheckUpkeeps run
-	}
-	expectedCheckResults := []ocr2keepers.CheckResult{
-		{}, // non-empty to match payloads
-	}
+	expectedPayload := []ocr2keepers.UpkeepPayload{}
+	expectedCheckResults := []ocr2keepers.CheckResult{}
 	tests := []struct {
 		name         string
 		fields       fields
