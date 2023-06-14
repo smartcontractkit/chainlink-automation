@@ -139,7 +139,7 @@ func TestResultStore_Start(t *testing.T) {
 	storeTTL = time.Millisecond * 2
 	gcInterval = time.Millisecond * 5
 
-	store.Start(ctx)
+	assert.NoError(t, store.Start(ctx))
 	store.Add(mockItems(0, 2)...)
 	view, err := store.View()
 	assert.NoError(t, err)
