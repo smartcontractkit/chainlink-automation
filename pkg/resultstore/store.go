@@ -109,6 +109,11 @@ func (s *resultStore) View(opts ...ocr2keepers.ViewOpt) ([]ocr2keepers.CheckResu
 
 resultLoop:
 	for _, r := range s.data {
+		if time.Since(r.addedAt) > storeTTL {
+			// expired, we don't want to remove the element here
+			// as it requires to acquire a write lock, which slows down the View method
+			continue
+		}
 		// apply filters
 		for _, filter := range filters {
 			if !filter(r.data) {
