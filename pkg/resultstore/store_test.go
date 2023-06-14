@@ -62,6 +62,7 @@ func TestResultStore_Sanity(t *testing.T) {
 			store.Remove(tc.itemsToRemove...)
 			view, err = store.View()
 			assert.NoError(t, err)
+			assert.Len(t, view, len(tc.expected))
 			for _, v := range view {
 				assert.Contains(t, tc.expected, v)
 			}
