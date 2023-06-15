@@ -1,4 +1,4 @@
-package v3
+package ocr2keepers
 
 import (
 	"context"
@@ -11,8 +11,6 @@ import (
 type InstructionStore interface{}
 
 type SamplingStore interface{}
-
-type ResultStore interface{}
 
 type ocr3Plugin struct {
 	PrebuildHooks     []func(AutomationOutcome) error
