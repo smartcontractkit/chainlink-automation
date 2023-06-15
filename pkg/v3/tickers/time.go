@@ -2,7 +2,9 @@ package tickers
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -30,6 +32,7 @@ type timeTicker struct {
 	observer observer
 	getterFn getUpkeepsFn
 	chClose  chan struct{}
+	running  atomic.Bool
 }
 
 func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) *timeTicker {
@@ -48,21 +51,19 @@ func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeep
 // configured interval as a timeout. This function blocks until Close is called
 // or the parent context is cancelled.
 func (t *timeTicker) Start(ctx context.Context) error {
+	if t.running.Load() {
+		return fmt.Errorf("already running")
+	}
+
+	t.running.Store(true)
+
 	for tm := range t.ticker.C {
 		ctx, cancelFn := context.WithTimeout(ctx, t.interval)
 
-		go func() {
-			select {
-			case <-ctx.Done():
-				cancelFn()
-			case <-t.chClose:
-				cancelFn()
-			}
-		}()
-
-		func() {
-			defer cancelFn()
-
+		select {
+		case <-t.chClose:
+			cancelFn()
+		default:
 			tick, err := t.getterFn(ctx, tm)
 			if err != nil {
 				logPrintf("error fetching tick: %s", err.Error())
@@ -71,13 +72,21 @@ func (t *timeTicker) Start(ctx context.Context) error {
 			if err := t.observer.Process(ctx, tick); err != nil {
 				logPrintf("error processing observer: %s", err.Error())
 			}
-		}()
+
+			cancelFn()
+		}
 	}
+
+	t.running.Store(false)
 
 	return nil
 }
 
 func (t *timeTicker) Close() error {
+	if !t.running.Load() {
+		return fmt.Errorf("not running")
+	}
+
 	t.ticker.Stop()
 	t.chClose <- struct{}{}
 

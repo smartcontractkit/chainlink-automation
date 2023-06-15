@@ -78,6 +78,8 @@ func (flow *LogTriggerEligibility) Start(ctx context.Context) error {
 		return fmt.Errorf("already running")
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	var err error
 
 	// TODO: [AUTO-3414] what happens when service 1 starts successfully and
@@ -90,13 +92,16 @@ func (flow *LogTriggerEligibility) Start(ctx context.Context) error {
 	flow.running.Store(true)
 
 	if err != nil {
+		cancel()
 		return err
 	}
 
 	select {
 	case <-ctx.Done():
+		cancel()
 		return ctx.Err()
 	case <-flow.chClose:
+		cancel()
 		return nil
 	}
 }

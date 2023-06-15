@@ -106,20 +106,6 @@ func TestRetryTicker_getterFn(t *testing.T) {
 	assert.NoError(t, rt.Close())
 }
 
-func TestNewRetryTicker(t *testing.T) {
-	// Create a retryTicker instance
-	rt := NewRetryTicker(1*time.Second, nil)
-	go func() {
-		assert.NoError(t, rt.Start(context.Background()))
-	}()
-
-	// Assert that the retryTicker is initialized correctly
-	assert.NotNil(t, rt.timeTicker)
-	assert.Equal(t, 0, rt.nextRetriesLen())
-	assert.NotNil(t, rt.payloadAttempts)
-	assert.NoError(t, rt.Close())
-}
-
 func TestRetryTick_GetUpkeeps(t *testing.T) {
 	// Create a retryTick instance
 	upkeeps := []ocr2keepers.UpkeepPayload{

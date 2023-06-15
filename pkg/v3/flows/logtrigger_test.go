@@ -18,7 +18,7 @@ import (
 func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
-	runner := new(mocks.MockRunner)
+	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks.MockPreProcessor)
 	store := new(mocks.MockResultStore)
 
@@ -41,12 +41,15 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 	assert.NoError(t, logFlow.Close(), "no error expected on shut down")
 
 	wg.Wait()
+
+	src.AssertExpectations(t)
+	store.AssertExpectations(t)
 }
 
 func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
-	runner := new(mocks.MockRunner)
+	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks.MockPreProcessor)
 	store := new(mocks.MockResultStore)
 
@@ -58,11 +61,6 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	// values every time
 	src.On("PreProcess", mock.Anything, mock.Anything).
 		Return(testData, nil).Times(5)
-
-	runner.On("CheckUpkeeps", mock.Anything, testData).
-		Return([]ocr2keepers.CheckResult{
-			{Payload: testData[0], Eligible: true},
-		}, nil).Times(5)
 
 	store.On("Add", mock.Anything).Times(5)
 
@@ -80,11 +78,10 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	assert.NoError(t, logFlow.Close(), "no error expected on shut down")
 
-	runner.AssertExpectations(t)
+	wg.Wait()
+
 	src.AssertExpectations(t)
 	store.AssertExpectations(t)
-
-	wg.Wait()
 }
 
 func TestLogTriggerEligibilityFlow_SingleRetry(t *testing.T) {
@@ -106,25 +103,9 @@ func TestLogTriggerEligibilityFlow_SingleRetry(t *testing.T) {
 	// as retryable.
 	// the upkeep should be added to the retry path and retried once where the
 	// runner again returns retryable.
-	/*
-		runner.On("CheckUpkeeps", mock.Anything, testData).
-			Return([]ocr2keepers.CheckResult{
-				{Payload: testData[0], Eligible: false, Retryable: true},
-			}, nil).Times(2)
-
-	*/
 
 	// after the first retry returns a retryable result, the upkeep should be
 	// retried once more in the runner with the result being eligible
-	/*
-			runner.On("CheckUpkeeps", mock.Anything, testData).
-				Return([]ocr2keepers.CheckResult{
-					{Payload: testData[0], Eligible: true, Retryable: false},
-				}, nil).Times(1)
-
-		runner.On("CheckUpkeeps", mock.Anything, mock.Anything).
-			Return([]ocr2keepers.CheckResult{}, nil).Times(10) // 2 for main 8 for other
-	*/
 
 	// after the upkeep is determined to be eligible and not retryable, the
 	// result is added to the result store
@@ -151,11 +132,15 @@ func TestLogTriggerEligibilityFlow_SingleRetry(t *testing.T) {
 }
 
 type mockedRunner struct {
+	mu            sync.Mutex
 	count         int
 	eligibleAfter int
 }
 
-func (_m *mockedRunner) CheckUpkeeps(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+	_m.mu.Lock()
+	defer _m.mu.Unlock()
+
 	results := make([]ocr2keepers.CheckResult, 0)
 
 	for i := range payloads {
