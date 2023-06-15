@@ -1,18 +1,19 @@
-package ocr2keepers
+package plugin
 
 import (
 	"context"
 	"testing"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 )
 
 func TestObservation(t *testing.T) {
 	// Create an instance of ocr3 plugin
-	plugin := &ocr3Plugin{}
+	plugin := &ocr3Plugin[int]{}
 
 	// Create a sample outcome for decoding
 	outcome := ocr3types.OutcomeContext{
@@ -20,7 +21,7 @@ func TestObservation(t *testing.T) {
 	}
 
 	// Define a mock hook function for testing pre-build hooks
-	mockPrebuildHook := func(outcome AutomationOutcome) error {
+	mockPrebuildHook := func(outcome ocr2keepersv3.AutomationOutcome) error {
 		assert.Equal(t, 1, len(outcome.Instructions))
 		return nil
 	}
@@ -29,7 +30,7 @@ func TestObservation(t *testing.T) {
 	plugin.PrebuildHooks = append(plugin.PrebuildHooks, mockPrebuildHook)
 
 	// Define a mock build hook function for testing build hooks
-	mockBuildHook := func(observation *AutomationObservation, instructionStore InstructionStore, samplingStore SamplingStore, resultStore ResultStore) error {
+	mockBuildHook := func(observation *ocr2keepersv3.AutomationObservation, instructionStore InstructionStore, samplingStore SamplingStore, resultStore ocr2keepersv3.ResultStore) error {
 		assert.Equal(t, 0, len(observation.Instructions))
 		return nil
 	}
