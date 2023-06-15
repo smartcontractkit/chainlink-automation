@@ -57,8 +57,8 @@ type LogTriggerEligibility struct {
 }
 
 // NewLogTriggerEligibility ...
-func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner Runner, logger *log.Logger) *LogTriggerEligibility {
-	svc, retryer := newRetryFlow(rStore, runner)
+func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner Runner, logger *log.Logger, configFuncs ...tickers.RetryConfigFunc) *LogTriggerEligibility {
+	svc, retryer := newRetryFlow(rStore, runner, configFuncs...)
 	svc2 := newLogTriggerFlow(rStore, runner, retryer, logLookup)
 
 	return &LogTriggerEligibility{
@@ -124,14 +124,14 @@ func (flow *LogTriggerEligibility) Close() error {
 	return err
 }
 
-func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner) (service.Recoverable, Retryer) {
+func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
 	retryObserver := ocr2keepersv3.NewObserver(nil, nil, rn)
 
 	// create retry ticker
-	ticker := tickers.NewRetryTicker(RetryCheckInterval, retryObserver)
+	ticker := tickers.NewRetryTicker(RetryCheckInterval, retryObserver, configFuncs...)
 
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
