@@ -2,6 +2,7 @@ package tickers
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,77 +11,183 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-func TestRetryTicker_Retry(t *testing.T) {
-	mockObserver := &mockObserver{
-		processFn: func(ctx context.Context, t Tick) error {
-			return nil
-		},
-	}
-	// Create a retryTicker instance
-	rt := NewRetryTicker(1*time.Second, mockObserver)
-	go func() {
-		assert.NoError(t, rt.Start(context.Background()))
-	}()
+func TestRetryTicker(t *testing.T) {
+	t.Run("sends retry tick to observer after wait", func(t *testing.T) {
+		// Create a retryable CheckResult
+		retryableResult1 := ocr2keepers.CheckResult{
+			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
+			Retryable: true,
+		}
 
-	// Create a retryable CheckResult
-	retryableResult1 := ocr2keepers.CheckResult{
-		Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
-		Retryable: true,
-	}
+		var (
+			wg    sync.WaitGroup
+			mu    sync.Mutex
+			count int
+		)
 
-	// Retry the result
-	err := rt.Retry(retryableResult1)
-	assert.NoError(t, err)
+		// create a mocked observer that tracks retries and mocks pipeline results
+		mockObserver := &mockObserver{
+			processFn: func(ctx context.Context, t Tick) error {
+				upkeeps, _ := t.GetUpkeeps(ctx)
 
-	// Assert that the retryTicker contains the retryable payload
-	//assert.Equal(t, 1, len(rt.nextRetries))
-	assert.Equal(t, 1, rt.nextRetriesLen())
-	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
+				// assert that retry was in tick at least once
+				mu.Lock()
+				count += len(upkeeps)
+				mu.Unlock()
 
-	// Retry second time
-	err = rt.Retry(retryableResult1)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
+				return nil
+			},
+		}
 
-	// Retry third time
-	err = rt.Retry(retryableResult1)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
+		// set some short time values to confine the tests
+		config := func(c *RetryConfig) {
+			c.RetryDelay = 50 * time.Millisecond
+			c.MaxRetryDuration = 250 * time.Millisecond
+		}
 
-	// Retry the result again, it should be skipped due to reaching the maximum attempt count
-	err = rt.Retry(retryableResult1)
-	// should return an error
-	assert.ErrorIs(t, err, ErrTooManyRetries)
-	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
+		// Create a retryTicker instance
+		rt := NewRetryTicker(10*time.Millisecond, mockObserver, RetryWithDefaults, config)
 
-	// Create another retryable CheckResult
-	retryableResult2 := ocr2keepers.CheckResult{
-		Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_2"},
-		Retryable: true,
-	}
+		// start the ticker in a separate thread
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, rt.Start(context.Background()))
+			wg.Done()
+		}()
 
-	// Wait for 8 seconds, retry attempts cache for the above payload should expire(default is 5 seconds)
-	time.Sleep(8 * time.Second)
+		// send the retry
+		assert.NoError(t, rt.Retry(retryableResult1))
 
-	// Retry another payload
-	err = rt.Retry(retryableResult2)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
+		// wait a little longer than the retry delay
+		time.Sleep(60 * time.Millisecond)
 
-	// Create a non-retryable CheckResult
-	nonRetryableResult := ocr2keepers.CheckResult{
-		Payload:   ocr2keepers.UpkeepPayload{ID: "non-retryable"},
-		Retryable: false,
-	}
+		assert.NoError(t, rt.Close())
 
-	// Retry the non-retryable result, it should return an error
-	err = rt.Retry(nonRetryableResult)
-	assert.Error(t, err)
+		wg.Wait()
 
-	// Assert that the above non-retryable payload is not added to retryTicker
-	assert.Equal(t, 1, len(rt.payloadAttempts.Keys()))
+		assert.Equal(t, 1, count, "tick should have been retried exactly once")
+	})
 
-	assert.NoError(t, rt.Close())
+	t.Run("does not send retry before wait", func(t *testing.T) {
+		// Create a retryable CheckResult
+		retryableResult1 := ocr2keepers.CheckResult{
+			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
+			Retryable: true,
+		}
+
+		var (
+			wg    sync.WaitGroup
+			mu    sync.Mutex
+			count int
+		)
+
+		// create a mocked observer that tracks retries and mocks pipeline results
+		mockObserver := &mockObserver{
+			processFn: func(ctx context.Context, t Tick) error {
+				upkeeps, _ := t.GetUpkeeps(ctx)
+
+				// assert that retry was in tick at least once
+				mu.Lock()
+				count += len(upkeeps)
+				mu.Unlock()
+
+				return nil
+			},
+		}
+
+		// set some short time values to confine the tests
+		config := func(c *RetryConfig) {
+			c.RetryDelay = 100 * time.Millisecond
+			c.MaxRetryDuration = 250 * time.Millisecond
+		}
+
+		// Create a retryTicker instance
+		rt := NewRetryTicker(25*time.Millisecond, mockObserver, RetryWithDefaults, config)
+
+		// start the ticker in a separate thread
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, rt.Start(context.Background()))
+			wg.Done()
+		}()
+
+		// send the retry
+		assert.NoError(t, rt.Retry(retryableResult1))
+
+		// wait a little shorter than the retry delay
+		time.Sleep(50 * time.Millisecond)
+
+		assert.NoError(t, rt.Close())
+
+		wg.Wait()
+
+		assert.Equal(t, 0, count, "tick should not have been retried")
+	})
+
+	t.Run("does not allow retry after max duration", func(t *testing.T) {
+		// Create a retryable CheckResult
+		retryableResult1 := ocr2keepers.CheckResult{
+			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
+			Retryable: true,
+		}
+
+		var (
+			wg    sync.WaitGroup
+			mu    sync.Mutex
+			count int
+		)
+
+		// create a mocked observer that tracks retries and mocks pipeline results
+		mockObserver := &mockObserver{
+			processFn: func(ctx context.Context, t Tick) error {
+				upkeeps, _ := t.GetUpkeeps(ctx)
+
+				// assert that retry was in tick at least once
+				mu.Lock()
+				count += len(upkeeps)
+				mu.Unlock()
+
+				return nil
+			},
+		}
+
+		// set some short time values to confine the tests
+		config := func(c *RetryConfig) {
+			c.RetryDelay = 50 * time.Millisecond
+			c.MaxRetryDuration = 250 * time.Millisecond
+		}
+
+		// Create a retryTicker instance
+		rt := NewRetryTicker(10*time.Millisecond, mockObserver, RetryWithDefaults, config)
+
+		// start the ticker in a separate thread
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, rt.Start(context.Background()))
+			wg.Done()
+		}()
+
+		// send the retry
+		assert.NoError(t, rt.Retry(retryableResult1))
+
+		// wait for the retry to succeed
+		time.Sleep(100 * time.Millisecond)
+
+		// send the retry again to ensure the ability to retry the same value
+		assert.NoError(t, rt.Retry(retryableResult1))
+
+		// wait long enough to be more than the max duration
+		time.Sleep(200 * time.Millisecond)
+
+		// attempting a retry should return an error
+		assert.ErrorIs(t, rt.Retry(retryableResult1), ErrRetryDurationExceeded)
+
+		assert.NoError(t, rt.Close())
+
+		wg.Wait()
+
+		assert.Equal(t, 2, count, "tick should have been retried exactly twice")
+	})
 }
 
 func TestRetryTick_GetUpkeeps(t *testing.T) {
@@ -97,14 +204,4 @@ func TestRetryTick_GetUpkeeps(t *testing.T) {
 	// Assert that the retrieved upkeeps match the original upkeeps
 	assert.NoError(t, err)
 	assert.Equal(t, upkeeps, retrievedUpkeeps)
-}
-
-// Helper function to get the length of the nextRetries sync.Map
-func (rt *retryTicker) nextRetriesLen() int {
-	len := 0
-	rt.nextRetries.Range(func(_, _ interface{}) bool {
-		len++
-		return true
-	})
-	return len
 }

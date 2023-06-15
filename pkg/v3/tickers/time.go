@@ -57,13 +57,14 @@ func (t *timeTicker) Start(ctx context.Context) error {
 
 	t.running.Store(true)
 
-	for tm := range t.ticker.C {
-		ctx, cancelFn := context.WithTimeout(ctx, t.interval)
+	ctx, cancel := context.WithCancel(ctx)
 
+Loop:
+	for {
 		select {
-		case <-t.chClose:
-			cancelFn()
-		default:
+		case tm := <-t.ticker.C:
+			ctx, cancelFn := context.WithTimeout(ctx, t.interval)
+
 			tick, err := t.getterFn(ctx, tm)
 			if err != nil {
 				logPrintf("error fetching tick: %s", err.Error())
@@ -74,8 +75,12 @@ func (t *timeTicker) Start(ctx context.Context) error {
 			}
 
 			cancelFn()
+		case <-t.chClose:
+			break Loop
 		}
 	}
+
+	cancel()
 
 	t.running.Store(false)
 

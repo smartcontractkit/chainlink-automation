@@ -13,6 +13,7 @@ import (
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
@@ -84,7 +85,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	store.AssertExpectations(t)
 }
 
-func TestLogTriggerEligibilityFlow_SingleRetry(t *testing.T) {
+func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
 	runner := &mockedRunner{eligibleAfter: 2}
@@ -111,7 +112,12 @@ func TestLogTriggerEligibilityFlow_SingleRetry(t *testing.T) {
 	// result is added to the result store
 	store.On("Add", mock.Anything).Times(1)
 
-	logFlow := NewLogTriggerEligibility(src, store, runner, logger)
+	// set some short time values to confine the tests
+	config := func(c *tickers.RetryConfig) {
+		c.RetryDelay = 500 * time.Millisecond
+	}
+
+	logFlow := NewLogTriggerEligibility(src, store, runner, logger, tickers.RetryWithDefaults, config)
 
 	var wg sync.WaitGroup
 
