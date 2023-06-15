@@ -183,7 +183,11 @@ func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2ke
 			r.AddSuccesses(1)
 
 			for _, result := range results {
-				o.cache.Set(result.Payload.ID, result, pkgutil.DefaultCacheExpiration)
+				// only add to the cache if the result is not retryable
+				if !result.Retryable {
+					o.cache.Set(result.Payload.ID, result, pkgutil.DefaultCacheExpiration)
+				}
+
 				r.Add(result)
 			}
 		} else {

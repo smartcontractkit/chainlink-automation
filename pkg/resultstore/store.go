@@ -8,6 +8,7 @@ import (
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 )
 
 // TODO: make these configurable?
@@ -32,7 +33,7 @@ type resultStore struct {
 	data map[string]result
 	lock sync.RWMutex
 
-	notifications chan ocr2keepers.Notification
+	notifications chan ocr2keepersv3.Notification
 }
 
 func New(lggr *log.Logger) *resultStore {
@@ -41,7 +42,7 @@ func New(lggr *log.Logger) *resultStore {
 		close:         make(chan bool, 1),
 		data:          make(map[string]result),
 		lock:          sync.RWMutex{},
-		notifications: make(chan ocr2keepers.Notification, notifyQBufferSize),
+		notifications: make(chan ocr2keepersv3.Notification, notifyQBufferSize),
 	}
 }
 
@@ -75,7 +76,7 @@ func (s *resultStore) Close() error {
 }
 
 // Notifications returns a channel that can be used to receive notifications about evicted/removed items in the store.
-func (s *resultStore) Notifications() <-chan ocr2keepers.Notification {
+func (s *resultStore) Notifications() <-chan ocr2keepersv3.Notification {
 	return s.notifications
 }
 
@@ -109,8 +110,8 @@ func (s *resultStore) Remove(ids ...string) {
 // View returns a copy of the data in the store.
 // It accepts filters that can be used to prepare the results view.
 // NOTE: we apply filters while holding the read lock, these functions must not block.
-func (s *resultStore) View(opts ...ocr2keepers.ViewOpt) ([]ocr2keepers.CheckResult, error) {
-	filters, comparators, limit := ocr2keepers.ViewOpts(opts).Apply()
+func (s *resultStore) View(opts ...ocr2keepersv3.ViewOpt) ([]ocr2keepers.CheckResult, error) {
+	filters, comparators, limit := ocr2keepersv3.ViewOpts(opts).Apply()
 
 	results, limit := s.viewResults(limit, filters, comparators)
 	s.orderResults(results, comparators)
@@ -122,7 +123,7 @@ func (s *resultStore) View(opts ...ocr2keepers.ViewOpt) ([]ocr2keepers.CheckResu
 	return results[:limit], nil
 }
 
-func (s *resultStore) orderResults(results []ocr2keepers.CheckResult, comparators []ocr2keepers.ResultComparator) {
+func (s *resultStore) orderResults(results []ocr2keepers.CheckResult, comparators []ocr2keepersv3.ResultComparator) {
 	if len(comparators) > 0 {
 		sort.SliceStable(results, func(i, j int) bool {
 			for _, comparator := range comparators {
@@ -137,8 +138,8 @@ func (s *resultStore) orderResults(results []ocr2keepers.CheckResult, comparator
 
 func (s *resultStore) viewResults(
 	limit int,
-	filters []ocr2keepers.ResultFilter,
-	comparators []ocr2keepers.ResultComparator,
+	filters []ocr2keepersv3.ResultFilter,
+	comparators []ocr2keepersv3.ResultComparator,
 ) ([]ocr2keepers.CheckResult, int) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -179,16 +180,16 @@ func (s *resultStore) gc() {
 	for k, v := range s.data {
 		if time.Since(v.addedAt) > storeTTL {
 			delete(s.data, k)
-			s.notify(ocr2keepers.NotifyOpEvict, v.data)
+			s.notify(ocr2keepersv3.NotifyOpEvict, v.data)
 		}
 	}
 }
 
 // notify writes to the notifications channel.
 // NOTE: we drop notifications in case the channel is full
-func (s *resultStore) notify(op ocr2keepers.NotifyOp, data ocr2keepers.CheckResult) {
+func (s *resultStore) notify(op ocr2keepersv3.NotifyOp, data ocr2keepers.CheckResult) {
 	select {
-	case s.notifications <- ocr2keepers.Notification{
+	case s.notifications <- ocr2keepersv3.Notification{
 		Op:   op,
 		Data: data,
 	}:
@@ -205,5 +206,5 @@ func (s *resultStore) remove(id string) {
 		return
 	}
 	delete(s.data, id)
-	s.notify(ocr2keepers.NotifyOpRemove, v.data)
+	s.notify(ocr2keepersv3.NotifyOpRemove, v.data)
 }

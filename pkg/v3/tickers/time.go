@@ -2,7 +2,9 @@ package tickers
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -14,12 +16,6 @@ var (
 
 type observer interface {
 	Process(context.Context, Tick) error
-}
-
-// Ticker is a process that runs interval ticks.
-type Ticker interface {
-	Start() error
-	Stop() error
 }
 
 // Tick is the container for the individual tick
@@ -35,30 +31,39 @@ type timeTicker struct {
 	ticker   *time.Ticker
 	observer observer
 	getterFn getUpkeepsFn
-	ctx      context.Context
-	cancelFn context.CancelFunc
+	chClose  chan struct{}
+	running  atomic.Bool
 }
 
-func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) timeTicker {
-	ctx, cancelFn := context.WithCancel(context.Background())
-	t := timeTicker{
+func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) *timeTicker {
+	t := &timeTicker{
 		interval: interval,
 		ticker:   time.NewTicker(interval),
 		observer: observer,
 		getterFn: getterFn,
-		ctx:      ctx,
-		cancelFn: cancelFn,
+		chClose:  make(chan struct{}, 1),
 	}
 
 	return t
 }
 
-func (t timeTicker) Start() {
-	for tm := range t.ticker.C {
-		func() {
-			ctx, cancelFn := context.WithTimeout(t.ctx, t.interval)
-			defer cancelFn()
+// Start uses the provided context for each call to the getter function with the
+// configured interval as a timeout. This function blocks until Close is called
+// or the parent context is cancelled.
+func (t *timeTicker) Start(ctx context.Context) error {
+	if t.running.Load() {
+		return fmt.Errorf("already running")
+	}
 
+	t.running.Store(true)
+
+	for tm := range t.ticker.C {
+		ctx, cancelFn := context.WithTimeout(ctx, t.interval)
+
+		select {
+		case <-t.chClose:
+			cancelFn()
+		default:
 			tick, err := t.getterFn(ctx, tm)
 			if err != nil {
 				logPrintf("error fetching tick: %s", err.Error())
@@ -67,11 +72,23 @@ func (t timeTicker) Start() {
 			if err := t.observer.Process(ctx, tick); err != nil {
 				logPrintf("error processing observer: %s", err.Error())
 			}
-		}()
+
+			cancelFn()
+		}
 	}
+
+	t.running.Store(false)
+
+	return nil
 }
 
-func (t timeTicker) Stop() {
-	t.cancelFn()
+func (t *timeTicker) Close() error {
+	if !t.running.Load() {
+		return fmt.Errorf("not running")
+	}
+
 	t.ticker.Stop()
+	t.chClose <- struct{}{}
+
+	return nil
 }

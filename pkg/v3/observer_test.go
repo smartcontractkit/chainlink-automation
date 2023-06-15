@@ -1,4 +1,4 @@
-package v3
+package ocr2keepers
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 type mockTick struct {
@@ -51,7 +52,7 @@ func TestNewObserver(t *testing.T) {
 	type args struct {
 		preprocessors []Preprocessor
 		postprocessor Postprocessor
-		runner        Runner2
+		runner        Runner
 	}
 	tests := []struct {
 		name string
@@ -74,7 +75,7 @@ func TestNewObserver(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner), "NewObserver(%v, %v, %v)", tt.args.preprocessors, tt.args.postprocessor, tt.args.runner)
+			assert.Equalf(t, tt.want, *NewObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner), "NewObserver(%v, %v, %v)", tt.args.preprocessors, tt.args.postprocessor, tt.args.runner)
 		})
 	}
 }
@@ -83,11 +84,11 @@ func TestObserve_Process(t *testing.T) {
 	type fields struct {
 		Preprocessors []Preprocessor
 		Postprocessor Postprocessor
-		Runner        Runner2
+		Runner        Runner
 	}
 	type args struct {
 		ctx  context.Context
-		tick Tick
+		tick tickers.Tick
 	}
 	type expectations struct {
 		tickReturn         []ocr2keepers.UpkeepPayload

@@ -1,15 +1,11 @@
-package v3
+package ocr2keepers
 
 import (
 	"context"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
-
-type Tick interface {
-	// GetUpkeeps provides an array of upkeeps scoped to the individual tick
-	GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error)
-}
 
 // Preprocessor is the general interface for middleware used to filter, add, or modify upkeep
 // payloads before checking their eligibility status
@@ -24,8 +20,8 @@ type Postprocessor interface {
 	PostProcess(context.Context, []ocr2keepers.CheckResult) error
 }
 
-// Runner2 is the interface for an object that should determine eligibility state
-type Runner2 interface {
+// Runner is the interface for an object that should determine eligibility state
+type Runner interface {
 	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
 	CheckUpkeeps(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
@@ -33,12 +29,12 @@ type Runner2 interface {
 type Observer struct {
 	Preprocessors []Preprocessor
 	Postprocessor Postprocessor
-	Runner        Runner2
+	Runner        Runner
 }
 
 // NewObserver creates a new Observer with the given pre-processors, post-processor, and runner
-func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runner Runner2) Observer {
-	return Observer{
+func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runner Runner) *Observer {
+	return &Observer{
 		Preprocessors: preprocessors,
 		Postprocessor: postprocessor,
 		Runner:        runner,
@@ -46,28 +42,33 @@ func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runn
 }
 
 // Process - receives a tick and runs it through the eligibility pipeline. Calls all pre-processors, runs the check pipeline, and calls the post-processor.
-func (o *Observer) Process(ctx context.Context, tick Tick) error {
+func (o *Observer) Process(ctx context.Context, tick tickers.Tick) error {
 	// Get upkeeps from tick
-	upkeeps, err := tick.GetUpkeeps(ctx)
+	upkeepPayloads, err := tick.GetUpkeeps(ctx)
 	if err != nil {
 		return err
 	}
 
-	var upkeepPayloads []ocr2keepers.UpkeepPayload
 	// Run pre-processors
 	for _, preprocessor := range o.Preprocessors {
-		upkeepPayloads, err = preprocessor.PreProcess(ctx, upkeeps)
+		upkeepPayloads, err = preprocessor.PreProcess(ctx, upkeepPayloads)
 		if err != nil {
 			return err
 		}
 	}
 
+	var results []ocr2keepers.CheckResult
+
 	// Run check pipeline
-	results, err := o.Runner.CheckUpkeeps(ctx, upkeepPayloads)
+	results, err = o.Runner.CheckUpkeeps(ctx, upkeepPayloads)
 	if err != nil {
 		return err
 	}
 
 	// Run post-processor
 	return o.Postprocessor.PostProcess(ctx, results)
+}
+
+func (o *Observer) SetPostProcessor(pp Postprocessor) {
+	o.Postprocessor = pp
 }
