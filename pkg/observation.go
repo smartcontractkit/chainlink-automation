@@ -59,10 +59,10 @@ func (u Observation) Validate(v Validator) error {
 	return nil
 }
 
-// observationsToUpkeepKeys loops through all observations, collects the
+// ObservationsToUpkeepKeys loops through all observations, collects the
 // UpkeepIdentifier list from each one, calculates the median block number, and
 // constructs upkeep keys from each identifier with the median block number
-func observationsToUpkeepKeys(
+func ObservationsToUpkeepKeys(
 	attr []types.AttributedObservation,
 	v Validator,
 	e MedianCalculator,
