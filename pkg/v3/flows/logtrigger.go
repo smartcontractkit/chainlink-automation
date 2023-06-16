@@ -30,8 +30,6 @@ type PreProcessor interface {
 //go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename resultstore.generated.go
 type ResultStore interface {
 	Add(...ocr2keepers.CheckResult)
-	Remove(...ocr2keepers.CheckResult)
-	View() ([]ocr2keepers.CheckResult, error)
 }
 
 // Retryer provides the ability to push retries to an observer
@@ -124,6 +122,12 @@ func (flow *LogTriggerEligibility) Close() error {
 	return err
 }
 
+// ProcessOutcome functions as an observation pre-build hook to allow data from
+// outcomes to feed inputs in the eligibility flow
+func (flow *LogTriggerEligibility) ProcessOutcome(_ ocr2keepersv3.AutomationOutcome) error {
+	panic("log trigger observation pre-build hook not implemented")
+}
+
 func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
@@ -163,7 +167,7 @@ func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, rt Retryer, logs
 	)
 
 	// create observer
-	obs := ocr2keepersv3.NewObserver([]ocr2keepersv3.Preprocessor{logs}, post, rn)
+	obs := ocr2keepersv3.NewObserver([]ocr2keepersv3.PreProcessor{logs}, post, rn)
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker(LogCheckInterval, obs, func(context.Context, time.Time) (tickers.Tick, error) {

@@ -50,8 +50,8 @@ func (m *mockPostprocessor) PostProcess(ctx context.Context, results []ocr2keepe
 
 func TestNewObserver(t *testing.T) {
 	type args struct {
-		preprocessors []Preprocessor
-		postprocessor Postprocessor
+		preprocessors []PreProcessor
+		postprocessor PostProcessor
 		runner        Runner
 	}
 	tests := []struct {
@@ -62,12 +62,12 @@ func TestNewObserver(t *testing.T) {
 		{
 			name: "should return an Observer",
 			args: args{
-				preprocessors: []Preprocessor{new(mockPreprocessor)},
+				preprocessors: []PreProcessor{new(mockPreprocessor)},
 				postprocessor: new(mockPostprocessor),
 				runner:        new(mockRunner),
 			},
 			want: Observer{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -82,8 +82,8 @@ func TestNewObserver(t *testing.T) {
 
 func TestObserve_Process(t *testing.T) {
 	type fields struct {
-		Preprocessors []Preprocessor
-		Postprocessor Postprocessor
+		Preprocessors []PreProcessor
+		Postprocessor PostProcessor
 		Runner        Runner
 	}
 	type args struct {
@@ -111,7 +111,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if tick.GetUpkeeps returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -133,7 +133,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if preprocessor.PreProcess returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -155,7 +155,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if runner.CheckUpkeeps returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -177,7 +177,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if postprocessor.PostProcess returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -199,7 +199,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return nil if all steps succeed",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},

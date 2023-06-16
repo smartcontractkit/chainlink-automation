@@ -7,15 +7,15 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-// Preprocessor is the general interface for middleware used to filter, add, or modify upkeep
+// PreProcessor is the general interface for middleware used to filter, add, or modify upkeep
 // payloads before checking their eligibility status
-type Preprocessor interface {
+type PreProcessor interface {
 	// PreProcess takes a slice of payloads and returns a new slice
 	PreProcess(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error)
 }
 
-// Postprocessor is the general interface for a processing function after checking eligibility status
-type Postprocessor interface {
+// PostProcessor is the general interface for a processing function after checking eligibility status
+type PostProcessor interface {
 	// PostProcess takes a slice of results where eligibility status is known
 	PostProcess(context.Context, []ocr2keepers.CheckResult) error
 }
@@ -27,13 +27,13 @@ type Runner interface {
 }
 
 type Observer struct {
-	Preprocessors []Preprocessor
-	Postprocessor Postprocessor
+	Preprocessors []PreProcessor
+	Postprocessor PostProcessor
 	Runner        Runner
 }
 
 // NewObserver creates a new Observer with the given pre-processors, post-processor, and runner
-func NewObserver(preprocessors []Preprocessor, postprocessor Postprocessor, runner Runner) *Observer {
+func NewObserver(preprocessors []PreProcessor, postprocessor PostProcessor, runner Runner) *Observer {
 	return &Observer{
 		Preprocessors: preprocessors,
 		Postprocessor: postprocessor,
@@ -69,6 +69,6 @@ func (o *Observer) Process(ctx context.Context, tick tickers.Tick) error {
 	return o.Postprocessor.PostProcess(ctx, results)
 }
 
-func (o *Observer) SetPostProcessor(pp Postprocessor) {
+func (o *Observer) SetPostProcessor(pp PostProcessor) {
 	o.Postprocessor = pp
 }
