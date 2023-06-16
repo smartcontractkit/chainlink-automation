@@ -36,9 +36,10 @@ type StaleReportLog struct {
 }
 
 type CheckResult struct {
-	Eligible  bool
-	Retryable bool
-	Payload   UpkeepPayload
+	Eligible    bool
+	Retryable   bool
+	Recoverable bool
+	Payload     UpkeepPayload
 }
 
 type UpkeepPayload struct {

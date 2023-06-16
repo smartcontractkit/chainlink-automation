@@ -6,13 +6,13 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-type Recoverer interface {
+type checkResultRecoverer interface {
 	// Recover submits a check result for retry
 	Recover(ocr2keepers.CheckResult) error
 }
 
 type recoveryPostProcessor struct {
-	recoverer Recoverer
+	recoverer checkResultRecoverer
 }
 
 func (p *recoveryPostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
@@ -26,7 +26,7 @@ func (p *recoveryPostProcessor) PostProcess(_ context.Context, results []ocr2kee
 	return nil
 }
 
-func NewRecoveryPostProcessor(recoverer Recoverer) *recoveryPostProcessor {
+func NewRecoveryPostProcessor(recoverer checkResultRecoverer) *recoveryPostProcessor {
 	return &recoveryPostProcessor{
 		recoverer: recoverer,
 	}

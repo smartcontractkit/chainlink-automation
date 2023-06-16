@@ -2,8 +2,10 @@ package postprocessors
 
 import (
 	"context"
+	"errors"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 type checkResultRetryer interface {
@@ -11,13 +13,20 @@ type checkResultRetryer interface {
 }
 
 type retryPostProcessor struct {
-	retryer checkResultRetryer
+	retryer   checkResultRetryer
+	recoverer checkResultRecoverer
 }
 
 func (p *retryPostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
 	for _, res := range results {
 		if res.Retryable {
 			if err := p.retryer.Retry(res); err != nil {
+				// TODO Aggregate the errors, don't short circuit
+				if errors.Is(err, tickers.ErrRetryDurationExceeded) {
+					res.Recoverable = true
+					res.Retryable = false
+					p.recoverer.Recover(res)
+				}
 				return err
 			}
 		}
@@ -25,7 +34,7 @@ func (p *retryPostProcessor) PostProcess(_ context.Context, results []ocr2keeper
 	return nil
 }
 
-func NewRetryPostProcessor(retryer checkResultRetryer) *retryPostProcessor {
+func NewRetryPostProcessor(retryer checkResultRetryer, recoverer checkResultRecoverer) *retryPostProcessor {
 	return &retryPostProcessor{
 		retryer: retryer,
 	}
