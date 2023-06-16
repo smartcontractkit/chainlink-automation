@@ -44,9 +44,9 @@ func TestPrebuildHookRemoveFromStaging(t *testing.T) {
 
 			mr := new(mockRemover)
 
-			f := PrebuildHookRemoveFromStaging(mr)
+			r := NewPrebuildHookRemoveFromStaging(mr)
 
-			assert.NoError(t, f(ob))
+			assert.NoError(t, r.RunHook(ob))
 			assert.Equal(t, len(ob.Performable), len(mr.removed))
 		})
 	}

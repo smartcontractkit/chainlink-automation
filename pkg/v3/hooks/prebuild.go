@@ -8,16 +8,22 @@ type resultRemover interface {
 	Remove(...string)
 }
 
-var PrebuildHookRemoveFromStaging = func(store resultRemover) func(ocr2keepersv3.AutomationOutcome) error {
-	return func(outcome ocr2keepersv3.AutomationOutcome) error {
-		toRemove := make([]string, 0, len(outcome.Performable))
+func NewPrebuildHookRemoveFromStaging(remover resultRemover) *PrebuildHookRemoveFromStaging {
+	return &PrebuildHookRemoveFromStaging{remover: remover}
+}
 
-		for _, result := range outcome.Performable {
-			toRemove = append(toRemove, result.Payload.ID)
-		}
+type PrebuildHookRemoveFromStaging struct {
+	remover resultRemover
+}
 
-		store.Remove(toRemove...)
+func (hook *PrebuildHookRemoveFromStaging) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
+	toRemove := make([]string, 0, len(outcome.Performable))
 
-		return nil
+	for _, result := range outcome.Performable {
+		toRemove = append(toRemove, result.Payload.ID)
 	}
+
+	hook.remover.Remove(toRemove...)
+
+	return nil
 }
