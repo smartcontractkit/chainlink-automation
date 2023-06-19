@@ -46,7 +46,7 @@ type recoveryTicker struct {
 func (rt *recoveryTicker) Recover(result ocr2keepers.CheckResult) error {
 	payload := result.Payload
 
-	if !result.Recoverable {
+	if !result.Retryable {
 		// exit condition for not retryable
 		return fmt.Errorf("%w: %s", ErrNotRecoverable, payload.ID)
 	}
@@ -63,7 +63,6 @@ func (rt *recoveryTicker) Recover(result ocr2keepers.CheckResult) error {
 		return fmt.Errorf("%w: %s", ErrRecoveryDurationExceeded, payload.ID)
 	}
 
-	// TODO set block key for this payload
 	rt.nextRecoveries.Store(payload, now.Add(rt.config.RecoveryDelay))
 
 	return nil
@@ -79,6 +78,9 @@ func (rt *recoveryTicker) getterFn(ctx context.Context, t time.Time) (Tick, erro
 		if payload, ok := key.(ocr2keepers.UpkeepPayload); ok {
 			if runTime, ok := value.(time.Time); ok {
 				if t.After(runTime) {
+					// TODO set block key for this payload at this point to
+					// provide the freshest block for when the payload is
+					// actually read
 					upkeepPayloads = append(upkeepPayloads, payload)
 					rt.nextRecoveries.Delete(payload)
 				}

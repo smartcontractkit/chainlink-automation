@@ -15,9 +15,8 @@ func TestRecoveryTicker(t *testing.T) {
 	t.Run("sends retryable/recoverable tick to observer after wait", func(t *testing.T) {
 		// Create a retryable CheckResult
 		retryableResult1 := ocr2keepers.CheckResult{
-			Payload:     ocr2keepers.UpkeepPayload{ID: "retryable_1"},
-			Retryable:   false,
-			Recoverable: true,
+			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
+			Retryable: true,
 		}
 
 		var (
@@ -72,9 +71,8 @@ func TestRecoveryTicker(t *testing.T) {
 	t.Run("does not send retry before wait", func(t *testing.T) {
 		// Create a retryable CheckResult
 		retryableResult1 := ocr2keepers.CheckResult{
-			Payload:     ocr2keepers.UpkeepPayload{ID: "retryable_1"},
-			Retryable:   false,
-			Recoverable: true,
+			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
+			Retryable: true,
 		}
 
 		var (
@@ -129,9 +127,8 @@ func TestRecoveryTicker(t *testing.T) {
 	t.Run("does not allow recovery after max duration", func(t *testing.T) {
 		// Create a retryable CheckResult
 		retryableResult1 := ocr2keepers.CheckResult{
-			Payload:     ocr2keepers.UpkeepPayload{ID: "retryable_1"},
-			Retryable:   false,
-			Recoverable: true,
+			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
+			Retryable: true,
 		}
 
 		var (

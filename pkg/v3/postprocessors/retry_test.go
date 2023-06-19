@@ -18,6 +18,15 @@ func (m *mockRetryer) Retry(result ocr2keepers.CheckResult) error {
 	return nil
 }
 
+type mockRecoverer struct {
+	recovererCalled bool
+}
+
+func (m *mockRecoverer) Recover(result ocr2keepers.CheckResult) error {
+	m.recovererCalled = true
+	return nil
+}
+
 func TestRetryPostProcessor_PostProcess(t *testing.T) {
 	// Create a mock retryer
 	retryer := &mockRetryer{}
