@@ -149,7 +149,8 @@ func TestBlockTicker_unsubscribeError(t *testing.T) {
 	assert.Nil(t, err)
 
 	go func() {
-		ticker.Start(context.Background())
+		err = ticker.Start(context.Background())
+		assert.NoError(t, err) // context canceled
 	}()
 
 	ticker.Close()
