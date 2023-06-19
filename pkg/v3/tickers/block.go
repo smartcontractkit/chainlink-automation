@@ -67,6 +67,8 @@ loop:
 func (t *blockTicker) Close() {
 	t.closer.Do(func() {
 		t.cancel()
-		t.subscriber.Unsubscribe(t.chID)
+		if err := t.subscriber.Unsubscribe(t.chID); err != nil {
+			log.Fatalf("error unsubscribing: %v", err)
+		}
 	})
 }
