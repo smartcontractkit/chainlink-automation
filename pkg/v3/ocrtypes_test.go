@@ -18,6 +18,10 @@ func TestAutomationObservation_Encode(t *testing.T) {
 			{
 				Payload: ocr2keepers.UpkeepPayload{
 					ID: "abc",
+					Upkeep: ocr2keepers.ConfiguredUpkeep{
+						ID:   []byte("111"),
+						Type: 1,
+					},
 				},
 				Retryable: false,
 				Eligible:  false,
@@ -25,7 +29,7 @@ func TestAutomationObservation_Encode(t *testing.T) {
 		},
 	}
 
-	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"ID":"abc"},"Retryable":false, "Eligible":false}]}`
+	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Tick":null,"Upkeep":{"ID":"MTEx","Type":1,"Config":null}},"Retryable":false, "Eligible":false}]}`
 
 	data, err := observation.Encode()
 	assert.NoError(t, err)
@@ -66,6 +70,9 @@ func TestAutomationOutcome_Encode(t *testing.T) {
 			{
 				Payload: ocr2keepers.UpkeepPayload{
 					ID: "abc",
+					Upkeep: ocr2keepers.ConfiguredUpkeep{
+						ID: []byte("111"),
+					},
 				},
 				Retryable: false,
 				Eligible:  false,
@@ -73,7 +80,7 @@ func TestAutomationOutcome_Encode(t *testing.T) {
 		},
 	}
 
-	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"ID":"abc"},"Retryable":false, "Eligible":false}]}`
+	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Tick":null,"Upkeep":{"ID":"MTEx","Type":0,"Config":null}},"Retryable":false, "Eligible":false}]}`
 
 	data, err := outcome.Encode()
 	assert.NoError(t, err)
