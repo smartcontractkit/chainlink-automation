@@ -12,13 +12,11 @@ import (
 
 type InstructionStore interface{}
 
-type SamplingStore interface{}
-
 type ocr3Plugin[RI any] struct {
 	PrebuildHooks     []func(ocr2keepersv3.AutomationOutcome) error
-	BuildHooks        []func(*ocr2keepersv3.AutomationObservation, InstructionStore, SamplingStore, ocr2keepersv3.ResultStore) error
+	BuildHooks        []func(*ocr2keepersv3.AutomationObservation, InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error
 	InstructionSource InstructionStore
-	MetadataSource    SamplingStore
+	MetadataSource    ocr2keepersv3.MetadataStore
 	ResultSource      ocr2keepersv3.ResultStore
 }
 
