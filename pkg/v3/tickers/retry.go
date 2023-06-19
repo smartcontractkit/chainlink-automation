@@ -37,9 +37,10 @@ var RetryWithDefaults = func(c *RetryConfig) {
 
 type retryTicker struct {
 	timeTicker
-	config       *RetryConfig
-	nextRetries  sync.Map // time.Time -> ocr2keepers.UpkeepPayload
-	retryEntries *util.Cache[time.Time]
+	config         RetryConfig
+	nextRetries    sync.Map // time.Time -> ocr2keepers.UpkeepPayload
+	retryEntries   *util.Cache[time.Time]
+	payloadModFunc func(ocr2keepers.UpkeepPayload) ocr2keepers.UpkeepPayload
 }
 
 // Retry adds a retryable result to the retryTicker.
@@ -79,7 +80,7 @@ func (rt *retryTicker) getterFn(ctx context.Context, t time.Time) (Tick, error) 
 		if runTime, ok := key.(time.Time); ok {
 			if t.After(runTime) {
 				if payload, ok := value.(ocr2keepers.UpkeepPayload); ok {
-					upkeepPayloads = append(upkeepPayloads, payload)
+					upkeepPayloads = append(upkeepPayloads, rt.payloadModFunc(payload))
 				}
 				rt.nextRetries.Delete(key)
 			}
@@ -94,13 +95,13 @@ func (rt *retryTicker) getterFn(ctx context.Context, t time.Time) (Tick, error) 
 
 // NewRetryTicker creates a new retryTicker with the specified interval and observer.
 func NewRetryTicker(interval time.Duration, observer observer, configFuncs ...RetryConfigFunc) *retryTicker {
-	config := &RetryConfig{}
+	config := RetryConfig{}
 
 	if len(configFuncs) == 0 {
-		RetryWithDefaults(config)
+		RetryWithDefaults(&config)
 	} else {
 		for _, f := range configFuncs {
-			f(config)
+			f(&config)
 		}
 	}
 
@@ -108,6 +109,9 @@ func NewRetryTicker(interval time.Duration, observer observer, configFuncs ...Re
 		config:       config,
 		nextRetries:  sync.Map{},
 		retryEntries: util.NewCache[time.Time](config.RetryCacheExpiration),
+		payloadModFunc: func(p ocr2keepers.UpkeepPayload) ocr2keepers.UpkeepPayload {
+			return p
+		},
 	}
 
 	rt.timeTicker = *NewTimeTicker(interval, observer, rt.getterFn)

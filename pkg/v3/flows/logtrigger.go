@@ -38,12 +38,6 @@ type Retryer interface {
 	Retry(ocr2keepers.CheckResult) error
 }
 
-// Recoverer provides the ability to push recoveries to an observer
-type Recoverer interface {
-	// Recover provides an entry point for new recoverable/retryable results
-	Recover(ocr2keepers.CheckResult) error
-}
-
 const (
 	LogCheckInterval      = 1 * time.Second
 	RetryCheckInterval    = 250 * time.Millisecond
@@ -137,7 +131,7 @@ func (flow *LogTriggerEligibility) ProcessOutcome(_ ocr2keepersv3.AutomationOutc
 	panic("log trigger observation pre-build hook not implemented")
 }
 
-func newRecoveryFlow(rs ResultStore, rn ocr2keepersv3.Runner, configFuncs ...tickers.RecoveryConfigFunc) (service.Recoverable, Recoverer) {
+func newRecoveryFlow(rs ResultStore, rn ocr2keepersv3.Runner, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
@@ -155,7 +149,7 @@ func newRecoveryFlow(rs ResultStore, rn ocr2keepersv3.Runner, configFuncs ...tic
 	return ticker, ticker
 }
 
-func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner, rc Recoverer, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
+func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner, recoverer Retryer, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
@@ -169,7 +163,7 @@ func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner, rc Recoverer, configF
 		// create eligibility postprocessor with result store
 		postprocessors.NewEligiblePostProcessor(rs),
 		// create retry postprocessor
-		postprocessors.NewRetryPostProcessor(ticker, rc),
+		postprocessors.NewRetryPostProcessor(ticker, recoverer),
 	)
 
 	retryObserver.SetPostProcessor(post)
@@ -184,13 +178,13 @@ func (et emptyTick) GetUpkeeps(context.Context) ([]ocr2keepers.UpkeepPayload, er
 	return nil, nil
 }
 
-func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, rt Retryer, rc Recoverer, logs PreProcessor) service.Recoverable {
+func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer, recoverer Retryer, logs PreProcessor) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
 		postprocessors.NewEligiblePostProcessor(rs),
 		// create retry postprocessor
-		postprocessors.NewRetryPostProcessor(rt, rc),
+		postprocessors.NewRetryPostProcessor(retryer, recoverer),
 	)
 
 	// create observer
