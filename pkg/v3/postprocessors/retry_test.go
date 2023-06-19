@@ -21,9 +21,10 @@ func (m *mockRetryer) Retry(result ocr2keepers.CheckResult) error {
 func TestRetryPostProcessor_PostProcess(t *testing.T) {
 	// Create a mock retryer
 	retryer := &mockRetryer{}
+	recoverer := &mockRetryer{}
 
 	// Create a RetryPostProcessor with the mock retryer
-	processor := NewRetryPostProcessor(retryer)
+	processor := NewRetryPostProcessor(retryer, recoverer)
 
 	// Create some check results
 	results := []ocr2keepers.CheckResult{
