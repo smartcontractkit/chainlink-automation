@@ -47,7 +47,7 @@ func TestBlockTicker(t *testing.T) {
 
 	go func() {
 		err = ticker.Start(ctx)
-		assert.Error(t, err) // context canceled
+		assert.NoError(t, err)
 	}()
 
 	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 1"), ocr2keepers.BlockKey("key 2")}
@@ -96,7 +96,6 @@ func TestBlockTicker(t *testing.T) {
 
 func TestBlockTicker_cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	sub := &mockSubscriber{
 		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
@@ -117,10 +116,10 @@ func TestBlockTicker_cancel(t *testing.T) {
 		assert.Error(t, err) // context canceled
 	}()
 
-	ticker.cancel()
+	cancel()
 }
 
-func TestBlockTicker_subscriberError(t *testing.T) {
+func TestBlockTicker_subscribeError(t *testing.T) {
 	sub := &mockSubscriber{
 		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
 			return 0, nil, errors.New("subscribe failure")
@@ -132,4 +131,27 @@ func TestBlockTicker_subscriberError(t *testing.T) {
 
 	_, err := NewBlockTicker(sub)
 	assert.Error(t, err)
+}
+
+func TestBlockTicker_unsubscribeError(t *testing.T) {
+	ch := make(chan ocr2keepers.BlockHistory)
+
+	sub := &mockSubscriber{
+		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
+			return 0, ch, nil
+		},
+		UnsubscribeFn: func(id int) error {
+			return errors.New("unsubscribe failure")
+		},
+	}
+
+	ticker, err := NewBlockTicker(sub)
+	assert.Nil(t, err)
+
+	go func() {
+		ticker.Start(context.Background())
+	}()
+
+	ticker.Close()
+
 }
