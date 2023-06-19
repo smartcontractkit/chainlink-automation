@@ -60,3 +60,5 @@ type UpkeepPayload struct {
 	// Tick is the event that triggered the upkeep to be checked
 	Tick interface{}
 }
+
+type BlockHistory []BlockKey
