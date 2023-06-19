@@ -45,7 +45,10 @@ func TestBlockTicker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go ticker.Start(ctx)
+	go func() {
+		err = ticker.Start(ctx)
+		assert.NoError(t, err)
+	}()
 
 	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 1"), ocr2keepers.BlockKey("key 2")}
 	secondBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 3")}
@@ -109,7 +112,10 @@ func TestBlockTicker_cancel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go ticker.Start(ctx)
+	go func() {
+		err = ticker.Start(ctx)
+		assert.NoError(t, err)
+	}()
 
 	ticker.cancel()
 }
