@@ -23,8 +23,7 @@ type blockTicker struct {
 	ch         chan ocr2keepers.BlockHistory
 	subscriber blockSubscriber
 	closer     sync.Once
-	ctx        context.Context
-	cancel     context.CancelFunc
+	stopCh     chan int
 }
 
 func NewBlockTicker(subscriber blockSubscriber) (*blockTicker, error) {
@@ -33,16 +32,13 @@ func NewBlockTicker(subscriber blockSubscriber) (*blockTicker, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	return &blockTicker{
 		chID:       chID,
 		ch:         ch,
 		C:          make(chan ocr2keepers.BlockHistory),
 		subscriber: subscriber,
 		closer:     sync.Once{},
-		ctx:        ctx,
-		cancel:     cancel,
+		stopCh:     make(chan int),
 	}, nil
 }
 
@@ -59,6 +55,8 @@ loop:
 		case <-ctx.Done():
 			err = ctx.Err()
 			break loop
+		case <-t.stopCh:
+			return nil
 		}
 	}
 	return err
@@ -66,9 +64,9 @@ loop:
 
 func (t *blockTicker) Close() {
 	t.closer.Do(func() {
-		t.cancel()
+		t.stopCh <- 1
 		if err := t.subscriber.Unsubscribe(t.chID); err != nil {
-			log.Fatalf("error unsubscribing: %v", err)
+			log.Printf("error unsubscribing: %v", err)
 		}
 	})
 }
