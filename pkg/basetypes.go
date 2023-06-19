@@ -41,6 +41,22 @@ type CheckResult struct {
 	Payload   UpkeepPayload
 }
 
+type ConfiguredUpkeep struct {
+	// ID uniquely identifies the upkeep
+	ID UpkeepIdentifier
+	// Type is the event type required to initiate the upkeep
+	Type int
+	// Config is configuration data specific to the type
+	Config interface{}
+}
+
 type UpkeepPayload struct {
-	ID string // Hash uniquely identifies the upkeep payload
+	// ID uniquely identifies the upkeep payload
+	ID string
+	// Upkeep is all the information that identifies the upkeep
+	Upkeep ConfiguredUpkeep
+	// CheckData is the data used to check the upkeep
+	CheckData []byte
+	// Tick is the event that triggered the upkeep to be checked
+	Tick interface{}
 }
