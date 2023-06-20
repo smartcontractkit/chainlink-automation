@@ -76,7 +76,7 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 	panic("ocr3 Outcome not implemented")
 }
 
-func (plugin *ocr3Plugin[RI]) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[RI], error) {
+func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[RI], error) {
 	var (
 		reports []ocr3types.ReportWithInfo[RI]
 		outcome ocr2keepersv3.AutomationOutcome
@@ -92,21 +92,38 @@ func (plugin *ocr3Plugin[RI]) Reports(seqNr uint64, raw ocr3types.Outcome) ([]oc
 
 	for i, result := range outcome.Performable {
 		if gasUsed+result.GasUsed > plugin.ReportGasLimit || len(toPerform) > plugin.MaxUpkeepBatchSize {
+			// encode current collection
 			encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
 			err = errors.Join(err, encodeErr)
 
-			reports = append(reports, ocr3types.ReportWithInfo[RI]{
-				Report: types.Report(encoded),
-			})
+			if encodeErr == nil {
+				// add encoded data to reports
+				reports = append(reports, ocr3types.ReportWithInfo[RI]{
+					Report: types.Report(encoded),
+				})
 
-			toPerform = []ocr2keepers.CheckResult{}
-			gasUsed = 0
-
-			continue
+				// reset collection
+				toPerform = []ocr2keepers.CheckResult{}
+				gasUsed = 0
+			}
 		}
 
 		gasUsed += result.GasUsed
 		toPerform = append(toPerform, outcome.Performable[i])
+	}
+
+	// if there are still values to add
+	if len(toPerform) > 0 {
+		// encode current collection
+		encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
+		err = errors.Join(err, encodeErr)
+
+		if encodeErr == nil {
+			// add encoded data to reports
+			reports = append(reports, ocr3types.ReportWithInfo[RI]{
+				Report: types.Report(encoded),
+			})
+		}
 	}
 
 	return reports, err
