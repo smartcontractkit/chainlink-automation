@@ -71,10 +71,6 @@ func (plugin *ocr3Plugin[RI]) ValidateObservation(outctx ocr3types.OutcomeContex
 }
 
 func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	if len(attributedObservations) == 0 {
-		return nil, fmt.Errorf("%w: must provide at least 1 observation", ErrNotEnoughInputs)
-	}
-
 	type resultAndCount struct {
 		result ocr2keepers.CheckResult
 		count  int
@@ -90,7 +86,6 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 		}
 
 		for _, result := range observation.Performable {
-			// TODO should the eligible and retryable fields be included here?
 			uid := fmt.Sprintf("%v", result.Payload)
 			payloadCount, ok := resultCount[uid]
 			if !ok {
@@ -105,7 +100,6 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 		}
 	}
 
-	// TODO what should the threshold be for including a result
 	quorumThreshold := submittedObservations / 2
 
 	var performable []ocr2keepers.CheckResult

@@ -52,20 +52,6 @@ func TestObservation(t *testing.T) {
 }
 
 func TestOcr3Plugin_Outcome(t *testing.T) {
-	t.Run("empty observations returns an error", func(t *testing.T) {
-		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin[int]{}
-
-		// Create a sample outcome for decoding
-		outcomeContext := ocr3types.OutcomeContext{
-			PreviousOutcome: []byte(`{"Instructions":["instruction1"],"Metadata":{"key":"value"},"Performable":[]}`),
-		}
-
-		outcome, err := plugin.Outcome(outcomeContext, nil, nil)
-		assert.Nil(t, outcome)
-		assert.Error(t, err)
-	})
-
 	t.Run("malformed observations returns an error", func(t *testing.T) {
 		// Create an instance of ocr3 plugin
 		plugin := &ocr3Plugin[int]{}
