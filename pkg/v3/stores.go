@@ -23,6 +23,10 @@ type ResultStore interface {
 	Notifications() <-chan Notification
 }
 
+type InstructionStore interface{}
+
+type SamplingStore interface{}
+
 // Notification is a struct that will be sent by the ResultStore upon certain events happening
 type Notification struct {
 	Op   NotifyOp
