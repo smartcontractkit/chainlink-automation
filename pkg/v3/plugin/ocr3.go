@@ -74,7 +74,6 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 		count  int
 	}
 
-	submittedObservations := len(attributedObservations)
 	resultCount := make(map[string]resultAndCount)
 
 	for _, attributedObservation := range attributedObservations {
@@ -98,6 +97,7 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 		}
 	}
 
+	submittedObservations := len(attributedObservations)
 	quorumThreshold := submittedObservations / 2
 
 	var performable []ocr2keepers.CheckResult
