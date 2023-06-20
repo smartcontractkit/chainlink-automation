@@ -40,10 +40,17 @@ type StaleReportLog struct {
 }
 
 type CheckResult struct {
-	Eligible  bool
+	// Eligible indicates whether this result is eligible to be performed
+	Eligible bool
+	// Retryable indicates if this result can be retried on the check pipeline
 	Retryable bool
 	GasUsed   uint64
-	Payload   UpkeepPayload
+	// Payload is the detail used to check the upkeep
+	Payload UpkeepPayload
+	// PerformData is the raw data returned when simulating an upkeep perform
+	PerformData []byte
+	// Extension is extra data that can differ between contracts
+	Extension interface{}
 }
 
 type ConfiguredUpkeep struct {
