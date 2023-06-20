@@ -42,6 +42,7 @@ type StaleReportLog struct {
 type CheckResult struct {
 	Eligible  bool
 	Retryable bool
+	GasUsed   uint64
 	Payload   UpkeepPayload
 }
 
