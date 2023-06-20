@@ -12,8 +12,6 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 )
 
-var ErrNotEnoughInputs = fmt.Errorf("not enough inputs")
-
 type InstructionStore interface{}
 
 type SamplingStore interface{}
