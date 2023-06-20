@@ -8,6 +8,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 )
 
 type ocr3Plugin[RI any] struct {
@@ -16,6 +17,7 @@ type ocr3Plugin[RI any] struct {
 	InstructionSource ocr2keepersv3.InstructionStore
 	MetadataSource    ocr2keepersv3.SamplingStore
 	ResultSource      ocr2keepersv3.ResultStore
+	Services          []service.Recoverable
 }
 
 func (plugin *ocr3Plugin[RI]) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
@@ -79,5 +81,19 @@ func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(context.Context, uint
 }
 
 func (plugin *ocr3Plugin[RI]) Close() error {
-	panic("ocr3 Close not implemented")
+	var err error
+
+	for i := range plugin.Services {
+		err = errors.Join(err, plugin.Services[i].Close())
+	}
+
+	return err
+}
+
+func (plugin *ocr3Plugin[RI]) startServices() {
+	for i := range plugin.Services {
+		go func(svc service.Recoverable) {
+			_ = svc.Start(context.Background())
+		}(plugin.Services[i])
+	}
 }

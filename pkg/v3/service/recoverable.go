@@ -23,10 +23,10 @@ const (
 
 // Recoverable is a service that a Recoverer can manage
 type Recoverable interface {
-	// Do is a function that is expected to block and only return on completion
-	// with error if something bad happened or with nil
+	// Start is a function that is expected to block and only return on
+	// completion either with an error or nil
 	Start(context.Context) error
-	// Close stops the execution of the blocking Do function and causes an
+	// Close stops the execution of the blocking Start function and causes an
 	// immediate return
 	Close() error
 }
@@ -64,10 +64,9 @@ func (m *recoverer) Start(ctx context.Context) error {
 		return ErrServiceAlreadyStarted
 	}
 
-	go m.serviceStart(ctx)
 	go m.recoverableStart(ctx)
 
-	m.running.Store(true)
+	m.serviceStart(ctx)
 
 	return nil
 }
@@ -82,19 +81,27 @@ func (m *recoverer) Close() error {
 	err := m.service.Close()
 
 	m.stopped <- errServiceContextCancelled
-	m.running.Store(false)
 
 	return err
 }
 
 func (m *recoverer) serviceStart(ctx context.Context) {
+	m.running.Store(true)
+
 	for {
 		select {
 		case err := <-m.stopped:
 			// restart the service
-			if err != nil && errors.Is(err, errServiceStopped) {
-				<-time.After(m.coolDown)
-				go m.recoverableStart(ctx)
+			if err != nil {
+				if errors.Is(err, errServiceStopped) {
+					<-time.After(m.coolDown)
+					go m.recoverableStart(ctx)
+				}
+
+				if errors.Is(err, errServiceContextCancelled) {
+					m.running.Store(false)
+					return
+				}
 			}
 		case <-ctx.Done():
 			m.running.Store(false)

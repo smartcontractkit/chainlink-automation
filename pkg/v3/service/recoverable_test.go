@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,11 +34,24 @@ func TestNewRecoverableService(t *testing.T) {
 			},
 		}, log.Default())
 
-		assert.NoError(t, svc.Start(context.Background()))
-		assert.True(t, svc.running.Load())
+		var wg sync.WaitGroup
 
-		assert.NoError(t, svc.Close())
-		assert.False(t, svc.running.Load())
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, svc.Start(context.Background()), "the service should start without error")
+			wg.Done()
+		}()
+
+		time.Sleep(50 * time.Millisecond)
+
+		assert.True(t, svc.running.Load(), "the service should be running")
+		assert.NoError(t, svc.Close(), "no error on close")
+
+		time.Sleep(50 * time.Millisecond)
+
+		assert.False(t, svc.running.Load(), "the service should be stopped")
+
+		wg.Wait()
 	})
 
 	t.Run("should not be able to start an already running service", func(t *testing.T) {
@@ -54,10 +68,9 @@ func TestNewRecoverableService(t *testing.T) {
 		svc.running.Store(true)
 
 		assert.ErrorIs(t, svc.Start(context.Background()), ErrServiceAlreadyStarted)
-		assert.True(t, svc.running.Load())
+		assert.True(t, svc.running.Load(), "running state should still be true")
 
-		assert.NoError(t, svc.Close())
-		assert.False(t, svc.running.Load())
+		assert.NoError(t, svc.Close(), "no error in calling close")
 	})
 
 	t.Run("should not be able to stop an already stopped service", func(t *testing.T) {
@@ -99,12 +112,20 @@ func TestNewRecoverableService(t *testing.T) {
 
 		svc.coolDown = 10 * time.Millisecond
 
-		assert.NoError(t, svc.Start(context.Background()))
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, svc.Start(context.Background()))
+			wg.Done()
+		}()
 
 		<-ch
 
 		assert.NoError(t, svc.Close())
 		assert.Equal(t, callCount, 2)
+
+		wg.Wait()
 	})
 
 	t.Run("a running service is stopped by the underlying service causing a panic", func(t *testing.T) {
@@ -128,11 +149,19 @@ func TestNewRecoverableService(t *testing.T) {
 
 		svc.coolDown = 10 * time.Millisecond
 
-		assert.NoError(t, svc.Start(context.Background()))
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, svc.Start(context.Background()))
+			wg.Done()
+		}()
 
 		<-ch
 
 		assert.NoError(t, svc.Close())
 		assert.Equal(t, callCount, 2)
+
+		wg.Wait()
 	})
 }

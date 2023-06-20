@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"context"
 	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -10,14 +9,14 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-func New(
-	ctx context.Context,
+func newPlugin[RI any](
 	logLookup ocr2keepersv3.PreProcessor,
 	logger *log.Logger,
-) (ocr3types.OCR3Plugin[string], error) {
+) (ocr3types.OCR3Plugin[RI], error) {
 	var (
 		rn ocr2keepersv3.Runner
 	)
@@ -25,7 +24,7 @@ func New(
 	rs := resultstore.New(logger)
 
 	// initialize the log trigger eligibility flow
-	ltFlow := flows.NewLogTriggerEligibility(
+	ltFlow, svcs := flows.NewLogTriggerEligibility(
 		logLookup,
 		rs,
 		rn,
@@ -33,9 +32,16 @@ func New(
 		tickers.RetryWithDefaults,
 	)
 
+	allSvcs := append(svcs, rs)
+	recoverSvcs := []service.Recoverable{}
+
+	for i := range allSvcs {
+		recoverSvcs = append(recoverSvcs, service.NewRecoverer(allSvcs[i], logger))
+	}
+
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
-	plugin := &ocr3Plugin[string]{
+	plugin := &ocr3Plugin[RI]{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
 			hooks.NewPrebuildHookRemoveFromStaging(rs).RunHook,
@@ -44,17 +50,10 @@ func New(
 			hooks.NewBuildHookAddFromStaging().RunHook,
 		},
 		ResultSource: rs,
+		Services:     recoverSvcs,
 	}
 
-	// log trigger eligibility flow contains numerous services to start
-	if err := ltFlow.Start(ctx); err != nil {
-		return nil, err
-	}
-
-	// result store contains numerous service to start
-	if err := rs.Start(ctx); err != nil {
-		return nil, err
-	}
+	plugin.startServices()
 
 	return plugin, nil
 }

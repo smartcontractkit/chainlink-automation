@@ -2,10 +2,7 @@ package flows
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log"
-	"sync/atomic"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -46,83 +43,21 @@ const (
 
 // LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
 // with retry attempts.
-type LogTriggerEligibility struct {
-	// created in the constructor
-	services []service.Recoverable
-
-	// state variables
-	running atomic.Bool
-	chClose chan struct{}
-}
+type LogTriggerEligibility struct{}
 
 // NewLogTriggerEligibility ...
-func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner Runner, logger *log.Logger, configFuncs ...tickers.RetryConfigFunc) *LogTriggerEligibility {
+func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner Runner, _ *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
 	svc0, recoverer := newRecoveryFlow(rStore, runner)
 	svc1, retryer := newRetryFlow(rStore, runner, recoverer, configFuncs...)
 	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logLookup)
 
-	return &LogTriggerEligibility{
-		services: []service.Recoverable{
-			service.NewRecoverer(svc0, logger),
-			service.NewRecoverer(svc1, logger),
-			service.NewRecoverer(svc2, logger),
-		},
-		chClose: make(chan struct{}, 1),
-	}
-}
-
-// Start passes the provided context to dependent services and blocks until
-// Close is called. If any errors are encountered in starting services, the
-// errors will be joined and returned immediately.
-func (flow *LogTriggerEligibility) Start(ctx context.Context) error {
-	if flow.running.Load() {
-		return fmt.Errorf("already running")
+	svcs := []service.Recoverable{
+		svc0,
+		svc1,
+		svc2,
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-
-	var err error
-
-	// TODO: [AUTO-3414] what happens when service 1 starts successfully and
-	// service 2 fails service 1 should be stopped and the error returned
-	// immediately.
-	for _, svc := range flow.services {
-		err = errors.Join(err, svc.Start(ctx))
-	}
-
-	flow.running.Store(true)
-
-	if err != nil {
-		cancel()
-		return err
-	}
-
-	select {
-	case <-ctx.Done():
-		cancel()
-		return ctx.Err()
-	case <-flow.chClose:
-		cancel()
-		return nil
-	}
-}
-
-// Close ...
-func (flow *LogTriggerEligibility) Close() error {
-	if !flow.running.Load() {
-		return fmt.Errorf("already stopped")
-	}
-
-	var err error
-
-	for _, svc := range flow.services {
-		err = errors.Join(err, svc.Close())
-	}
-
-	flow.running.Store(false)
-	flow.chClose <- struct{}{}
-
-	return err
+	return &LogTriggerEligibility{}, svcs
 }
 
 // ProcessOutcome functions as an observation pre-build hook to allow data from
