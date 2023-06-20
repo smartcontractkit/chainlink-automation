@@ -2,7 +2,6 @@ package ocr2keepers
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,8 +9,9 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-func TestAutomationObservation_Encode(t *testing.T) {
-	observation := AutomationObservation{
+func TestAutomationObservation(t *testing.T) {
+	// set non-default values to test encoding/decoding
+	expected := AutomationObservation{
 		Instructions: []string{"instruction1", "instruction2"},
 		Metadata:     map[string]interface{}{"key": "value"},
 		Performable: []ocr2keepers.CheckResult{
@@ -22,48 +22,34 @@ func TestAutomationObservation_Encode(t *testing.T) {
 						ID:   []byte("111"),
 						Type: 1,
 					},
+					CheckData: []byte("check data"),
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 4,
+						BlockHash:   "hash",
+					},
 				},
-				Retryable: false,
-				Eligible:  false,
+				Retryable:   true,
+				Eligible:    true,
+				PerformData: []byte("testing"),
 			},
 		},
 	}
 
-	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Trigger":{"BlockHash":"","BlockNumber":0,"Extension":null},"Upkeep":{"ID":"MTEx","Type":1,"Config":null}},"Retryable":false, "Eligible":false, "GasUsed":0}]}`
+	jsonData, _ := json.Marshal(expected)
+	data, err := expected.Encode()
 
-	data, err := observation.Encode()
-	assert.NoError(t, err)
+	assert.Equal(t, jsonData, data, "json marshalling should return the same result")
+	assert.NoError(t, err, "no error from encoding")
 
-	var encoded map[string]interface{}
-	err = json.Unmarshal(data, &encoded)
-	assert.NoError(t, err)
+	result, err := DecodeAutomationObservation(data)
+	assert.NoError(t, err, "no error from decoding")
 
-	var expected map[string]interface{}
-	err = json.Unmarshal([]byte(expectedJSON), &expected)
-	assert.NoError(t, err)
-
-	assert.True(t, reflect.DeepEqual(encoded, expected), "Encoded data does not match the expected JSON. Expected: %v, Got: %v", expected, encoded)
+	assert.Equal(t, expected, result, "final result from encoding and decoding should match")
 }
 
-func TestAutomationObservation_Decode(t *testing.T) {
-	jsonData := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{}]}`
-
-	expectedObservation := AutomationObservation{
-		Instructions: []string{"instruction1", "instruction2"},
-		Metadata:     map[string]interface{}{"key": "value"},
-		Performable:  []ocr2keepers.CheckResult{{}},
-	}
-
-	data := []byte(jsonData)
-
-	observation, err := DecodeAutomationObservation(data)
-	assert.NoError(t, err)
-
-	assert.True(t, reflect.DeepEqual(observation, expectedObservation), "Decoded observation does not match the expected value. Expected: %v, Got: %v", expectedObservation, observation)
-}
-
-func TestAutomationOutcome_Encode(t *testing.T) {
-	outcome := AutomationOutcome{
+func TestAutomationOutcome(t *testing.T) {
+	// set non-default values to test encoding/decoding
+	expected := AutomationOutcome{
 		Instructions: []string{"instruction1", "instruction2"},
 		Metadata:     map[string]interface{}{"key": "value"},
 		Performable: []ocr2keepers.CheckResult{
@@ -71,44 +57,31 @@ func TestAutomationOutcome_Encode(t *testing.T) {
 				Payload: ocr2keepers.UpkeepPayload{
 					ID: "abc",
 					Upkeep: ocr2keepers.ConfiguredUpkeep{
-						ID: []byte("111"),
+						ID:   []byte("111"),
+						Type: 1,
+					},
+					CheckData: []byte("check data"),
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 4,
+						BlockHash:   "hash",
 					},
 				},
-				Retryable: false,
-				Eligible:  false,
+				Retryable:   true,
+				Eligible:    true,
+				PerformData: []byte("testing"),
 			},
 		},
 	}
 
-	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Trigger":{"BlockHash":"","BlockNumber":0,"Extension":null},"Upkeep":{"ID":"MTEx","Type":0,"Config":null}},"Retryable":false, "Eligible":false, "GasUsed":0}]}`
+	jsonData, _ := json.Marshal(expected)
+	data, err := expected.Encode()
 
-	data, err := outcome.Encode()
-	assert.NoError(t, err)
+	assert.Equal(t, jsonData, data, "json marshalling should return the same result")
+	assert.NoError(t, err, "no error from encoding")
 
-	var encoded map[string]interface{}
-	err = json.Unmarshal(data, &encoded)
-	assert.NoError(t, err)
+	result, err := DecodeAutomationOutcome(data)
+	assert.NoError(t, err, "no error from decoding")
 
-	var expected map[string]interface{}
-	err = json.Unmarshal([]byte(expectedJSON), &expected)
-	assert.NoError(t, err)
+	assert.Equal(t, expected, result, "final result from encoding and decoding should match")
 
-	assert.True(t, reflect.DeepEqual(encoded, expected), "Encoded data does not match the expected JSON. Expected: %v, Got: %v", expected, encoded)
-}
-
-func TestAutomationOutcome_Decode(t *testing.T) {
-	jsonData := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{}]}`
-
-	expectedOutcome := AutomationOutcome{
-		Instructions: []string{"instruction1", "instruction2"},
-		Metadata:     map[string]interface{}{"key": "value"},
-		Performable:  []ocr2keepers.CheckResult{{}},
-	}
-
-	data := []byte(jsonData)
-
-	outcome, err := DecodeAutomationOutcome(data)
-	assert.NoError(t, err)
-
-	assert.True(t, reflect.DeepEqual(outcome, expectedOutcome), "Decoded outcome does not match the expected value. Expected: %v, Got: %v", expectedOutcome, outcome)
 }
