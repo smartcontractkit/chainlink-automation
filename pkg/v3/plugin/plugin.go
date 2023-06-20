@@ -8,6 +8,7 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
@@ -37,6 +38,10 @@ func New(
 	plugin := &ocr3Plugin[string]{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
+			hooks.NewPrebuildHookRemoveFromStaging(rs).RunHook,
+		},
+		BuildHooks: []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.SamplingStore, ocr2keepersv3.ResultStore) error{
+			hooks.NewBuildHookAddFromStaging().RunHook,
 		},
 		ResultSource: rs,
 	}

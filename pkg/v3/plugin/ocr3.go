@@ -10,15 +10,11 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 )
 
-type InstructionStore interface{}
-
-type SamplingStore interface{}
-
 type ocr3Plugin[RI any] struct {
 	PrebuildHooks     []func(ocr2keepersv3.AutomationOutcome) error
-	BuildHooks        []func(*ocr2keepersv3.AutomationObservation, InstructionStore, SamplingStore, ocr2keepersv3.ResultStore) error
-	InstructionSource InstructionStore
-	MetadataSource    SamplingStore
+	BuildHooks        []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.SamplingStore, ocr2keepersv3.ResultStore) error
+	InstructionSource ocr2keepersv3.InstructionStore
+	MetadataSource    ocr2keepersv3.SamplingStore
 	ResultSource      ocr2keepersv3.ResultStore
 }
 
