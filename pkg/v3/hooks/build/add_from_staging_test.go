@@ -1,14 +1,15 @@
-package hooks
+package build
 
 import (
 	"io"
 	"log"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildHookAddFromStaging(t *testing.T) {

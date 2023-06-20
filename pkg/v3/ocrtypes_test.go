@@ -7,12 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instruction"
 )
 
 func TestAutomationObservation(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	expected := AutomationObservation{
-		Instructions: []string{"instruction1", "instruction2"},
+		Instructions: []instruction.Instruction{"instruction1", "instruction2"},
 		Metadata:     map[string]interface{}{"key": "value"},
 		Performable: []ocr2keepers.CheckResult{
 			{
@@ -50,7 +51,7 @@ func TestAutomationObservation(t *testing.T) {
 func TestAutomationOutcome(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	expected := AutomationOutcome{
-		Instructions: []string{"instruction1", "instruction2"},
+		Instructions: []instruction.Instruction{"instruction1", "instruction2"},
 		Metadata:     map[string]interface{}{"key": "value"},
 		Performable: []ocr2keepers.CheckResult{
 			{

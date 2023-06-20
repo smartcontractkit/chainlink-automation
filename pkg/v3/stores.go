@@ -35,6 +35,7 @@ type MetadataStore interface {
 	Start() error
 	// Stop should stop watching for new block heights
 	Stop() error
+	GetBlockHistory() ocr2keepers.BlockHistory
 }
 
 // Notification is a struct that will be sent by the ResultStore upon certain events happening
@@ -107,6 +108,12 @@ func NewMetadataStore(ticker *tickers.BlockTicker) *metadataStore {
 		ticker: ticker,
 		stopCh: stopCh,
 	}
+}
+
+func (s *metadataStore) GetBlockHistory() ocr2keepers.BlockHistory {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	return s.blockHistory
 }
 
 func (s *metadataStore) Set(identifiers []ocr2keepers.UpkeepIdentifier) error {

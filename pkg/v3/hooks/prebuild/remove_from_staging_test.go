@@ -1,16 +1,17 @@
-package hooks
+package prebuild
 
 import (
 	"io"
 	"log"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestPrebuildHookRemoveFromStaging(t *testing.T) {
+func TestRemoveFromStagingHook(t *testing.T) {
 	tests := []struct {
 		Name  string
 		Input []ocr2keepers.CheckResult
