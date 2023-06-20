@@ -13,6 +13,7 @@ import (
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
@@ -27,19 +28,23 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 	// values every time
 	src.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
-	logFlow := NewLogTriggerEligibility(src, store, runner, logger)
+	_, svcs := NewLogTriggerEligibility(src, store, runner, logger)
 
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		assert.NoError(t, logFlow.Start(context.Background()), "no error expected on start up")
-		wg.Done()
-	}()
+	for i := range svcs {
+		wg.Add(1)
+		go func(svc service.Recoverable, ctx context.Context) {
+			assert.NoError(t, svc.Start(ctx))
+			wg.Done()
+		}(svcs[i], context.Background())
+	}
 
 	time.Sleep(2500 * time.Millisecond)
 
-	assert.NoError(t, logFlow.Close(), "no error expected on shut down")
+	for i := range svcs {
+		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
+	}
 
 	wg.Wait()
 
@@ -65,19 +70,23 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	store.On("Add", mock.Anything).Times(5)
 
-	logFlow := NewLogTriggerEligibility(src, store, runner, logger)
+	_, svcs := NewLogTriggerEligibility(src, store, runner, logger)
 
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		assert.NoError(t, logFlow.Start(context.Background()), "no error expected on start up")
-		wg.Done()
-	}()
+	for i := range svcs {
+		wg.Add(1)
+		go func(svc service.Recoverable, ctx context.Context) {
+			assert.NoError(t, svc.Start(ctx))
+			wg.Done()
+		}(svcs[i], context.Background())
+	}
 
 	time.Sleep(5500 * time.Millisecond)
 
-	assert.NoError(t, logFlow.Close(), "no error expected on shut down")
+	for i := range svcs {
+		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
+	}
 
 	wg.Wait()
 
@@ -117,19 +126,23 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		c.RetryDelay = 500 * time.Millisecond
 	}
 
-	logFlow := NewLogTriggerEligibility(src, store, runner, logger, tickers.RetryWithDefaults, config)
+	_, svcs := NewLogTriggerEligibility(src, store, runner, logger, tickers.RetryWithDefaults, config)
 
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		assert.NoError(t, logFlow.Start(context.Background()), "no error expected on start up")
-		wg.Done()
-	}()
+	for i := range svcs {
+		wg.Add(1)
+		go func(svc service.Recoverable, ctx context.Context) {
+			assert.NoError(t, svc.Start(ctx))
+			wg.Done()
+		}(svcs[i], context.Background())
+	}
 
 	time.Sleep(3200 * time.Millisecond)
 
-	assert.NoError(t, logFlow.Close(), "no error expected on shut down")
+	for i := range svcs {
+		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
+	}
 
 	src.AssertExpectations(t)
 	store.AssertExpectations(t)

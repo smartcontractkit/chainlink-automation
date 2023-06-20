@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -13,7 +12,7 @@ const (
 	// observation. Observations can become quite large due to multiple
 	// CheckResult objects and block coordination data. This is set to 1MB for
 	// now but might either need to be increased or data compression be applied.
-	MaxObservationLength = 1_000
+	MaxObservationLength = 1_000_000
 	// MaxReportLength limits the total length of bytes for a single report. A
 	// report is composed of 1 or more abi encoded perform calls with
 	// performData of arbitrary length. Reports are limited by gas usaged to
@@ -49,15 +48,10 @@ func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (o
 		return nil, info, err
 	}
 
-	// create the plugin
-	p, svcs, err := newPlugin[RI](nil, nil)
+	// create the plugin; all services start automatically
+	p, err := newPlugin[RI](nil, nil)
 	if err != nil {
 		return nil, info, err
-	}
-
-	// start the sub-procs
-	for _, svc := range svcs {
-		_ = svc.Start(context.Background())
 	}
 
 	return p, info, nil
