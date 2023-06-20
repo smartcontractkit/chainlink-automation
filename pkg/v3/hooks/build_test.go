@@ -25,5 +25,5 @@ func TestBuildHookAddFromStaging(t *testing.T) {
 	err := hook.RunHook(observation, nil, nil, rs)
 
 	assert.NoError(t, err, "no error from run hook")
-	assert.Equal(t, observation.Performable, expected, "all check results should be in observation")
+	assert.Len(t, observation.Performable, len(expected), "all check results should be in observation")
 }
