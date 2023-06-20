@@ -81,7 +81,6 @@ func (m *recoverer) Close() error {
 	err := m.service.Close()
 
 	m.stopped <- errServiceContextCancelled
-	m.running.Store(false)
 
 	return err
 }
@@ -93,9 +92,16 @@ func (m *recoverer) serviceStart(ctx context.Context) {
 		select {
 		case err := <-m.stopped:
 			// restart the service
-			if err != nil && errors.Is(err, errServiceStopped) {
-				<-time.After(m.coolDown)
-				go m.recoverableStart(ctx)
+			if err != nil {
+				if errors.Is(err, errServiceStopped) {
+					<-time.After(m.coolDown)
+					go m.recoverableStart(ctx)
+				}
+
+				if errors.Is(err, errServiceContextCancelled) {
+					m.running.Store(false)
+					return
+				}
 			}
 		case <-ctx.Done():
 			m.running.Store(false)
