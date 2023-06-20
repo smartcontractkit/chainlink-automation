@@ -15,6 +15,7 @@ import (
 
 func newPlugin[RI any](
 	logLookup ocr2keepersv3.PreProcessor,
+	encoder Encoder,
 	logger *log.Logger,
 ) (ocr3types.OCR3Plugin[RI], error) {
 	var (
@@ -49,8 +50,11 @@ func newPlugin[RI any](
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.SamplingStore, ocr2keepersv3.ResultStore) error{
 			hooks.NewBuildHookAddFromStaging().RunHook,
 		},
-		ResultSource: rs,
-		Services:     recoverSvcs,
+		ResultSource:       rs,
+		ReportEncoder:      encoder,
+		Services:           recoverSvcs,
+		ReportGasLimit:     5_000_000,
+		MaxUpkeepBatchSize: 1,
 	}
 
 	plugin.startServices()

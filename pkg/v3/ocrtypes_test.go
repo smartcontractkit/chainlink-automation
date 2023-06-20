@@ -29,7 +29,7 @@ func TestAutomationObservation_Encode(t *testing.T) {
 		},
 	}
 
-	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Trigger":{"BlockHash":"","BlockNumber":0,"Extension":null},"Upkeep":{"ID":"MTEx","Type":1,"Config":null}},"Retryable":false, "Eligible":false}]}`
+	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Trigger":{"BlockHash":"","BlockNumber":0,"Extension":null},"Upkeep":{"ID":"MTEx","Type":1,"Config":null}},"Retryable":false, "Eligible":false, "GasUsed":0}]}`
 
 	data, err := observation.Encode()
 	assert.NoError(t, err)
@@ -80,7 +80,7 @@ func TestAutomationOutcome_Encode(t *testing.T) {
 		},
 	}
 
-	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Trigger":{"BlockHash":"","BlockNumber":0,"Extension":null},"Upkeep":{"ID":"MTEx","Type":0,"Config":null}},"Retryable":false, "Eligible":false}]}`
+	expectedJSON := `{"Instructions":["instruction1","instruction2"],"Metadata":{"key":"value"},"Performable":[{"Payload":{"CheckData":null,"ID":"abc","Trigger":{"BlockHash":"","BlockNumber":0,"Extension":null},"Upkeep":{"ID":"MTEx","Type":0,"Config":null}},"Retryable":false, "Eligible":false, "GasUsed":0}]}`
 
 	data, err := outcome.Encode()
 	assert.NoError(t, err)

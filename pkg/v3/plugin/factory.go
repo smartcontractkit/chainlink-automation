@@ -49,7 +49,7 @@ func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (o
 	}
 
 	// create the plugin; all services start automatically
-	p, err := newPlugin[RI](nil, nil)
+	p, err := newPlugin[RI](nil, nil, nil)
 	if err != nil {
 		return nil, info, err
 	}
