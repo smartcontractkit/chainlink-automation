@@ -19,6 +19,7 @@ type Encoder interface {
 }
 
 type Coordinator interface {
+	Accept(ocr2keepers.ReportedUpkeep)
 	IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep) bool
 }
 
@@ -178,8 +179,17 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 	return reports, err
 }
 
-func (plugin *ocr3Plugin[RI]) ShouldAcceptFinalizedReport(context.Context, uint64, ocr3types.ReportWithInfo[RI]) (bool, error) {
-	panic("ocr3 ShouldAcceptFinalizedReport not implemented")
+func (plugin *ocr3Plugin[RI]) ShouldAcceptFinalizedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[RI]) (bool, error) {
+	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
+	if err != nil {
+		return false, err
+	}
+
+	for _, upkeep := range upkeeps {
+		plugin.Coordinator.Accept(upkeep)
+	}
+
+	return true, nil
 }
 
 func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[RI]) (bool, error) {

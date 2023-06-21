@@ -39,12 +39,36 @@ type StaleReportLog struct {
 	TransactionHash string
 }
 
+type TransmitEventType int
+
+const (
+	PerformEvent TransmitEventType = iota
+	StaleReportEvent
+)
+
+type TransmitEvent struct {
+	// Type describes the type of event
+	Type TransmitEventType
+	// TransmitBlock is the
+	TransmitBlock BlockKey
+	// Confirmations is the block height behind latest
+	Confirmations int64
+	// TransactionHash is the hash for the transaction where the event originated
+	TransactionHash string
+	// ID uniquely identifies the upkeep/trigger that created this perform log
+	ID string
+	// UpkeepID uniquely identifies the upkeep in the registry
+	UpkeepID UpkeepIdentifier
+	// CheckBlock is the block value that the upkeep was originally checked at
+	CheckBlock BlockKey
+}
+
 type CheckResult struct {
 	// Eligible indicates whether this result is eligible to be performed
 	Eligible bool
 	// Retryable indicates if this result can be retried on the check pipeline
 	Retryable bool
-	// GasAllocated is the amount of gas to provide an upkeep within a report
+	// GasAllocated is the gas to provide an upkeep in a report
 	GasAllocated uint64
 	// Payload is the detail used to check the upkeep
 	Payload UpkeepPayload
@@ -76,14 +100,15 @@ type UpkeepPayload struct {
 	Trigger Trigger
 }
 
-func NewUpkeepPayload(uid *big.Int, tp int, trigger Trigger, checkData []byte) UpkeepPayload {
+func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload {
 	p := UpkeepPayload{
 		Upkeep: ConfiguredUpkeep{
 			ID:   UpkeepIdentifier(uid.Bytes()),
 			Type: tp,
 		},
-		Trigger:   trigger,
-		CheckData: checkData,
+		CheckBlock: block,
+		Trigger:    trigger,
+		CheckData:  checkData,
 	}
 	p.ID = p.GenerateID()
 	return p
