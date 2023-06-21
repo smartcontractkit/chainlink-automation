@@ -27,16 +27,17 @@ func TestRecoveryTicker(t *testing.T) {
 
 		// create a mocked observer that tracks retries and mocks pipeline results
 		mockObserver := &mockObserver{
-			processFn: func(ctx context.Context, t Tick) error {
-				upkeeps, _ := t.GetUpkeeps(ctx)
+			processFn: func(ctx context.Context, tick Tick) error {
+				upkeeps, _ := tick.GetUpkeeps(ctx)
 
-				// assert that retry was in tick at least once
 				mu.Lock()
 				count += len(upkeeps)
 				mu.Unlock()
 
-				// TODO: assert that block number is updated for each tick
-
+				// assert payload is updated
+				for _, upkeep := range upkeeps {
+					assert.Equal(t, "a_new_block_key", string(upkeep.CheckBlock), "upkeep payload should have updated block key")
+				}
 				return nil
 			},
 		}
@@ -57,6 +58,9 @@ func TestRecoveryTicker(t *testing.T) {
 			wg.Done()
 		}()
 
+		// update the last block in ticker
+		rt.SetBlock("a_new_block_key")
+
 		// send 1 recoverable result to the ticker
 		assert.NoError(t, rt.Retry(retryableResult1))
 
@@ -67,6 +71,7 @@ func TestRecoveryTicker(t *testing.T) {
 
 		wg.Wait()
 
+		// assert that retry was in tick at least once
 		assert.Equal(t, 1, count, "tick should have been retried exactly once")
 	})
 }
