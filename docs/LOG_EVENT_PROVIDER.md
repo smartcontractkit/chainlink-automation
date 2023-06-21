@@ -12,7 +12,9 @@ In addition, the provider also manages the log filters life-cycle.
 
 The following block diagrams describes the involved components:
 
-![Log Event Provider Diagram](./images/block_log_event_provder.jpg)
+![Log Event Provider Diagram](./images/block_log_event_provider.jpg)
+
+**TODO:** use miro diagram
 
 <br />
 
