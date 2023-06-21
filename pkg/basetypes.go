@@ -68,6 +68,8 @@ type UpkeepPayload struct {
 	ID string
 	// Upkeep is all the information that identifies the upkeep
 	Upkeep ConfiguredUpkeep
+	// CheckBlock
+	CheckBlock BlockKey
 	// CheckData is the data used to check the upkeep
 	CheckData []byte
 	// Trigger is the event that triggered the upkeep to be checked
