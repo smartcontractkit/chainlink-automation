@@ -2,9 +2,13 @@ package plugin
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
+	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 )
 
 const (
@@ -24,10 +28,25 @@ const (
 	MaxReportCount = 20
 )
 
-type pluginFactory[RI any] struct{}
+type pluginFactory[RI any] struct {
+	logLookup ocr2keepersv3.PreProcessor
+	events    coordinator.EventProvider
+	encoder   Encoder
+	logger    *log.Logger
+}
 
-func NewReportingPluginFactory[RI any]() ocr3types.OCR3PluginFactory[RI] {
-	return &pluginFactory[RI]{}
+func NewReportingPluginFactory[RI any](
+	logLookup ocr2keepersv3.PreProcessor,
+	events coordinator.EventProvider,
+	encoder Encoder,
+	logger *log.Logger,
+) ocr3types.OCR3PluginFactory[RI] {
+	return &pluginFactory[RI]{
+		logLookup: logLookup,
+		events:    events,
+		encoder:   encoder,
+		logger:    logger,
+	}
 }
 
 func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3types.OCR3Plugin[RI], ocr3types.OCR3PluginInfo, error) {
@@ -49,7 +68,7 @@ func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (o
 	}
 
 	// create the plugin; all services start automatically
-	p, err := newPlugin[RI](nil, nil, nil)
+	p, err := newPlugin[RI](factory.logLookup, factory.events, factory.encoder, factory.logger)
 	if err != nil {
 		return nil, info, err
 	}

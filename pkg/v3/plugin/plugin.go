@@ -6,6 +6,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
@@ -15,6 +16,7 @@ import (
 
 func newPlugin[RI any](
 	logLookup ocr2keepersv3.PreProcessor,
+	events coordinator.EventProvider,
 	encoder Encoder,
 	logger *log.Logger,
 ) (ocr3types.OCR3Plugin[RI], error) {
@@ -33,7 +35,11 @@ func newPlugin[RI any](
 		tickers.RetryWithDefaults,
 	)
 
-	allSvcs := append(svcs, rs)
+	// create the event coordinator
+	coord := coordinator.NewReportCoordinator(events, logger)
+
+	// create service recoverers to provide panic recovery on dependent services
+	allSvcs := append(svcs, []service.Recoverable{rs, coord}...)
 	recoverSvcs := []service.Recoverable{}
 
 	for i := range allSvcs {
@@ -52,6 +58,7 @@ func newPlugin[RI any](
 		},
 		ResultSource:       rs,
 		ReportEncoder:      encoder,
+		Coordinator:        coord,
 		Services:           recoverSvcs,
 		ReportGasLimit:     5_000_000,
 		MaxUpkeepBatchSize: 1,
