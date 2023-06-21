@@ -12,7 +12,7 @@ In addition, the provider also manages the log filters life-cycle.
 
 The following block diagrams describes the involved components:
 
-![Log Event Provider Diagram](./images/block_log_event_provider.jpg)
+![Log Event Provider Diagram](./images/block_log_event_provider.png)
 
 **TODO:** use miro diagram
 
@@ -105,7 +105,7 @@ In addition to new log events, each block holds history of the logs that were de
 
 The log buffer is implemented with capped slice that is allocated upon buffer creation or restart, and a rw mutex for thread safety.
 
-![Log Buffer Diagram](./images/log_buffer.jpg)
+![Log Buffer Diagram](./images/log_buffer.png)
 
 <br />
 
