@@ -14,6 +14,11 @@ import (
 
 type Encoder interface {
 	Encode(...ocr2keepers.CheckResult) ([]byte, error)
+	Extract([]byte) ([]ocr2keepers.ReportedUpkeep, error)
+}
+
+type Coordinator interface {
+	IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep) bool
 }
 
 type ocr3Plugin[RI any] struct {
@@ -23,6 +28,7 @@ type ocr3Plugin[RI any] struct {
 	MetadataSource     ocr2keepersv3.SamplingStore
 	ResultSource       ocr2keepersv3.ResultStore
 	ReportEncoder      Encoder
+	Coordinator        Coordinator
 	Services           []service.Recoverable
 	ReportGasLimit     uint64
 	MaxUpkeepBatchSize int
@@ -133,8 +139,21 @@ func (plugin *ocr3Plugin[RI]) ShouldAcceptFinalizedReport(context.Context, uint6
 	panic("ocr3 ShouldAcceptFinalizedReport not implemented")
 }
 
-func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(context.Context, uint64, ocr3types.ReportWithInfo[RI]) (bool, error) {
-	panic("ocr3 ShouldTransmitAcceptedReport not implemented")
+func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[RI]) (bool, error) {
+	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
+	if err != nil {
+		return false, err
+	}
+
+	for _, upkeep := range upkeeps {
+		if !plugin.Coordinator.IsTransmissionConfirmed(upkeep) {
+			// if any upkeep in the report does not have confirmation, attempt
+			// again
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (plugin *ocr3Plugin[RI]) Close() error {
