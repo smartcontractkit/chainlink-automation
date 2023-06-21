@@ -72,7 +72,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("given three observations, in which two only differ in retryable and eligible status, one observations is added to the outcome", func(t *testing.T) {
+	t.Run("given three observations, in which two are identical, one observations is added to the outcome", func(t *testing.T) {
 		// Create an instance of ocr3 plugin
 		plugin := &ocr3Plugin[int]{}
 
@@ -104,8 +104,8 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		automationObservation2 := ocr2keepersv3.AutomationObservation{
 			Performable: []ocr2keepers.CheckResult{
 				{
-					Eligible:  false,
-					Retryable: true,
+					Eligible:  true,
+					Retryable: false,
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "123",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
@@ -167,8 +167,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outcome)
 		assert.NoError(t, err)
 
-		// obs2 only differs from obs1 in eligible and retryable values, which are not included in the hash value, so
-		// they will be considered the same result
+		// obs1 and obs2 are identical, so they will be considered the same result. obs3 doesn't reach the quorum threshold
 		assert.Len(t, automationOutcome.Performable, 1)
 	})
 }

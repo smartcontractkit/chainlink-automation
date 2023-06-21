@@ -83,7 +83,7 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 		}
 
 		for _, result := range observation.Performable {
-			uid := fmt.Sprintf("%v", result.Payload)
+			uid := fmt.Sprintf("%v", result)
 			payloadCount, ok := resultCount[uid]
 			if !ok {
 				payloadCount = resultAndCount{
