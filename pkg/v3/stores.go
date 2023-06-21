@@ -120,13 +120,11 @@ func (s *metadataStore) Set(identifiers []ocr2keepers.UpkeepIdentifier) error {
 	return nil
 }
 
-func (s *metadataStore) setBlockHistory(history ocr2keepers.BlockHistory) error {
+func (s *metadataStore) setBlockHistory(history ocr2keepers.BlockHistory) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
 	s.blockHistory = history
-
-	return nil
 }
 
 func (s *metadataStore) Start() error {
