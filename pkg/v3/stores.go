@@ -1,7 +1,10 @@
 package ocr2keepers
 
 import (
+	"sync"
+
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 // NotifyOp is an operation that can be notified by the ResultStore
@@ -25,7 +28,14 @@ type ResultStore interface {
 
 type InstructionStore interface{}
 
-type SamplingStore interface{}
+type MetadataStore interface {
+	// Set should replace any existing values
+	Set([]ocr2keepers.UpkeepIdentifier) error
+	// Start should begin watching for new block history
+	Start() error
+	// Stop should stop watching for new block heights
+	Stop() error
+}
 
 // Notification is a struct that will be sent by the ResultStore upon certain events happening
 type Notification struct {
@@ -81,4 +91,60 @@ func WithLimit(limit int) ViewOpt {
 	return func(opts *viewOpts) {
 		opts.limit = limit
 	}
+}
+
+type metadataStore struct {
+	ticker       *tickers.BlockTicker
+	identifiers  []ocr2keepers.UpkeepIdentifier
+	blockHistory ocr2keepers.BlockHistory
+	stopCh       chan int
+	once         sync.Once
+	m            sync.RWMutex
+}
+
+func NewMetadataStore(ticker *tickers.BlockTicker) *metadataStore {
+	stopCh := make(chan int)
+	once := sync.Once{}
+	return &metadataStore{
+		ticker: ticker,
+		stopCh: stopCh,
+		once:   once,
+	}
+}
+
+func (s *metadataStore) Set(identifiers []ocr2keepers.UpkeepIdentifier) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.identifiers = identifiers
+	return nil
+}
+
+func (s *metadataStore) setBlockHistory(history ocr2keepers.BlockHistory) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.blockHistory = history
+
+	return nil
+}
+
+func (s *metadataStore) Start() error {
+loop:
+	for {
+		select {
+		case blockHistory := <-s.ticker.C:
+			s.setBlockHistory(blockHistory)
+		case <-s.stopCh:
+			break loop
+		}
+	}
+	return nil
+}
+
+func (s *metadataStore) Stop() error {
+	s.once.Do(func() {
+		s.stopCh <- 1
+	})
+	return nil
 }

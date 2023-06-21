@@ -15,9 +15,9 @@ type blockSubscriber interface {
 	Unsubscribe(int) error
 }
 
-// blockTicker is a struct that follows the same design paradigm as a time ticker but provides blocks
+// BlockTicker is a struct that follows the same design paradigm as a time ticker but provides blocks
 // instead of time
-type blockTicker struct {
+type BlockTicker struct {
 	C          chan ocr2keepers.BlockHistory
 	chID       int
 	ch         chan ocr2keepers.BlockHistory
@@ -26,13 +26,13 @@ type blockTicker struct {
 	stopCh     chan int
 }
 
-func NewBlockTicker(subscriber blockSubscriber) (*blockTicker, error) {
+func NewBlockTicker(subscriber blockSubscriber) (*BlockTicker, error) {
 	chID, ch, err := subscriber.Subscribe()
 	if err != nil {
 		return nil, err
 	}
 
-	return &blockTicker{
+	return &BlockTicker{
 		chID:       chID,
 		ch:         ch,
 		C:          make(chan ocr2keepers.BlockHistory),
@@ -42,7 +42,7 @@ func NewBlockTicker(subscriber blockSubscriber) (*blockTicker, error) {
 	}, nil
 }
 
-func (t *blockTicker) Start(ctx context.Context) (err error) {
+func (t *BlockTicker) Start(ctx context.Context) (err error) {
 loop:
 	for {
 		select {
@@ -62,7 +62,7 @@ loop:
 	return err
 }
 
-func (t *blockTicker) Close() {
+func (t *BlockTicker) Close() {
 	t.closer.Do(func() {
 		t.stopCh <- 1
 		if err := t.subscriber.Unsubscribe(t.chID); err != nil {
