@@ -2,6 +2,7 @@ package tickers
 
 import (
 	"context"
+	"errors"
 	"log"
 	"sync"
 
@@ -22,6 +23,7 @@ type BlockTicker struct {
 	chID       int
 	ch         chan ocr2keepers.BlockHistory
 	subscriber blockSubscriber
+	next       ocr2keepers.BlockHistory
 	closer     sync.Once
 	stopCh     chan int
 }
@@ -30,6 +32,10 @@ func NewBlockTicker(subscriber blockSubscriber) (*BlockTicker, error) {
 	chID, ch, err := subscriber.Subscribe()
 	if err != nil {
 		return nil, err
+	}
+
+	if cap(ch) == 0 {
+		return nil, errors.New("block subscriber must provide a buffered channel")
 	}
 
 	return &BlockTicker{
@@ -45,12 +51,25 @@ func NewBlockTicker(subscriber blockSubscriber) (*BlockTicker, error) {
 func (t *BlockTicker) Start(ctx context.Context) (err error) {
 loop:
 	for {
+		switch t.next {
+		case nil:
+		default:
+			select {
+			case t.ch <- t.next:
+				t.next = nil
+			default:
+			}
+		}
+
 		select {
 		case blockHistory := <-t.ch:
 			select {
 			case t.C <- blockHistory:
+				t.next = nil
 				log.Print("forwarded")
 			default:
+				t.next = blockHistory
+				// discard block history
 			}
 		case <-ctx.Done():
 			err = ctx.Err()

@@ -27,7 +27,7 @@ func (s *mockSubscriber) Unsubscribe(id int) error {
 
 func TestNewMetadataStore(t *testing.T) {
 	t.Run("sets the incoming block histories", func(t *testing.T) {
-		ch := make(chan ocr2keepers.BlockHistory)
+		ch := make(chan ocr2keepers.BlockHistory, 1)
 
 		subscriber := &mockSubscriber{
 			SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
