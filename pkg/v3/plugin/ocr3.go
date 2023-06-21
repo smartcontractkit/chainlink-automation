@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
@@ -78,8 +79,50 @@ func (plugin *ocr3Plugin[RI]) ValidateObservation(outctx ocr3types.OutcomeContex
 	panic("ocr3 ValidateObservation not implemented")
 }
 
-func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query types.Query, aos []types.AttributedObservation) (ocr3types.Outcome, error) {
-	panic("ocr3 Outcome not implemented")
+func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
+	type resultAndCount struct {
+		result ocr2keepers.CheckResult
+		count  int
+	}
+
+	resultCount := make(map[string]resultAndCount)
+
+	for _, attributedObservation := range attributedObservations {
+		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, result := range observation.Performable {
+			uid := fmt.Sprintf("%v", result)
+			payloadCount, ok := resultCount[uid]
+			if !ok {
+				payloadCount = resultAndCount{
+					result: result,
+					count:  1,
+				}
+			} else {
+				payloadCount.count++
+			}
+			resultCount[uid] = payloadCount
+		}
+	}
+
+	submittedObservations := len(attributedObservations)
+	quorumThreshold := submittedObservations / 2
+
+	var performable []ocr2keepers.CheckResult
+	for _, payload := range resultCount {
+		if payload.count > quorumThreshold {
+			performable = append(performable, payload.result)
+		}
+	}
+
+	outcome := ocr2keepersv3.AutomationOutcome{
+		Performable: performable,
+	}
+
+	return outcome.Encode()
 }
 
 func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[RI], error) {
