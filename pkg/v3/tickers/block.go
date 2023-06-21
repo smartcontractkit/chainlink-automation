@@ -66,7 +66,7 @@ loop:
 			if t.bufferedValue != nil {
 				select {
 				case t.C <- t.bufferedValue:
-					log.Print("forwarded fromg buffer")
+					log.Print("forwarded from buffer")
 					t.bufferedValue = nil
 				default:
 				}
