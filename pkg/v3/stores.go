@@ -98,17 +98,14 @@ type metadataStore struct {
 	identifiers  []ocr2keepers.UpkeepIdentifier
 	blockHistory ocr2keepers.BlockHistory
 	stopCh       chan int
-	once         sync.Once
 	m            sync.RWMutex
 }
 
 func NewMetadataStore(ticker *tickers.BlockTicker) *metadataStore {
 	stopCh := make(chan int)
-	once := sync.Once{}
 	return &metadataStore{
 		ticker: ticker,
 		stopCh: stopCh,
-		once:   once,
 	}
 }
 
@@ -141,8 +138,6 @@ loop:
 }
 
 func (s *metadataStore) Stop() error {
-	s.once.Do(func() {
-		s.stopCh <- 1
-	})
+	s.stopCh <- 1
 	return nil
 }
