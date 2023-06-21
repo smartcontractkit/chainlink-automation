@@ -100,10 +100,12 @@ Logs are saved in DB for `LogRetention` amount of time.
 A circular/ring buffer of fetched logs.
 Each entry in the buffer represents a block, and holds the logs fetched for that block. The block number is calculated as `blockNumber % LogBufferSize`.
 
-We limit the amount of logs per block with `AllowedLogsPerBlock`, while the number of blocks (`LogBufferSize`) is currently set as `LogBlocksLookback*3` to have enough space.
+We limit the amount of logs per block with `BufferMaxBlockSize`, and logs per block & upkeep with `AllowedLogsPerBlock`. While the number of blocks (`LogBufferSize`) is currently set as `LogBlocksLookback*3` to have enough space.
 
 No cleanup of data is needed, new blocks will override older blocks. 
-In addition to new log events, each block holds history of the logs that were dequeued, in order to filter out duplicates.
+In addition to new log events, each block holds history of the logs that were dequeued, in order to filter out duplicates. 
+We compare logs by their block number, hash, tx hash and log index.
+In case of multiple upkeeps with the same filter, we will have multiple entries in the buffer for the same log.
 
 The log buffer is implemented with capped slice that is allocated upon buffer creation or restart, and a rw mutex for thread safety.
 
