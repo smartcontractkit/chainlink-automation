@@ -118,7 +118,13 @@ The log buffer is implemented with capped slice that is allocated upon buffer cr
 
 <br />
 
-## Rational
+## Rational / Q&A
+
+### How are changes to active log upkeeps handled between two fetch intervals
+
+In case some upkeep was removed we drop it from active upkeeps, and it won't be included in future fetches. In case it was removed while being in fetching process we might loose these logs.
+
+In case some upkeep was changed, we will update the filter in log poller, and it will be included in future fetches. But the last poll block remains the same, so the change will take effect only after the next fetch.
 
 ### Why not use go-cache for log buffer?
 
@@ -140,3 +146,4 @@ consistent hashing is not used since we don't need to have stable partitioning b
 
 We want to avoid overloading the DB with large amount of queries.
 batching the queries into smaller chunks allows us to balance our interaction with the DB.
+
