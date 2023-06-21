@@ -140,7 +140,7 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 	var gasUsed uint64
 
 	for i, result := range outcome.Performable {
-		if gasUsed+result.GasUsed > plugin.ReportGasLimit || len(toPerform) > plugin.MaxUpkeepBatchSize {
+		if gasUsed+result.GasAllocated > plugin.ReportGasLimit || len(toPerform) > plugin.MaxUpkeepBatchSize {
 			// encode current collection
 			encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
 			err = errors.Join(err, encodeErr)
@@ -157,7 +157,7 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 			}
 		}
 
-		gasUsed += result.GasUsed
+		gasUsed += result.GasAllocated
 		toPerform = append(toPerform, outcome.Performable[i])
 	}
 

@@ -44,7 +44,8 @@ type CheckResult struct {
 	Eligible bool
 	// Retryable indicates if this result can be retried on the check pipeline
 	Retryable bool
-	GasUsed   uint64
+	// GasAllocated is the amount of gas to provide an upkeep within a report
+	GasAllocated uint64
 	// Payload is the detail used to check the upkeep
 	Payload UpkeepPayload
 	// PerformData is the raw data returned when simulating an upkeep perform
