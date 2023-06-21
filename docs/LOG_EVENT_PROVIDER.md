@@ -31,12 +31,15 @@ We don't rely on the log event as it is unfinalized.
 
 <br />
 
-### Fetching Logs
+### Fetching Logs from DB
 
-Logs fetching in done continouosly in the background.
-Every `FetchInterval` it fetches logs for a subset of the active log upkeeps,
-which is determined by `FetchPartitions`. We do hash partitioning, where every contract address of upkeep filter (can be shared among multiple upkeeps) is hashed and the hash is used to determine the partition, only 6 bytes are used to avoid working with large numbers : \
-`sha256(contractAddr)[:6] % FetchPartitions`
+Logs are fetched from the log poller continouosly in the background.
+Every `FetchInterval` it fetches logs for a subset of the active log upkeeps.
+The number of subsets is determined by `FetchPartitions`. \
+Hash partitioning is done on the contract address of the filters.
+The address can be shared among multiple upkeeps. 
+Only 6 bytes are used to avoid working with large numbers: \
+`sha256(filter.contractAddr)[:6] % FetchPartitions`
 
 i.e. `len(activeLogUpkeeps)/FetchPartitions` 
 upkeeps are queried every `FetchInterval`.
@@ -83,7 +86,7 @@ The actual range that is passed to log poller will be extended with `LookbackBuf
 
 #### Rate Limiting
 
-Each upkeep has a rate limiter for blocks in order to control the amount of queries per upkeep, `BlockRateLimit` and `BlockLimitBurst` are used to configure the limit.
+Each upkeep has a rate limiter for blocks in order to control the amount of queries per upkeep, i.e. to control the number of blocks that are queried from log poller. `BlockRateLimit` and `BlockLimitBurst` are used to configure the limit.
 
 Upon initial fetch/restart the burst is automatically increased as we ask for `LogBlocksLookback` blocks.
 
@@ -91,7 +94,9 @@ Upon initial fetch/restart the burst is automatically increased as we ask for `L
 
 #### Log Retention
 
-Logs are saved in DB for `LogRetention` amount of time.
+Logs are saved in DB for `LogRetention` amount of time. 
+
+**NOTE:** managed by the log poller, each filter holds a retention field.
 
 <br />
 
@@ -100,11 +105,11 @@ Logs are saved in DB for `LogRetention` amount of time.
 A circular/ring buffer of fetched logs.
 Each entry in the buffer represents a block, and holds the logs fetched for that block. The block number is calculated as `blockNumber % LogBufferSize`.
 
-We limit the amount of logs per block with `BufferMaxBlockSize`, and logs per block & upkeep with `AllowedLogsPerBlock`. While the number of blocks (`LogBufferSize`) is currently set as `LogBlocksLookback*3` to have enough space.
+We limit the amount of logs per block with `BufferMaxBlockSize`, and logs per block & upkeep with `AllowedLogsPerBlock`. While the number of blocks `LogBufferSize` is currently set as `LogBlocksLookback*3` to have enough space.
 
 No cleanup of data is needed, new blocks will override older blocks. 
 In addition to new log events, each block holds history of the logs that were dequeued, in order to filter out duplicates. 
-We compare logs by their block number, hash, tx hash and log index.
+We compare logs by their block number, hash, tx hash and log index. the rest of the fields are ignored to reduce memory footprint.
 In case of multiple upkeeps with the same filter, we will have multiple entries in the buffer for the same log.
 
 The log buffer is implemented with capped slice that is allocated upon buffer creation or restart, and a rw mutex for thread safety.
