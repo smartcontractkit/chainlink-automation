@@ -18,14 +18,14 @@ type blockSubscriber interface {
 // BlockTicker is a struct that follows the same design paradigm as a time ticker but provides blocks
 // instead of time
 type BlockTicker struct {
-	C          chan ocr2keepers.BlockHistory
-	chID       int
-	ch         chan ocr2keepers.BlockHistory
-	subscriber blockSubscriber
-	next       ocr2keepers.BlockHistory
-	nextCh     chan ocr2keepers.BlockHistory
-	closer     sync.Once
-	stopCh     chan int
+	C             chan ocr2keepers.BlockHistory
+	chID          int
+	ch            chan ocr2keepers.BlockHistory
+	subscriber    blockSubscriber
+	bufferedValue ocr2keepers.BlockHistory
+	nextCh        chan ocr2keepers.BlockHistory
+	closer        sync.Once
+	stopCh        chan int
 }
 
 func NewBlockTicker(subscriber blockSubscriber) (*BlockTicker, error) {
@@ -52,11 +52,10 @@ loop:
 		case blockHistory := <-t.ch:
 			select {
 			case t.C <- blockHistory:
-				t.next = nil
+				t.bufferedValue = nil
 				log.Print("forwarded")
 			default:
-				t.next = blockHistory
-				// discard block history
+				t.bufferedValue = blockHistory
 			}
 		case <-ctx.Done():
 			err = ctx.Err()
@@ -64,11 +63,11 @@ loop:
 		case <-t.stopCh:
 			return nil
 		default:
-			if t.next != nil {
+			if t.bufferedValue != nil {
 				select {
-				case t.C <- t.next:
-					log.Print("forwarded from buffer")
-					t.next = nil
+				case t.C <- t.bufferedValue:
+					log.Print("forwarded fromg buffer")
+					t.bufferedValue = nil
 				default:
 				}
 			}

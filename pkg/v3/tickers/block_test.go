@@ -135,7 +135,7 @@ func TestBlockTicker_buffered(t *testing.T) {
 			t.Errorf("expected %v, but got %v", firstBlockHistory, got)
 		}
 		time.Sleep(100 * time.Millisecond)
-		// the third block history should be the last one received, and made availble on t.next to be sent when t.C becomes available
+		// the third block history should be the last one received, and made availble on t.bufferedValue to be sent when t.C becomes available
 		if got := <-ticker.C; !reflect.DeepEqual(thirdBlockHistory, got) {
 			t.Errorf("expected %v, but got %v", thirdBlockHistory, got)
 		}
