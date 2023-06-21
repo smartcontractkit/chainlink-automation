@@ -8,7 +8,7 @@ import (
 )
 
 func TestUpkeepPayload_GenerateID(t *testing.T) {
-	payload := NewUpkeepPayload(big.NewInt(111), 1, Trigger{
+	payload := NewUpkeepPayload(big.NewInt(111), 1, BlockKey("4"), Trigger{
 		BlockNumber: 11,
 		BlockHash:   "0x11111",
 		Extension:   "extension111",
