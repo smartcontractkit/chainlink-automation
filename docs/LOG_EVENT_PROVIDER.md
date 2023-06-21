@@ -1,12 +1,14 @@
 # Log Event Provider
 
-This document describes the log event provider, which is responsible for fetching logs of active log upkeeps, and exposing them to the log observer (pre processor).
+This document describes the log event provider, which is the data source for the log observer.
 
 ## Overview
 
-The log event provider fetches logs from log poller, 
-and stores them in the log buffer, which exposes them to the 
-log observer (pre processor).
+The log event provider is responsible for fetching logs of active log upkeeps, and exposing them to the log observer (pre processor).
+
+The provider fetches logs from log poller, 
+and stores them in the log buffer, which will be queried by the 
+log observer (pre processor) for latest logs w/o input (i.e. with no range or any indication).
 
 In addition, the provider also manages the log filters life-cycle. 
 
