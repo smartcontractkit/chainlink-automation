@@ -106,3 +106,14 @@ func NewTrigger(blockNumber int64, blockHash string, extension interface{}) Trig
 func (t Trigger) String() string {
 	return fmt.Sprintf("%d:%s:%+v", t.BlockNumber, t.BlockHash, t.Extension)
 }
+
+type ReportedUpkeep struct {
+	// ID uniquely identifies the upkeep in the report
+	ID string
+	// Block in which the upkeep was checked
+	Block uint64
+	// BlockHash in which the upkeep was checked
+	BlockHash string
+	// PerformData is the data to perform an upkeep with
+	PerformData []byte
+}
