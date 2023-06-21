@@ -46,6 +46,12 @@ func NewReportCoordinator(logs EventProvider, logger *log.Logger) *reportCoordin
 	}
 }
 
+func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) {
+	if _, ok := rc.activeKeys.Get(upkeep.ID); !ok {
+		rc.activeKeys.Set(upkeep.ID, true, util.DefaultCacheExpiration)
+	}
+}
+
 func (rc *reportCoordinator) IsTransmissionConfirmed(upkeep ocr2keepers.ReportedUpkeep) bool {
 	// key is confirmed if it both exists and has been confirmed by the log
 	// poller
