@@ -30,7 +30,7 @@ func TestBlockTicker(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ch := make(chan ocr2keepers.BlockHistory, 1)
+	ch := make(chan ocr2keepers.BlockHistory)
 
 	sub := &mockSubscriber{
 		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
@@ -98,7 +98,7 @@ func TestBlockTicker_buffered(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ch := make(chan ocr2keepers.BlockHistory, 1)
+	ch := make(chan ocr2keepers.BlockHistory)
 
 	sub := &mockSubscriber{
 		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
@@ -135,6 +135,7 @@ func TestBlockTicker_buffered(t *testing.T) {
 			t.Errorf("expected %v, but got %v", firstBlockHistory, got)
 		}
 		time.Sleep(100 * time.Millisecond)
+		// the third block history should be the last one received, and made availble on t.next to be sent when t.C becomes available
 		if got := <-ticker.C; !reflect.DeepEqual(thirdBlockHistory, got) {
 			t.Errorf("expected %v, but got %v", thirdBlockHistory, got)
 		}
@@ -184,22 +185,6 @@ func TestBlockTicker_subscribeError(t *testing.T) {
 	sub := &mockSubscriber{
 		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
 			return 0, nil, errors.New("subscribe failure")
-		},
-		UnsubscribeFn: func(id int) error {
-			return nil
-		},
-	}
-
-	_, err := NewBlockTicker(sub)
-	assert.Error(t, err)
-}
-
-func TestBlockTicker_unbufferedChannelError(t *testing.T) {
-	ch := make(chan ocr2keepers.BlockHistory)
-
-	sub := &mockSubscriber{
-		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
-			return 0, ch, nil
 		},
 		UnsubscribeFn: func(id int) error {
 			return nil
