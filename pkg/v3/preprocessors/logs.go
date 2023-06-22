@@ -32,5 +32,6 @@ func (p *logPreProcessor) PreProcess(ctx context.Context, _ []ocr2keepers.Upkeep
 	p.lggr.Printf("received %d payloads from log event provider", len(payloads))
 	// TODO: filter out payloads that were already processed
 	// 		 by a quorum of node in the previous observation
+	// TODO: TBD rate limiting
 	return payloads, err
 }
