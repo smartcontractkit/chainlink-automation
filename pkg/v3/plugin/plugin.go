@@ -15,7 +15,7 @@ import (
 )
 
 func newPlugin[RI any](
-	logLookup ocr2keepersv3.PreProcessor,
+	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
 	encoder Encoder,
 	logger *log.Logger,
@@ -28,10 +28,9 @@ func newPlugin[RI any](
 
 	// initialize the log trigger eligibility flow
 	ltFlow, svcs := flows.NewLogTriggerEligibility(
-		logLookup,
 		rs,
 		rn,
-		nil, // TODO: add log event provider
+		logProvider,
 		logger,
 		tickers.RetryWithDefaults,
 	)

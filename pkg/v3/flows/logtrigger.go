@@ -52,10 +52,10 @@ const (
 type LogTriggerEligibility struct{}
 
 // NewLogTriggerEligibility ...
-func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner Runner, logProvider LogEventProvider, _ *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
+func NewLogTriggerEligibility(rStore ResultStore, runner Runner, logProvider LogEventProvider, _ *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
 	svc0, recoverer := newRecoveryFlow(rStore, runner)
 	svc1, retryer := newRetryFlow(rStore, runner, recoverer, configFuncs...)
-	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logLookup, logProvider)
+	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logProvider)
 
 	svcs := []service.Recoverable{
 		svc0,
@@ -124,7 +124,7 @@ func (et logTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, 
 	return et.logProvider.GetLogs(ctx)
 }
 
-func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer, recoverer Retryer, logs PreProcessor, logProvider LogEventProvider) service.Recoverable {
+func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer, recoverer Retryer, logProvider LogEventProvider) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
@@ -134,7 +134,7 @@ func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer,
 	)
 
 	// create observer
-	obs := ocr2keepersv3.NewObserver([]ocr2keepersv3.PreProcessor{logs}, post, rn)
+	obs := ocr2keepersv3.NewObserver(nil, post, rn)
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker(LogCheckInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick, error) {

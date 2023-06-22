@@ -9,6 +9,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 )
 
 const (
@@ -29,23 +30,24 @@ const (
 )
 
 type pluginFactory[RI any] struct {
-	logLookup ocr2keepersv3.PreProcessor
-	events    coordinator.EventProvider
-	encoder   Encoder
-	logger    *log.Logger
+	logProvider flows.LogEventProvider
+	events      coordinator.EventProvider
+	encoder     Encoder
+	logger      *log.Logger
 }
 
 func NewReportingPluginFactory[RI any](
+	logProvider flows.LogEventProvider,
 	logLookup ocr2keepersv3.PreProcessor,
 	events coordinator.EventProvider,
 	encoder Encoder,
 	logger *log.Logger,
 ) ocr3types.OCR3PluginFactory[RI] {
 	return &pluginFactory[RI]{
-		logLookup: logLookup,
-		events:    events,
-		encoder:   encoder,
-		logger:    logger,
+		logProvider: logProvider,
+		events:      events,
+		encoder:     encoder,
+		logger:      logger,
 	}
 }
 
@@ -68,7 +70,7 @@ func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (o
 	}
 
 	// create the plugin; all services start automatically
-	p, err := newPlugin[RI](factory.logLookup, factory.events, factory.encoder, factory.logger)
+	p, err := newPlugin[RI](factory.logProvider, factory.events, factory.encoder, factory.logger)
 	if err != nil {
 		return nil, info, err
 	}
