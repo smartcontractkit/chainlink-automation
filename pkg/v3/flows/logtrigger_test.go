@@ -21,14 +21,14 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
 	runner := &mockedRunner{eligibleAfter: 0}
-	src := new(mocks.MockPreProcessor)
+	src := new(mocks.MockLogEventProvider)
 	store := new(mocks.MockResultStore)
 
 	// will call preprocess on the log source x times and return the same
 	// values every time
-	src.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
+	src.On("GetLogs", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
-	_, svcs := NewLogTriggerEligibility(src, store, runner, logger)
+	_, svcs := NewLogTriggerEligibility(store, runner, src, logger)
 
 	var wg sync.WaitGroup
 
@@ -56,7 +56,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
 	runner := &mockedRunner{eligibleAfter: 0}
-	src := new(mocks.MockPreProcessor)
+	src := new(mocks.MockLogEventProvider)
 	store := new(mocks.MockResultStore)
 
 	testData := []ocr2keepers.UpkeepPayload{
@@ -65,12 +65,12 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	// will call preprocess on the log source x times and return the same
 	// values every time
-	src.On("PreProcess", mock.Anything, mock.Anything).
+	src.On("GetLogs", mock.Anything).
 		Return(testData, nil).Times(5)
 
 	store.On("Add", mock.Anything).Times(5)
 
-	_, svcs := NewLogTriggerEligibility(src, store, runner, logger)
+	_, svcs := NewLogTriggerEligibility(store, runner, src, logger)
 
 	var wg sync.WaitGroup
 
@@ -98,7 +98,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
 	runner := &mockedRunner{eligibleAfter: 2}
-	src := new(mocks.MockPreProcessor)
+	src := new(mocks.MockLogEventProvider)
 	store := new(mocks.MockResultStore)
 
 	testData := []ocr2keepers.UpkeepPayload{
@@ -106,8 +106,8 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	}
 
 	// ensure logs preprocessor is called
-	src.On("PreProcess", mock.Anything, mock.Anything).Return(testData, nil).Times(1)
-	src.On("PreProcess", mock.Anything, mock.Anything).Return(nil, nil).Times(2)
+	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(2)
 
 	// within the standard happy path, check upkeeps is called and returns
 	// as retryable.
@@ -126,7 +126,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		c.RetryDelay = 500 * time.Millisecond
 	}
 
-	_, svcs := NewLogTriggerEligibility(src, store, runner, logger, tickers.RetryWithDefaults, config)
+	_, svcs := NewLogTriggerEligibility(store, runner, src, logger, tickers.RetryWithDefaults, config)
 
 	var wg sync.WaitGroup
 

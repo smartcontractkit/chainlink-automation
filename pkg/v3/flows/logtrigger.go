@@ -35,6 +35,12 @@ type Retryer interface {
 	Retry(ocr2keepers.CheckResult) error
 }
 
+//go:generate mockery --name LogEventProvider --structname MockLogEventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename logeventprovider.generated.go
+type LogEventProvider interface {
+	// GetLogs returns the latest logs
+	GetLogs(context.Context) ([]ocr2keepers.UpkeepPayload, error)
+}
+
 const (
 	LogCheckInterval      = 1 * time.Second
 	RetryCheckInterval    = 250 * time.Millisecond
@@ -46,10 +52,10 @@ const (
 type LogTriggerEligibility struct{}
 
 // NewLogTriggerEligibility ...
-func NewLogTriggerEligibility(logLookup PreProcessor, rStore ResultStore, runner Runner, _ *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
+func NewLogTriggerEligibility(rStore ResultStore, runner Runner, logProvider LogEventProvider, _ *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
 	svc0, recoverer := newRecoveryFlow(rStore, runner)
 	svc1, retryer := newRetryFlow(rStore, runner, recoverer, configFuncs...)
-	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logLookup)
+	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logProvider)
 
 	svcs := []service.Recoverable{
 		svc0,
@@ -107,13 +113,18 @@ func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner, recoverer Retryer, co
 	return ticker, ticker
 }
 
-type emptyTick struct{}
-
-func (et emptyTick) GetUpkeeps(context.Context) ([]ocr2keepers.UpkeepPayload, error) {
-	return nil, nil
+type logTick struct {
+	logProvider LogEventProvider
 }
 
-func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer, recoverer Retryer, logs PreProcessor) service.Recoverable {
+func (et logTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	if et.logProvider == nil {
+		return nil, nil
+	}
+	return et.logProvider.GetLogs(ctx)
+}
+
+func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer, recoverer Retryer, logProvider LogEventProvider) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
@@ -123,13 +134,11 @@ func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer,
 	)
 
 	// create observer
-	obs := ocr2keepersv3.NewObserver([]ocr2keepersv3.PreProcessor{logs}, post, rn)
+	obs := ocr2keepersv3.NewObserver(nil, post, rn)
 
 	// create time ticker
-	timeTick := tickers.NewTimeTicker(LogCheckInterval, obs, func(context.Context, time.Time) (tickers.Tick, error) {
-		// getter function returns empty set to allow first postprocessor
-		// to query the registry
-		return emptyTick{}, nil
+	timeTick := tickers.NewTimeTicker(LogCheckInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
+		return logTick{logProvider}, nil
 	})
 
 	return timeTick
