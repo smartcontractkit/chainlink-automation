@@ -16,8 +16,6 @@ The following block diagrams describes the involved components:
 
 ![Log Event Provider Diagram](./images/block_log_event_provider.png)
 
-**TODO:** use miro diagram
-
 <br />
 
 ### Log Filters Life-Cycle
@@ -34,17 +32,29 @@ We don't rely on the log event as it is unfinalized.
 ### Fetching Logs from DB
 
 Logs are fetched from the log poller continouosly in the background.
-Every `FetchInterval` it fetches logs for a subset of the active log upkeeps.
-The number of subsets is determined by `FetchPartitions`. \
+Once fetched, logs are stored in the [log buffer](#log-buffer).
+
+Every `FetchInterval` the provider fetches logs for a subset of the active log upkeeps. `FetchPartitions` is used to determine the amount of partitions. \
 Hash partitioning is done on the contract address of the filters.
 The address can be shared among multiple upkeeps. 
 Only 6 bytes are used to avoid working with large numbers: \
 `sha256(filter.contractAddr)[:6] % FetchPartitions`
 
-i.e. `len(activeLogUpkeeps)/FetchPartitions` 
-upkeeps are queried every `FetchInterval`.
+The number of upkeeps in a partition depends on the number of unique 
+contract addresses among the active upkeeps.
 
-Once fetched, logs are stored in the log buffer.
+**NOTE:** we count on the hash function 
+to provide balanced distribution of addresses.
+
+Assuming we have `u` active upkeeps, `p` partitions, and `c` unique contract addresses.
+Then the number of addresses in each partition is `c / p`.
+
+The number of upkeeps in a partition, is greater or equal 
+(when there are no shared contract addresses) to the number 
+of addresses in that partition. 
+And less or equal to the number of all active upkeeps when they all share the same contract address.
+
+It is guarteed that all upkeeps will be visited once within `FetchInterval*FetchPartitions` time frame.
 
 The following sequence diagram describes the flow:
 
@@ -58,16 +68,16 @@ sequenceDiagram
     par Logs fetching
         loop every FetchInterval
             LogEventProvider->>LogEventProvider: get partition
-            LogEventProvider->>LogPoller: get latest block
-            LogPoller-->>LogEventProvider: block
+            LogEventProvider->>+LogPoller: get latest block
+            LogPoller-->>-LogEventProvider: block
             LogEventProvider->>LogEventProvider: get entries and release lock 
             loop for each entry execute
                 LogEventProvider->>LogEventProvider: check last poll block
                 LogEventProvider->>LogEventProvider: block rate limiting
-                LogEventProvider->>LogPoller: GetLogs
+                LogEventProvider->>+LogPoller: GetLogs
                 LogPoller->>DB: Query
                 DB-->>LogPoller: logs
-                LogPoller-->>LogEventProvider: logs
+                LogPoller-->>LogEventProvider-: logs
                 LogEventProvider->>LogBuffer: enqueue
                 LogBuffer->>LogBuffer: store unknown logs
             end
