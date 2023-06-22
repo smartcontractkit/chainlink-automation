@@ -77,7 +77,7 @@ sequenceDiagram
                 LogEventProvider->>+LogPoller: GetLogs
                 LogPoller->>DB: Query
                 DB-->>LogPoller: logs
-                LogPoller-->>LogEventProvider-: logs
+                LogPoller-->>-LogEventProvider: logs
                 LogEventProvider->>LogBuffer: enqueue
                 LogBuffer->>LogBuffer: store unknown logs
             end
