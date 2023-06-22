@@ -28,7 +28,7 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 	// values every time
 	src.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
-	_, svcs := NewLogTriggerEligibility(src, store, runner, logger)
+	_, svcs := NewLogTriggerEligibility(src, store, runner, nil, logger)
 
 	var wg sync.WaitGroup
 
@@ -70,7 +70,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	store.On("Add", mock.Anything).Times(5)
 
-	_, svcs := NewLogTriggerEligibility(src, store, runner, logger)
+	_, svcs := NewLogTriggerEligibility(src, store, runner, nil, logger)
 
 	var wg sync.WaitGroup
 
@@ -126,7 +126,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		c.RetryDelay = 500 * time.Millisecond
 	}
 
-	_, svcs := NewLogTriggerEligibility(src, store, runner, logger, tickers.RetryWithDefaults, config)
+	_, svcs := NewLogTriggerEligibility(src, store, runner, nil, logger, tickers.RetryWithDefaults, config)
 
 	var wg sync.WaitGroup
 
