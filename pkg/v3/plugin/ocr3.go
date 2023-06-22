@@ -25,9 +25,9 @@ type Coordinator interface {
 
 type ocr3Plugin[RI any] struct {
 	PrebuildHooks      []func(ocr2keepersv3.AutomationOutcome) error
-	BuildHooks         []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.SamplingStore, ocr2keepersv3.ResultStore) error
+	BuildHooks         []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error
 	InstructionSource  ocr2keepersv3.InstructionStore
-	MetadataSource     ocr2keepersv3.SamplingStore
+	MetadataSource     ocr2keepersv3.MetadataStore
 	ResultSource       ocr2keepersv3.ResultStore
 	ReportEncoder      Encoder
 	Coordinator        Coordinator

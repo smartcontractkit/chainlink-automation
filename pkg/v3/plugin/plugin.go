@@ -53,7 +53,7 @@ func newPlugin[RI any](
 			ltFlow.ProcessOutcome,
 			hooks.NewPrebuildHookRemoveFromStaging(rs).RunHook,
 		},
-		BuildHooks: []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.SamplingStore, ocr2keepersv3.ResultStore) error{
+		BuildHooks: []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error{
 			hooks.NewBuildHookAddFromStaging().RunHook,
 		},
 		ResultSource:       rs,

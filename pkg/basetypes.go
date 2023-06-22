@@ -152,3 +152,5 @@ type ReportedUpkeep struct {
 	// PerformData is the data to perform an upkeep with
 	PerformData []byte
 }
+
+type BlockHistory []BlockKey
