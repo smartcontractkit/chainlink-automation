@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"time"
 
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 )
 
 // DelegateConfig provides a single configuration struct for all options
@@ -32,8 +34,35 @@ type DelegateConfig struct {
 	// EventProvider allows reads on latest transmit events
 	EventProvider coordinator.EventProvider
 
+	// Runnable is a check pipeline runner
+	Runnable runner.Runnable
+
 	// Encoder provides methods to encode/decode reports
 	Encoder Encoder
+
+	// CacheExpiration is the duration of time a cached key is available. Use
+	// this value to balance memory usage and RPC calls. A new set of keys is
+	// generated with every block so a good setting might come from block time
+	// times number of blocks of history to support not replaying reports.
+	CacheExpiration time.Duration
+
+	// CacheEvictionInterval is a parameter for how often the cache attempts to
+	// evict expired keys. This value should be short enough to ensure key
+	// eviction doesn't block for too long, and long enough that it doesn't
+	// cause frequent blocking.
+	CacheEvictionInterval time.Duration
+
+	// MaxServiceWorkers is the total number of go-routines allowed to make RPC
+	// simultaneous calls on behalf of the sampling operation. This parameter
+	// is 10x the number of available CPUs by default. The RPC calls are memory
+	// heavy as opposed to CPU heavy as most of the work involves waiting on
+	// network responses.
+	MaxServiceWorkers int
+
+	// ServiceQueueLength is the buffer size for the RPC service queue. Fewer
+	// workers or slower RPC responses will cause this queue to build up.
+	// Adding new items to the queue will block if the queue becomes full.
+	ServiceQueueLength int
 }
 
 // Delegate is a container struct for an Oracle plugin. This struct provides

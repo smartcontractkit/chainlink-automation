@@ -21,7 +21,14 @@ func TestRunnerCache(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
 	mr := new(mocks.MockRunnable)
 
-	runner, err := NewRunner(logger, mr, 2, 1000, 500*time.Millisecond, 1*time.Second)
+	conf := RunnerConfig{
+		Workers:           2,
+		WorkerQueueLength: 1000,
+		CacheExpire:       500 * time.Millisecond,
+		CacheClean:        1 * time.Second,
+	}
+
+	runner, err := NewRunner(logger, mr, conf)
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
@@ -57,7 +64,14 @@ func TestRunnerBatching(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
 	mr := new(mocks.MockRunnable)
 
-	runner, err := NewRunner(logger, mr, 2, 1000, 500*time.Millisecond, 1*time.Second)
+	conf := RunnerConfig{
+		Workers:           2,
+		WorkerQueueLength: 1000,
+		CacheExpire:       500 * time.Millisecond,
+		CacheClean:        1 * time.Second,
+	}
+
+	runner, err := NewRunner(logger, mr, conf)
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
@@ -106,7 +120,14 @@ func TestRunnerConcurrent(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
 	mr := new(mocks.MockRunnable)
 
-	runner, err := NewRunner(logger, mr, 2, 1000, 500*time.Millisecond, 1*time.Second)
+	conf := RunnerConfig{
+		Workers:           2,
+		WorkerQueueLength: 1000,
+		CacheExpire:       500 * time.Millisecond,
+		CacheClean:        1 * time.Second,
+	}
+
+	runner, err := NewRunner(logger, mr, conf)
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
@@ -158,7 +179,14 @@ func TestRunnerStartStop(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
 	mr := new(mocks.MockRunnable)
 
-	runner, err := NewRunner(logger, mr, 2, 1000, 500*time.Millisecond, 1*time.Second)
+	conf := RunnerConfig{
+		Workers:           2,
+		WorkerQueueLength: 1000,
+		CacheExpire:       500 * time.Millisecond,
+		CacheClean:        1 * time.Second,
+	}
+
+	runner, err := NewRunner(logger, mr, conf)
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	err = runner.Start()
@@ -177,7 +205,14 @@ func TestRunnerErr(t *testing.T) {
 		logger := log.New(io.Discard, "", log.LstdFlags)
 		mr := new(mocks.MockRunnable)
 
-		runner, err := NewRunner(logger, mr, 2, 1000, 500*time.Millisecond, 1*time.Second)
+		conf := RunnerConfig{
+			Workers:           2,
+			WorkerQueueLength: 1000,
+			CacheExpire:       500 * time.Millisecond,
+			CacheClean:        1 * time.Second,
+		}
+
+		runner, err := NewRunner(logger, mr, conf)
 		assert.NoError(t, err, "no error should be encountered during runner creation")
 
 		payloads := []ocr2keepers.UpkeepPayload{}
@@ -191,7 +226,14 @@ func TestRunnerErr(t *testing.T) {
 		logger := log.New(io.Discard, "", log.LstdFlags)
 		mr := new(mocks.MockRunnable)
 
-		runner, err := NewRunner(logger, mr, 2, 1000, 500*time.Millisecond, 1*time.Second)
+		conf := RunnerConfig{
+			Workers:           2,
+			WorkerQueueLength: 1000,
+			CacheExpire:       500 * time.Millisecond,
+			CacheClean:        1 * time.Second,
+		}
+
+		runner, err := NewRunner(logger, mr, conf)
 		assert.NoError(t, err, "no error should be encountered during runner creation")
 
 		payloads := make([]ocr2keepers.UpkeepPayload, 20)

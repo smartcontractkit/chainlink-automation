@@ -51,21 +51,27 @@ type Runner struct {
 	running atomic.Bool
 }
 
+type RunnerConfig struct {
+	// Workers is the maximum number of workers in worker group
+	Workers int
+	// WorkerQueueLength is size of worker queue; set to approximately the number of items expected in workload
+	WorkerQueueLength int
+	CacheExpire       time.Duration
+	CacheClean        time.Duration
+}
+
 // NewRunner provides a new configured runner
 func NewRunner(
 	logger *log.Logger,
 	runnable Runnable,
-	workers int, // maximum number of workers in worker group
-	workerQueueLength int, // size of worker queue; set to approximately the number of items expected in workload
-	cacheExpire time.Duration,
-	cacheClean time.Duration,
+	conf RunnerConfig,
 ) (*Runner, error) {
 	return &Runner{
 		logger:           logger,
 		runnable:         runnable,
-		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.CheckResult](workers, workerQueueLength),
-		cache:            pkgutil.NewCache[ocr2keepers.CheckResult](cacheExpire),
-		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[ocr2keepers.CheckResult](cacheClean),
+		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.CheckResult](conf.Workers, conf.WorkerQueueLength),
+		cache:            pkgutil.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
+		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[ocr2keepers.CheckResult](conf.CacheClean),
 		workerBatchLimit: WorkerBatchLimit,
 	}, nil
 }

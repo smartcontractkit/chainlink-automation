@@ -145,10 +145,10 @@ func (t Trigger) String() string {
 type ReportedUpkeep struct {
 	// ID uniquely identifies the upkeep in the report
 	ID string
-	// Block in which the upkeep was checked
-	Block uint64
-	// BlockHash in which the upkeep was checked
-	BlockHash string
+	// UpkeepID is the value that identifies a configured upkeep
+	UpkeepID UpkeepIdentifier
+	// Trigger data for the upkeep
+	Trigger Trigger
 	// PerformData is the data to perform an upkeep with
 	PerformData []byte
 }

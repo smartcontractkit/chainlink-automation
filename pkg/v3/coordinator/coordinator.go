@@ -8,12 +8,12 @@ import (
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
 const (
-	DefaultCacheClean           = time.Duration(30) * time.Second
-	DefaultMinimumConfirmations = 1
+	DefaultCacheClean = time.Duration(30) * time.Second
 )
 
 type EventProvider interface {
@@ -35,13 +35,13 @@ type reportCoordinator struct {
 	chStop  chan struct{}
 }
 
-func NewReportCoordinator(logs EventProvider, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(logs EventProvider, conf config.OffchainConfig, logger *log.Logger) *reportCoordinator {
 	return &reportCoordinator{
 		logger:            logger,
 		events:            logs,
 		activeKeys:        util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		activeKeysCleaner: util.NewIntervalCacheCleaner[bool](DefaultCacheClean),
-		minConfs:          DefaultMinimumConfirmations,
+		minConfs:          conf.MinConfirmations,
 		chStop:            make(chan struct{}, 1),
 	}
 }
