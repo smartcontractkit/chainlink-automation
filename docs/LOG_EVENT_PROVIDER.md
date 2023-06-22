@@ -1,18 +1,18 @@
 # Log Event Provider
 
-This document describes the log event provider, which is the data source for the log observer.
+This document describes the log event provider, which is the data source for log triggers. \
+The provider is responsible for fetching logs of active log upkeeps, 
+and exposing them to the log observer.
 
 ## Overview
 
-The log event provider is responsible for fetching logs of active log upkeeps, and exposing them to the log observer (pre processor).
-
 The provider fetches logs from log poller, 
 and stores them in the log buffer, which will be queried by the 
-log observer (pre processor) for latest logs w/o input (i.e. with no range or any indication).
+log observer (pre processor) for latest logs w/o input, i.e. with no range or any indication for desired upkeeps.
 
 In addition, the provider also manages the log filters life-cycle. 
 
-The following block diagrams describes the involved components:
+The following block diagram describes the involved components:
 
 ![Log Event Provider Diagram](./images/block_log_event_provider.png)
 
@@ -125,6 +125,27 @@ In case of multiple upkeeps with the same filter, we will have multiple entries 
 The log buffer is implemented with capped slice that is allocated upon buffer creation or restart, and a rw mutex for thread safety.
 
 ![Log Buffer Diagram](./images/log_buffer.png)
+
+<br />
+
+## Configurations
+
+The following configurations are used by the log event provider:
+
+**TBD:** simplify/abstract and add chain specific defaults
+
+| Config | Description | Default |
+| --- | --- | --- |
+| `LogBlocksLookback` | Number of blocks to fetch upon initial fetch/restart | `512` |
+| `LogRetention` | Time to keep logs in DB | `24hr` |
+| `LogBufferSize` | Number of blocks to keep in buffer | `LogBlocksLookback*3` |
+| `BufferMaxBlockSize` | Max number of logs per block | `1000` |
+| `AllowedLogsPerBlock` | Max number of logs per block & upkeep | `100` |
+| `FetchInterval` | Interval between fetches | `1s` |
+| `FetchPartitions` | Number of partitions to use for fetching logs from log poller | `5` |
+| `LookbackBuffer` | Number of blocks to add to the range | `32` |
+| `BlockRateLimit` | Max number of blocks to query per upkeep | `1/sec` |
+| `BlockLimitBurst` | Burst of blocks to query per upkeep | `128` |
 
 <br />
 
