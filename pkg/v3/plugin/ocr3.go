@@ -9,6 +9,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 )
@@ -24,20 +25,19 @@ type Coordinator interface {
 }
 
 type ocr3Plugin[RI any] struct {
-	PrebuildHooks      []func(ocr2keepersv3.AutomationOutcome) error
-	BuildHooks         []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error
-	InstructionSource  ocr2keepersv3.InstructionStore
-	MetadataSource     ocr2keepersv3.MetadataStore
-	ResultSource       ocr2keepersv3.ResultStore
-	ReportEncoder      Encoder
-	Coordinator        Coordinator
-	Services           []service.Recoverable
-	ReportGasLimit     uint64
-	MaxUpkeepBatchSize int
+	PrebuildHooks     []func(ocr2keepersv3.AutomationOutcome) error
+	BuildHooks        []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error
+	InstructionSource ocr2keepersv3.InstructionStore
+	MetadataSource    ocr2keepersv3.MetadataStore
+	ResultSource      ocr2keepersv3.ResultStore
+	ReportEncoder     Encoder
+	Coordinator       Coordinator
+	Services          []service.Recoverable
+	Config            config.OffchainConfig
 }
 
 func (plugin *ocr3Plugin[RI]) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
-	panic("ocr3 Query not implemented")
+	return nil, nil
 }
 
 func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
@@ -77,7 +77,7 @@ func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types
 }
 
 func (plugin *ocr3Plugin[RI]) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
-	panic("ocr3 ValidateObservation not implemented")
+	return nil
 }
 
 func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
@@ -141,7 +141,7 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 	var gasUsed uint64
 
 	for i, result := range outcome.Performable {
-		if gasUsed+result.GasAllocated > plugin.ReportGasLimit || len(toPerform) > plugin.MaxUpkeepBatchSize {
+		if gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) || len(toPerform) > plugin.Config.MaxUpkeepBatchSize {
 			// encode current collection
 			encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
 			err = errors.Join(err, encodeErr)
@@ -158,7 +158,7 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 			}
 		}
 
-		gasUsed += result.GasAllocated
+		gasUsed += result.GasAllocated + uint64(plugin.Config.GasOverheadPerUpkeep)
 		toPerform = append(toPerform, outcome.Performable[i])
 	}
 
