@@ -1,6 +1,7 @@
 package tickers
 
 import (
+	"sync"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -8,12 +9,22 @@ import (
 
 type recoveryTicker struct {
 	*retryTicker
-	// lastBlock ocr2keepers.BlockKey
+	lock      sync.RWMutex
+	lastBlock ocr2keepers.BlockKey
 }
 
-// getterFn is a function that retrieves the recoveryTick for the given time.
-func (rt *recoveryTicker) payloadModFunc(p ocr2keepers.UpkeepPayload) ocr2keepers.UpkeepPayload {
-	// TODO: update block in payload
+// setBlock updates the block of the given payload
+func (rt *recoveryTicker) SetBlock(key ocr2keepers.BlockKey) {
+	rt.lock.Lock()
+	defer rt.lock.Unlock()
+	rt.lastBlock = key
+}
+
+// modifyPayload updates and returns the payload
+func (rt *recoveryTicker) modifyPayload(p ocr2keepers.UpkeepPayload) ocr2keepers.UpkeepPayload {
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
+	p.CheckBlock = rt.lastBlock
 	return p
 }
 
@@ -25,7 +36,7 @@ func NewRecoveryTicker(interval time.Duration, observer observer, configFuncs ..
 		retryTicker: rt,
 	}
 
-	rt.payloadModFunc = rct.payloadModFunc
+	rt.payloadModFunc = rct.modifyPayload
 
 	return rct
 }
