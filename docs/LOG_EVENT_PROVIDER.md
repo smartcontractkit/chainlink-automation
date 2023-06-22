@@ -128,7 +128,7 @@ The log buffer is implemented with capped slice that is allocated upon buffer cr
 
 <br />
 
-## Configurations
+## Configuration
 
 The following configurations are used by the log event provider:
 
