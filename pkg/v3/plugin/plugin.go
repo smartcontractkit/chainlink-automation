@@ -31,6 +31,7 @@ func newPlugin[RI any](
 		logLookup,
 		rs,
 		rn,
+		nil, // TODO: add log event provider
 		logger,
 		tickers.RetryWithDefaults,
 	)
