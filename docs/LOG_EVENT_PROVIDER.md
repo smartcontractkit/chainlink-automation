@@ -90,9 +90,10 @@ end
 
 #### Blocks Range
 
-Upon initial fetch/restart, we ask for `LogBlocksLookback` blocks.
-Afterwards, each upkeep has a `lastPollBlock` assiciated with it so we can continue next fetch from the same point.
-The actual range that is passed to log poller will be extended with `LookbackBuffer` to catch reorgs.
+Upon initial fetch/restart, we ask for `LogBlocksLookback` blocks, i.e. range of `[latestBlock-LogBlocksLookback, latestBlock]`.
+
+After initialization, each upkeep has a `lastPollBlock` assiciated with it so we can continue next fetch from 
+the same point with some buffer to catch reorgs: `[u.lastPollBlock-LookbackBuffer, latestBlock]`
 
 #### Rate Limiting
 
@@ -100,7 +101,9 @@ Each upkeep has a rate limiter for blocks in order to control the amount of quer
 
 Upon initial fetch/restart the burst is automatically increased as we ask for `LogBlocksLookback` blocks.
 
-**TBD** additional limiting of logs to check per upkeep should be done either on the provider side or the observer.
+Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `AllowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
+
+**TBD** additional limiting of upkeep-checks/sec rate
 
 #### Log Retention
 
