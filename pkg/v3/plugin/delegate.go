@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/smartcontractkit/libocr/commontypes"
-	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 )
@@ -40,7 +40,6 @@ type DelegateConfig struct {
 // the ability to start and stop underlying services associated with the
 // plugin instance.
 type Delegate struct {
-	keeper *offchainreporting.Oracle
 }
 
 // NewDelegate provides a new Delegate from a provided config. A new logger
@@ -50,7 +49,7 @@ type Delegate struct {
 // with '[keepers-plugin] ' and a short file name.
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
 
-	return &Delegate{keeper: nil}, nil
+	return &Delegate{}, nil
 }
 
 // Start starts the OCR oracle and any associated services
