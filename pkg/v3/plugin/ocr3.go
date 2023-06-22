@@ -219,6 +219,7 @@ func (plugin *ocr3Plugin[RI]) Close() error {
 	return err
 }
 
+// this start function should not block
 func (plugin *ocr3Plugin[RI]) startServices() {
 	for i := range plugin.Services {
 		go func(svc service.Recoverable) {
