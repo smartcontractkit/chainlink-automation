@@ -62,10 +62,9 @@ func newPlugin[RI any](
 			ltFlow.ProcessOutcome,
 			hooks.NewPrebuildHookRemoveFromStaging(rs, logger).RunHook,
 		},
-		BuildHooks: []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error{
-			hooks.NewBuildHookAddFromStaging(logger).RunHook,
+		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
+			hooks.NewBuildHookAddFromStaging(rs, logger).RunHook,
 		},
-		ResultSource:  rs,
 		ReportEncoder: encoder,
 		Coordinator:   coord,
 		Services:      recoverSvcs,
