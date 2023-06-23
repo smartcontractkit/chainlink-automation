@@ -60,16 +60,17 @@ func newPlugin[RI any](
 	plugin := &ocr3Plugin[RI]{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
-			hooks.NewPrebuildHookRemoveFromStaging(rs).RunHook,
+			hooks.NewPrebuildHookRemoveFromStaging(rs, logger).RunHook,
 		},
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error{
-			hooks.NewBuildHookAddFromStaging().RunHook,
+			hooks.NewBuildHookAddFromStaging(logger).RunHook,
 		},
 		ResultSource:  rs,
 		ReportEncoder: encoder,
 		Coordinator:   coord,
 		Services:      recoverSvcs,
 		Config:        conf,
+		Logger:        logger,
 	}
 
 	plugin.startServices()

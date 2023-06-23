@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
@@ -34,6 +35,7 @@ type ocr3Plugin[RI any] struct {
 	Coordinator       Coordinator
 	Services          []service.Recoverable
 	Config            config.OffchainConfig
+	Logger            *log.Logger
 }
 
 func (plugin *ocr3Plugin[RI]) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
@@ -50,6 +52,7 @@ func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types
 		}
 
 		// Execute pre-build hooks
+		plugin.Logger.Printf("running pre-build hooks")
 		for _, hook := range plugin.PrebuildHooks {
 			err = errors.Join(err, hook(automationOutcome))
 		}
@@ -62,6 +65,7 @@ func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types
 	observation := ocr2keepersv3.AutomationObservation{}
 
 	// Execute build hooks
+	plugin.Logger.Printf("running build hooks")
 	for _, hook := range plugin.BuildHooks {
 		err := hook(&observation, plugin.InstructionSource, plugin.MetadataSource, plugin.ResultSource)
 		if err != nil {
@@ -126,6 +130,8 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 		Performable: performable,
 	}
 
+	plugin.Logger.Printf("returning outcome with %d results", len(outcome.Performable))
+
 	return outcome.Encode()
 }
 
@@ -139,6 +145,8 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw); err != nil {
 		return nil, err
 	}
+
+	plugin.Logger.Printf("creating report from outcome with %d results", len(outcome.Performable))
 
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
@@ -189,6 +197,7 @@ func (plugin *ocr3Plugin[RI]) ShouldAcceptFinalizedReport(_ context.Context, _ u
 	}
 
 	for _, upkeep := range upkeeps {
+		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
 		plugin.Coordinator.Accept(upkeep)
 	}
 
@@ -207,6 +216,7 @@ func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(_ context.Context, _ 
 			// again
 			return true, nil
 		}
+		plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, plugin.Coordinator.IsTransmissionConfirmed(upkeep))
 	}
 
 	return false, nil

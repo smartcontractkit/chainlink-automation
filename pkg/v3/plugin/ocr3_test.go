@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"context"
+	"io"
+	"log"
 	"testing"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -14,7 +16,9 @@ import (
 
 func TestObservation(t *testing.T) {
 	// Create an instance of ocr3 plugin
-	plugin := &ocr3Plugin[int]{}
+	plugin := &ocr3Plugin[int]{
+		Logger: log.New(io.Discard, "", 0),
+	}
 
 	// Create a sample outcome for decoding
 	outcome := ocr3types.OutcomeContext{
@@ -54,7 +58,9 @@ func TestObservation(t *testing.T) {
 func TestOcr3Plugin_Outcome(t *testing.T) {
 	t.Run("malformed observations returns an error", func(t *testing.T) {
 		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin[int]{}
+		plugin := &ocr3Plugin[int]{
+			Logger: log.New(io.Discard, "", 0),
+		}
 
 		// Create a sample outcome for decoding
 		outcomeContext := ocr3types.OutcomeContext{
@@ -74,7 +80,9 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 	t.Run("given three observations, in which two are identical, one observations is added to the outcome", func(t *testing.T) {
 		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin[int]{}
+		plugin := &ocr3Plugin[int]{
+			Logger: log.New(io.Discard, "", 0),
+		}
 
 		// Create a sample outcome for decoding
 		outcomeContext := ocr3types.OutcomeContext{

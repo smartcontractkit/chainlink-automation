@@ -48,7 +48,7 @@ func TestRunnerCache(t *testing.T) {
 
 	// ensure that context and payloads are passed through to the runnable
 	// return results that should be cached
-	mr.On("CheckUpkeeps", mock.Anything, payloads).Return(expected, nil).Once().After(500 * time.Millisecond)
+	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(payloads...)...)...).Return(expected, nil).Once().After(500 * time.Millisecond)
 
 	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
@@ -98,8 +98,8 @@ func TestRunnerBatching(t *testing.T) {
 
 	// ensure that context and payloads are passed through to the runnable
 	// payloads and results should be split by batches
-	mr.On("CheckUpkeeps", mock.Anything, payloads[:10]).Return(expected[:10], nil).Once().After(500 * time.Millisecond)
-	mr.On("CheckUpkeeps", mock.Anything, payloads[10:]).Return(expected[10:], nil).Once().After(500 * time.Millisecond)
+	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(payloads[:10]...)...)...).Return(expected[:10], nil).Once().After(500 * time.Millisecond)
+	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(payloads[10:]...)...)...).Return(expected[10:], nil).Once().After(500 * time.Millisecond)
 
 	// all batches should be collected into a single result set
 	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
@@ -155,7 +155,7 @@ func TestRunnerConcurrent(t *testing.T) {
 	var wg sync.WaitGroup
 
 	var tester func(w *sync.WaitGroup, m *mocks.MockRunnable, r *Runner, p []ocr2keepers.UpkeepPayload, e []ocr2keepers.CheckResult) = func(w *sync.WaitGroup, m *mocks.MockRunnable, r *Runner, p []ocr2keepers.UpkeepPayload, e []ocr2keepers.CheckResult) {
-		m.On("CheckUpkeeps", mock.Anything, p).Return(e, nil).Once().After(500 * time.Millisecond)
+		m.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(p...)...)...).Return(e, nil).Once().After(500 * time.Millisecond)
 
 		// all batches should be collected into a single result set
 		results, err := r.CheckUpkeeps(context.Background(), p...)
@@ -250,7 +250,12 @@ func TestRunnerErr(t *testing.T) {
 			}
 		}
 
-		mr.On("CheckUpkeeps", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("test error")).Times(2)
+		mVals := []interface{}{}
+		for range payloads {
+			mVals = append(mVals, mock.Anything)
+		}
+
+		mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, mVals...)...).Return(nil, fmt.Errorf("test error")).Times(2)
 
 		results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 
@@ -259,4 +264,12 @@ func TestRunnerErr(t *testing.T) {
 
 		mr.AssertExpectations(t)
 	})
+}
+
+func toInterfaces(payloads ...ocr2keepers.UpkeepPayload) []interface{} {
+	asInter := []interface{}{}
+	for i := range payloads {
+		asInter = append(asInter, payloads[i])
+	}
+	return asInter
 }

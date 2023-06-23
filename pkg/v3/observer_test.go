@@ -26,7 +26,13 @@ type mockRunner struct {
 }
 
 func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-	ret := m.Called(ctx, payloads)
+	var ret mock.Arguments
+	if len(payloads) > 0 {
+		ret = m.Called(ctx, payloads)
+	} else {
+		ret = m.Called(ctx)
+	}
+
 	return ret.Get(0).([]ocr2keepers.CheckResult), ret.Error(1)
 }
 
@@ -231,7 +237,14 @@ func TestObserve_Process(t *testing.T) {
 			for i := range tt.fields.Preprocessors {
 				tt.fields.Preprocessors[i].(*mockPreprocessor).On("PreProcess", tt.args.ctx, expectedPayload).Return(expectedPayload, tt.expectations.preprocessorErr)
 			}
-			tt.fields.Runner.(*mockRunner).On("CheckUpkeeps", tt.args.ctx, expectedPayload).Return(expectedCheckResults, tt.expectations.runnerErr)
+
+			vals := []interface{}{}
+			vals = append(vals, tt.args.ctx)
+			for i := range expectedPayload {
+				vals = append(vals, expectedPayload[i])
+			}
+
+			tt.fields.Runner.(*mockRunner).On("CheckUpkeeps", vals...).Return(expectedCheckResults, tt.expectations.runnerErr)
 			tt.fields.Postprocessor.(*mockPostprocessor).On("PostProcess", tt.args.ctx, expectedCheckResults).Return(tt.expectations.postprocessorErr)
 
 			tt.wantErr(t, o.Process(tt.args.ctx, tt.args.tick), fmt.Sprintf("Process(%v, %v)", tt.args.ctx, tt.args.tick))

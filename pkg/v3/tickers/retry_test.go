@@ -2,6 +2,8 @@ package tickers
 
 import (
 	"context"
+	"io"
+	"log"
 	"sync"
 	"testing"
 	"time"
@@ -46,7 +48,7 @@ func TestRetryTicker(t *testing.T) {
 		}
 
 		// Create a retryTicker instance
-		rt := NewRetryTicker(10*time.Millisecond, mockObserver, RetryWithDefaults, config)
+		rt := NewRetryTicker(10*time.Millisecond, mockObserver, log.New(io.Discard, "", 0), RetryWithDefaults, config)
 
 		// start the ticker in a separate thread
 		wg.Add(1)
@@ -102,7 +104,7 @@ func TestRetryTicker(t *testing.T) {
 		}
 
 		// Create a retryTicker instance
-		rt := NewRetryTicker(25*time.Millisecond, mockObserver, RetryWithDefaults, config)
+		rt := NewRetryTicker(25*time.Millisecond, mockObserver, log.New(io.Discard, "", 0), RetryWithDefaults, config)
 
 		// start the ticker in a separate thread
 		wg.Add(1)
@@ -158,7 +160,7 @@ func TestRetryTicker(t *testing.T) {
 		}
 
 		// Create a retryTicker instance
-		rt := NewRetryTicker(10*time.Millisecond, mockObserver, RetryWithDefaults, config)
+		rt := NewRetryTicker(10*time.Millisecond, mockObserver, log.New(io.Discard, "", 0), RetryWithDefaults, config)
 
 		// start the ticker in a separate thread
 		wg.Add(1)

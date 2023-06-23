@@ -52,10 +52,10 @@ const (
 type LogTriggerEligibility struct{}
 
 // NewLogTriggerEligibility ...
-func NewLogTriggerEligibility(rStore ResultStore, runner Runner, logProvider LogEventProvider, _ *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
-	svc0, recoverer := newRecoveryFlow(rStore, runner)
-	svc1, retryer := newRetryFlow(rStore, runner, recoverer, configFuncs...)
-	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logProvider)
+func NewLogTriggerEligibility(rStore ResultStore, runner Runner, logProvider LogEventProvider, logger *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
+	svc0, recoverer := newRecoveryFlow(rStore, runner, logger)
+	svc1, retryer := newRetryFlow(rStore, runner, recoverer, logger, configFuncs...)
+	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logProvider, logger)
 
 	svcs := []service.Recoverable{
 		svc0,
@@ -72,14 +72,14 @@ func (flow *LogTriggerEligibility) ProcessOutcome(_ ocr2keepersv3.AutomationOutc
 	panic("log trigger observation pre-build hook not implemented")
 }
 
-func newRecoveryFlow(rs ResultStore, rn Runner, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
+func newRecoveryFlow(rs ResultStore, rn Runner, logger *log.Logger, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
 	recoveryObserver := ocr2keepersv3.NewObserver(nil, nil, rn)
 
 	// create retry ticker
-	ticker := tickers.NewRecoveryTicker(RecoveryCheckInterval, recoveryObserver, configFuncs...)
+	ticker := tickers.NewRecoveryTicker(RecoveryCheckInterval, recoveryObserver, logger, configFuncs...)
 
 	// postprocess
 	post := postprocessors.NewEligiblePostProcessor(rs)
@@ -90,14 +90,14 @@ func newRecoveryFlow(rs ResultStore, rn Runner, configFuncs ...tickers.RetryConf
 	return ticker, ticker
 }
 
-func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
+func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, logger *log.Logger, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
 	retryObserver := ocr2keepersv3.NewObserver(nil, nil, rn)
 
 	// create retry ticker
-	ticker := tickers.NewRetryTicker(RetryCheckInterval, retryObserver, configFuncs...)
+	ticker := tickers.NewRetryTicker(RetryCheckInterval, retryObserver, logger, configFuncs...)
 
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
@@ -115,16 +115,22 @@ func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, configFuncs ...t
 
 type logTick struct {
 	logProvider LogEventProvider
+	logger      *log.Logger
 }
 
 func (et logTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
 	if et.logProvider == nil {
 		return nil, nil
 	}
-	return et.logProvider.GetLogs(ctx)
+
+	logs, err := et.logProvider.GetLogs(ctx)
+
+	et.logger.Printf("%d logs returned by log provider", len(logs))
+
+	return logs, err
 }
 
-func newLogTriggerFlow(rs ResultStore, rn Runner, retryer Retryer, recoverer Retryer, logProvider LogEventProvider) service.Recoverable {
+func newLogTriggerFlow(rs ResultStore, rn Runner, retryer Retryer, recoverer Retryer, logProvider LogEventProvider, logger *log.Logger) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
@@ -138,7 +144,7 @@ func newLogTriggerFlow(rs ResultStore, rn Runner, retryer Retryer, recoverer Ret
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker(LogCheckInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
-		return logTick{logProvider}, nil
+		return logTick{logger: logger, logProvider: logProvider}, nil
 	})
 
 	return timeTick

@@ -3,6 +3,7 @@ package tickers
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -41,11 +42,14 @@ type retryTicker struct {
 	nextRetries    sync.Map // time.Time -> ocr2keepers.UpkeepPayload
 	retryEntries   *util.Cache[time.Time]
 	payloadModFunc func(ocr2keepers.UpkeepPayload) ocr2keepers.UpkeepPayload
+	logger         *log.Logger
 }
 
 // Retry adds a retryable result to the retryTicker.
 func (rt *retryTicker) Retry(result ocr2keepers.CheckResult) error {
 	payload := result.Payload
+
+	rt.logger.Printf("upkeep '%s' has been sent to the retryer", payload.Upkeep.ID)
 
 	if !result.Retryable {
 		// exit condition for not retryable
@@ -88,13 +92,15 @@ func (rt *retryTicker) getterFn(ctx context.Context, t time.Time) (Tick, error) 
 		return true
 	})
 
+	rt.logger.Printf("%d upkeeps are being retried", len(upkeepPayloads))
+
 	return retryTick{
 		upkeeps: upkeepPayloads,
 	}, nil
 }
 
 // NewRetryTicker creates a new retryTicker with the specified interval and observer.
-func NewRetryTicker(interval time.Duration, observer observer, configFuncs ...RetryConfigFunc) *retryTicker {
+func NewRetryTicker(interval time.Duration, observer observer, logger *log.Logger, configFuncs ...RetryConfigFunc) *retryTicker {
 	config := RetryConfig{}
 
 	if len(configFuncs) == 0 {
@@ -112,6 +118,7 @@ func NewRetryTicker(interval time.Duration, observer observer, configFuncs ...Re
 		payloadModFunc: func(p ocr2keepers.UpkeepPayload) ocr2keepers.UpkeepPayload {
 			return p
 		},
+		logger: logger,
 	}
 
 	rt.timeTicker = *NewTimeTicker(interval, observer, rt.getterFn)

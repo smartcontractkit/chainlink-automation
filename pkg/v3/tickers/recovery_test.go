@@ -2,6 +2,8 @@ package tickers
 
 import (
 	"context"
+	"io"
+	"log"
 	"sync"
 	"testing"
 	"time"
@@ -49,7 +51,7 @@ func TestRecoveryTicker(t *testing.T) {
 		}
 
 		// Create a recoveryTicker instance which ticks every 10ms
-		rt := NewRecoveryTicker(10*time.Millisecond, mockObserver, RetryWithDefaults, config)
+		rt := NewRecoveryTicker(10*time.Millisecond, mockObserver, log.New(io.Discard, "", 0), RetryWithDefaults, config)
 
 		// start the ticker in a separate thread
 		wg.Add(1)

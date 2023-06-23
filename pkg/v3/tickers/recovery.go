@@ -1,6 +1,7 @@
 package tickers
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -29,8 +30,8 @@ func (rt *recoveryTicker) modifyPayload(p ocr2keepers.UpkeepPayload) ocr2keepers
 }
 
 // NewRetryTicker creates a new retryTicker with the specified interval and observer.
-func NewRecoveryTicker(interval time.Duration, observer observer, configFuncs ...RetryConfigFunc) *recoveryTicker {
-	rt := NewRetryTicker(interval, observer, configFuncs...)
+func NewRecoveryTicker(interval time.Duration, observer observer, logger *log.Logger, configFuncs ...RetryConfigFunc) *recoveryTicker {
+	rt := NewRetryTicker(interval, observer, logger, configFuncs...)
 
 	rct := &recoveryTicker{
 		retryTicker: rt,

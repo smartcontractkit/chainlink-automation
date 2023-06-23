@@ -1,6 +1,8 @@
 package hooks
 
 import (
+	"io"
+	"log"
 	"testing"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -44,7 +46,7 @@ func TestPrebuildHookRemoveFromStaging(t *testing.T) {
 
 			mr := new(mockRemover)
 
-			r := NewPrebuildHookRemoveFromStaging(mr)
+			r := NewPrebuildHookRemoveFromStaging(mr, log.New(io.Discard, "", 0))
 
 			assert.NoError(t, r.RunHook(ob))
 			assert.Equal(t, len(ob.Performable), len(mr.removed))

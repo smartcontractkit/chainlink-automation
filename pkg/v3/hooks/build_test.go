@@ -12,7 +12,7 @@ import (
 )
 
 func TestBuildHookAddFromStaging(t *testing.T) {
-	hook := NewBuildHookAddFromStaging()
+	hook := NewBuildHookAddFromStaging(log.New(io.Discard, "", 0))
 	observation := &ocr2keepersv3.AutomationObservation{}
 	rs := resultstore.New(log.New(io.Discard, "", 0))
 	expected := []ocr2keepers.CheckResult{
