@@ -26,16 +26,13 @@ type Coordinator interface {
 }
 
 type ocr3Plugin[RI any] struct {
-	PrebuildHooks     []func(ocr2keepersv3.AutomationOutcome) error
-	BuildHooks        []func(*ocr2keepersv3.AutomationObservation, ocr2keepersv3.InstructionStore, ocr2keepersv3.MetadataStore, ocr2keepersv3.ResultStore) error
-	InstructionSource ocr2keepersv3.InstructionStore
-	MetadataSource    ocr2keepersv3.MetadataStore
-	ResultSource      ocr2keepersv3.ResultStore
-	ReportEncoder     Encoder
-	Coordinator       Coordinator
-	Services          []service.Recoverable
-	Config            config.OffchainConfig
-	Logger            *log.Logger
+	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
+	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
+	ReportEncoder Encoder
+	Coordinator   Coordinator
+	Services      []service.Recoverable
+	Config        config.OffchainConfig
+	Logger        *log.Logger
 }
 
 func (plugin *ocr3Plugin[RI]) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
@@ -67,7 +64,7 @@ func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types
 	// Execute build hooks
 	plugin.Logger.Printf("running build hooks")
 	for _, hook := range plugin.BuildHooks {
-		err := hook(&observation, plugin.InstructionSource, plugin.MetadataSource, plugin.ResultSource)
+		err := hook(&observation)
 		if err != nil {
 			return nil, err
 		}

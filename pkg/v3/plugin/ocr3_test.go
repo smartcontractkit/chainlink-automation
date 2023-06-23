@@ -35,7 +35,7 @@ func TestObservation(t *testing.T) {
 	plugin.PrebuildHooks = append(plugin.PrebuildHooks, mockPrebuildHook)
 
 	// Define a mock build hook function for testing build hooks
-	mockBuildHook := func(observation *ocr2keepersv3.AutomationObservation, instructionStore ocr2keepersv3.InstructionStore, samplingStore ocr2keepersv3.MetadataStore, resultStore ocr2keepersv3.ResultStore) error {
+	mockBuildHook := func(observation *ocr2keepersv3.AutomationObservation) error {
 		assert.Equal(t, 0, len(observation.Instructions))
 		return nil
 	}
