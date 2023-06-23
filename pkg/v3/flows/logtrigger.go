@@ -147,7 +147,7 @@ func newLogTriggerFlow(rs ResultStore, rn Runner, retryer Retryer, recoverer Ret
 	// create time ticker
 	timeTick := tickers.NewTimeTicker(LogCheckInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
-	})
+	}, logger)
 
 	return timeTick
 }

@@ -46,7 +46,11 @@ func (st *sampleTicker) Start(ctx context.Context) error {
 		return fmt.Errorf("already running")
 	}
 
-	go st.blocks.Start(ctx)
+	go func() {
+		if err := st.blocks.Start(ctx); err != nil {
+			st.logger.Printf("error starting block ticker: %s", err)
+		}
+	}()
 
 	st.running.Store(true)
 
@@ -55,11 +59,15 @@ func (st *sampleTicker) Start(ctx context.Context) error {
 Loop:
 	for {
 		select {
-		case <-st.blocks.C:
+		case h := <-st.blocks.C:
+			if len(h) == 0 {
+				continue
+			}
+
 			ctx, cancelFn := context.WithTimeout(ctx, st.samplingLimit)
 
 			// do the observation with limited time
-			tick, err := st.getterFn(ctx)
+			tick, err := st.getterFn(ctx, h[0])
 			if err != nil {
 				st.logger.Printf("failed to get upkeeps: %s", err)
 				cancelFn()
@@ -93,7 +101,7 @@ func (st *sampleTicker) Close() error {
 	return nil
 }
 
-func (ticker *sampleTicker) getterFn(ctx context.Context) (Tick, error) {
+func (ticker *sampleTicker) getterFn(ctx context.Context, block ocr2keepers.BlockKey) (Tick, error) {
 	var (
 		upkeeps []ocr2keepers.UpkeepPayload
 		err     error
@@ -101,7 +109,7 @@ func (ticker *sampleTicker) getterFn(ctx context.Context) (Tick, error) {
 
 	// TODO: convert to block key ticker instead of time ticker to provide
 	// block scope to active upkeep provider
-	if upkeeps, err = ticker.getter.GetActiveUpkeeps(ctx, ocr2keepers.BlockKey("")); err != nil {
+	if upkeeps, err = ticker.getter.GetActiveUpkeeps(ctx, block); err != nil {
 		return nil, err
 	}
 
