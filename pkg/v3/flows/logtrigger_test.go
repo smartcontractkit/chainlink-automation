@@ -156,7 +156,7 @@ type mockedRunner struct {
 	eligibleAfter int
 }
 
-func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	_m.mu.Lock()
 	defer _m.mu.Unlock()
 

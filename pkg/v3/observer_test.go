@@ -25,7 +25,7 @@ type mockRunner struct {
 	mock.Mock
 }
 
-func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	ret := m.Called(ctx, payloads)
 	return ret.Get(0).([]ocr2keepers.CheckResult), ret.Error(1)
 }

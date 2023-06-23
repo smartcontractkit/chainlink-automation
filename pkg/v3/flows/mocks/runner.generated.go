@@ -16,7 +16,7 @@ type MockRunner struct {
 }
 
 // CheckUpkeeps provides a mock function with given fields: _a0, _a1
-func (_m *MockRunner) CheckUpkeeps(_a0 context.Context, _a1 []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+func (_m *MockRunner) CheckUpkeeps(_a0 context.Context, _a1 ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 []ocr2keepers.CheckResult

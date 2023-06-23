@@ -50,12 +50,12 @@ func TestRunnerCache(t *testing.T) {
 	// return results that should be cached
 	mr.On("CheckUpkeeps", mock.Anything, payloads).Return(expected, nil).Once().After(500 * time.Millisecond)
 
-	results, err := runner.CheckUpkeeps(context.Background(), payloads)
+	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
 
 	// ensure that a call with the same payloads uses cache instead of calling runnable
-	results, err = runner.CheckUpkeeps(context.Background(), payloads)
+	results, err = runner.CheckUpkeeps(context.Background(), payloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
 }
@@ -102,7 +102,7 @@ func TestRunnerBatching(t *testing.T) {
 	mr.On("CheckUpkeeps", mock.Anything, payloads[10:]).Return(expected[10:], nil).Once().After(500 * time.Millisecond)
 
 	// all batches should be collected into a single result set
-	results, err := runner.CheckUpkeeps(context.Background(), payloads)
+	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 
 	// sort the results for comparison
 	sort.Slice(results, func(i, j int) bool {
@@ -158,7 +158,7 @@ func TestRunnerConcurrent(t *testing.T) {
 		m.On("CheckUpkeeps", mock.Anything, p).Return(e, nil).Once().After(500 * time.Millisecond)
 
 		// all batches should be collected into a single result set
-		results, err := r.CheckUpkeeps(context.Background(), p)
+		results, err := r.CheckUpkeeps(context.Background(), p...)
 
 		assert.NoError(t, err, "no error should be encountered during upkeep checking")
 		assert.Equal(t, e, results, "results should be returned without changes from the runnable")
@@ -217,7 +217,7 @@ func TestRunnerErr(t *testing.T) {
 
 		payloads := []ocr2keepers.UpkeepPayload{}
 
-		results, err := runner.CheckUpkeeps(context.Background(), payloads)
+		results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 		assert.NoError(t, err, "no error should be encountered during upkeep checking")
 		assert.Len(t, results, 0, "result length should be zero without calling runnable")
 	})
@@ -252,7 +252,7 @@ func TestRunnerErr(t *testing.T) {
 
 		mr.On("CheckUpkeeps", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("test error")).Times(2)
 
-		results, err := runner.CheckUpkeeps(context.Background(), payloads)
+		results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 
 		assert.ErrorIs(t, err, ErrTooManyErrors, "runner should only return error when all runnable calls fail")
 		assert.Len(t, results, 0, "result length should be zero")

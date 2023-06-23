@@ -23,7 +23,7 @@ type PostProcessor interface {
 // Runner is the interface for an object that should determine eligibility state
 type Runner interface {
 	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
-	CheckUpkeeps(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
+	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
 
 type Observer struct {
@@ -60,7 +60,7 @@ func (o *Observer) Process(ctx context.Context, tick tickers.Tick) error {
 	var results []ocr2keepers.CheckResult
 
 	// Run check pipeline
-	results, err = o.Runner.CheckUpkeeps(ctx, upkeepPayloads)
+	results, err = o.Runner.CheckUpkeeps(ctx, upkeepPayloads...)
 	if err != nil {
 		return err
 	}

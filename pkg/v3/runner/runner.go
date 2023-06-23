@@ -19,7 +19,7 @@ var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
 //go:generate mockery --name Runnable --structname MockRunnable --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/runner" --case underscore --filename runnable.generated.go
 type Runnable interface {
-	CheckUpkeeps(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
+	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
 
 // ensure that the runner implements the same interface it consumes to indicate
@@ -80,7 +80,7 @@ func NewRunner(
 // threads, executes the underlying runnable, and returns all results from all
 // threads. If previous runs were already completed for the same one or more
 // payloads, results will be pulled from the cache where available.
-func (o *Runner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+func (o *Runner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	r, err := o.parallelCheck(ctx, payloads)
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func (o *Runner) wrapWorkerFunc() func(context.Context, []ocr2keepers.UpkeepPayl
 		}
 
 		// perform check and update cache with result
-		checkResults, err := o.runnable.CheckUpkeeps(ctx, payloads)
+		checkResults, err := o.runnable.CheckUpkeeps(ctx, payloads...)
 		if err != nil {
 			err = fmt.Errorf("%w: failed to check upkeep payloads for ids '%s'", err, strings.Join(allPayloadKeys, ", "))
 		} else {

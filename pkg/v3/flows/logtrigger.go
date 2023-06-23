@@ -15,7 +15,7 @@ import (
 //go:generate mockery --name Runner --structname MockRunner --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename runner.generated.go
 type Runner interface {
 	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
-	CheckUpkeeps(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
+	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
 
 //go:generate mockery --name PreProcessor --structname MockPreProcessor --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename preprocessor.generated.go
@@ -72,7 +72,7 @@ func (flow *LogTriggerEligibility) ProcessOutcome(_ ocr2keepersv3.AutomationOutc
 	panic("log trigger observation pre-build hook not implemented")
 }
 
-func newRecoveryFlow(rs ResultStore, rn ocr2keepersv3.Runner, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
+func newRecoveryFlow(rs ResultStore, rn Runner, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
@@ -90,7 +90,7 @@ func newRecoveryFlow(rs ResultStore, rn ocr2keepersv3.Runner, configFuncs ...tic
 	return ticker, ticker
 }
 
-func newRetryFlow(rs ResultStore, rn ocr2keepersv3.Runner, recoverer Retryer, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
+func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
@@ -124,7 +124,7 @@ func (et logTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, 
 	return et.logProvider.GetLogs(ctx)
 }
 
-func newLogTriggerFlow(rs ResultStore, rn ocr2keepersv3.Runner, retryer Retryer, recoverer Retryer, logProvider LogEventProvider) service.Recoverable {
+func newLogTriggerFlow(rs ResultStore, rn Runner, retryer Retryer, recoverer Retryer, logProvider LogEventProvider) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
