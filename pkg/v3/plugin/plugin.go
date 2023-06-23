@@ -72,5 +72,7 @@ func newPlugin[RI any](
 		Logger:        logger,
 	}
 
+	plugin.startServices()
+
 	return plugin, nil
 }

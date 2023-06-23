@@ -230,10 +230,11 @@ func (plugin *ocr3Plugin[RI]) Close() error {
 }
 
 // this start function should not block
-func (plugin *ocr3Plugin[RI]) Start() {
+func (plugin *ocr3Plugin[RI]) startServices() {
 	for i := range plugin.Services {
 		go func(svc service.Recoverable) {
-			_ = svc.Start(context.Background())
+			err := svc.Start(context.Background())
+			plugin.Logger.Printf("failed to start supporting service: %s", err)
 		}(plugin.Services[i])
 	}
 }
