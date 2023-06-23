@@ -148,7 +148,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 				CacheClean:        c.CacheEvictionInterval,
 			},
 			c.Encoder,
-			nil,
+			l,
 		),
 	})
 
