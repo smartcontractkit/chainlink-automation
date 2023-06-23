@@ -9,7 +9,8 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/prebuild"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
@@ -60,10 +61,10 @@ func newPlugin[RI any](
 	plugin := &ocr3Plugin[RI]{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
-			hooks.NewPrebuildHookRemoveFromStaging(rs, logger).RunHook,
+			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
 		},
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
-			hooks.NewBuildHookAddFromStaging(rs, logger).RunHook,
+			build.NewAddFromStaging(rs, logger).RunHook,
 		},
 		ReportEncoder: encoder,
 		Coordinator:   coord,

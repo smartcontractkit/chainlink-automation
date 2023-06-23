@@ -1,4 +1,4 @@
-package hooks
+package prebuild
 
 import (
 	"log"
@@ -10,16 +10,16 @@ type resultRemover interface {
 	Remove(...string)
 }
 
-func NewPrebuildHookRemoveFromStaging(remover resultRemover, logger *log.Logger) *PrebuildHookRemoveFromStaging {
-	return &PrebuildHookRemoveFromStaging{remover: remover, logger: logger}
+func NewRemoveFromStaging(remover resultRemover, logger *log.Logger) *RemoveFromStagingHook {
+	return &RemoveFromStagingHook{remover: remover, logger: logger}
 }
 
-type PrebuildHookRemoveFromStaging struct {
+type RemoveFromStagingHook struct {
 	remover resultRemover
 	logger  *log.Logger
 }
 
-func (hook *PrebuildHookRemoveFromStaging) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
+func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
 	toRemove := make([]string, 0, len(outcome.Performable))
 
 	for _, result := range outcome.Performable {
