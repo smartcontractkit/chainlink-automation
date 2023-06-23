@@ -41,18 +41,21 @@ func (plugin *ocr3Plugin[RI]) Query(ctx context.Context, outctx ocr3types.Outcom
 }
 
 func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
-	// Decode the outcome to AutomationOutcome
-	automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outcome.PreviousOutcome)
-	if err != nil {
-		return nil, err
-	}
+	// first round outcome will be nil or empty so no processing should be done
+	if outcome.PreviousOutcome != nil || len(outcome.PreviousOutcome) == 0 {
+		// Decode the outcome to AutomationOutcome
+		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outcome.PreviousOutcome)
+		if err != nil {
+			return nil, err
+		}
 
-	// Execute pre-build hooks
-	for _, hook := range plugin.PrebuildHooks {
-		err = errors.Join(err, hook(automationOutcome))
-	}
-	if err != nil {
-		return nil, err
+		// Execute pre-build hooks
+		for _, hook := range plugin.PrebuildHooks {
+			err = errors.Join(err, hook(automationOutcome))
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create new AutomationObservation
