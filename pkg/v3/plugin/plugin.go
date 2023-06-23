@@ -48,7 +48,7 @@ func newPlugin[RI any](
 	coord := coordinator.NewReportCoordinator(events, conf, logger)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(svcs, []service.Recoverable{rs, coord}...)
+	allSvcs := append(svcs, []service.Recoverable{rs, coord, rn}...)
 	recoverSvcs := []service.Recoverable{}
 
 	for i := range allSvcs {

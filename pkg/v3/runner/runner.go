@@ -49,6 +49,7 @@ type Runner struct {
 
 	// run state data
 	running atomic.Bool
+	chClose chan struct{}
 }
 
 type RunnerConfig struct {
@@ -73,6 +74,7 @@ func NewRunner(
 		cache:            pkgutil.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
 		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[ocr2keepers.CheckResult](conf.CacheClean),
 		workerBatchLimit: WorkerBatchLimit,
+		chClose:          make(chan struct{}, 1),
 	}, nil
 }
 
@@ -90,22 +92,30 @@ func (o *Runner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.Upkee
 }
 
 // Start starts up the cache cleaner
-func (o *Runner) Start() error {
-	if !o.running.Load() {
-		go o.cacheCleaner.Run(o.cache)
-		o.running.Swap(true)
+func (o *Runner) Start(_ context.Context) error {
+	if o.running.Load() {
+		return fmt.Errorf("already running")
 	}
+
+	o.running.Swap(true)
+	go o.cacheCleaner.Run(o.cache)
+
+	<-o.chClose
 
 	return nil
 }
 
 // Close stops the cache cleaner and the parallel worker process
 func (o *Runner) Close() error {
-	if o.running.Load() {
-		o.cacheCleaner.Stop()
-		o.workers.Stop()
-		o.running.Swap(false)
+	if !o.running.Load() {
+		return fmt.Errorf("not running")
 	}
+
+	o.cacheCleaner.Stop()
+	o.workers.Stop()
+	o.running.Swap(false)
+
+	o.chClose <- struct{}{}
 
 	return nil
 }

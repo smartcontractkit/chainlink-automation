@@ -189,13 +189,23 @@ func TestRunnerStartStop(t *testing.T) {
 	runner, err := NewRunner(logger, mr, conf)
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
-	err = runner.Start()
-	assert.NoError(t, err, "no error should be encountered during service start")
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		assert.NoError(t, runner.Start(context.Background()), "no error should be encountered during service start")
+		wg.Done()
+	}()
+
+	// wait for the process to start
+	time.Sleep(100 * time.Millisecond)
 
 	assert.Equal(t, runner.running.Load(), true, "process should be running")
 
 	err = runner.Close()
 	assert.NoError(t, err, "no error should be encountered during service stop")
+
+	wg.Wait()
 
 	assert.Equal(t, runner.running.Load(), false, "process should be running")
 }
