@@ -69,7 +69,9 @@ func NewLogTriggerEligibility(rStore ResultStore, runner Runner, logProvider Log
 // ProcessOutcome functions as an observation pre-build hook to allow data from
 // outcomes to feed inputs in the eligibility flow
 func (flow *LogTriggerEligibility) ProcessOutcome(_ ocr2keepersv3.AutomationOutcome) error {
-	panic("log trigger observation pre-build hook not implemented")
+	// panic("log trigger observation pre-build hook not implemented")
+
+	return nil
 }
 
 func newRecoveryFlow(rs ResultStore, rn Runner, logger *log.Logger, configFuncs ...tickers.RetryConfigFunc) (service.Recoverable, Retryer) {
