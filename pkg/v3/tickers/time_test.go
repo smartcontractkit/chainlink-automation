@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -129,7 +130,7 @@ func TestNewTimeTicker(t *testing.T) {
 
 	t.Run("creates a ticker with an observer that errors when the getter errors", func(t *testing.T) {
 		var mu sync.RWMutex
-		var msg string
+		var msg strings.Builder
 
 		observr := &mockObserver{
 			processFn: func(ctx context.Context, tick Tick) error {
@@ -140,7 +141,7 @@ func TestNewTimeTicker(t *testing.T) {
 			return nil, errors.New("error fetching tick")
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(&msg, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -150,13 +151,13 @@ func TestNewTimeTicker(t *testing.T) {
 		assert.NoError(t, ticker.Close())
 
 		mu.RLock()
-		assert.Equal(t, msg, "error processing observer: boom")
+		assert.Contains(t, msg.String(), "error processing observer: boom")
 		mu.RUnlock()
 	})
 
 	t.Run("creates a ticker with an observer that errors on processing", func(t *testing.T) {
 		var mu sync.RWMutex
-		var msg string
+		var msg strings.Builder
 
 		observr := &mockObserver{
 			processFn: func(ctx context.Context, tick Tick) error {
@@ -171,7 +172,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(&msg, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -181,7 +182,7 @@ func TestNewTimeTicker(t *testing.T) {
 		assert.NoError(t, ticker.Close())
 
 		mu.RLock()
-		assert.Equal(t, msg, "error processing observer: process error")
+		assert.Contains(t, msg.String(), "error processing observer: process error")
 		mu.RUnlock()
 	})
 
@@ -189,7 +190,7 @@ func TestNewTimeTicker(t *testing.T) {
 		successfulCallCount := 0
 
 		var mu sync.RWMutex
-		var msg string
+		var msg strings.Builder
 
 		firstRun := true
 
@@ -215,7 +216,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(&msg, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -225,7 +226,7 @@ func TestNewTimeTicker(t *testing.T) {
 		assert.NoError(t, ticker.Close())
 
 		mu.RLock()
-		assert.Equal(t, msg, "error processing observer: context deadline exceeded")
+		assert.Contains(t, msg.String(), "error processing observer: context deadline exceeded")
 		assert.Equal(t, successfulCallCount, 3)
 		mu.RUnlock()
 	})
