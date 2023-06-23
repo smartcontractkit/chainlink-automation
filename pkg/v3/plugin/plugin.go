@@ -41,7 +41,8 @@ func newPlugin[RI any](
 		rn,
 		logProvider,
 		logger,
-		tickers.RetryWithDefaults,
+		[]tickers.RetryConfigFunc{tickers.RetryWithDefaults},
+		[]tickers.RetryConfigFunc{tickers.RecoveryWithDefaults},
 	)
 
 	// create the event coordinator

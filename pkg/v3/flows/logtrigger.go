@@ -52,9 +52,9 @@ const (
 type LogTriggerEligibility struct{}
 
 // NewLogTriggerEligibility ...
-func NewLogTriggerEligibility(rStore ResultStore, runner Runner, logProvider LogEventProvider, logger *log.Logger, configFuncs ...tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
-	svc0, recoverer := newRecoveryFlow(rStore, runner, logger)
-	svc1, retryer := newRetryFlow(rStore, runner, recoverer, logger, configFuncs...)
+func NewLogTriggerEligibility(rStore ResultStore, runner Runner, logProvider LogEventProvider, logger *log.Logger, retryConfigFuncs []tickers.RetryConfigFunc, recoveryConfigFuncs []tickers.RetryConfigFunc) (*LogTriggerEligibility, []service.Recoverable) {
+	svc0, recoverer := newRecoveryFlow(rStore, runner, logger, recoveryConfigFuncs...)
+	svc1, retryer := newRetryFlow(rStore, runner, recoverer, logger, retryConfigFuncs...)
 	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logProvider, logger)
 
 	svcs := []service.Recoverable{

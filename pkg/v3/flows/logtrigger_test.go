@@ -28,7 +28,7 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 	// values every time
 	src.On("GetLogs", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
-	_, svcs := NewLogTriggerEligibility(store, runner, src, logger)
+	_, svcs := NewLogTriggerEligibility(store, runner, src, logger, []tickers.RetryConfigFunc{}, []tickers.RetryConfigFunc{})
 
 	var wg sync.WaitGroup
 
@@ -70,7 +70,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	store.On("Add", mock.Anything).Times(5)
 
-	_, svcs := NewLogTriggerEligibility(store, runner, src, logger)
+	_, svcs := NewLogTriggerEligibility(store, runner, src, logger, []tickers.RetryConfigFunc{}, []tickers.RetryConfigFunc{})
 
 	var wg sync.WaitGroup
 
@@ -126,7 +126,17 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		c.RetryDelay = 500 * time.Millisecond
 	}
 
-	_, svcs := NewLogTriggerEligibility(store, runner, src, logger, tickers.RetryWithDefaults, config)
+	retryConfigFuncs := []tickers.RetryConfigFunc{
+		tickers.RetryWithDefaults,
+		config,
+	}
+
+	recoveryConfigFuncs := []tickers.RetryConfigFunc{
+		tickers.RecoveryWithDefaults,
+		config,
+	}
+
+	_, svcs := NewLogTriggerEligibility(store, runner, src, logger, retryConfigFuncs, recoveryConfigFuncs)
 
 	var wg sync.WaitGroup
 

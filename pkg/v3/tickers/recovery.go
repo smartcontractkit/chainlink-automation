@@ -8,6 +8,18 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
+const (
+	DefaultRecoveryDelay           = 1 * time.Minute
+	DefaultMaxRecoveryDuration     = 60 * time.Minute
+	DefaultRecoveryCacheExpiration = 2 * DefaultMaxRecoveryDuration
+)
+
+var RecoveryWithDefaults = func(c *RetryConfig) {
+	c.RetryDelay = DefaultRecoveryDelay
+	c.MaxRetryDuration = DefaultMaxRecoveryDuration
+	c.RetryCacheExpiration = DefaultRecoveryCacheExpiration
+}
+
 type recoveryTicker struct {
 	*retryTicker
 	lock      sync.RWMutex
