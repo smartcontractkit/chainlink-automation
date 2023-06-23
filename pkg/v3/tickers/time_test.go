@@ -2,7 +2,8 @@ package tickers
 
 import (
 	"context"
-	"fmt"
+	"io"
+	"log"
 	"reflect"
 	"sync"
 	"testing"
@@ -53,7 +54,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -112,7 +113,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -130,17 +131,6 @@ func TestNewTimeTicker(t *testing.T) {
 		var mu sync.RWMutex
 		var msg string
 
-		oldLogPrintf := logPrintf
-		logPrintf = func(format string, v ...any) {
-			mu.Lock()
-			defer mu.Unlock()
-
-			msg = fmt.Sprintf(format, v...)
-		}
-		defer func() {
-			logPrintf = oldLogPrintf
-		}()
-
 		observr := &mockObserver{
 			processFn: func(ctx context.Context, tick Tick) error {
 				return errors.New("boom")
@@ -150,7 +140,7 @@ func TestNewTimeTicker(t *testing.T) {
 			return nil, errors.New("error fetching tick")
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -168,17 +158,6 @@ func TestNewTimeTicker(t *testing.T) {
 		var mu sync.RWMutex
 		var msg string
 
-		oldLogPrintf := logPrintf
-		logPrintf = func(format string, v ...any) {
-			mu.Lock()
-			defer mu.Unlock()
-
-			msg = fmt.Sprintf(format, v...)
-		}
-		defer func() {
-			logPrintf = oldLogPrintf
-		}()
-
 		observr := &mockObserver{
 			processFn: func(ctx context.Context, tick Tick) error {
 				return errors.New("process error")
@@ -192,7 +171,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -211,17 +190,6 @@ func TestNewTimeTicker(t *testing.T) {
 
 		var mu sync.RWMutex
 		var msg string
-
-		oldLogPrintf := logPrintf
-		logPrintf = func(format string, v ...any) {
-			mu.Lock()
-			defer mu.Unlock()
-
-			msg = fmt.Sprintf(format, v...)
-		}
-		defer func() {
-			logPrintf = oldLogPrintf
-		}()
 
 		firstRun := true
 
@@ -247,7 +215,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()

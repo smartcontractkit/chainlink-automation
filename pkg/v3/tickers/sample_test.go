@@ -13,8 +13,8 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-func TestRetryTicker(t *testing.T) {
-	t.Run("sends retry tick to observer after wait", func(t *testing.T) {
+func TestSampleTicker(t *testing.T) {
+	t.Run("sends sample tick to observer after wait", func(t *testing.T) {
 		// Create a retryable CheckResult
 		retryableResult1 := ocr2keepers.CheckResult{
 			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
@@ -192,7 +192,7 @@ func TestRetryTicker(t *testing.T) {
 	})
 }
 
-func TestRetryTick_GetUpkeeps(t *testing.T) {
+func TestSampleTick_GetUpkeeps(t *testing.T) {
 	// Create a retryTick instance
 	upkeeps := []ocr2keepers.UpkeepPayload{
 		{ID: "payload1"},
