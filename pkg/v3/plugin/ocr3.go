@@ -76,6 +76,8 @@ func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types
 		return nil, err
 	}
 
+	plugin.Logger.Printf("%s", string(encoded))
+
 	// Return the encoded bytes as ocr3 observation
 	return types.Observation(encoded), nil
 }
