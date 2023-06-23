@@ -10,7 +10,7 @@ type resultRemover interface {
 	Remove(...string)
 }
 
-func NewPrebuildHookRemoveFromStaging(remover resultRemover, logger *log.Logger) *RemoveFromStagingHook {
+func NewRemoveFromStaging(remover resultRemover, logger *log.Logger) *RemoveFromStagingHook {
 	return &RemoveFromStagingHook{remover: remover, logger: logger}
 }
 

@@ -61,10 +61,10 @@ func newPlugin[RI any](
 	plugin := &ocr3Plugin[RI]{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
-			prebuild.NewPrebuildHookRemoveFromStaging(rs, logger).RunHook,
+			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
 		},
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
-			build.NewBuildHookAddFromStaging(rs, logger).RunHook,
+			build.NewAddFromStaging(rs, logger).RunHook,
 		},
 		ReportEncoder: encoder,
 		Coordinator:   coord,

@@ -12,9 +12,9 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 )
 
-func TestBuildHookAddFromStaging(t *testing.T) {
+func TestAddFromStaging(t *testing.T) {
 	rs := resultstore.New(log.New(io.Discard, "", 0))
-	hook := NewBuildHookAddFromStaging(rs, log.New(io.Discard, "", 0))
+	hook := NewAddFromStaging(rs, log.New(io.Discard, "", 0))
 	observation := &ocr2keepersv3.AutomationObservation{}
 	expected := []ocr2keepers.CheckResult{
 		{Payload: ocr2keepers.UpkeepPayload{ID: "test1"}},

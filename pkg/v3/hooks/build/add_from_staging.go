@@ -6,16 +6,16 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 )
 
-func NewBuildHookAddFromStaging(rStore ocr2keepersv3.ResultStore, logger *log.Logger) *BuildHookAddFromStaging {
-	return &BuildHookAddFromStaging{rStore: rStore, logger: logger}
+func NewAddFromStaging(rStore ocr2keepersv3.ResultStore, logger *log.Logger) *AddFromStaging {
+	return &AddFromStaging{rStore: rStore, logger: logger}
 }
 
-type BuildHookAddFromStaging struct {
+type AddFromStaging struct {
 	rStore ocr2keepersv3.ResultStore
 	logger *log.Logger
 }
 
-func (hook *BuildHookAddFromStaging) RunHook(obs *ocr2keepersv3.AutomationObservation) error {
+func (hook *AddFromStaging) RunHook(obs *ocr2keepersv3.AutomationObservation) error {
 	results, err := hook.rStore.View()
 	if err != nil {
 		return err
