@@ -2,16 +2,30 @@ package plugin
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/smartcontractkit/libocr/commontypes"
+	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/automationshim"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 )
+
+var (
+	newOracleFn = offchainreporting.NewOracle
+)
+
+type oracle interface {
+	Start() error
+	Close() error
+}
 
 // DelegateConfig provides a single configuration struct for all options
 // to be passed to the oracle, oracle factory, and underlying plugin/services.
@@ -69,6 +83,7 @@ type DelegateConfig struct {
 // the ability to start and stop underlying services associated with the
 // plugin instance.
 type Delegate struct {
+	keeper oracle
 }
 
 // NewDelegate provides a new Delegate from a provided config. A new logger
@@ -77,16 +92,97 @@ type Delegate struct {
 // built-in logger are written to the provided logger as Debug logs prefaced
 // with '[keepers-plugin] ' and a short file name.
 func NewDelegate(c DelegateConfig) (*Delegate, error) {
+	// set some defaults
+	conf := config.ReportingFactoryConfig{
+		CacheExpiration:       config.DefaultCacheExpiration,
+		CacheEvictionInterval: config.DefaultCacheClearInterval,
+		MaxServiceWorkers:     config.DefaultMaxServiceWorkers,
+		ServiceQueueLength:    config.DefaultServiceQueueLength,
+	}
 
-	return &Delegate{}, nil
+	// override if set in config
+	if c.CacheExpiration != 0 {
+		conf.CacheExpiration = c.CacheExpiration
+	}
+
+	if c.CacheEvictionInterval != 0 {
+		conf.CacheEvictionInterval = c.CacheEvictionInterval
+	}
+
+	if c.MaxServiceWorkers != 0 {
+		conf.MaxServiceWorkers = c.MaxServiceWorkers
+	}
+
+	if c.ServiceQueueLength != 0 {
+		conf.ServiceQueueLength = c.ServiceQueueLength
+	}
+
+	// the log wrapper is to be able to use a log.Logger everywhere instead of
+	// a variety of logger types. all logs write to the Debug method.
+	wrapper := &logWriter{l: c.Logger}
+	l := log.New(wrapper, "[keepers-plugin] ", log.Lshortfile)
+
+	l.Printf("creating oracle with reporting factory config: %+v", conf)
+
+	// create the oracle from config values
+	keeper, err := newOracleFn(offchainreporting.AutomationOracleArgs{
+		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
+		V2Bootstrappers:              c.V2Bootstrappers,
+		ContractConfigTracker:        c.ContractConfigTracker,
+		ContractTransmitter:          c.ContractTransmitter,
+		Database:                     c.KeepersDatabase,
+		LocalConfig:                  c.LocalConfig,
+		Logger:                       c.Logger,
+		MonitoringEndpoint:           c.MonitoringEndpoint,
+		OffchainConfigDigester:       c.OffchainConfigDigester,
+		OffchainKeyring:              c.OffchainKeyring,
+		OnchainKeyring:               c.OnchainKeyring,
+		ReportingPluginFactory: NewReportingPluginFactory[automationshim.AutomationReportInfo](
+			c.LogProvider,
+			c.EventProvider,
+			c.Runnable,
+			runner.RunnerConfig{
+				Workers:           c.MaxServiceWorkers,
+				WorkerQueueLength: c.ServiceQueueLength,
+				CacheExpire:       c.CacheExpiration,
+				CacheClean:        c.CacheEvictionInterval,
+			},
+			c.Encoder,
+			nil,
+		),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to create new OCR oracle", err)
+	}
+
+	return &Delegate{keeper: keeper}, nil
 }
 
 // Start starts the OCR oracle and any associated services
 func (d *Delegate) Start(_ context.Context) error {
+	if err := d.keeper.Start(); err != nil {
+		return fmt.Errorf("%w: failed to start keeper oracle", err)
+	}
+
 	return nil
 }
 
 // Close stops the OCR oracle and any associated services
 func (d *Delegate) Close() error {
+	if err := d.keeper.Close(); err != nil {
+		return fmt.Errorf("%w: failed to close keeper oracle", err)
+	}
+
 	return nil
+}
+
+type logWriter struct {
+	l commontypes.Logger
+}
+
+func (l *logWriter) Write(p []byte) (n int, err error) {
+	l.l.Debug(string(p), nil)
+	n = len(p)
+	return
 }
