@@ -49,8 +49,8 @@ github.com/holiman/bloomfilter/v2 v2.0.3 h1:73e0e/V0tCydx14a0SCYS/EWCxgwLZ18CZcZ
 github.com/holiman/uint256 v1.2.2 h1:TXKcSGc2WaxPD2+bmzAsVthL4+pEN0YwXcL5qED83vk=
 github.com/holiman/uint256 v1.2.2/go.mod h1:SC8Ryt4n+UBbPbIBKaG9zbbDlp4jOru9xFZmPzLUTxw=
 github.com/huin/goupnp v1.0.3 h1:N8No57ls+MnjlB+JPiCVSOyy/ot7MJTqlo7rn+NYSqQ=
-github.com/infiloop2/libocr-infiloop2 v0.0.0-20230622144518-72e65e9f99b7 h1:qMBm+HP+GbvHkqss1Ul7PlfkunzcjiUHRGz0hE7aJXg=
-github.com/infiloop2/libocr-infiloop2 v0.0.0-20230622144518-72e65e9f99b7/go.mod h1:2lyRkw/qLQgUWlrWWmq5nj0y90rWeO6Y+v+fCakRgb0=
+github.com/infiloop2/libocr-infiloop2 v0.0.0-20230623175329-85f0dcfb7698 h1:UpxpJ8aboi2OZEANNgo+1tfW38Y9DajeuAQ+TTZbiYo=
+github.com/infiloop2/libocr-infiloop2 v0.0.0-20230623175329-85f0dcfb7698/go.mod h1:2lyRkw/qLQgUWlrWWmq5nj0y90rWeO6Y+v+fCakRgb0=
 github.com/jackpal/go-nat-pmp v1.0.2 h1:KzKSgb7qkJvOUTqYl9/Hg/me3pWgBmERKrTGD7BdWus=
 github.com/klauspost/compress v1.15.15 h1:EF27CXIuDsYJ6mmvtBRlEuB2UVOqHG1tAXgZ7yIO+lw=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
