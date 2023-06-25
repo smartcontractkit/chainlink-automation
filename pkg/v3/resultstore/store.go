@@ -84,6 +84,7 @@ func (s *resultStore) Notifications() <-chan ocr2keepersv3.Notification {
 func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	s.lggr.Printf("Attempting to add results (%+v) to resultStore", results)
 
 	added := 0
 	for _, r := range results {
@@ -101,6 +102,9 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 func (s *resultStore) Remove(ids ...string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if len(ids) > 0 {
+		s.lggr.Printf("Attempting to remove ids (%+v) from resultStore", ids)
+	}
 
 	for _, id := range ids {
 		s.remove(id)
@@ -114,6 +118,10 @@ func (s *resultStore) View(opts ...ocr2keepersv3.ViewOpt) ([]ocr2keepers.CheckRe
 	filters, comparators, limit := ocr2keepersv3.ViewOpts(opts).Apply()
 
 	results, limit := s.viewResults(limit, filters, comparators)
+	if len(results) > 0 {
+		s.lggr.Printf("Attempting to view results from rs gave (%+v)", results)
+	}
+
 	s.orderResults(results, comparators)
 
 	if limit > len(results) {

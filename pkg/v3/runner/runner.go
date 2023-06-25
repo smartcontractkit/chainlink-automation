@@ -87,6 +87,9 @@ func (o *Runner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.Upkee
 	if err != nil {
 		return nil, err
 	}
+	if len(r.Values()) > 0 {
+		o.logger.Printf("Runner checkUpkeep returned results (%+v)", r.Values())
+	}
 
 	return r.Values(), nil
 }
