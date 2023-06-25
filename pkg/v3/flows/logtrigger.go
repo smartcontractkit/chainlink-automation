@@ -42,7 +42,7 @@ type LogEventProvider interface {
 }
 
 const (
-	LogCheckInterval      = 1 * time.Second
+	LogCheckInterval      = 5 * time.Second
 	RetryCheckInterval    = 250 * time.Millisecond
 	RecoveryCheckInterval = 1 * time.Minute
 )
