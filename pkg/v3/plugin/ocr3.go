@@ -157,6 +157,8 @@ func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.
 			encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
 			err = errors.Join(err, encodeErr)
 
+			plugin.Logger.Printf("trying to create report from outcome with (%+v) toPerform", toPerform)
+
 			if encodeErr == nil {
 				// add encoded data to reports
 				reports = append(reports, ocr3types.ReportWithInfo[automationshim.AutomationReportInfo]{
@@ -182,6 +184,8 @@ func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.
 		// encode current collection
 		encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
 		err = errors.Join(err, encodeErr)
+
+		plugin.Logger.Printf("trying to create report from outcome with (%+v) toPerform", toPerform)
 
 		if encodeErr == nil {
 			// add encoded data to reports
