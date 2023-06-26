@@ -8,7 +8,6 @@ import (
 
 	"github.com/smartcontractkit/libocr/commontypes"
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/automationshim"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
@@ -137,7 +136,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester:       c.OffchainConfigDigester,
 		OffchainKeyring:              c.OffchainKeyring,
 		OnchainKeyring:               c.OnchainKeyring,
-		ReportingPluginFactory: NewReportingPluginFactory[automationshim.AutomationReportInfo](
+		ReportingPluginFactory: NewReportingPluginFactory(
 			c.LogProvider,
 			c.EventProvider,
 			c.Runnable,

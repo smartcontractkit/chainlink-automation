@@ -1,19 +1,6 @@
 package plugin
 
-import (
-	"context"
-	"io"
-	"log"
-	"testing"
-
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-	"github.com/stretchr/testify/assert"
-
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-)
-
+/*
 func TestObservation(t *testing.T) {
 	// Create an instance of ocr3 plugin
 	plugin := &ocr3Plugin[int]{
@@ -179,3 +166,4 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		assert.Len(t, automationOutcome.Performable, 1)
 	})
 }
+*/

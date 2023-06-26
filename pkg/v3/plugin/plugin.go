@@ -3,6 +3,7 @@ package plugin
 import (
 	"log"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/automationshim"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
@@ -16,7 +17,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-func newPlugin[RI any](
+func newPlugin(
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
 	encoder Encoder,
@@ -24,7 +25,7 @@ func newPlugin[RI any](
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	logger *log.Logger,
-) (ocr3types.OCR3Plugin[RI], error) {
+) (ocr3types.OCR3Plugin[automationshim.AutomationReportInfo], error) {
 	rs := resultstore.New(logger)
 	rn, err := runner.NewRunner(
 		logger,
@@ -57,7 +58,7 @@ func newPlugin[RI any](
 
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
-	plugin := &ocr3Plugin[RI]{
+	plugin := &ocr3Plugin{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
 			hooks.NewPrebuildHookRemoveFromStaging(rs, logger).RunHook,

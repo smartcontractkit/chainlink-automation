@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/automationshim"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
@@ -29,7 +30,7 @@ const (
 	MaxReportCount = 20
 )
 
-type pluginFactory[RI any] struct {
+type pluginFactory struct {
 	logProvider flows.LogEventProvider
 	events      coordinator.EventProvider
 	runnable    runner.Runnable
@@ -38,15 +39,15 @@ type pluginFactory[RI any] struct {
 	logger      *log.Logger
 }
 
-func NewReportingPluginFactory[RI any](
+func NewReportingPluginFactory(
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
 	runnable runner.Runnable,
 	runnerConf runner.RunnerConfig,
 	encoder Encoder,
 	logger *log.Logger,
-) ocr3types.OCR3PluginFactory[RI] {
-	return &pluginFactory[RI]{
+) ocr3types.OCR3PluginFactory[automationshim.AutomationReportInfo] {
+	return &pluginFactory{
 		logProvider: logProvider,
 		events:      events,
 		runnable:    runnable,
@@ -56,7 +57,7 @@ func NewReportingPluginFactory[RI any](
 	}
 }
 
-func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3types.OCR3Plugin[RI], ocr3types.OCR3PluginInfo, error) {
+func (factory *pluginFactory) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3types.OCR3Plugin[automationshim.AutomationReportInfo], ocr3types.OCR3PluginInfo, error) {
 	info := ocr3types.OCR3PluginInfo{
 		Name: fmt.Sprintf("Oracle: %d: Automation Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: ocr3types.OCR3PluginLimits{
@@ -75,7 +76,7 @@ func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (o
 	}
 
 	// create the plugin; all services start automatically
-	p, err := newPlugin[RI](
+	p, err := newPlugin(
 		factory.logProvider,
 		factory.events,
 		factory.encoder,
