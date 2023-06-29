@@ -173,8 +173,10 @@ func (ct *SimulatedContract) run() {
 						res := result.(SimulatedResult)
 
 						logs[i] = ocr2keepers.PerformLog{
-							Key:           res.Key,
-							TransmitBlock: ocr2keepers.BlockKey(block.BlockNumber.String()),
+							Key: res.Key,
+							TransmitBlock: ocr2keepers.BlockKey{
+								Block: block.BlockNumber.Uint64(),
+							},
 							Confirmations: 0,
 						}
 

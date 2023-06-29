@@ -66,11 +66,7 @@ func (ct *SimulatedContract) CheckUpkeep(ctx context.Context, mercuryEnabled boo
 				panic(err.Error())
 			}
 
-			block, ok := new(big.Int).SetString(string(blockKey), 10)
-			if !ok {
-				mErr = multierr.Append(mErr, fmt.Errorf("block in key not parsable as big int"))
-				return
-			}
+			block := new(big.Int).SetUint64(blockKey.Block)
 
 			up, ok := ct.upkeeps[string(upkeepID)]
 			if !ok {

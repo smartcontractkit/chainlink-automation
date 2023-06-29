@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestReportCoordinator(t *testing.T) {
@@ -39,11 +40,11 @@ func TestReportCoordinator(t *testing.T) {
 	key1Block3 := ocr2keepers.UpkeepKey("3|1")
 	key1Block4 := ocr2keepers.UpkeepKey("4|1")
 
-	bk1 := ocr2keepers.BlockKey("1")
-	bk2 := ocr2keepers.BlockKey("2")
-	bk3 := ocr2keepers.BlockKey("3")
-	bk4 := ocr2keepers.BlockKey("4")
-	bk15 := ocr2keepers.BlockKey("15")
+	bk1 := ocr2keepers.BlockKey{Block: 1}
+	bk2 := ocr2keepers.BlockKey{Block: 2}
+	bk3 := ocr2keepers.BlockKey{Block: 3}
+	bk4 := ocr2keepers.BlockKey{Block: 4}
+	bk15 := ocr2keepers.BlockKey{Block: 15}
 
 	// seeds a test with a starting accepted block and asserts that
 	// values are as expected
@@ -74,12 +75,12 @@ func TestReportCoordinator(t *testing.T) {
 
 		// calling filter at this point should return true because the key has not
 		// yet been added to the filter
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("1"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 1}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		key1Block1Pending, err := rc.IsPending(key1Block1)
 		assert.NoError(t, err)
 		assert.Equal(t, false, key1Block1Pending, "should not filter out key 1 at block 1: key has not been accepted")
 
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("2"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 2}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		key1Block2Pending, err := rc.IsPending(key1Block2)
 		assert.NoError(t, err)
 		assert.Equal(t, false, key1Block2Pending, "should not filter out key 1 at block 2: key has not been accepted")
@@ -95,7 +96,7 @@ func TestReportCoordinator(t *testing.T) {
 	t.Run("Accept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("1"), ocr2keepers.UpkeepIdentifier("1"), nil).Twice()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 1}, ocr2keepers.UpkeepIdentifier("1"), nil).Twice()
 		assert.NoError(t, rc.Accept(key1Block1), "no error expected from accepting the key")
 		assert.NoError(t, rc.Accept(key1Block1), "Key can get accepted again")
 
@@ -108,7 +109,7 @@ func TestReportCoordinator(t *testing.T) {
 		key := ocr2keepers.UpkeepKey("||")
 		err := fmt.Errorf("split error")
 
-		mr.On("SplitUpkeepKey", key).Return(ocr2keepers.BlockKey(""), ocr2keepers.UpkeepIdentifier(""), err).Once()
+		mr.On("SplitUpkeepKey", key).Return(ocr2keepers.BlockKey{}, ocr2keepers.UpkeepIdentifier(""), err).Once()
 
 		assert.ErrorIs(t, rc.Accept(key), err)
 
@@ -118,18 +119,18 @@ func TestReportCoordinator(t *testing.T) {
 	t.Run("FilterAfterAccept", func(t *testing.T) {
 		rc, mr, _ := setup(t, log.New(io.Discard, "nil", 0))
 
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("1"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 1}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		assert.NoError(t, rc.Accept(key1Block1))
 
 		// no logs have been read at this point so the upkeep key should be filtered
 		// out at all block numbers
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("1"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 1}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		mr.On("After", mock.Anything, IndefiniteBlockingKey).Return(false, nil).Once()
 		key1Block1Pending, err := rc.IsPending(key1Block1)
 		assert.NoError(t, err)
 		assert.Equal(t, true, key1Block1Pending, "filter should return true to indicate key should be filtered out at block 1")
 
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("2"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 2}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		mr.On("After", mock.Anything, IndefiniteBlockingKey).Return(false, nil).Once()
 		key1Block2Pending, err := rc.IsPending(key1Block2)
 		assert.NoError(t, err)
@@ -145,7 +146,7 @@ func TestReportCoordinator(t *testing.T) {
 	t.Run("CollectLogsWithMinConfirmations_LessThan", func(t *testing.T) {
 		rc, mr, mp := setup(t, log.New(io.Discard, "nil", 0))
 
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("1"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 1}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		assert.NoError(t, rc.Accept(key1Block1))
 
 		mp.Mock.On("PerformLogs", mock.Anything).Return([]ocr2keepers.PerformLog{
@@ -157,13 +158,13 @@ func TestReportCoordinator(t *testing.T) {
 
 		// perform log didn't have the threshold number of confirmations
 		// making the key still locked at all blocks
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("1"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 1}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		mr.On("After", mock.Anything, IndefiniteBlockingKey).Return(false, nil).Once()
 		key1Block1Pending, err := rc.IsPending(key1Block1)
 		assert.NoError(t, err)
 		assert.Equal(t, true, key1Block1Pending, "filter should return true to indicate key should be filtered out at block 1")
 
-		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey("2"), ocr2keepers.UpkeepIdentifier("1"), nil).Once()
+		mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{Block: 2}, ocr2keepers.UpkeepIdentifier("1"), nil).Once()
 		mr.On("After", mock.Anything, IndefiniteBlockingKey).Return(false, nil).Once()
 		key1Block2Pending, err := rc.IsPending(key1Block2)
 		assert.NoError(t, err)
@@ -896,7 +897,7 @@ func TestReportCoordinator(t *testing.T) {
 			key := ocr2keepers.UpkeepKey("invalid")
 			expected := fmt.Errorf("test")
 
-			mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey(""), ocr2keepers.UpkeepIdentifier([]byte{}), expected).Once()
+			mr.On("SplitUpkeepKey", mock.Anything).Return(ocr2keepers.BlockKey{}, ocr2keepers.UpkeepIdentifier([]byte{}), expected).Once()
 			pending, err := rc.IsPending(key)
 
 			assert.ErrorIs(t, err, expected)
@@ -911,7 +912,7 @@ func TestReportCoordinator(t *testing.T) {
 			id := ocr2keepers.UpkeepIdentifier([]byte("1234"))
 			key := ocr2keepers.UpkeepKey("1|1234")
 			expected := fmt.Errorf("test")
-			invalid := ocr2keepers.BlockKey("invalid")
+			invalid := ocr2keepers.BlockKey{}
 
 			rc.idBlocks.Set("1234", idBlocker{
 				TransmitBlockNumber: invalid,

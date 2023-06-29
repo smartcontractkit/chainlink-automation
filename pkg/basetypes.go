@@ -10,7 +10,10 @@ import (
 
 type UpkeepIdentifier []byte
 
-type BlockKey string
+type BlockKey struct {
+	Block     uint64
+	BlockHash string
+}
 
 type UpkeepKey []byte
 

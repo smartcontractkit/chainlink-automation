@@ -38,7 +38,7 @@ func TestRecoveryTicker(t *testing.T) {
 
 				// assert payload is updated
 				for _, upkeep := range upkeeps {
-					assert.Equal(t, "a_new_block_key", string(upkeep.CheckBlock), "upkeep payload should have updated block key")
+					assert.Equal(t, uint64(568), upkeep.CheckBlock.Block, "upkeep payload should have updated block key")
 				}
 				return nil
 			},
@@ -61,7 +61,7 @@ func TestRecoveryTicker(t *testing.T) {
 		}()
 
 		// update the last block in ticker
-		rt.SetBlock("a_new_block_key")
+		rt.SetBlock(ocr2keepers.BlockKey{Block: 568})
 
 		// send 1 recoverable result to the ticker
 		assert.NoError(t, rt.Retry(retryableResult1))

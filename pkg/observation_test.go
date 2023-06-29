@@ -16,10 +16,10 @@ import (
 func TestObservation_UnmarshalJSON(t *testing.T) {
 	t.Run("valid bytes unmarshal successfully", func(t *testing.T) {
 		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"123","2":["NDU2"]}`), &observation)
+		err := json.Unmarshal([]byte(`{"1":{"block": 123},"2":["NDU2"]}`), &observation)
 		assert.Nil(t, err)
 		assert.Equal(t, Observation{
-			BlockKey: BlockKey("123"),
+			BlockKey: BlockKey{Block: 123},
 			UpkeepIdentifiers: []UpkeepIdentifier{
 				UpkeepIdentifier("456"),
 			},
@@ -28,7 +28,7 @@ func TestObservation_UnmarshalJSON(t *testing.T) {
 
 	t.Run("invalid bytes unmarshal unsuccessfully", func(t *testing.T) {
 		var observation Observation
-		err := json.Unmarshal([]byte(`{"1":"123","2":"NDU2"}`), &observation)
+		err := json.Unmarshal([]byte(`{"1":{"block":123},"2":"NDU2"}`), &observation)
 		assert.NotNil(t, err)
 	})
 }
@@ -123,9 +123,9 @@ func TestObservation_Validate(t *testing.T) {
 
 func TestObservationsToUpkeepKeys(t *testing.T) {
 	obs := []Observation{
-		{BlockKey: BlockKey("123"), UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
-		{BlockKey: BlockKey("124"), UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
-		{BlockKey: BlockKey("125"), UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
+		{BlockKey: BlockKey{Block: 123}, UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
+		{BlockKey: BlockKey{Block: 124}, UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
+		{BlockKey: BlockKey{Block: 125}, UpkeepIdentifiers: []UpkeepIdentifier{UpkeepIdentifier("1234")}},
 	}
 
 	attr := make([]types.AttributedObservation, len(obs))
@@ -149,7 +149,7 @@ func TestObservationsToUpkeepKeys(t *testing.T) {
 
 	mv.On("ValidateBlockKey", mock.AnythingOfType("BlockKey")).Return(true, nil).Times(3)
 	mv.On("ValidateUpkeepIdentifier", mock.AnythingOfType("UpkeepIdentifier")).Return(true, nil).Times(3)
-	mc.On("GetMedian", mock.Anything).Return(BlockKey("124")).Once()
+	mc.On("GetMedian", mock.Anything).Return(BlockKey{Block: 124}).Once()
 	mb.On("MakeUpkeepKey", mock.AnythingOfType("BlockKey"), mock.AnythingOfType("UpkeepIdentifier")).Return(UpkeepKey("124|1234")).Times(3)
 
 	keys, err := observationsToUpkeepKeys(
@@ -172,9 +172,9 @@ func TestObservationsToUpkeepKeys(t *testing.T) {
 
 func TestObservationsToUpkeepKeys_Empty(t *testing.T) {
 	obs := []Observation{
-		{BlockKey: BlockKey("123"), UpkeepIdentifiers: []UpkeepIdentifier{}},
-		{BlockKey: BlockKey("124"), UpkeepIdentifiers: []UpkeepIdentifier{}},
-		{BlockKey: BlockKey("125"), UpkeepIdentifiers: []UpkeepIdentifier{}},
+		{BlockKey: BlockKey{Block: 123}, UpkeepIdentifiers: []UpkeepIdentifier{}},
+		{BlockKey: BlockKey{Block: 124}, UpkeepIdentifiers: []UpkeepIdentifier{}},
+		{BlockKey: BlockKey{Block: 125}, UpkeepIdentifiers: []UpkeepIdentifier{}},
 	}
 
 	attr := make([]types.AttributedObservation, len(obs))
@@ -196,7 +196,7 @@ func TestObservationsToUpkeepKeys_Empty(t *testing.T) {
 	mc := new(MockMedianCalculator)
 
 	mv.On("ValidateBlockKey", mock.AnythingOfType("BlockKey")).Return(true, nil).Times(3)
-	mc.On("GetMedian", mock.Anything).Return(BlockKey("124")).Once()
+	mc.On("GetMedian", mock.Anything).Return(BlockKey{Block: 124}).Once()
 
 	keys, err := observationsToUpkeepKeys(
 		attr,

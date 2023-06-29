@@ -55,7 +55,7 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 			},
 		}
 
-		blockKey := ocr2keepers2.BlockKey("testBlockKey")
+		blockKey := ocr2keepers2.BlockKey{Block: 123}
 
 		outcome := ocr2keepers.AutomationOutcome{
 			Instructions: []instruction.Instruction{

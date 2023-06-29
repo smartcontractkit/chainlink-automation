@@ -21,21 +21,25 @@ type BasicEncoder struct{}
 
 // MakeUpkeepKey creates a new types.UpkeepKey from a types.BlockKey and a types.UpkeepIdentifier
 func (kb BasicEncoder) MakeUpkeepKey(blockKey ocr2keepers.BlockKey, upkeepIdentifier ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepKey {
-	return ocr2keepers.UpkeepKey(fmt.Sprintf("%s%s%s", blockKey, separator, string(upkeepIdentifier)))
+	return ocr2keepers.UpkeepKey(fmt.Sprintf("%d%s%s", blockKey.Block, separator, string(upkeepIdentifier)))
 }
 
 // SplitUpkeepKey splits a types.UpkeepKey into its constituent types.BlockKey and types.UpkeepIdentifier parts
 func (kb BasicEncoder) SplitUpkeepKey(upkeepKey ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error) {
 	if upkeepKey == nil {
-		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+		return ocr2keepers.BlockKey{}, nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
 
 	components := strings.Split(string(upkeepKey), separator)
 	if len(components) != 2 {
-		return "", nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+		return ocr2keepers.BlockKey{}, nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
 
-	return ocr2keepers.BlockKey(components[0]), ocr2keepers.UpkeepIdentifier(components[1]), nil
+	block, ok := big.NewInt(0).SetString(components[0], 10)
+	if !ok {
+		return ocr2keepers.BlockKey{}, nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
+	}
+	return ocr2keepers.BlockKey{Block: block.Uint64()}, ocr2keepers.UpkeepIdentifier(components[1]), nil
 }
 
 // ValidateUpkeepKey returns true if the types.UpkeepKey is valid, false otherwise
@@ -82,12 +86,8 @@ func (kb BasicEncoder) ValidateBlockKey(key ocr2keepers.BlockKey) (bool, error) 
 	maxBlockNumber := new(big.Int)
 	maxBlockNumber, _ = maxBlockNumber.SetString("18446744073709551615", 10) // 2 ** 64 -1
 
-	keyInt, ok := new(big.Int).SetString(string(key), 10)
-	if !ok {
-		return false, fmt.Errorf("%w: block key is not a big int", ErrInvalidBlockKey)
-	}
-
-	if keyInt.String() != string(key) {
+	keyInt := new(big.Int).SetUint64(key.Block)
+	if keyInt.Uint64() != key.Block {
 		return false, fmt.Errorf("%w: block key stringify mismatch", ErrInvalidBlockKey)
 	}
 
@@ -101,11 +101,7 @@ func (kb BasicEncoder) ValidateBlockKey(key ocr2keepers.BlockKey) (bool, error) 
 func (kb BasicEncoder) GetMedian(values []ocr2keepers.BlockKey) ocr2keepers.BlockKey {
 	blockNumbers := make([]*big.Int, 0, len(values))
 	for _, val := range values {
-		in, ok := new(big.Int).SetString(string(val), 10)
-		if !ok {
-			panic("unexpected not integer block value")
-		}
-
+		in := new(big.Int).SetUint64(val.Block)
 		blockNumbers = append(blockNumbers, in)
 	}
 
@@ -126,32 +122,19 @@ func (kb BasicEncoder) GetMedian(values []ocr2keepers.BlockKey) ocr2keepers.Bloc
 		median = blockNumbers[l/2]
 	}
 
-	return ocr2keepers.BlockKey(median.String())
+	return ocr2keepers.BlockKey{Block: median.Uint64()}
 }
 
 // After a is after b
 func (kb BasicEncoder) After(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-	aInt, ok := new(big.Int).SetString(string(a), 10)
-	if !ok {
-		return false, fmt.Errorf("block key not parsable")
-	}
-
-	bInt, ok := new(big.Int).SetString(string(b), 10)
-	if !ok {
-		return false, fmt.Errorf("block key not parsable")
-	}
-
-	return aInt.Cmp(bInt) > 0, nil
+	return a.Block > b.Block, nil
 }
 
 // Increment ...
 func (kb BasicEncoder) Increment(value ocr2keepers.BlockKey) (ocr2keepers.BlockKey, error) {
-	val, ok := new(big.Int).SetString(string(value), 10)
-	if !ok {
-		return "", fmt.Errorf("block key not parsable")
-	}
+	val := new(big.Int).SetUint64(value.Block)
 
 	newVal := new(big.Int).Add(val, big.NewInt(1))
 
-	return ocr2keepers.BlockKey(newVal.String()), nil
+	return ocr2keepers.BlockKey{Block: newVal.Uint64()}, nil
 }

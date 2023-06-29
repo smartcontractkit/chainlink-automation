@@ -145,7 +145,7 @@ func (p *ocrPlugin) Observation(_ context.Context, t types.ReportTimestamp, _ ty
 	// write the number of keys returned from sampling to the debug log
 	// this offers a record of the number of performs the node has visibility
 	// of for each epoch/round
-	p.logger.Printf("OCR observation completed successfully with block number %s, %d eligible upkeeps(%s): %s", string(block), len(allIDs), upkeepIdentifiersToString(allIDs), lCtx)
+	p.logger.Printf("OCR observation completed successfully with block number %d, %d eligible upkeeps(%s): %s", block.Block, len(allIDs), upkeepIdentifiersToString(allIDs), lCtx)
 
 	return b, nil
 }

@@ -113,7 +113,7 @@ func (rc *reportCoordinator) performEvent(evt ocr2keepers.TransmitEvent) {
 	if confirmed, ok := rc.activeKeys.Get(evt.ID); ok {
 		if !confirmed {
 			// Process log if the key hasn't been confirmed yet
-			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", evt.ID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
+			rc.logger.Printf("Perform log found for key %s in transaction %s at block %d, with confirmations %d", evt.ID, evt.TransactionHash, evt.TransmitBlock.Block, evt.Confirmations)
 
 			// set state of key to indicate that the report was transmitted
 			rc.activeKeys.Set(evt.ID, true, util.DefaultCacheExpiration)

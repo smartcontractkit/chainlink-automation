@@ -38,7 +38,9 @@ var (
 	DefaultLockoutWindow  = time.Duration(20) * time.Minute
 	DefaultCacheClean     = time.Duration(30) * time.Second
 	ErrKeyAlreadyAccepted = fmt.Errorf("key already accepted")
-	IndefiniteBlockingKey = ocr2keepers.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
+	IndefiniteBlockingKey = ocr2keepers.BlockKey{
+		Block: uint64(1<<64 - 1), // 18446744073709551616
+	} // Higher than possible block numbers (uint64), used to block keys indefintely
 )
 
 //go:generate mockery --name LogProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename log_provider.generated.go
@@ -199,7 +201,7 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 		if confirmed, ok := rc.activeKeys.Get(string(l.Key)); ok {
 			if !confirmed {
 				// Process log if the key hasn't been confirmed yet
-				rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+				rc.logger.Printf("Perform log found for key %s in transaction %s at block %d, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock.Block, l.Confirmations)
 
 				// set state of key to indicate that the report was transmitted
 				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
@@ -214,10 +216,10 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 				// This can happen if we get a perform log for the same key again on a newer block in case of reorgs
 				// In this case, no change to activeKeys is needed, but idBlocks is updated to the newer BlockNumber
 				idBlock, ok := rc.idBlocks.Get(string(id))
-				if ok && string(idBlock.CheckBlockNumber) == string(logCheckBlockKey) &&
-					string(idBlock.TransmitBlockNumber) != string(l.TransmitBlock) {
+				if ok && idBlock.CheckBlockNumber.Block == logCheckBlockKey.Block &&
+					idBlock.TransmitBlockNumber.Block != l.TransmitBlock.Block {
 
-					rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+					rc.logger.Printf("Got a re-orged perform log for key %s in transaction %s at block %d, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock.Block, l.Confirmations)
 
 					rc.updateIdBlock(string(id), idBlocker{
 						CheckBlockNumber:    logCheckBlockKey,
@@ -260,7 +262,7 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 		if confirmed, ok := rc.activeKeys.Get(string(l.Key)); ok {
 			if !confirmed {
 				// Process log if the key hasn't been confirmed yet
-				rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+				rc.logger.Printf("Stale report log found for key %s in transaction %s at block %d, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock.Block, l.Confirmations)
 				// set state of key to indicate that the report was transmitted
 				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
 
@@ -276,10 +278,10 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 				// This can happen if we get a stale log for the same key again on a newer block or in case
 				// the key was unblocked due to a performLog which later got reorged into a stale log
 				idBlock, ok := rc.idBlocks.Get(string(id))
-				if ok && string(idBlock.CheckBlockNumber) == string(logCheckBlockKey) &&
-					string(idBlock.TransmitBlockNumber) != string(nextKey) {
+				if ok && idBlock.CheckBlockNumber.Block == logCheckBlockKey.Block &&
+					idBlock.TransmitBlockNumber.Block != nextKey.Block {
 
-					rc.logger.Printf("Got a stale report log for previously accepted key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
+					rc.logger.Printf("Got a stale report log for previously accepted key %s in transaction %s at block %d, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock.Block, l.Confirmations)
 
 					rc.updateIdBlock(string(id), idBlocker{
 						CheckBlockNumber:    logCheckBlockKey,
@@ -329,12 +331,12 @@ func (b idBlocker) shouldUpdate(val idBlocker, e Encoder) (bool, error) {
 	// Now the checkBlockNumber should be same
 
 	// If b has an IndefiniteBlockingKey, then update
-	if string(b.TransmitBlockNumber) == string(IndefiniteBlockingKey) {
+	if b.TransmitBlockNumber.Block == IndefiniteBlockingKey.Block {
 		return true, nil
 	}
 
 	// If val has an IndefiniteBlockingKey, then don't update
-	if string(val.TransmitBlockNumber) == string(IndefiniteBlockingKey) {
+	if val.TransmitBlockNumber.Block == IndefiniteBlockingKey.Block {
 		return false, nil
 	}
 

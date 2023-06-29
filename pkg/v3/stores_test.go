@@ -63,7 +63,7 @@ func TestNewMetadataStore(t *testing.T) {
 		assert.True(t, reflect.DeepEqual(store.identifiers, identifiers))
 
 		history := ocr2keepers.BlockHistory{
-			ocr2keepers.BlockKey("key1"),
+			ocr2keepers.BlockKey{Block: 1},
 		}
 
 		ch <- history

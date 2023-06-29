@@ -131,9 +131,9 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		metadataStore := ocr2keepers.NewMetadataStore(ticker)
 
 		blockHistory := ocr2keepers2.BlockHistory{
-			ocr2keepers2.BlockKey("1"),
-			ocr2keepers2.BlockKey("2"),
-			ocr2keepers2.BlockKey("3"),
+			ocr2keepers2.BlockKey{Block: 1},
+			ocr2keepers2.BlockKey{Block: 2},
+			ocr2keepers2.BlockKey{Block: 3},
 		}
 
 		go func() {

@@ -50,9 +50,9 @@ func TestBlockTicker(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 1"), ocr2keepers.BlockKey("key 2")}
-	secondBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 3")}
-	thirdBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 4")}
+	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey{Block: 1}, ocr2keepers.BlockKey{Block: 2}}
+	secondBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey{Block: 2}}
+	thirdBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey{Block: 3}}
 
 	blockHistories := []ocr2keepers.BlockHistory{
 		firstBlockHistory,
@@ -118,9 +118,9 @@ func TestBlockTicker_buffered(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 1"), ocr2keepers.BlockKey("key 2")}
-	secondBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 3")}
-	thirdBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 4")}
+	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey{Block: 1}, ocr2keepers.BlockKey{Block: 2}}
+	secondBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey{Block: 3}}
+	thirdBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey{Block: 4}}
 
 	blockHistories := []ocr2keepers.BlockHistory{
 		firstBlockHistory,
