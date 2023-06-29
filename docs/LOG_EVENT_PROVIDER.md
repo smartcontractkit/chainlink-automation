@@ -1,12 +1,12 @@
 # Log Event Provider
 
 This document describes the log event provider, which is the data source for log triggers. \
-The provider is responsible for fetching logs of active log upkeeps, 
+The provider is responsible for reading logs of active log upkeeps from log poller, 
 and exposing them to the log observer.
 
 ## Overview
 
-The provider fetches logs from log poller, 
+The provider reads logs from log poller, 
 and stores them in the log buffer, which will be queried by the 
 log observer (pre processor) for latest logs w/o input, i.e. with no range or any indication for desired upkeeps.
 
@@ -29,32 +29,25 @@ We don't rely on the log event as it is unfinalized.
 
 <br />
 
-### Fetching Logs from DB
+### Reading Logs from DB
 
-Logs are fetched from the log poller continouosly in the background.
-Once fetched, logs are stored in the [log buffer](#log-buffer).
+The provider reads logs from the log poller continouosly in the background and stores them in the [log buffer](#log-buffer).
 
-Every `FetchInterval` the provider fetches logs for a subset of the active log upkeeps. `FetchPartitions` is used to determine the amount of partitions. \
+Every `ReadInterval` the provider reads logs for `ReadMaxBatchSize` active log upkeeps.
+
 Hash partitioning is done on the contract address of the filters.
 The address can be shared among multiple upkeeps. 
-Only 6 bytes are used to avoid working with large numbers: \
-`sha256(filter.contractAddr)[:6] % FetchPartitions`
-
-The number of upkeeps in a partition depends on the number of unique 
-contract addresses among the active upkeeps.
+Only the last 6 bytes of the hash are used to avoid working with large numbers, assuming that the number of partitions won't exceed 5 digits: \
+`sha256(filter.contractAddr)[(len-6):] % Partitions`
 
 **NOTE:** we count on the hash function 
 to provide balanced distribution of addresses.
 
-Assuming we have `u` active upkeeps, `p` partitions, and `c` unique contract addresses.
-Then the number of addresses in each partition is `c / p`.
+The number of partitions (`Partitions`) is dynamically changing 
+according to the number of active upkeeps: \
+`Partitions = len(activeUpkeeps) / ReadMaxBatchSize`
 
-The number of upkeeps in a partition, is greater or equal 
-(when there are no shared contract addresses) to the number 
-of addresses in that partition. 
-And less or equal to the number of all active upkeeps when they all share the same contract address.
-
-It is guarteed that all upkeeps will be visited once within `FetchInterval*FetchPartitions` time frame.
+It is guarteed that all upkeeps will be visited once within one round time frame which is `ReadInterval*Partitions`.
 
 The following sequence diagram describes the flow:
 
@@ -65,12 +58,12 @@ sequenceDiagram
     participant LogPoller
     participant DB
 
-    par Logs fetching
-        loop every FetchInterval
+    par Reading logs
+        loop every ReadInterval
             LogEventProvider->>LogEventProvider: get partition
             LogEventProvider->>+LogPoller: get latest block
             LogPoller-->>-LogEventProvider: block
-            LogEventProvider->>LogEventProvider: get entries and release lock 
+            LogEventProvider->>LogEventProvider: get entries/filters 
             loop for each entry execute
                 LogEventProvider->>LogEventProvider: check last poll block
                 LogEventProvider->>LogEventProvider: block rate limiting
@@ -90,16 +83,16 @@ end
 
 #### Blocks Range
 
-Upon initial fetch/restart, we ask for `LogBlocksLookback` blocks, i.e. range of `[latestBlock-LogBlocksLookback, latestBlock]`.
+Upon initial read/restart, we ask for `LogBlocksLookback` blocks, i.e. range of `[latestBlock-LogBlocksLookback, latestBlock]`.
 
-After initialization, each upkeep has a `lastPollBlock` assiciated with it so we can continue next fetch from 
+After initialization, each upkeep has a `lastPollBlock` assiciated with it so we can continue next read from 
 the same point with some buffer to catch reorgs: `[u.lastPollBlock-LookbackBuffer, latestBlock]`
 
 #### Rate Limiting
 
 Each upkeep has a rate limiter for blocks in order to control the amount of queries per upkeep, i.e. to control the number of blocks that are queried from log poller. `BlockRateLimit` and `BlockLimitBurst` are used to configure the limit.
 
-Upon initial fetch/restart the burst is automatically increased as we ask for `LogBlocksLookback` blocks.
+Upon initial read/restart the burst is automatically increased as we ask for `LogBlocksLookback` blocks.
 
 Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `AllowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
 
@@ -115,8 +108,8 @@ Logs are saved in DB for `LogRetention` amount of time.
 
 ### Log Buffer
 
-A circular/ring buffer of fetched logs.
-Each entry in the buffer represents a block, and holds the logs fetched for that block. The block number is calculated as `blockNumber % LogBufferSize`.
+A circular/ring buffer of blocks and their corresponding logs.
+The block number is calculated as `blockNumber % LogBufferSize`.
 
 We limit the amount of logs per block with `BufferMaxBlockSize`, and logs per block & upkeep with `AllowedLogsPerBlock`. While the number of blocks `LogBufferSize` is currently set as `LogBlocksLookback*3` to have enough space.
 
@@ -139,13 +132,13 @@ The following configurations are used by the log event provider:
 
 | Config | Description | Default |
 | --- | --- | --- |
-| `LogBlocksLookback` | Number of blocks to fetch upon initial fetch/restart | `512` |
+| `LogBlocksLookback` | Number of blocks to read upon initial read/restart | `512` |
 | `LogRetention` | Time to keep logs in DB | `24hr` |
 | `LogBufferSize` | Number of blocks to keep in buffer | `LogBlocksLookback*3` |
 | `BufferMaxBlockSize` | Max number of logs per block | `1000` |
 | `AllowedLogsPerBlock` | Max number of logs per block & upkeep | `100` |
-| `FetchInterval` | Interval between fetches | `1s` |
-| `FetchPartitions` | Number of partitions to use for fetching logs from log poller | `5` |
+| `ReadInterval` | Interval between reads | `1s` |
+| `ReadMaxBatchSize` | Max number of items in one read batch / partition | `100` |
 | `LookbackBuffer` | Number of blocks to add to the range | `32` |
 | `BlockRateLimit` | Max number of blocks to query per upkeep | `1/sec` |
 | `BlockLimitBurst` | Burst of blocks to query per upkeep | `128` |
@@ -154,11 +147,11 @@ The following configurations are used by the log event provider:
 
 ## Rational / Q&A
 
-### How are changes to active log upkeeps handled between two fetch intervals
+### How are changes to active log upkeeps handled between two read intervals
 
-In case some upkeep was removed we drop it from active upkeeps, and it won't be included in future fetches. In case it was removed while being in fetching process we might loose these logs.
+In case some upkeep was removed we drop it from active upkeeps, and it won't be included in future reads. In case it was removed while being in reading process we might loose these logs.
 
-In case some upkeep was changed, we will update the filter in log poller, and it will be included in future fetches. But the last poll block remains the same, so the change will take effect only after the next fetch.
+In case some upkeep was changed, we will update the filter in log poller, and it will be included in future reads. But the last poll block remains the same, so the change will take effect only after the next read.
 
 ### Why not use go-cache for log buffer?
 
@@ -172,11 +165,11 @@ A one-time allocated slice is more efficient in this case over a map, and allows
 
 Patitioning by contract address will group the filters of the same contract together, allowing us to optimize the queries to the DB.
 
-### Why not use consistent hashing for partitions when fetching logs?
+### Why not use consistent hashing for partitions when reading logs?
 
-consistent hashing is not used since we don't need to have stable partitioning between multiple fetches.
+The number of partitions is changing upon each interval, but since we don't need to have stable partitioning between multiple intervals, we can use a simple hash function. 
 
-### Why not fetching logs for all active upkeeps in a single procedure?
+### Why not reading logs for all active upkeeps in a single procedure?
 
 We want to avoid overloading the DB with large amount of queries.
 batching the queries into smaller chunks allows us to balance our interaction with the DB.
