@@ -39,6 +39,7 @@ func (kb BasicEncoder) SplitUpkeepKey(upkeepKey ocr2keepers.UpkeepKey) (ocr2keep
 	if !ok {
 		return ocr2keepers.BlockKey{}, nil, fmt.Errorf("%w: missing data in upkeep key", ErrUpkeepKeyNotParsable)
 	}
+	// TODO how should the upkeep key structure be updated to allow for a block key of many fields?
 	return ocr2keepers.BlockKey{Block: block.Uint64()}, ocr2keepers.UpkeepIdentifier(components[1]), nil
 }
 
