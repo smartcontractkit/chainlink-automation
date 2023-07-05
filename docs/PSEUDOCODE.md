@@ -14,6 +14,8 @@ for each tick
     call observer with tick data
 ```
 
+Q. Needs a clear list of flows in the plugin and recovery flow needs to be added
+
 ## General Eligibility Check Flow (Observer)
 The simplified modular flow uses data from an arbitrary tick to get upkeep
 payloads from a registry. The upkeeps should be scoped to the tick type and any
@@ -39,11 +41,17 @@ call postprocessor with results from check pipeline
 ```
 
 ### Log Trigger Preprocessing
+
+Q. Unclear how this is being achieved in pre processing. Will there be a coordinator here?
+
 When an upkeep check result is included in an outcome, the check result should
 not be added to future outcomes. This preprocessing filters out check results
 that have already been processed.
 
 ### Log Trigger Postprocessing
+
+Q. Is OCR staging same as result queue
+
 Log trigger postprocessing is a combination of putting eligible results into
 OCR staging and sending retryable results to the retry ticker. The last part is
 unique to log triggers and is not applicable to conditionals.
@@ -127,6 +135,8 @@ Approach #1: maintain recent results in outcome and use as a filter for new
 outcomes. (not shown)
 
 Approach #2: consider the lack of reporting an upkeep as a valid observation.
+Q. Approach 2 does not solve the root problem and adds other issues when nodes can not report on an upkeep due to some other reason, e.g. just being lagged
+
 f+1 nodes can indicate that an upkeep needs to be performed while f+1 nodes can
 also indicate that an upkeep does not need to be performed. In this case, both
 observations would achieve a valid quorum, but produce different outcomes. 
@@ -140,29 +150,35 @@ approach with the least unknowns and is the one we're going with. (shown)
 for each round
     // Observation -------------------
     for each outcome hook
+        Q. Hook needs to ensure that it can be called multiple times
         call hook run with previous outcome
 
     // filtering can be applied within ocr staging such that the previous add
     // to in-flight is immediately applied to results being pulled
     for each check pipeline result from ocr staging
         call peek on ocr staging queue to get result // does not remove
+        Q. What's the limit applied here how are the results fetched from staging queue (shuffled / fifo etc)
         add check pipeline result to observation
 
+    Q. Change this to latest suffix
     get latest block from sample staging
-    add latest block to observation
+    add latest block to observation metadata
 
+    Q. This needs to include instructions for recover logs which can have the same structure as instruction for sample upkeeps
     // only eligible upkeeps
     get sampled upkeep ids from sample staging
 
     for each sampled upkeep id
         add upkeep id to observation
 
+    Q. Needs exact observation struct and size limits
     // observation contains: latest block, sampled ids, check pipeline results
     return observation
 
     // Outcome -------------------
     for each attributedObservation
         increment count for check pipeline result
+        Q. Needs to be updated to use latest prefix
         update median block number with observation latest
         add observation id samples to sampled id list
 
@@ -170,6 +186,7 @@ for each round
         if count is greater than f+1
             add to outcome
 
+    Q. Needs to account for recovery log instructions and append with coordinated block to be used with
     flatten and dedupe sampled ids
     add sampled ids to outcome
     add median block to outcome
@@ -192,6 +209,7 @@ simplify and modularize this, the OCR process will run multiple hooks passing
 the previous round's outcome to each hook.
 
 ### Coordinator Hook
+Q. This should be within shouldAcceptReport?
 ```
 get check pipeline results from outcome
 
@@ -200,6 +218,7 @@ for each check pipeline result
 ```
 
 ### Check Pipeline Result Staging Hook
+
 To allow results to be added to outcomes over multiple rounds, a result is 
 pulled from the ocr staging queue using `peek` instead of `pop`. If a result is
 in an outcome, the result should be popped from the queue so that it doesn't get
@@ -212,6 +231,8 @@ for each check pipeline result
 ```
 
 ### Create Coordinated Tick Hook
+Q. This needs to be changed to tie a sample ID / recover log with a particular median block and repeatedly sent over 'x' observations
+
 The coordinated ticker runs the check pipeline, producing results for 
 coordinated candidates. 
 ```

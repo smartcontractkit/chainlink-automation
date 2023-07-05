@@ -20,12 +20,16 @@ The following block diagram describes the involved components:
 
 ### Log Filters Life-Cycle
 
+Q. Need to include migrated upkeeps here for completeness, however not strictly needed in 2.1 since there were no log upkeeps before
 Upon registration or unpausing of an upkeep, the provider registers the corresponding filter in `LogPoller`, while upon canceled or paused upkeep we unregister the filter to avoid overloading the DB with redundant filters.
 
 **TBD: unfunded upkeeps**
+Checking underfunded upkeeps is a horizontal problem across both log and conditional upkeeps. Current ideas are that underfunded upkeep will automatically get paused when we add offchain charge, so this component likely doesn't need to worry about it.
 
 For each relevant state event, the provider will get the actual config from the contract and update the filter accordingly. 
 We don't rely on the log event as it is unfinalized.
+
+Q. Not sure if there's much difference between reading data from log and reading data from chain right afterwords. We will need to handle the case properly when state itself gets reorged (This can be fixed by a periodic fullSync)
 
 <br />
 
@@ -87,6 +91,8 @@ Upon initial read/restart, we ask for `LogBlocksLookback` blocks, i.e. range of 
 
 After initialization, each upkeep has a `lastPollBlock` assiciated with it so we can continue next read from 
 the same point with some buffer to catch reorgs: `[u.lastPollBlock-LookbackBuffer, latestBlock]`
+
+Q. Where will we dedupe the logs read repeatedly during lookback buffer? in log event provider or buffer?
 
 #### Rate Limiting
 

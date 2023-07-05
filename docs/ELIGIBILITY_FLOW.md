@@ -17,6 +17,8 @@ To maintain chain agnostic behavior, the following data types should be
 abstracted from the plugin as much as possible. That is, the less detail the
 plugin needs from each of the following value types, the better.
 
+Q. How are interface types used within the plugin? If the plugin doesn't care about them then why do they need to be passed to plugin at all?
+
 ### ConfiguredUpkeep
 
 A configured upkeep represents all information that identifies a single upkeep

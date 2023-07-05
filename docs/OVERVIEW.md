@@ -48,6 +48,13 @@ The following diagram describes the flow of upkeep data in log triggers flow:
 
 In the case of log triggers, results flow is unidirectional through a FIFO queue and to the plugin.
 
+Q1. Does log observer expect duplicated logs in getLogs? Alternatively why doesn't log provider just provide ticks to log observer?
+
+Q2. FIFO / Plugin pop needs to be changed. No popping, only reads. Reads can be fifo / shuffled.
+
+Q3. Needs another provider / some method to guarantee no logs are missed. Each log should have either a failure status (locally on a node) or should have an onchain perform.
+Related Question: Does the registry guarantee that checking upkeep on the same log as one which has been previously performed will return false?
+
 The **Log Event Provider** ([see doc](./LOG_EVENT_PROVIDER.md)) is responsible for fetching logs of active log upkeeps, and act as a data source for the log observer, 
 that will use the log data as an input for each upkeep pipeline.
 Behind the scenes (part of `EvmRegistry`), log filters are managed (un/registered) as upkeeps are added and removed from the registry.
@@ -55,6 +62,10 @@ Behind the scenes (part of `EvmRegistry`), log filters are managed (un/registere
 <br/>
 
 ### Conditional Observer
+
+Q1. Results Queue remove/pop behaviour needs to change. Only add (no remove). No pop, only read a shuffled portion
+
+Q2. The flow from coordinated block ticker needs to be clarified as it will come from outcome. It can have repeated ticks
 
 The following diagram describes the flow of upkeep data in confitional triggers flow:
 
