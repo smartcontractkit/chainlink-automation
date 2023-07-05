@@ -128,7 +128,7 @@ The log buffer is implemented with capped slice that is allocated upon buffer cr
 
 The following configurations are used by the log event provider:
 
-**TBD:** simplify/abstract and add chain specific defaults
+**TBD:** Chain specific defaults
 
 | Config | Description | Default |
 | --- | --- | --- |
@@ -144,6 +144,20 @@ The following configurations are used by the log event provider:
 | `BlockLimitBurst` | Burst of blocks to query per upkeep | `128` |
 
 <br />
+
+## Open Issues / TODOs
+
+- [ ] Unfunded upkeeps - currently we keep the filter in log poller, 
+but we don't read logs for it. The filter should be removed from log poller after some time
+to avoid overloading the poller with redundant filters.
+- [ ] Simplify/abstract configurations and add chain specific defaults
+- [ ] Missed logs - there might be edge cases where some logs are missed, 
+while the provider is not in control e.g. high DB latency.
+One option to mitigate these cases is to have additional thread that continuously tries to fill the gaps by reading logs from the DB and adding them to the buffer.
+- [ ] Dropped logs - in cases of fast chains or slow OCR rounds we might need to drop logs.
+The buffer size can be increased to allow bursting, but if the consumer (OCR) is slow for a while then some logs might be dropped.
+- [ ] Call log poller once per contract address - currently the filters are grouped by contract address, but we call log poller for each upkeep separately. 
+One option is to call log poller once per contract address, and filter the results "manually". Another option is to implement this kind of logic within log poller.
 
 ## Rational / Q&A
 
@@ -173,4 +187,3 @@ The number of partitions is changing upon each interval, but since we don't need
 
 We want to avoid overloading the DB with large amount of queries.
 batching the queries into smaller chunks allows us to balance our interaction with the DB.
-
