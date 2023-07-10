@@ -135,9 +135,7 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 	}
 
 	output := make([]ocr2keepers.CheckResult, len(results))
-	for i, res := range results {
-		output[i] = res
-	}
+	copy(output, results)
 
 	return output, nil
 }

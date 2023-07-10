@@ -27,9 +27,9 @@ var (
 	simulationFile  = flag.StringP("simulation-file", "f", "./runbook.json", "file path to read simulation config from")
 	outputDirectory = flag.StringP("output-directory", "o", "./runbook_logs", "directory path to output log files")
 	simulate        = flag.Bool("simulate", false, "run simulation")
-	displayCharts   = flag.Bool("charts", false, "create and serve charts")
-	profiler        = flag.Bool("pprof", false, "run pprof server on startup")
-	pprofPort       = flag.Int("pprof-port", 6060, "port to serve the profiler on")
+	//displayCharts   = flag.Bool("charts", false, "create and serve charts")
+	profiler  = flag.Bool("pprof", false, "run pprof server on startup")
+	pprofPort = flag.Int("pprof-port", 6060, "port to serve the profiler on")
 )
 
 func main() {
