@@ -127,7 +127,9 @@ func TestSampleTicker(t *testing.T) {
 			mg.ExpectedCalls = []*mock.Call{}
 			mr.ExpectedCalls = []*mock.Call{}
 
+			mu.Lock()
 			assert.Equal(t, test.ExpectedSampleResult, processed, "tick should have been sampled exactly %d times", test.ExpectedSampleResult)
+			mu.Unlock()
 		})
 	}
 
@@ -249,13 +251,14 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 			mg.ExpectedCalls = []*mock.Call{}
 			mr.ExpectedCalls = []*mock.Call{}
 
+			mu.Lock()
 			assert.Equal(t, test.ExpectedSampleResult, processed, "tick should have been sampled exactly %d times", test.ExpectedSampleResult)
+			mu.Unlock()
+
 			assert.NoError(t, rt.Close(), "no error on close")
 			wg.Wait()
 
-			logs := b.String()
-
-			assert.Contains(t, logs, test.ExpectedErr, "should contain expected log: %s", test.ExpectedErr)
+			assert.Contains(t, b.String(), test.ExpectedErr, "should contain expected log: %s", test.ExpectedErr)
 		})
 	}
 }

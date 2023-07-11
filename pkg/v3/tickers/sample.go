@@ -46,11 +46,11 @@ func (st *sampleTicker) Start(ctx context.Context) error {
 		return fmt.Errorf("already running")
 	}
 
-	go func() {
-		if err := st.blocks.Start(ctx); err != nil {
+	go func(c context.Context) {
+		if err := st.blocks.Start(c); err != nil {
 			st.logger.Printf("error starting block ticker: %s", err)
 		}
-	}()
+	}(ctx)
 
 	st.running.Store(true)
 
