@@ -1,4 +1,4 @@
-package v3
+package ocr2keepers
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 type mockTick struct {
@@ -24,8 +25,14 @@ type mockRunner struct {
 	mock.Mock
 }
 
-func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-	ret := m.Called(ctx, payloads)
+func (m *mockRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+	var ret mock.Arguments
+	if len(payloads) > 0 {
+		ret = m.Called(ctx, payloads)
+	} else {
+		ret = m.Called(ctx)
+	}
+
 	return ret.Get(0).([]ocr2keepers.CheckResult), ret.Error(1)
 }
 
@@ -49,9 +56,9 @@ func (m *mockPostprocessor) PostProcess(ctx context.Context, results []ocr2keepe
 
 func TestNewObserver(t *testing.T) {
 	type args struct {
-		preprocessors []Preprocessor
-		postprocessor Postprocessor
-		runner        Runner2
+		preprocessors []PreProcessor
+		postprocessor PostProcessor
+		runner        Runner
 	}
 	tests := []struct {
 		name string
@@ -61,12 +68,12 @@ func TestNewObserver(t *testing.T) {
 		{
 			name: "should return an Observer",
 			args: args{
-				preprocessors: []Preprocessor{new(mockPreprocessor)},
+				preprocessors: []PreProcessor{new(mockPreprocessor)},
 				postprocessor: new(mockPostprocessor),
 				runner:        new(mockRunner),
 			},
 			want: Observer{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -74,20 +81,20 @@ func TestNewObserver(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner), "NewObserver(%v, %v, %v)", tt.args.preprocessors, tt.args.postprocessor, tt.args.runner)
+			assert.Equalf(t, tt.want, *NewObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner), "NewObserver(%v, %v, %v)", tt.args.preprocessors, tt.args.postprocessor, tt.args.runner)
 		})
 	}
 }
 
 func TestObserve_Process(t *testing.T) {
 	type fields struct {
-		Preprocessors []Preprocessor
-		Postprocessor Postprocessor
-		Runner        Runner2
+		Preprocessors []PreProcessor
+		Postprocessor PostProcessor
+		Runner        Runner
 	}
 	type args struct {
 		ctx  context.Context
-		tick Tick
+		tick tickers.Tick
 	}
 	type expectations struct {
 		tickReturn         []ocr2keepers.UpkeepPayload
@@ -110,7 +117,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if tick.GetUpkeeps returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -132,7 +139,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if preprocessor.PreProcess returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -154,7 +161,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if runner.CheckUpkeeps returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -176,7 +183,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return an error if postprocessor.PostProcess returns an error",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -198,7 +205,7 @@ func TestObserve_Process(t *testing.T) {
 		{
 			name: "should return nil if all steps succeed",
 			fields: fields{
-				Preprocessors: []Preprocessor{new(mockPreprocessor)},
+				Preprocessors: []PreProcessor{new(mockPreprocessor)},
 				Postprocessor: new(mockPostprocessor),
 				Runner:        new(mockRunner),
 			},
@@ -230,7 +237,14 @@ func TestObserve_Process(t *testing.T) {
 			for i := range tt.fields.Preprocessors {
 				tt.fields.Preprocessors[i].(*mockPreprocessor).On("PreProcess", tt.args.ctx, expectedPayload).Return(expectedPayload, tt.expectations.preprocessorErr)
 			}
-			tt.fields.Runner.(*mockRunner).On("CheckUpkeeps", tt.args.ctx, expectedPayload).Return(expectedCheckResults, tt.expectations.runnerErr)
+
+			vals := []interface{}{}
+			vals = append(vals, tt.args.ctx)
+			for i := range expectedPayload {
+				vals = append(vals, expectedPayload[i])
+			}
+
+			tt.fields.Runner.(*mockRunner).On("CheckUpkeeps", vals...).Return(expectedCheckResults, tt.expectations.runnerErr)
 			tt.fields.Postprocessor.(*mockPostprocessor).On("PostProcess", tt.args.ctx, expectedCheckResults).Return(tt.expectations.postprocessorErr)
 
 			tt.wantErr(t, o.Process(tt.args.ctx, tt.args.tick), fmt.Sprintf("Process(%v, %v)", tt.args.ctx, tt.args.tick))

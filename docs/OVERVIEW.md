@@ -48,7 +48,7 @@ The following diagram describes the flow of upkeep data in log triggers flow:
 
 In the case of log triggers, results flow is unidirectional through a FIFO queue and to the plugin.
 
-The **Log Provider** is responsible for serving logs of active upkeeps, and act as a data source for the log observer, 
+The **Log Event Provider** ([see doc](./LOG_EVENT_PROVIDER.md)) is responsible for fetching logs of active log upkeeps, and act as a data source for the log observer, 
 that will use the log data as an input for each upkeep pipeline.
 Behind the scenes (part of `EvmRegistry`), log filters are managed (un/registered) as upkeeps are added and removed from the registry.
 
