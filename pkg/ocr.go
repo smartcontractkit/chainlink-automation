@@ -172,7 +172,7 @@ func (p *ocrPlugin) Report(ctx context.Context, t types.ReportTimestamp, _ types
 			err  error
 		)
 
-		if keys, err = observationsToUpkeepKeys(
+		if keys, err = ObservationsToUpkeepKeys(
 			attributed,
 			p.encoder,
 			p.encoder,
