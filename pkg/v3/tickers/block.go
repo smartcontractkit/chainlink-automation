@@ -53,7 +53,6 @@ loop:
 			select {
 			case t.C <- blockHistory:
 				t.bufferedValue = nil
-				log.Print("forwarded")
 			default:
 				t.bufferedValue = blockHistory
 			}
@@ -66,7 +65,6 @@ loop:
 			if t.bufferedValue != nil {
 				select {
 				case t.C <- t.bufferedValue:
-					log.Print("forwarded from buffer")
 					t.bufferedValue = nil
 				default:
 				}

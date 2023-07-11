@@ -60,14 +60,15 @@ Loop:
 	for {
 		select {
 		case h := <-st.blocks.C:
-			if len(h) == 0 {
-				continue
+			latestBlock, err := h.Latest()
+			if err != nil {
+				continue Loop
 			}
 
+			// do the observation with limited time
 			ctx, cancelFn := context.WithTimeout(ctx, st.samplingLimit)
 
-			// do the observation with limited time
-			tick, err := st.getterFn(ctx, h[0])
+			tick, err := st.getterFn(ctx, latestBlock)
 			if err != nil {
 				st.logger.Printf("failed to get upkeeps: %s", err)
 				cancelFn()
@@ -120,6 +121,10 @@ func (ticker *sampleTicker) getterFn(ctx context.Context, block ocr2keepers.Bloc
 		return upkeepTick{upkeeps: nil}, nil
 	}
 
+	if len(upkeeps) <= size {
+		return upkeepTick{upkeeps: upkeeps}, nil
+	}
+
 	return upkeepTick{upkeeps: upkeeps[:size]}, nil
 }
 
@@ -144,6 +149,7 @@ func NewSampleTicker(
 		logger:        logger,
 		blocks:        block,
 		shuffler:      util.Shuffler[ocr2keepers.UpkeepPayload]{Source: util.NewCryptoRandSource()},
+		chClose:       make(chan struct{}, 1),
 	}
 
 	return st, nil

@@ -2,194 +2,262 @@ package tickers
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
 func TestSampleTicker(t *testing.T) {
-	t.Run("sends sample tick to observer after wait", func(t *testing.T) {
-		// Create a retryable CheckResult
-		retryableResult1 := ocr2keepers.CheckResult{
-			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
-			Retryable: true,
-		}
-
-		var (
-			wg    sync.WaitGroup
-			mu    sync.Mutex
-			count int
-		)
-
-		// create a mocked observer that tracks retries and mocks pipeline results
-		mockObserver := &mockObserver{
-			processFn: func(ctx context.Context, t Tick) error {
-				upkeeps, _ := t.GetUpkeeps(ctx)
-
-				// assert that retry was in tick at least once
-				mu.Lock()
-				count += len(upkeeps)
-				mu.Unlock()
-
-				return nil
+	tests := []struct {
+		Name                 string
+		TestData             []ocr2keepers.UpkeepPayload
+		ExpectedSampleCount  int
+		ExpectedSampleResult int
+	}{
+		{
+			Name: "simple happy path",
+			TestData: []ocr2keepers.UpkeepPayload{
+				{ID: "1"},
 			},
-		}
-
-		// set some short time values to confine the tests
-		config := func(c *RetryConfig) {
-			c.RetryDelay = 50 * time.Millisecond
-			c.MaxRetryDuration = 250 * time.Millisecond
-		}
-
-		// Create a retryTicker instance
-		rt := NewRetryTicker(10*time.Millisecond, mockObserver, log.New(io.Discard, "", 0), RetryWithDefaults, config)
-
-		// start the ticker in a separate thread
-		wg.Add(1)
-		go func() {
-			assert.NoError(t, rt.Start(context.Background()))
-			wg.Done()
-		}()
-
-		// send the retry
-		assert.NoError(t, rt.Retry(retryableResult1))
-
-		// wait a little longer than the retry delay
-		time.Sleep(60 * time.Millisecond)
-
-		assert.NoError(t, rt.Close())
-
-		wg.Wait()
-
-		assert.Equal(t, 1, count, "tick should have been retried exactly once")
-	})
-
-	t.Run("does not send retry before wait", func(t *testing.T) {
-		// Create a retryable CheckResult
-		retryableResult1 := ocr2keepers.CheckResult{
-			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
-			Retryable: true,
-		}
-
-		var (
-			wg    sync.WaitGroup
-			mu    sync.Mutex
-			count int
-		)
-
-		// create a mocked observer that tracks retries and mocks pipeline results
-		mockObserver := &mockObserver{
-			processFn: func(ctx context.Context, t Tick) error {
-				upkeeps, _ := t.GetUpkeeps(ctx)
-
-				// assert that retry was in tick at least once
-				mu.Lock()
-				count += len(upkeeps)
-				mu.Unlock()
-
-				return nil
+			ExpectedSampleCount:  1,
+			ExpectedSampleResult: 1,
+		},
+		{
+			Name: "reduce to sample size",
+			TestData: []ocr2keepers.UpkeepPayload{
+				{ID: "1"},
+				{ID: "2"},
+				{ID: "3"},
 			},
-		}
+			ExpectedSampleCount:  2,
+			ExpectedSampleResult: 2,
+		},
+		{
+			Name:                 "empty set",
+			TestData:             []ocr2keepers.UpkeepPayload{},
+			ExpectedSampleCount:  2,
+			ExpectedSampleResult: 0,
+		},
+	}
 
-		// set some short time values to confine the tests
-		config := func(c *RetryConfig) {
-			c.RetryDelay = 100 * time.Millisecond
-			c.MaxRetryDuration = 250 * time.Millisecond
-		}
+	// setup common ticker for all tests
+	var (
+		wg        sync.WaitGroup
+		mu        sync.Mutex
+		processed int
+	)
 
-		// Create a retryTicker instance
-		rt := NewRetryTicker(25*time.Millisecond, mockObserver, log.New(io.Discard, "", 0), RetryWithDefaults, config)
+	// create basic mocks
+	mg := new(MockGetter)
+	mr := new(MockRatio)
 
-		// start the ticker in a separate thread
-		wg.Add(1)
-		go func() {
-			assert.NoError(t, rt.Start(context.Background()))
-			wg.Done()
-		}()
+	// create an observer that tracks sampling and mocks pipeline results
+	mockObserver := &mockObserver{
+		processFn: func(ctx context.Context, t Tick) error {
+			upkeeps, _ := t.GetUpkeeps(ctx)
 
-		// send the retry
-		assert.NoError(t, rt.Retry(retryableResult1))
+			// assert that retry was in tick at least once
+			mu.Lock()
+			processed = len(upkeeps)
+			mu.Unlock()
 
-		// wait a little shorter than the retry delay
-		time.Sleep(50 * time.Millisecond)
+			return nil
+		},
+	}
 
-		assert.NoError(t, rt.Close())
+	// create mocked block source
+	ch := make(chan ocr2keepers.BlockHistory)
+	sub := &mockSubscriber{
+		SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
+			return 0, ch, nil
+		},
+		UnsubscribeFn: func(id int) error {
+			return nil
+		},
+	}
 
-		wg.Wait()
+	// Create a sampleTicker instance
+	rt, err := NewSampleTicker(
+		mr,
+		mg,
+		mockObserver,
+		sub,
+		10*time.Millisecond,
+		log.New(io.Discard, "", 0),
+	)
+	assert.NoError(t, err, "no error on instantiation")
 
-		assert.Equal(t, 0, count, "tick should not have been retried")
-	})
+	// start the ticker in a separate thread
+	wg.Add(1)
+	go func() {
+		assert.NoError(t, rt.Start(context.Background()))
+		wg.Done()
+	}()
 
-	t.Run("does not allow retry after max duration", func(t *testing.T) {
-		// Create a retryable CheckResult
-		retryableResult1 := ocr2keepers.CheckResult{
-			Payload:   ocr2keepers.UpkeepPayload{ID: "retryable_1"},
-			Retryable: true,
-		}
+	// run all tests on the same ticker instance
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			mg.On("GetActiveUpkeeps", mock.Anything, mock.Anything).Return(test.TestData, nil)
+			mr.On("OfInt", mock.Anything).Return(test.ExpectedSampleCount)
 
-		var (
-			wg    sync.WaitGroup
-			mu    sync.Mutex
-			count int
-		)
+			// send a block history
+			ch <- []ocr2keepers.BlockKey{
+				("4"),
+				("3"),
+				("2"),
+			}
 
-		// create a mocked observer that tracks retries and mocks pipeline results
-		mockObserver := &mockObserver{
-			processFn: func(ctx context.Context, t Tick) error {
-				upkeeps, _ := t.GetUpkeeps(ctx)
+			// wait a little longer than the sampling timeout
+			time.Sleep(20 * time.Millisecond)
 
-				// assert that retry was in tick at least once
-				mu.Lock()
-				count += len(upkeeps)
-				mu.Unlock()
+			// test expectations
+			mg.AssertExpectations(t)
+			mr.AssertExpectations(t)
 
-				return nil
-			},
-		}
+			// reset for next test
+			mg.ExpectedCalls = []*mock.Call{}
+			mr.ExpectedCalls = []*mock.Call{}
 
-		// set some short time values to confine the tests
-		config := func(c *RetryConfig) {
-			c.RetryDelay = 50 * time.Millisecond
-			c.MaxRetryDuration = 250 * time.Millisecond
-		}
+			assert.Equal(t, test.ExpectedSampleResult, processed, "tick should have been sampled exactly %d times", test.ExpectedSampleResult)
+		})
+	}
 
-		// Create a retryTicker instance
-		rt := NewRetryTicker(10*time.Millisecond, mockObserver, log.New(io.Discard, "", 0), RetryWithDefaults, config)
+	assert.NoError(t, rt.Close(), "no error on close")
 
-		// start the ticker in a separate thread
-		wg.Add(1)
-		go func() {
-			assert.NoError(t, rt.Start(context.Background()))
-			wg.Done()
-		}()
+	wg.Wait()
+}
 
-		// send the retry
-		assert.NoError(t, rt.Retry(retryableResult1))
+func TestSampleTicker_ErrorStates(t *testing.T) {
+	tests := []struct {
+		Name                 string
+		TestData             []ocr2keepers.UpkeepPayload
+		ExpectedSampleCount  int
+		ExpectedSampleResult int
+		GetterFnError        error
+		ObserverFnError      error
+		ExpectedErr          string
+	}{
+		{
+			Name:                 "getter function error",
+			TestData:             []ocr2keepers.UpkeepPayload{},
+			ExpectedSampleCount:  1,
+			ExpectedSampleResult: 0,
+			GetterFnError:        fmt.Errorf("test"),
+			ObserverFnError:      nil,
+			ExpectedErr:          "failed to get upkeeps",
+		},
+		{
+			Name:                 "observer function error",
+			TestData:             []ocr2keepers.UpkeepPayload{},
+			ExpectedSampleCount:  1,
+			ExpectedSampleResult: 0,
+			GetterFnError:        nil,
+			ObserverFnError:      fmt.Errorf("test"),
+			ExpectedErr:          "error processing observer",
+		},
+	}
 
-		// wait for the retry to succeed
-		time.Sleep(100 * time.Millisecond)
+	// run all tests on a different ticker instance
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			// setup common ticker for all tests
+			var (
+				wg        sync.WaitGroup
+				mu        sync.Mutex
+				processed int
+			)
 
-		// send the retry again to ensure the ability to retry the same value
-		assert.NoError(t, rt.Retry(retryableResult1))
+			// create basic mocks
+			mg := new(MockGetter)
+			mr := new(MockRatio)
 
-		// wait long enough to be more than the max duration
-		time.Sleep(200 * time.Millisecond)
+			// create an observer that tracks sampling and mocks pipeline results
+			mockObserver := &mockObserver{
+				processFn: func(ctx context.Context, t Tick) error {
+					upkeeps, _ := t.GetUpkeeps(ctx)
 
-		// attempting a retry should return an error
-		assert.ErrorIs(t, rt.Retry(retryableResult1), ErrRetryDurationExceeded)
+					// assert that retry was in tick at least once
+					mu.Lock()
+					processed = len(upkeeps)
+					mu.Unlock()
 
-		assert.NoError(t, rt.Close())
+					return test.ObserverFnError
+				},
+			}
 
-		wg.Wait()
+			// create mocked block source
+			ch := make(chan ocr2keepers.BlockHistory)
+			sub := &mockSubscriber{
+				SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
+					return 0, ch, nil
+				},
+				UnsubscribeFn: func(id int) error {
+					return nil
+				},
+			}
 
-		assert.Equal(t, 2, count, "tick should have been retried exactly twice")
-	})
+			b := new(strings.Builder)
+
+			// Create a sampleTicker instance
+			rt, err := NewSampleTicker(
+				mr,
+				mg,
+				mockObserver,
+				sub,
+				10*time.Millisecond,
+				log.New(b, "[test-log] ", log.LstdFlags),
+			)
+			assert.NoError(t, err, "no error on instantiation")
+
+			// start the ticker in a separate thread
+			wg.Add(1)
+			go func() {
+				assert.NoError(t, rt.Start(context.Background()))
+				wg.Done()
+			}()
+
+			mg.On("GetActiveUpkeeps", mock.Anything, mock.Anything).Return(test.TestData, test.GetterFnError)
+
+			if test.GetterFnError == nil {
+				mr.On("OfInt", mock.Anything).Return(test.ExpectedSampleCount)
+			}
+
+			// send a block history
+			ch <- []ocr2keepers.BlockKey{
+				("4"),
+				("3"),
+				("2"),
+			}
+
+			// wait a little longer than the sampling timeout
+			time.Sleep(20 * time.Millisecond)
+
+			// test expectations
+			mg.AssertExpectations(t)
+			mr.AssertExpectations(t)
+
+			// reset for next test
+			mg.ExpectedCalls = []*mock.Call{}
+			mr.ExpectedCalls = []*mock.Call{}
+
+			assert.Equal(t, test.ExpectedSampleResult, processed, "tick should have been sampled exactly %d times", test.ExpectedSampleResult)
+			assert.NoError(t, rt.Close(), "no error on close")
+			wg.Wait()
+
+			logs := b.String()
+
+			assert.Contains(t, logs, test.ExpectedErr, "should contain expected log: %s", test.ExpectedErr)
+		})
+	}
 }
 
 func TestSampleTick_GetUpkeeps(t *testing.T) {
@@ -206,4 +274,52 @@ func TestSampleTick_GetUpkeeps(t *testing.T) {
 	// Assert that the retrieved upkeeps match the original upkeeps
 	assert.NoError(t, err)
 	assert.Equal(t, upkeeps, retrievedUpkeeps)
+}
+
+type MockRatio struct {
+	mock.Mock
+}
+
+func (_m *MockRatio) OfInt(v int) int {
+	ret := _m.Called(v)
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func(int) int); ok {
+		r0 = rf(v)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+type MockGetter struct {
+	mock.Mock
+}
+
+func (_m *MockGetter) GetActiveUpkeeps(ctx context.Context, bk ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error) {
+	ret := _m.Called(ctx, bk)
+
+	var r0 []ocr2keepers.UpkeepPayload
+	var r1 error
+
+	if rf, ok := ret.Get(0).(func(context.Context, ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error)); ok {
+		return rf(ctx, bk)
+	}
+
+	if rf, ok := ret.Get(0).(func(context.Context, ocr2keepers.BlockKey) []ocr2keepers.UpkeepPayload); ok {
+		r0 = rf(ctx, bk)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ocr2keepers.UpkeepPayload)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ocr2keepers.BlockKey) error); ok {
+		r1 = rf(ctx, bk)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
