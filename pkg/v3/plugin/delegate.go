@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 // DelegateConfig provides a single configuration struct for all options
@@ -39,6 +40,10 @@ type DelegateConfig struct {
 
 	// Encoder provides methods to encode/decode reports
 	Encoder Encoder
+
+	// BlockSubscriber provides subscribe/unsubscribe methods for block source
+	// data
+	BlockSubscriber tickers.BlockSubscriber
 
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is
