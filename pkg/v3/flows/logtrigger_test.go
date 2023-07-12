@@ -40,7 +40,7 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 		}(svcs[i], context.Background())
 	}
 
-	time.Sleep(2500 * time.Millisecond)
+	time.Sleep(10500 * time.Millisecond)
 
 	for i := range svcs {
 		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
@@ -82,7 +82,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 		}(svcs[i], context.Background())
 	}
 
-	time.Sleep(5500 * time.Millisecond)
+	time.Sleep(25500 * time.Millisecond)
 
 	for i := range svcs {
 		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
@@ -138,7 +138,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		}(svcs[i], context.Background())
 	}
 
-	time.Sleep(3200 * time.Millisecond)
+	time.Sleep(15200 * time.Millisecond)
 
 	for i := range svcs {
 		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
