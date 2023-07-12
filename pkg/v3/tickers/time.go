@@ -63,8 +63,6 @@ Loop:
 	for {
 		select {
 		case tm := <-t.ticker.C:
-			ctx, cancelFn := context.WithTimeout(ctx, t.interval)
-
 			tick, err := t.getterFn(ctx, tm)
 			if err != nil {
 				logPrintf("error fetching tick: %s", err.Error())
@@ -73,8 +71,6 @@ Loop:
 			if err := t.observer.Process(ctx, tick); err != nil {
 				logPrintf("error processing observer: %s", err.Error())
 			}
-
-			cancelFn()
 		case <-t.chClose:
 			break Loop
 		}

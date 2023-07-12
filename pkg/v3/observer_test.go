@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -59,6 +60,7 @@ func TestNewObserver(t *testing.T) {
 		preprocessors []PreProcessor
 		postprocessor PostProcessor
 		runner        Runner
+		limit         time.Duration
 	}
 	tests := []struct {
 		name string
@@ -71,17 +73,19 @@ func TestNewObserver(t *testing.T) {
 				preprocessors: []PreProcessor{new(mockPreprocessor)},
 				postprocessor: new(mockPostprocessor),
 				runner:        new(mockRunner),
+				limit:         50 * time.Millisecond,
 			},
 			want: Observer{
-				Preprocessors: []PreProcessor{new(mockPreprocessor)},
-				Postprocessor: new(mockPostprocessor),
-				Runner:        new(mockRunner),
+				Preprocessors:    []PreProcessor{new(mockPreprocessor)},
+				Postprocessor:    new(mockPostprocessor),
+				Runner:           new(mockRunner),
+				processTimeLimit: 50 * time.Millisecond,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, *NewObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner), "NewObserver(%v, %v, %v)", tt.args.preprocessors, tt.args.postprocessor, tt.args.runner)
+			assert.Equalf(t, tt.want, *NewObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner, 50*time.Millisecond), "NewObserver(%v, %v, %v)", tt.args.preprocessors, tt.args.postprocessor, tt.args.runner)
 		})
 	}
 }
@@ -228,24 +232,25 @@ func TestObserve_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Observer{
-				Preprocessors: tt.fields.Preprocessors,
-				Postprocessor: tt.fields.Postprocessor,
-				Runner:        tt.fields.Runner,
+				Preprocessors:    tt.fields.Preprocessors,
+				Postprocessor:    tt.fields.Postprocessor,
+				Runner:           tt.fields.Runner,
+				processTimeLimit: 50 * time.Millisecond,
 			}
 			// Mock calls
-			tt.args.tick.(*mockTick).On("GetUpkeeps", tt.args.ctx).Return(expectedPayload, tt.expectations.tickErr)
+			tt.args.tick.(*mockTick).On("GetUpkeeps", mock.AnythingOfType("*context.timerCtx")).Return(expectedPayload, tt.expectations.tickErr)
 			for i := range tt.fields.Preprocessors {
-				tt.fields.Preprocessors[i].(*mockPreprocessor).On("PreProcess", tt.args.ctx, expectedPayload).Return(expectedPayload, tt.expectations.preprocessorErr)
+				tt.fields.Preprocessors[i].(*mockPreprocessor).On("PreProcess", mock.AnythingOfType("*context.timerCtx"), expectedPayload).Return(expectedPayload, tt.expectations.preprocessorErr)
 			}
 
 			vals := []interface{}{}
-			vals = append(vals, tt.args.ctx)
+			vals = append(vals, mock.AnythingOfType("*context.timerCtx"))
 			for i := range expectedPayload {
 				vals = append(vals, expectedPayload[i])
 			}
 
 			tt.fields.Runner.(*mockRunner).On("CheckUpkeeps", vals...).Return(expectedCheckResults, tt.expectations.runnerErr)
-			tt.fields.Postprocessor.(*mockPostprocessor).On("PostProcess", tt.args.ctx, expectedCheckResults).Return(tt.expectations.postprocessorErr)
+			tt.fields.Postprocessor.(*mockPostprocessor).On("PostProcess", mock.AnythingOfType("*context.timerCtx"), expectedCheckResults).Return(tt.expectations.postprocessorErr)
 
 			tt.wantErr(t, o.Process(tt.args.ctx, tt.args.tick), fmt.Sprintf("Process(%v, %v)", tt.args.ctx, tt.args.tick))
 		})
