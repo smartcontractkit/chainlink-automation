@@ -7,46 +7,80 @@ import (
 
 	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instruction"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 )
 
 type mockInstructionStore struct {
-	SetFn    func(instruction.Instruction)
-	HasFn    func(instruction.Instruction) bool
-	DeleteFn func(instruction.Instruction)
+	SetFn    func(instructions.Instruction)
+	HasFn    func(instructions.Instruction) bool
+	DeleteFn func(instructions.Instruction)
 }
 
-func (s *mockInstructionStore) Set(i instruction.Instruction) {
+func (s *mockInstructionStore) Set(i instructions.Instruction) {
 	s.SetFn(i)
 }
 
-func (s *mockInstructionStore) Has(i instruction.Instruction) bool {
+func (s *mockInstructionStore) Has(i instructions.Instruction) bool {
 	return s.HasFn(i)
 }
 
-func (s *mockInstructionStore) Delete(i instruction.Instruction) {
+func (s *mockInstructionStore) Delete(i instructions.Instruction) {
 	s.DeleteFn(i)
-}
-
-type mockBlockSetter struct {
-	SetBlockFn func(key ocr2keepers2.BlockKey)
-}
-
-func (s *mockBlockSetter) SetBlock(key ocr2keepers2.BlockKey) {
-	s.SetBlockFn(key)
 }
 
 func TestNewCoordinateBlockHook(t *testing.T) {
 	t.Run("pre build hook adds DoCoordinateBlock to the instruction store", func(t *testing.T) {
-		storeState := make(map[instruction.Instruction]bool)
-		store := &mockInstructionStore{
-			SetFn: func(i instruction.Instruction) {
+		storeState := make(map[instructions.Instruction]bool)
+		iStore := &mockInstructionStore{
+			SetFn: func(i instructions.Instruction) {
 				storeState[i] = true
 			},
-			DeleteFn: func(i instruction.Instruction) {
+			DeleteFn: func(i instructions.Instruction) {
 				delete(storeState, i)
 			},
-			HasFn: func(i instruction.Instruction) bool {
+			HasFn: func(i instructions.Instruction) bool {
+				val, ok := storeState[i]
+				if !ok {
+					return false
+				}
+				return val
+			},
+		}
+
+		outcome := ocr2keepers.AutomationOutcome{
+			Instructions: []instructions.Instruction{
+				instructions.ShouldCoordinateBlock,
+			},
+			Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{},
+		}
+
+		iStore.Set(instructions.ShouldCoordinateBlock)
+
+		mStore := store.NewMetadata(nil)
+
+		hook := NewCoordinateBlockHook(iStore, mStore)
+
+		err := hook.RunHook(outcome)
+		assert.NoError(t, err)
+
+		assert.True(t, iStore.Has(instructions.DoCoordinateBlock))
+		assert.False(t, iStore.Has(instructions.ShouldCoordinateBlock))
+
+		_, ok := mStore.Get(store.CoordinatedBlockMetaData)
+		assert.False(t, ok)
+	})
+
+	t.Run("pre build hook adds DoCoordinateBlock to the instruction store", func(t *testing.T) {
+		storeState := make(map[instructions.Instruction]bool)
+		iStore := &mockInstructionStore{
+			SetFn: func(i instructions.Instruction) {
+				storeState[i] = true
+			},
+			DeleteFn: func(i instructions.Instruction) {
+				delete(storeState, i)
+			},
+			HasFn: func(i instructions.Instruction) bool {
 				val, ok := storeState[i]
 				if !ok {
 					return false
@@ -58,44 +92,40 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		blockKey := ocr2keepers2.BlockKey("testBlockKey")
 
 		outcome := ocr2keepers.AutomationOutcome{
-			Instructions: []instruction.Instruction{
-				ShouldCoordinateBlock,
+			Instructions: []instructions.Instruction{
+				instructions.DoCoordinateBlock,
 			},
-			Metadata: map[string]interface{}{
-				"coordinatedBlock": blockKey,
-			},
-		}
-
-		store.Set(ShouldCoordinateBlock)
-
-		var setBlock ocr2keepers2.BlockKey
-		blockSetter := &mockBlockSetter{
-			SetBlockFn: func(key ocr2keepers2.BlockKey) {
-				setBlock = key
+			Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{
+				ocr2keepers.CoordinatedBlockOutcomeKey: blockKey,
 			},
 		}
 
-		hook := NewCoordinateBlockHook(store, blockSetter)
+		iStore.Set(instructions.DoCoordinateBlock)
 
-		err := hook.RunHook(outcome)
-		assert.NoError(t, err)
+		mStore := store.NewMetadata(nil)
 
-		assert.True(t, store.Has(DoCoordinateBlock))
-		assert.False(t, store.Has(ShouldCoordinateBlock))
+		hook := NewCoordinateBlockHook(iStore, mStore)
 
-		assert.Equal(t, setBlock, blockKey)
+		assert.NoError(t, hook.RunHook(outcome), "no error from running hook")
+
+		assert.False(t, iStore.Has(instructions.DoCoordinateBlock), "no instructions should exist")
+		assert.False(t, iStore.Has(instructions.ShouldCoordinateBlock), "no instructions should exist")
+
+		v, ok := mStore.Get(store.CoordinatedBlockMetaData)
+		assert.True(t, ok, "coordinated block should be in metadata store")
+		assert.Equal(t, v, blockKey, "value for coordinated block should be from outcome")
 	})
 
 	t.Run("an error is returned when the metadata stores the wrong data type for coordinated block", func(t *testing.T) {
-		storeState := make(map[instruction.Instruction]bool)
-		store := &mockInstructionStore{
-			SetFn: func(i instruction.Instruction) {
+		storeState := make(map[instructions.Instruction]bool)
+		iStore := &mockInstructionStore{
+			SetFn: func(i instructions.Instruction) {
 				storeState[i] = true
 			},
-			DeleteFn: func(i instruction.Instruction) {
+			DeleteFn: func(i instructions.Instruction) {
 				delete(storeState, i)
 			},
-			HasFn: func(i instruction.Instruction) bool {
+			HasFn: func(i instructions.Instruction) bool {
 				val, ok := storeState[i]
 				if !ok {
 					return false
@@ -105,24 +135,22 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		}
 
 		outcome := ocr2keepers.AutomationOutcome{
-			Instructions: []instruction.Instruction{
-				ShouldCoordinateBlock,
+			Instructions: []instructions.Instruction{
+				instructions.ShouldCoordinateBlock,
 			},
-			Metadata: map[string]interface{}{
-				"coordinatedBlock": "not a block",
+			Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{
+				ocr2keepers.CoordinatedBlockOutcomeKey: "not a block",
 			},
 		}
 
-		store.Set(ShouldCoordinateBlock)
+		iStore.Set(instructions.ShouldCoordinateBlock)
 
-		blockSetter := &mockBlockSetter{}
-
-		hook := NewCoordinateBlockHook(store, blockSetter)
+		hook := NewCoordinateBlockHook(iStore, store.NewMetadata(nil))
 
 		err := hook.RunHook(outcome)
 		assert.Error(t, err)
 
-		assert.True(t, store.Has(DoCoordinateBlock))
-		assert.False(t, store.Has(ShouldCoordinateBlock))
+		assert.True(t, iStore.Has(instructions.DoCoordinateBlock))
+		assert.False(t, iStore.Has(instructions.ShouldCoordinateBlock))
 	})
 }

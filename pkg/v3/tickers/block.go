@@ -8,7 +8,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-type blockSubscriber interface {
+type BlockSubscriber interface {
 	// Subscribe provides an identifier integer, a new channel, and potentially an error
 	Subscribe() (int, chan ocr2keepers.BlockHistory, error)
 	// Unsubscribe requires an identifier integer and indicates the provided channel should be closed
@@ -21,14 +21,14 @@ type BlockTicker struct {
 	C             chan ocr2keepers.BlockHistory
 	chID          int
 	ch            chan ocr2keepers.BlockHistory
-	subscriber    blockSubscriber
+	subscriber    BlockSubscriber
 	bufferedValue ocr2keepers.BlockHistory
 	nextCh        chan ocr2keepers.BlockHistory
 	closer        sync.Once
 	stopCh        chan int
 }
 
-func NewBlockTicker(subscriber blockSubscriber) (*BlockTicker, error) {
+func NewBlockTicker(subscriber BlockSubscriber) (*BlockTicker, error) {
 	chID, ch, err := subscriber.Subscribe()
 	if err != nil {
 		return nil, err
@@ -74,11 +74,13 @@ loop:
 	return err
 }
 
-func (t *BlockTicker) Close() {
+func (t *BlockTicker) Close() error {
 	t.closer.Do(func() {
 		t.stopCh <- 1
 		if err := t.subscriber.Unsubscribe(t.chID); err != nil {
 			log.Printf("error unsubscribing: %v", err)
 		}
 	})
+
+	return nil
 }

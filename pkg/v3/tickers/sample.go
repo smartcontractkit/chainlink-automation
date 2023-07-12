@@ -132,7 +132,7 @@ func NewSampleTicker(
 	ratio ratio,
 	getter upkeepsGetter,
 	observer observer,
-	subscriber blockSubscriber,
+	subscriber BlockSubscriber,
 	samplingLimit time.Duration,
 	logger *log.Logger,
 ) (*sampleTicker, error) {

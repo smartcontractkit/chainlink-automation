@@ -1,157 +1,104 @@
 package build_test
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instruction"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 )
 
 type mockInstructionStore struct {
-	SetFn    func(instruction.Instruction)
-	HasFn    func(instruction.Instruction) bool
-	DeleteFn func(instruction.Instruction)
+	SetFn    func(instructions.Instruction)
+	HasFn    func(instructions.Instruction) bool
+	DeleteFn func(instructions.Instruction)
 }
 
-func (s *mockInstructionStore) Set(i instruction.Instruction) {
+func (s *mockInstructionStore) Set(i instructions.Instruction) {
 	s.SetFn(i)
 }
 
-func (s *mockInstructionStore) Has(i instruction.Instruction) bool {
+func (s *mockInstructionStore) Has(i instructions.Instruction) bool {
 	return s.HasFn(i)
 }
 
-func (s *mockInstructionStore) Delete(i instruction.Instruction) {
+func (s *mockInstructionStore) Delete(i instructions.Instruction) {
 	s.DeleteFn(i)
-}
-
-type mockSubscriber struct {
-	SubscribeFn   func() (int, chan ocr2keepers2.BlockHistory, error)
-	UnsubscribeFn func(id int) error
-}
-
-func (s *mockSubscriber) Subscribe() (int, chan ocr2keepers2.BlockHistory, error) {
-	return s.SubscribeFn()
-}
-
-func (s *mockSubscriber) Unsubscribe(id int) error {
-	return s.UnsubscribeFn(id)
 }
 
 func TestNewCoordinateBlockHook(t *testing.T) {
 	t.Run("when the instruction store has the should coordinate block instruction, the observation gets updated with should coordinate block instruction", func(t *testing.T) {
-		hook := build.NewCoordinateBlockHook()
 		obs := &ocr2keepers.AutomationObservation{
-			Instructions: []instruction.Instruction{},
-			Metadata:     map[string]interface{}{},
+			Instructions: []instructions.Instruction{},
+			Metadata:     map[ocr2keepers.ObservationMetadataKey]interface{}{},
 			Performable:  []ocr2keepers2.CheckResult{},
 		}
 
-		instructionStoreMap := map[instruction.Instruction]bool{}
+		instructionStoreMap := map[instructions.Instruction]bool{}
 
 		instructionStore := &mockInstructionStore{
-			SetFn: func(i instruction.Instruction) {
+			SetFn: func(i instructions.Instruction) {
 				instructionStoreMap[i] = true
 			},
-			HasFn: func(i instruction.Instruction) bool {
+			HasFn: func(i instructions.Instruction) bool {
 				return instructionStoreMap[i]
 			},
-			DeleteFn: func(i instruction.Instruction) {
+			DeleteFn: func(i instructions.Instruction) {
 				delete(instructionStoreMap, i)
 			},
 		}
 
-		ch := make(chan ocr2keepers2.BlockHistory)
+		mStore := store.NewMetadata(nil)
+		hook := build.NewCoordinateBlockHook(instructionStore, mStore)
 
-		subscriber := &mockSubscriber{
-			SubscribeFn: func() (int, chan ocr2keepers2.BlockHistory, error) {
-				return 0, ch, nil
-			},
-			UnsubscribeFn: func(id int) error {
-				return nil
-			},
-		}
-
-		ticker, err := tickers.NewBlockTicker(subscriber)
-		assert.NoError(t, err)
-
-		metadataStore := ocr2keepers.NewMetadataStore(ticker)
-
-		instructionStore.Set(build.ShouldCoordinateBlock)
+		// before the hook is run
+		instructionStore.Set(instructions.ShouldCoordinateBlock)
 		assert.Equal(t, 0, len(obs.Instructions))
-		err = hook.RunHook(obs, instructionStore, metadataStore, nil)
-		assert.NoError(t, err)
+
+		// run the hook and test results
+		assert.NoError(t, hook.RunHook(obs))
 		assert.Equal(t, 1, len(obs.Instructions))
-		assert.Equal(t, obs.Instructions[0], build.ShouldCoordinateBlock)
+		assert.Equal(t, obs.Instructions[0], instructions.ShouldCoordinateBlock)
 	})
 
 	t.Run("when the instruction store has the do coordinate block instruction, the observation gets updated with the block history", func(t *testing.T) {
-		hook := build.NewCoordinateBlockHook()
 		obs := &ocr2keepers.AutomationObservation{
-			Instructions: []instruction.Instruction{},
-			Metadata:     map[string]interface{}{},
+			Instructions: []instructions.Instruction{},
+			Metadata:     map[ocr2keepers.ObservationMetadataKey]interface{}{},
 			Performable:  []ocr2keepers2.CheckResult{},
 		}
 
-		instructionStoreMap := map[instruction.Instruction]bool{}
+		instructionStoreMap := map[instructions.Instruction]bool{}
 
 		instructionStore := &mockInstructionStore{
-			SetFn: func(i instruction.Instruction) {
+			SetFn: func(i instructions.Instruction) {
 				instructionStoreMap[i] = true
 			},
-			HasFn: func(i instruction.Instruction) bool {
+			HasFn: func(i instructions.Instruction) bool {
 				return instructionStoreMap[i]
 			},
-			DeleteFn: func(i instruction.Instruction) {
+			DeleteFn: func(i instructions.Instruction) {
 				delete(instructionStoreMap, i)
 			},
 		}
 
-		ch := make(chan ocr2keepers2.BlockHistory)
-
-		subscriber := &mockSubscriber{
-			SubscribeFn: func() (int, chan ocr2keepers2.BlockHistory, error) {
-				return 0, ch, nil
-			},
-			UnsubscribeFn: func(id int) error {
-				return nil
-			},
-		}
-
-		ticker, err := tickers.NewBlockTicker(subscriber)
-		assert.NoError(t, err)
-
-		metadataStore := ocr2keepers.NewMetadataStore(ticker)
-
+		mStore := store.NewMetadata(nil)
+		hook := build.NewCoordinateBlockHook(instructionStore, mStore)
 		blockHistory := ocr2keepers2.BlockHistory{
-			ocr2keepers2.BlockKey("1"),
-			ocr2keepers2.BlockKey("2"),
 			ocr2keepers2.BlockKey("3"),
+			ocr2keepers2.BlockKey("2"),
+			ocr2keepers2.BlockKey("1"),
 		}
 
-		go func() {
-			err = metadataStore.Start()
-			assert.NoError(t, err)
-		}()
-		go func() {
-			err = ticker.Start(context.Background())
-			assert.NoError(t, err)
-		}()
+		mStore.Set(store.BlockHistoryMetadata, blockHistory)
+		instructionStore.Set(instructions.DoCoordinateBlock)
 
-		ch <- blockHistory
-
-		time.Sleep(1 * time.Second)
-
-		instructionStore.Set(build.DoCoordinateBlock)
-		err = hook.RunHook(obs, instructionStore, metadataStore, nil)
-		assert.NoError(t, err)
-		assert.Equal(t, obs.Metadata["blockHistory"], blockHistory)
+		// run the hook and test the results
+		assert.NoError(t, hook.RunHook(obs))
+		assert.Equal(t, obs.Metadata[ocr2keepers.BlockHistoryObservationKey], blockHistory)
 	})
 }
