@@ -1,10 +1,8 @@
 package ocr2keepers
 
 import (
-	"sync"
-
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 )
 
 // NotifyOp is an operation that can be notified by the ResultStore
@@ -30,12 +28,9 @@ type InstructionStore interface{}
 
 type MetadataStore interface {
 	// Set should replace any existing values
-	Set([]ocr2keepers.UpkeepIdentifier) error
-	// Start should begin watching for new block history
-	Start() error
-	// Stop should stop watching for new block heights
-	Stop() error
-	GetBlockHistory() ocr2keepers.BlockHistory
+	Set(store.MetadataKey, interface{})
+	// Get should return a value if it exists and a boolean on whether the key exists
+	Get(store.MetadataKey) (interface{}, bool)
 }
 
 // Notification is a struct that will be sent by the ResultStore upon certain events happening
@@ -92,59 +87,4 @@ func WithLimit(limit int) ViewOpt {
 	return func(opts *viewOpts) {
 		opts.limit = limit
 	}
-}
-
-type metadataStore struct {
-	ticker       *tickers.BlockTicker
-	identifiers  []ocr2keepers.UpkeepIdentifier
-	blockHistory ocr2keepers.BlockHistory
-	stopCh       chan int
-	m            sync.RWMutex
-}
-
-func NewMetadataStore(ticker *tickers.BlockTicker) *metadataStore {
-	stopCh := make(chan int)
-	return &metadataStore{
-		ticker: ticker,
-		stopCh: stopCh,
-	}
-}
-
-func (s *metadataStore) GetBlockHistory() ocr2keepers.BlockHistory {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	return s.blockHistory
-}
-
-func (s *metadataStore) Set(identifiers []ocr2keepers.UpkeepIdentifier) error {
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	s.identifiers = identifiers
-	return nil
-}
-
-func (s *metadataStore) setBlockHistory(history ocr2keepers.BlockHistory) {
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	s.blockHistory = history
-}
-
-func (s *metadataStore) Start() error {
-loop:
-	for {
-		select {
-		case blockHistory := <-s.ticker.C:
-			s.setBlockHistory(blockHistory)
-		case <-s.stopCh:
-			break loop
-		}
-	}
-	return nil
-}
-
-func (s *metadataStore) Stop() error {
-	s.stopCh <- 1
-	return nil
 }
