@@ -23,6 +23,20 @@ var (
 	// simultaneous RPC calls. The default is based on the number of CPUs
 	// available to the current process.
 	DefaultMaxServiceWorkers = 10 * runtime.GOMAXPROCS(0)
+	// each field should be validated and default values set, if any
+	// if a value is invalid, return an error but don't override it with the
+	// default
+	validators = []validator{
+		validatePerformLockoutWindow,
+		validateTargetProbability,
+		validateTargetInRounds,
+		validateSamplingJobDuration,
+		validateMinConfirmations,
+		validateGasLimitPerReport,
+		validateGasOverheadPerUpkeep,
+		validateMaxUpkeepBatchSize,
+		validateReportBlockLag,
+	}
 )
 
 type ReportingFactoryConfig struct {
@@ -76,7 +90,7 @@ type OffchainConfig struct {
 	MercuryLookup bool `json:"mercuryLookup"`
 }
 
-// DecodeOffchainConfig ...
+// DecodeOffchainConfig decodes bytes into an OffchainConfig
 func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 	var config OffchainConfig
 
@@ -84,21 +98,6 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 	// if not, throw an error before validation begins
 	if err := json.Unmarshal(b, &config); err != nil {
 		return config, err
-	}
-
-	// each field should be validated and default values set, if any
-	// if a value is invalid, return an error but don't override it with the
-	// default
-	validators := []validator{
-		validatePerformLockoutWindow,
-		validateTargetProbability,
-		validateTargetInRounds,
-		validateSamplingJobDuration,
-		validateMinConfirmations,
-		validateGasLimitPerReport,
-		validateGasOverheadPerUpkeep,
-		validateMaxUpkeepBatchSize,
-		validateReportBlockLag,
 	}
 
 	// go through all validators and return an error immediately if encountered

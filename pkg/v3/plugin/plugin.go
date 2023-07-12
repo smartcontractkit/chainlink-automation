@@ -10,23 +10,37 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/prebuild"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 func newPlugin(
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
+	blockSource tickers.BlockSubscriber,
 	encoder Encoder,
 	runnable runner.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	logger *log.Logger,
 ) (ocr3types.OCR3Plugin[automationshim.AutomationReportInfo], error) {
+	blockTicker, err := tickers.NewBlockTicker(blockSource)
+	if err != nil {
+		return nil, err
+	}
+
+	// create the value stores
 	rs := resultstore.New(logger)
+	ms := store.NewMetadata(blockTicker)
+	is := instructions.NewStore()
+
+	// create a new runner instance
 	rn, err := runner.NewRunner(
 		logger,
 		runnable,
@@ -49,7 +63,7 @@ func newPlugin(
 	coord := coordinator.NewReportCoordinator(events, conf, logger)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(svcs, []service.Recoverable{rs, coord, rn}...)
+	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
 	recoverSvcs := []service.Recoverable{}
 
 	for i := range allSvcs {
@@ -61,10 +75,12 @@ func newPlugin(
 	plugin := &ocr3Plugin{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
-			hooks.NewPrebuildHookRemoveFromStaging(rs, logger).RunHook,
+			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
+			prebuild.NewCoordinateBlockHook(is, ms).RunHook,
 		},
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
-			hooks.NewBuildHookAddFromStaging(rs, logger).RunHook,
+			build.NewAddFromStaging(rs, logger).RunHook,
+			build.NewCoordinateBlockHook(is, ms).RunHook,
 		},
 		ReportEncoder: encoder,
 		Coordinator:   coord,

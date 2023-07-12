@@ -203,9 +203,7 @@ func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.
 }
 
 func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[automationshim.AutomationReportInfo]) (bool, error) {
-	// TODO: remove hardcoded true after encoding fix
-	return true, nil
-	/*upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
+	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
 	}
@@ -215,13 +213,11 @@ func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, _ uint6
 		plugin.Coordinator.Accept(upkeep)
 	}
 
-	return true, nil*/
+	return true, nil
 }
 
 func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[automationshim.AutomationReportInfo]) (bool, error) {
-	// TODO: remove hardcoded true after encoding fix
-	return true, nil
-	/*upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
+	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
 	}
@@ -235,7 +231,7 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, _ uint
 		plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, plugin.Coordinator.IsTransmissionConfirmed(upkeep))
 	}
 
-	return false, nil*/
+	return false, nil
 }
 
 func (plugin *ocr3Plugin) Close() error {

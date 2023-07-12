@@ -15,6 +15,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 var (
@@ -52,6 +53,10 @@ type DelegateConfig struct {
 
 	// Encoder provides methods to encode/decode reports
 	Encoder Encoder
+
+	// BlockSubscriber provides subscribe/unsubscribe methods for block source
+	// data
+	BlockSubscriber tickers.BlockSubscriber
 
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is
@@ -139,6 +144,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		ReportingPluginFactory: NewReportingPluginFactory(
 			c.LogProvider,
 			c.EventProvider,
+			c.BlockSubscriber,
 			c.Runnable,
 			runner.RunnerConfig{
 				Workers:           conf.MaxServiceWorkers,

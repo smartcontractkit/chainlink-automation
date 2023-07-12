@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 const (
@@ -33,6 +34,7 @@ const (
 type pluginFactory struct {
 	logProvider flows.LogEventProvider
 	events      coordinator.EventProvider
+	blocks      tickers.BlockSubscriber
 	runnable    runner.Runnable
 	runnerConf  runner.RunnerConfig
 	encoder     Encoder
@@ -42,6 +44,7 @@ type pluginFactory struct {
 func NewReportingPluginFactory(
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
+	blocks tickers.BlockSubscriber,
 	runnable runner.Runnable,
 	runnerConf runner.RunnerConfig,
 	encoder Encoder,
@@ -50,6 +53,7 @@ func NewReportingPluginFactory(
 	return &pluginFactory{
 		logProvider: logProvider,
 		events:      events,
+		blocks:      blocks,
 		runnable:    runnable,
 		runnerConf:  runnerConf,
 		encoder:     encoder,
@@ -79,6 +83,7 @@ func (factory *pluginFactory) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3t
 	p, err := newPlugin(
 		factory.logProvider,
 		factory.events,
+		factory.blocks,
 		factory.encoder,
 		factory.runnable,
 		factory.runnerConf,
