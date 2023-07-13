@@ -120,6 +120,29 @@ func (p UpkeepPayload) GenerateID() string {
 	return hex.EncodeToString(idh[:])
 }
 
+func (p UpkeepPayload) TriggerID() (string, error) {
+	var extension map[string]interface{}
+	var ok bool
+
+	if extension, ok = p.Trigger.Extension.(map[string]interface{}); !ok {
+		return "", fmt.Errorf("Failed to generate trigger ID for upkeep. Extension is not a map")
+	}
+
+	txHash, ok := extension["txHash"].(string)
+	if !ok {
+		return "", fmt.Errorf("Failed to generate trigger ID for upkeep. Tx hash does not exist in Extension")
+	}
+
+	logIndex, ok := extension["logIndex"].(string)
+	if !ok {
+		return "", fmt.Errorf("Failed to generate trigger ID for upkeep. Log index does not exist in Extension")
+	}
+
+	id := fmt.Sprintf("%s:%s:%s", p.Upkeep.ID, txHash, logIndex)
+	idh := md5.Sum([]byte(id))
+	return hex.EncodeToString(idh[:]), nil
+}
+
 type Trigger struct {
 	// BlockNumber is the block number of the corresponding block
 	BlockNumber int64
