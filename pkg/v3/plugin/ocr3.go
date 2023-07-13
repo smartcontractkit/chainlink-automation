@@ -21,7 +21,7 @@ type Encoder interface {
 }
 
 type Coordinator interface {
-	Accept(ocr2keepers.ReportedUpkeep)
+	Accept(ocr2keepers.ReportedUpkeep) error
 	IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep) bool
 }
 
@@ -29,7 +29,7 @@ type ocr3Plugin[RI any] struct {
 	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
 	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
 	ReportEncoder Encoder
-	Coordinator   Coordinator
+	Coordinators  []Coordinator
 	Services      []service.Recoverable
 	Config        config.OffchainConfig
 	Logger        *log.Logger
@@ -195,7 +195,11 @@ func (plugin *ocr3Plugin[RI]) ShouldAcceptFinalizedReport(_ context.Context, _ u
 
 	for _, upkeep := range upkeeps {
 		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
-		plugin.Coordinator.Accept(upkeep)
+		for _, coord := range plugin.Coordinators {
+			if err := coord.Accept(upkeep); err != nil {
+				plugin.Logger.Printf("failed to accept upkeep by id '%s', error is %v", upkeep.UpkeepID, err)
+			}
+		}
 	}
 
 	return true, nil
@@ -208,12 +212,19 @@ func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(_ context.Context, _ 
 	}
 
 	for _, upkeep := range upkeeps {
-		if !plugin.Coordinator.IsTransmissionConfirmed(upkeep) {
-			// if any upkeep in the report does not have confirmation, attempt
-			// again
+		// if any upkeep in the report does not have confirmations from all coordinators, attempt again
+		allConfirmationsFalse := true
+		for _, coord := range plugin.Coordinators {
+			if coord.IsTransmissionConfirmed(upkeep) {
+				allConfirmationsFalse = false
+			}
+			plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, coord.IsTransmissionConfirmed(upkeep))
+		}
+
+		if allConfirmationsFalse {
 			return true, nil
 		}
-		plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, plugin.Coordinator.IsTransmissionConfirmed(upkeep))
+
 	}
 
 	return false, nil
