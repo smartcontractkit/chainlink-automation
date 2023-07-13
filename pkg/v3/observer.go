@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"context"
+	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
@@ -30,28 +31,41 @@ type Observer struct {
 	Preprocessors []PreProcessor
 	Postprocessor PostProcessor
 	Runner        Runner
+
+	// internal configurations
+	processTimeLimit time.Duration
 }
 
 // NewObserver creates a new Observer with the given pre-processors, post-processor, and runner
-func NewObserver(preprocessors []PreProcessor, postprocessor PostProcessor, runner Runner) *Observer {
+func NewObserver(
+	preprocessors []PreProcessor,
+	postprocessor PostProcessor,
+	runner Runner,
+	processLimit time.Duration,
+) *Observer {
 	return &Observer{
-		Preprocessors: preprocessors,
-		Postprocessor: postprocessor,
-		Runner:        runner,
+		Preprocessors:    preprocessors,
+		Postprocessor:    postprocessor,
+		Runner:           runner,
+		processTimeLimit: processLimit,
 	}
 }
 
 // Process - receives a tick and runs it through the eligibility pipeline. Calls all pre-processors, runs the check pipeline, and calls the post-processor.
 func (o *Observer) Process(ctx context.Context, tick tickers.Tick) error {
+	pCtx, cancel := context.WithTimeout(ctx, o.processTimeLimit)
+
+	defer cancel()
+
 	// Get upkeeps from tick
-	upkeepPayloads, err := tick.GetUpkeeps(ctx)
+	upkeepPayloads, err := tick.GetUpkeeps(pCtx)
 	if err != nil {
 		return err
 	}
 
 	// Run pre-processors
 	for _, preprocessor := range o.Preprocessors {
-		upkeepPayloads, err = preprocessor.PreProcess(ctx, upkeepPayloads)
+		upkeepPayloads, err = preprocessor.PreProcess(pCtx, upkeepPayloads)
 		if err != nil {
 			return err
 		}
@@ -60,13 +74,13 @@ func (o *Observer) Process(ctx context.Context, tick tickers.Tick) error {
 	var results []ocr2keepers.CheckResult
 
 	// Run check pipeline
-	results, err = o.Runner.CheckUpkeeps(ctx, upkeepPayloads...)
+	results, err = o.Runner.CheckUpkeeps(pCtx, upkeepPayloads...)
 	if err != nil {
 		return err
 	}
 
 	// Run post-processor
-	return o.Postprocessor.PostProcess(ctx, results)
+	return o.Postprocessor.PostProcess(pCtx, results)
 }
 
 func (o *Observer) SetPostProcessor(pp PostProcessor) {
