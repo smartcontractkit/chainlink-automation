@@ -2,8 +2,10 @@ package tickers
 
 import (
 	"context"
-	"fmt"
+	"io"
+	"log"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -53,7 +55,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -112,7 +114,7 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -127,19 +129,7 @@ func TestNewTimeTicker(t *testing.T) {
 	})
 
 	t.Run("creates a ticker with an observer that errors when the getter errors", func(t *testing.T) {
-		var mu sync.RWMutex
-		var msg string
-
-		oldLogPrintf := logPrintf
-		logPrintf = func(format string, v ...any) {
-			mu.Lock()
-			defer mu.Unlock()
-
-			msg = fmt.Sprintf(format, v...)
-		}
-		defer func() {
-			logPrintf = oldLogPrintf
-		}()
+		msg := new(strings.Builder)
 
 		observr := &mockObserver{
 			processFn: func(ctx context.Context, tick Tick) error {
@@ -150,34 +140,27 @@ func TestNewTimeTicker(t *testing.T) {
 			return nil, errors.New("error fetching tick")
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(msg, "", log.LstdFlags))
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
+			wg.Done()
 		}()
 
 		time.Sleep(450 * time.Millisecond)
 
 		assert.NoError(t, ticker.Close())
 
-		mu.RLock()
-		assert.Equal(t, msg, "error processing observer: boom")
-		mu.RUnlock()
+		wg.Wait()
+
+		assert.Contains(t, msg.String(), "error processing observer: boom")
 	})
 
 	t.Run("creates a ticker with an observer that errors on processing", func(t *testing.T) {
-		var mu sync.RWMutex
-		var msg string
-
-		oldLogPrintf := logPrintf
-		logPrintf = func(format string, v ...any) {
-			mu.Lock()
-			defer mu.Unlock()
-
-			msg = fmt.Sprintf(format, v...)
-		}
-		defer func() {
-			logPrintf = oldLogPrintf
-		}()
+		msg := new(strings.Builder)
 
 		observr := &mockObserver{
 			processFn: func(ctx context.Context, tick Tick) error {
@@ -192,17 +175,21 @@ func TestNewTimeTicker(t *testing.T) {
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn)
+		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(msg, "", log.LstdFlags))
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
+			wg.Done()
 		}()
 
 		time.Sleep(450 * time.Millisecond)
 
 		assert.NoError(t, ticker.Close())
 
-		mu.RLock()
-		assert.Equal(t, msg, "error processing observer: process error")
-		mu.RUnlock()
+		wg.Wait()
+		assert.Contains(t, msg.String(), "error processing observer: process error")
 	})
 }

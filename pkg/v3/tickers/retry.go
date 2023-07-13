@@ -94,7 +94,7 @@ func (rt *retryTicker) getterFn(ctx context.Context, t time.Time) (Tick, error) 
 
 	rt.logger.Printf("%d upkeeps are being retried", len(upkeepPayloads))
 
-	return retryTick{
+	return upkeepTick{
 		upkeeps: upkeepPayloads,
 	}, nil
 }
@@ -121,16 +121,16 @@ func NewRetryTicker(interval time.Duration, observer observer, logger *log.Logge
 		logger: logger,
 	}
 
-	rt.timeTicker = *NewTimeTicker(interval, observer, rt.getterFn)
+	rt.timeTicker = *NewTimeTicker(interval, observer, rt.getterFn, logger)
 
 	return rt
 }
 
-type retryTick struct {
+type upkeepTick struct {
 	upkeeps []ocr2keepers.UpkeepPayload
 }
 
 // GetUpkeeps returns the upkeeps contained in the retryTick.
-func (t retryTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+func (t upkeepTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
 	return t.upkeeps, nil
 }
