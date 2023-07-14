@@ -16,7 +16,7 @@ import (
 
 func TestObservation(t *testing.T) {
 	// Create an instance of ocr3 plugin
-	plugin := &ocr3Plugin[int]{
+	plugin := &ocr3Plugin{
 		Logger: log.New(io.Discard, "", 0),
 	}
 
@@ -58,7 +58,7 @@ func TestObservation(t *testing.T) {
 func TestOcr3Plugin_Outcome(t *testing.T) {
 	t.Run("malformed observations returns an error", func(t *testing.T) {
 		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin[int]{
+		plugin := &ocr3Plugin{
 			Logger: log.New(io.Discard, "", 0),
 		}
 
@@ -80,7 +80,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 	t.Run("given three observations, in which two are identical, one observations is added to the outcome", func(t *testing.T) {
 		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin[int]{
+		plugin := &ocr3Plugin{
 			Logger: log.New(io.Discard, "", 0),
 		}
 

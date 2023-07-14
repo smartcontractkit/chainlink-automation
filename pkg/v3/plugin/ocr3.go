@@ -15,6 +15,8 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 )
 
+type AutomationReportInfo struct{}
+
 type Encoder interface {
 	Encode(...ocr2keepers.CheckResult) ([]byte, error)
 	Extract([]byte) ([]ocr2keepers.ReportedUpkeep, error)
@@ -25,7 +27,7 @@ type Coordinator interface {
 	IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep) bool
 }
 
-type ocr3Plugin[RI any] struct {
+type ocr3Plugin struct {
 	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
 	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
 	ReportEncoder Encoder
@@ -35,11 +37,11 @@ type ocr3Plugin[RI any] struct {
 	Logger        *log.Logger
 }
 
-func (plugin *ocr3Plugin[RI]) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
+func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
 	return nil, nil
 }
 
-func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
+func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
 	// first round outcome will be nil or empty so no processing should be done
 	if outcome.PreviousOutcome != nil || len(outcome.PreviousOutcome) != 0 {
 		// Decode the outcome to AutomationOutcome
@@ -80,11 +82,11 @@ func (plugin *ocr3Plugin[RI]) Observation(ctx context.Context, outcome ocr3types
 	return types.Observation(encoded), nil
 }
 
-func (plugin *ocr3Plugin[RI]) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
+func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
 	return nil
 }
 
-func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
+func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
 	type resultAndCount struct {
 		result ocr2keepers.CheckResult
 		count  int
@@ -132,9 +134,9 @@ func (plugin *ocr3Plugin[RI]) Outcome(outctx ocr3types.OutcomeContext, query typ
 	return outcome.Encode()
 }
 
-func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[RI], error) {
+func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
 	var (
-		reports []ocr3types.ReportWithInfo[RI]
+		reports []ocr3types.ReportWithInfo[AutomationReportInfo]
 		outcome ocr2keepersv3.AutomationOutcome
 		err     error
 	)
@@ -156,7 +158,7 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 
 			if encodeErr == nil {
 				// add encoded data to reports
-				reports = append(reports, ocr3types.ReportWithInfo[RI]{
+				reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
 					Report: types.Report(encoded),
 				})
 
@@ -178,8 +180,9 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 
 		if encodeErr == nil {
 			// add encoded data to reports
-			reports = append(reports, ocr3types.ReportWithInfo[RI]{
+			reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
 				Report: types.Report(encoded),
+				Info:   AutomationReportInfo{},
 			})
 		}
 	}
@@ -187,7 +190,7 @@ func (plugin *ocr3Plugin[RI]) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3ty
 	return reports, err
 }
 
-func (plugin *ocr3Plugin[RI]) ShouldAcceptFinalizedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[RI]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
@@ -201,7 +204,7 @@ func (plugin *ocr3Plugin[RI]) ShouldAcceptFinalizedReport(_ context.Context, _ u
 	return true, nil
 }
 
-func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[RI]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
@@ -219,7 +222,7 @@ func (plugin *ocr3Plugin[RI]) ShouldTransmitAcceptedReport(_ context.Context, _ 
 	return false, nil
 }
 
-func (plugin *ocr3Plugin[RI]) Close() error {
+func (plugin *ocr3Plugin) Close() error {
 	var err error
 
 	for i := range plugin.Services {
@@ -230,7 +233,7 @@ func (plugin *ocr3Plugin[RI]) Close() error {
 }
 
 // this start function should not block
-func (plugin *ocr3Plugin[RI]) startServices() {
+func (plugin *ocr3Plugin) startServices() {
 	for i := range plugin.Services {
 		go func(svc service.Recoverable) {
 			_ = svc.Start(context.Background())

@@ -30,7 +30,7 @@ const (
 	MaxReportCount = 20
 )
 
-type pluginFactory[RI any] struct {
+type pluginFactory struct {
 	logProvider flows.LogEventProvider
 	events      coordinator.EventProvider
 	blocks      tickers.BlockSubscriber
@@ -40,7 +40,7 @@ type pluginFactory[RI any] struct {
 	logger      *log.Logger
 }
 
-func NewReportingPluginFactory[RI any](
+func NewReportingPluginFactory(
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
 	blocks tickers.BlockSubscriber,
@@ -48,8 +48,8 @@ func NewReportingPluginFactory[RI any](
 	runnerConf runner.RunnerConfig,
 	encoder Encoder,
 	logger *log.Logger,
-) ocr3types.OCR3PluginFactory[RI] {
-	return &pluginFactory[RI]{
+) ocr3types.OCR3PluginFactory[AutomationReportInfo] {
+	return &pluginFactory{
 		logProvider: logProvider,
 		events:      events,
 		blocks:      blocks,
@@ -60,7 +60,7 @@ func NewReportingPluginFactory[RI any](
 	}
 }
 
-func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3types.OCR3Plugin[RI], ocr3types.OCR3PluginInfo, error) {
+func (factory *pluginFactory) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3types.OCR3Plugin[AutomationReportInfo], ocr3types.OCR3PluginInfo, error) {
 	info := ocr3types.OCR3PluginInfo{
 		Name: fmt.Sprintf("Oracle: %d: Automation Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: ocr3types.OCR3PluginLimits{
@@ -79,7 +79,7 @@ func (factory *pluginFactory[RI]) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (o
 	}
 
 	// create the plugin; all services start automatically
-	p, err := newPlugin[RI](
+	p, err := newPlugin(
 		factory.logProvider,
 		factory.events,
 		factory.blocks,
