@@ -46,7 +46,7 @@ loop:
 				// since the block key exists, reset the instructions and save
 				// the latest coordinated block
 				h.instructionStore.Delete((instructions.DoCoordinateBlock))
-				h.metadata.Set(store.CoordinatedBlockMetaData, t)
+				h.metadata.Set(store.CoordinatedBlockMetadata, t)
 
 				break loop
 			default:

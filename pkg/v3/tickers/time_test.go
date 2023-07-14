@@ -12,24 +12,22 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
 type mockObserver struct {
-	processFn func(context.Context, Tick) error
+	processFn func(context.Context, Tick[[]int]) error
 }
 
-func (o *mockObserver) Process(ctx context.Context, t Tick) error {
+func (o *mockObserver) Process(ctx context.Context, t Tick[[]int]) error {
 	return o.processFn(ctx, t)
 }
 
 type mockCustomTick struct {
-	getUpkeepsFn func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error)
+	getFn func(ctx context.Context) ([]int, error)
 }
 
-func (t *mockCustomTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
-	return t.getUpkeepsFn(ctx)
+func (t *mockCustomTick) Value(ctx context.Context) ([]int, error) {
+	return t.getFn(ctx)
 }
 
 func TestNewTimeTicker(t *testing.T) {
@@ -38,7 +36,7 @@ func TestNewTimeTicker(t *testing.T) {
 		callCount := 0
 
 		observr := &mockObserver{
-			processFn: func(ctx context.Context, t Tick) error {
+			processFn: func(ctx context.Context, t Tick[[]int]) error {
 				mu.Lock()
 				defer mu.Unlock()
 
@@ -47,15 +45,16 @@ func TestNewTimeTicker(t *testing.T) {
 				return nil
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+
+		getFn := func(ctx context.Context, t time.Time) (Tick[[]int], error) {
 			return &mockCustomTick{
-				getUpkeepsFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+				getFn: func(ctx context.Context) ([]int, error) {
 					return nil, nil
 				},
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
+		ticker := NewTimeTicker[[]int](100*time.Millisecond, observr, getFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -79,42 +78,36 @@ func TestNewTimeTicker(t *testing.T) {
 		var mu sync.RWMutex
 		callCount := 0
 
-		upkeepPayloads := []ocr2keepers.UpkeepPayload{
-			{
-				ID: "first mock data payload",
-			},
-			{
-				ID: "second mock data payload",
-			},
-		}
+		expected := []int{5, 6}
 
 		observr := &mockObserver{
-			processFn: func(ctx context.Context, tick Tick) error {
+			processFn: func(ctx context.Context, tick Tick[[]int]) error {
 				mu.Lock()
 				defer mu.Unlock()
 
 				callCount++
 
-				upkeeps, err := tick.GetUpkeeps(ctx)
+				values, err := tick.Value(ctx)
 				if err != nil {
 					return err
 				}
 
-				if !reflect.DeepEqual(upkeeps, upkeepPayloads) {
+				if !reflect.DeepEqual(values, expected) {
 					t.Fatal("unexpected payloads")
 				}
 				return nil
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+
+		getFn := func(ctx context.Context, t time.Time) (Tick[[]int], error) {
 			return &mockCustomTick{
-				getUpkeepsFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
-					return upkeepPayloads, nil
+				getFn: func(ctx context.Context) ([]int, error) {
+					return expected, nil
 				},
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(io.Discard, "", 0))
+		ticker := NewTimeTicker[[]int](100*time.Millisecond, observr, getFn, log.New(io.Discard, "", 0))
 		go func() {
 			assert.NoError(t, ticker.Start(context.Background()))
 		}()
@@ -132,15 +125,16 @@ func TestNewTimeTicker(t *testing.T) {
 		msg := new(strings.Builder)
 
 		observr := &mockObserver{
-			processFn: func(ctx context.Context, tick Tick) error {
+			processFn: func(ctx context.Context, tick Tick[[]int]) error {
 				return errors.New("boom")
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+
+		getFn := func(ctx context.Context, t time.Time) (Tick[[]int], error) {
 			return nil, errors.New("error fetching tick")
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(msg, "", log.LstdFlags))
+		ticker := NewTimeTicker[[]int](100*time.Millisecond, observr, getFn, log.New(msg, "", log.LstdFlags))
 
 		var wg sync.WaitGroup
 
@@ -163,19 +157,20 @@ func TestNewTimeTicker(t *testing.T) {
 		msg := new(strings.Builder)
 
 		observr := &mockObserver{
-			processFn: func(ctx context.Context, tick Tick) error {
+			processFn: func(ctx context.Context, tick Tick[[]int]) error {
 				return errors.New("process error")
 			},
 		}
-		upkeepsFn := func(ctx context.Context, t time.Time) (Tick, error) {
+
+		getFn := func(ctx context.Context, t time.Time) (Tick[[]int], error) {
 			return &mockCustomTick{
-				getUpkeepsFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+				getFn: func(ctx context.Context) ([]int, error) {
 					return nil, nil
 				},
 			}, nil
 		}
 
-		ticker := NewTimeTicker(100*time.Millisecond, observr, upkeepsFn, log.New(msg, "", log.LstdFlags))
+		ticker := NewTimeTicker[[]int](100*time.Millisecond, observr, getFn, log.New(msg, "", log.LstdFlags))
 
 		var wg sync.WaitGroup
 

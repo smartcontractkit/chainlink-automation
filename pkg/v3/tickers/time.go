@@ -6,34 +6,26 @@ import (
 	"log"
 	"sync/atomic"
 	"time"
-
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-type observer interface {
-	Process(context.Context, Tick) error
+type observer[T any] interface {
+	Process(context.Context, Tick[T]) error
 }
 
-// Tick is the container for the individual tick
-type Tick interface {
-	// GetUpkeeps provides upkeeps scoped to the tick
-	GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error)
-}
+type getterFunc[T any] func(context.Context, time.Time) (Tick[T], error)
 
-type getUpkeepsFn func(context.Context, time.Time) (Tick, error)
-
-type timeTicker struct {
+type timeTicker[T any] struct {
 	interval time.Duration
 	ticker   *time.Ticker
-	observer observer
-	getterFn getUpkeepsFn
+	observer observer[T]
+	getterFn getterFunc[T]
 	logger   *log.Logger
 	chClose  chan struct{}
 	running  atomic.Bool
 }
 
-func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn, logger *log.Logger) *timeTicker {
-	t := &timeTicker{
+func NewTimeTicker[T any](interval time.Duration, observer observer[T], getterFn getterFunc[T], logger *log.Logger) *timeTicker[T] {
+	t := &timeTicker[T]{
 		interval: interval,
 		ticker:   time.NewTicker(interval),
 		observer: observer,
@@ -48,7 +40,7 @@ func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeep
 // Start uses the provided context for each call to the getter function with the
 // configured interval as a timeout. This function blocks until Close is called
 // or the parent context is cancelled.
-func (t *timeTicker) Start(ctx context.Context) error {
+func (t *timeTicker[T]) Start(ctx context.Context) error {
 	if t.running.Load() {
 		return fmt.Errorf("already running")
 	}
@@ -81,7 +73,7 @@ Loop:
 	return nil
 }
 
-func (t *timeTicker) Close() error {
+func (t *timeTicker[T]) Close() error {
 	if !t.running.Load() {
 		return fmt.Errorf("not running")
 	}
