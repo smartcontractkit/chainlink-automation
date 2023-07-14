@@ -198,7 +198,7 @@ func TestRetryTick_GetUpkeeps(t *testing.T) {
 		{ID: "payload1"},
 		{ID: "payload2"},
 	}
-	tick := retryTick{upkeeps: upkeeps}
+	tick := upkeepTick{upkeeps: upkeeps}
 
 	// Call GetUpkeeps to retrieve the upkeeps
 	retrievedUpkeeps, err := tick.GetUpkeeps(context.Background())

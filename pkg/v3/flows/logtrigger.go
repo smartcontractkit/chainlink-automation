@@ -42,9 +42,10 @@ type LogEventProvider interface {
 }
 
 const (
-	LogCheckInterval      = 5 * time.Second
-	RetryCheckInterval    = 250 * time.Millisecond
-	RecoveryCheckInterval = 1 * time.Minute
+	LogCheckInterval        = 1 * time.Second
+	RetryCheckInterval      = 250 * time.Millisecond
+	RecoveryCheckInterval   = 1 * time.Minute
+	ObservationProcessLimit = 5 * time.Second
 )
 
 // LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
@@ -78,7 +79,7 @@ func newRecoveryFlow(rs ResultStore, rn Runner, logger *log.Logger, configFuncs 
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
-	recoveryObserver := ocr2keepersv3.NewObserver(nil, nil, rn)
+	recoveryObserver := ocr2keepersv3.NewObserver(nil, nil, rn, ObservationProcessLimit)
 
 	// create retry ticker
 	ticker := tickers.NewRecoveryTicker(RecoveryCheckInterval, recoveryObserver, logger, configFuncs...)
@@ -96,7 +97,7 @@ func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, logger *log.Logg
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
-	retryObserver := ocr2keepersv3.NewObserver(nil, nil, rn)
+	retryObserver := ocr2keepersv3.NewObserver(nil, nil, rn, ObservationProcessLimit)
 
 	// create retry ticker
 	ticker := tickers.NewRetryTicker(RetryCheckInterval, retryObserver, logger, configFuncs...)
@@ -132,6 +133,7 @@ func (et logTick) GetUpkeeps(ctx context.Context) ([]ocr2keepers.UpkeepPayload, 
 	return logs, err
 }
 
+// log trigger flow is the happy path entry point for log triggered upkeeps
 func newLogTriggerFlow(rs ResultStore, rn Runner, retryer Retryer, recoverer Retryer, logProvider LogEventProvider, logger *log.Logger) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
@@ -142,12 +144,12 @@ func newLogTriggerFlow(rs ResultStore, rn Runner, retryer Retryer, recoverer Ret
 	)
 
 	// create observer
-	obs := ocr2keepersv3.NewObserver(nil, post, rn)
+	obs := ocr2keepersv3.NewObserver(nil, post, rn, ObservationProcessLimit)
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker(LogCheckInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
-	})
+	}, logger)
 
 	return timeTick
 }

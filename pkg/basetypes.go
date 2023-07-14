@@ -154,3 +154,11 @@ type ReportedUpkeep struct {
 }
 
 type BlockHistory []BlockKey
+
+func (bh BlockHistory) Latest() (BlockKey, error) {
+	if len(bh) == 0 {
+		return BlockKey(""), fmt.Errorf("empty block history")
+	}
+
+	return bh[0], nil
+}

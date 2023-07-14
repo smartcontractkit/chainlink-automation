@@ -10,10 +10,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
-var (
-	logPrintf = log.Printf
-)
-
 type observer interface {
 	Process(context.Context, Tick) error
 }
@@ -31,16 +27,18 @@ type timeTicker struct {
 	ticker   *time.Ticker
 	observer observer
 	getterFn getUpkeepsFn
+	logger   *log.Logger
 	chClose  chan struct{}
 	running  atomic.Bool
 }
 
-func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn) *timeTicker {
+func NewTimeTicker(interval time.Duration, observer observer, getterFn getUpkeepsFn, logger *log.Logger) *timeTicker {
 	t := &timeTicker{
 		interval: interval,
 		ticker:   time.NewTicker(interval),
 		observer: observer,
 		getterFn: getterFn,
+		logger:   logger,
 		chClose:  make(chan struct{}, 1),
 	}
 
@@ -63,18 +61,14 @@ Loop:
 	for {
 		select {
 		case tm := <-t.ticker.C:
-			ctx, cancelFn := context.WithTimeout(ctx, t.interval)
-
 			tick, err := t.getterFn(ctx, tm)
 			if err != nil {
-				logPrintf("error fetching tick: %s", err.Error())
+				t.logger.Printf("error fetching tick: %s", err.Error())
 			}
 
 			if err := t.observer.Process(ctx, tick); err != nil {
-				logPrintf("error processing observer: %s", err.Error())
+				t.logger.Printf("error processing observer: %s", err.Error())
 			}
-
-			cancelFn()
 		case <-t.chClose:
 			break Loop
 		}
