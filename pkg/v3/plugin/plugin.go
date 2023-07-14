@@ -19,7 +19,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-func newPlugin[RI any](
+func newPlugin(
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
 	blockSource tickers.BlockSubscriber,
@@ -28,7 +28,7 @@ func newPlugin[RI any](
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	logger *log.Logger,
-) (ocr3types.OCR3Plugin[RI], error) {
+) (ocr3types.OCR3Plugin[AutomationReportInfo], error) {
 	blockTicker, err := tickers.NewBlockTicker(blockSource)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func newPlugin[RI any](
 
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
-	plugin := &ocr3Plugin[RI]{
+	plugin := &ocr3Plugin{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
 			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
