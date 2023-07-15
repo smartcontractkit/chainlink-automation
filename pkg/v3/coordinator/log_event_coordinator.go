@@ -113,6 +113,28 @@ func (rc *reportCoordinator) performEvent(evt ocr2keepers.TransmitEvent) {
 	rc.activeKeys.Set(evt.ID, true, util.DefaultCacheExpiration)
 }
 
+// isPending returns true if a key should be filtered out.
+func (rc *reportCoordinator) isPending(payload ocr2keepers.UpkeepPayload) bool {
+	if _, ok := rc.activeKeys.Get(payload.ID); ok {
+		// If the payload already exists, return true
+		return true
+	}
+	return false
+}
+
+func (rc *reportCoordinator) PreProcess(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
+	var filteredPayloads []ocr2keepers.UpkeepPayload
+
+	for _, payload := range payloads {
+		if !rc.isPending(payload) {
+			// If the payload is not pending, add it to the filteredPayloads slice
+			filteredPayloads = append(filteredPayloads, payload)
+		}
+	}
+
+	return filteredPayloads, nil
+}
+
 func (rc *reportCoordinator) run() {
 	cadence := time.Second
 	timer := time.NewTimer(cadence)
