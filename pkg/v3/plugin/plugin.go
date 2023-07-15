@@ -82,7 +82,7 @@ func newPlugin(
 			build.NewCoordinateBlockHook(is, ms).RunHook,
 		},
 		ReportEncoder: encoder,
-		Coordinator:   coord,
+		Coordinators:  []Coordinator{coord},
 		Services:      recoverSvcs,
 		Config:        conf,
 		Logger:        logger,

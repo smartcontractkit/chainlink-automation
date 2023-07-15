@@ -16,6 +16,7 @@ const (
 	DefaultCacheClean = time.Duration(30) * time.Second
 )
 
+//go:generate mockery --name EventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator" --case underscore --filename event_provider.generated.go
 type EventProvider interface {
 	Events(context.Context) ([]ocr2keepers.TransmitEvent, error)
 }
@@ -46,44 +47,39 @@ func NewReportCoordinator(logs EventProvider, conf config.OffchainConfig, logger
 	}
 }
 
-func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) {
-	if _, ok := rc.activeKeys.Get(upkeep.ID); !ok {
-		rc.activeKeys.Set(upkeep.ID, true, util.DefaultCacheExpiration)
+func (rc *reportCoordinator) isLogEventUpkeep(upkeep ocr2keepers.ReportedUpkeep) bool {
+	// Checking if Extension is a map
+	extension, ok := upkeep.Trigger.Extension.(map[string]interface{})
+	if !ok {
+		return false
 	}
+
+	// Checking if "txHash" exists and is a string
+	if _, ok := extension["txHash"].(string); !ok {
+		return false
+	}
+
+	// Return true if all checks pass
+	return true
+}
+
+func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
+	if !rc.isLogEventUpkeep(upkeep) {
+		return fmt.Errorf("Upkeep is not log event based, skipping ID: %s", upkeep.ID)
+	}
+
+	if _, ok := rc.activeKeys.Get(upkeep.ID); !ok {
+		rc.activeKeys.Set(upkeep.ID, false, util.DefaultCacheExpiration)
+	}
+
+	return nil
 }
 
 func (rc *reportCoordinator) IsTransmissionConfirmed(upkeep ocr2keepers.ReportedUpkeep) bool {
-	// key is confirmed if it both exists and has been confirmed by the log
-	// poller
+	// if non-exist in cache, return true
+	// if exist in cache and confirmed by log poller, return true
 	confirmed, ok := rc.activeKeys.Get(upkeep.ID)
 	return !ok || (ok && confirmed)
-}
-
-// Start starts all subprocesses
-func (rc *reportCoordinator) Start(_ context.Context) error {
-	if rc.running.Load() {
-		return fmt.Errorf("process already running")
-	}
-
-	go rc.activeKeysCleaner.Run(rc.activeKeys)
-
-	rc.running.Store(true)
-	rc.run()
-
-	return nil
-}
-
-// Close terminates all subprocesses
-func (rc *reportCoordinator) Close() error {
-	if !rc.running.Load() {
-		return fmt.Errorf("process not running")
-	}
-
-	rc.activeKeysCleaner.Stop()
-	rc.chStop <- struct{}{}
-	rc.running.Store(false)
-
-	return nil
 }
 
 func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
@@ -102,32 +98,19 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 			rc.logger.Printf("Skipping perform log in transaction %s as confirmations (%d) is less than min confirmations (%d)", evt.TransactionHash, evt.Confirmations, rc.minConfs)
 			continue
 		}
-
-		rc.performEvent(evt)
+		switch evt.Type {
+		case ocr2keepers.PerformEvent, ocr2keepers.StaleReportEvent:
+			rc.performEvent(evt)
+		case ocr2keepers.ReorgReportEvent:
+			rc.activeKeys.Delete(evt.ID)
+		}
 	}
 
 	return nil
 }
 
 func (rc *reportCoordinator) performEvent(evt ocr2keepers.TransmitEvent) {
-	if confirmed, ok := rc.activeKeys.Get(evt.ID); ok {
-		if !confirmed {
-			// Process log if the key hasn't been confirmed yet
-			rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", evt.ID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
-
-			// set state of key to indicate that the report was transmitted
-			rc.activeKeys.Set(evt.ID, true, util.DefaultCacheExpiration)
-		}
-
-		/*
-			if confirmed {
-				// This can happen if we get a perform log for the same key again on a newer block in case of reorgs
-				// In this case, no change to activeKeys is needed, but idBlocks is updated to the newer BlockNumber
-			}
-		*/
-	} else {
-		rc.activeKeys.Set(evt.ID, true, util.DefaultCacheExpiration)
-	}
+	rc.activeKeys.Set(evt.ID, true, util.DefaultCacheExpiration)
 }
 
 func (rc *reportCoordinator) run() {
@@ -159,4 +142,31 @@ func (rc *reportCoordinator) run() {
 			return
 		}
 	}
+}
+
+// Start starts all subprocesses
+func (rc *reportCoordinator) Start(_ context.Context) error {
+	if rc.running.Load() {
+		return fmt.Errorf("process already running")
+	}
+
+	go rc.activeKeysCleaner.Run(rc.activeKeys)
+
+	rc.running.Store(true)
+	rc.run()
+
+	return nil
+}
+
+// Close terminates all subprocesses
+func (rc *reportCoordinator) Close() error {
+	if !rc.running.Load() {
+		return fmt.Errorf("process not running")
+	}
+
+	rc.activeKeysCleaner.Stop()
+	rc.chStop <- struct{}{}
+	rc.running.Store(false)
+
+	return nil
 }

@@ -44,6 +44,7 @@ type TransmitEventType int
 const (
 	PerformEvent TransmitEventType = iota
 	StaleReportEvent
+	ReorgReportEvent
 )
 
 type TransmitEvent struct {
