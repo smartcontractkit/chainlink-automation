@@ -101,8 +101,9 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 		switch evt.Type {
 		case ocr2keepers.PerformEvent, ocr2keepers.StaleReportEvent:
 			rc.performEvent(evt)
-		case ocr2keepers.ReorgReportEvent:
+		case ocr2keepers.ReorgReportEvent, ocr2keepers.InsufficientFundsReportEvent:
 			rc.activeKeys.Delete(evt.ID)
+			// TODO: push to recovery flow
 		}
 	}
 
