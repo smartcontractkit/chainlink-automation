@@ -1,11 +1,12 @@
 package ocr2keepers
 
 import (
-	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type UpkeepIdentifier []byte
@@ -45,12 +46,13 @@ const (
 	PerformEvent TransmitEventType = iota
 	StaleReportEvent
 	ReorgReportEvent
+	InsufficientFundsReportEvent
 )
 
 type TransmitEvent struct {
 	// Type describes the type of event
 	Type TransmitEventType
-	// TransmitBlock is the
+	// TransmitBlock is the block height of the transmit event
 	TransmitBlock BlockKey
 	// Confirmations is the block height behind latest
 	Confirmations int64
@@ -117,17 +119,17 @@ func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, che
 
 func (p UpkeepPayload) GenerateID() string {
 	id := fmt.Sprintf("%s:%s", p.Upkeep.ID, p.Trigger)
-	idh := md5.Sum([]byte(id))
+	idh := crypto.Keccak256([]byte(id))
 	return hex.EncodeToString(idh[:])
 }
 
 type Trigger struct {
-	// BlockNumber is the block number of the corresponding block
+	// BlockNumber is the block number in which the event occurred
 	BlockNumber int64
 	// BlockHash is the block hash of the corresponding block
 	BlockHash string
 	// Extension is the extensions data that can differ between triggers.
-	// e.g. for tx hash and log id for log triggers.
+	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extention to be a map with all keys and values in string format
 	Extension interface{}
 }
 
