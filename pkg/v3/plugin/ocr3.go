@@ -190,7 +190,7 @@ func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.
 	return reports, err
 }
 
-func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err

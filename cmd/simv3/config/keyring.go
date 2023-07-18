@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"encoding/binary"
 	"io"
 
 	"golang.org/x/crypto/curve25519"
@@ -11,8 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/chains/evmutil"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 )
 
 var _ types.OffchainKeyring = &OffchainKeyring{}
@@ -93,7 +95,7 @@ func (ok *OffchainKeyring) configEncryptionPublicKey() (types.ConfigEncryptionPu
 
 var curve = secp256k1.S256()
 
-var _ types.OnchainKeyring = &EvmKeyring{}
+var _ ocr3types.OnchainKeyring[plugin.AutomationReportInfo] = &EvmKeyring{}
 
 type EvmKeyring struct {
 	privateKey ecdsa.PrivateKey
@@ -118,22 +120,29 @@ func (ok *EvmKeyring) PKString() string {
 	return ok.signingAddress().String()
 }
 
-func (ok *EvmKeyring) reportToSigData(reportCtx types.ReportContext, report types.Report) []byte {
-	rawReportContext := evmutil.RawReportContext(reportCtx)
-	sigData := crypto.Keccak256(report)
-	sigData = append(sigData, rawReportContext[0][:]...)
-	sigData = append(sigData, rawReportContext[1][:]...)
-	sigData = append(sigData, rawReportContext[2][:]...)
+func (ok *EvmKeyring) reportToSigData(digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[plugin.AutomationReportInfo]) []byte {
+	rawRepctx := [3][32]byte{}
+
+	// first is the digest
+	copy(rawRepctx[0][:], digest[:])
+
+	// then the round index
+	binary.BigEndian.PutUint64(rawRepctx[1][32-8:], v)
+
+	sigData := crypto.Keccak256(r.Report)
+	sigData = append(sigData, rawRepctx[0][:]...)
+	sigData = append(sigData, rawRepctx[1][:]...)
+	sigData = append(sigData, rawRepctx[2][:]...)
+
 	return crypto.Keccak256(sigData)
 }
 
-func (ok *EvmKeyring) Sign(reportCtx types.ReportContext, report types.Report) ([]byte, error) {
-	return crypto.Sign(ok.reportToSigData(reportCtx, report), &ok.privateKey)
-
+func (ok *EvmKeyring) Sign(digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[plugin.AutomationReportInfo]) ([]byte, error) {
+	return crypto.Sign(ok.reportToSigData(digest, v, r), &ok.privateKey)
 }
 
-func (ok *EvmKeyring) Verify(publicKey types.OnchainPublicKey, reportCtx types.ReportContext, report types.Report, signature []byte) bool {
-	hash := ok.reportToSigData(reportCtx, report)
+func (ok *EvmKeyring) Verify(publicKey types.OnchainPublicKey, digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[plugin.AutomationReportInfo], signature []byte) bool {
+	hash := ok.reportToSigData(digest, v, r)
 	authorPubkey, err := crypto.SigToPub(hash, signature)
 	if err != nil {
 		return false
