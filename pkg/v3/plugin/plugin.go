@@ -62,10 +62,12 @@ func newPlugin[RI any](
 		flows.RecoveryCheckInterval,
 		logger,
 		[]tickers.ScheduleTickerConfigFunc{ // retry configs
+			// TODO: provide configuration inputs
 			tickers.ScheduleTickerWithDefaults,
 		},
 		[]tickers.ScheduleTickerConfigFunc{ // recovery configs
 			func(c *tickers.ScheduleTickerConfig) {
+				// TODO: provide configuration inputs
 				c.SendDelay = 5 * time.Minute
 				c.MaxSendDuration = 24 * time.Hour
 			},

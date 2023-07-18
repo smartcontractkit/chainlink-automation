@@ -1,6 +1,7 @@
 /*
-ScheduleTicker produces includes an added value in a tick SendDelay duration
-after the value is scheduled.
+ScheduleTicker produces a tick for a scheduled value after the duration
+`SendDelay`. The tick produces includes all values where the duration elapsed
+during the ticker interval.
 */
 package tickers
 

@@ -152,7 +152,7 @@ func newRecoveryProposalFlow(rs ResultStore, ms MetadataStore, rp RecoverablePro
 	return ticker, retryer
 }
 
-func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, recoverInterval time.Duration, logger *log.Logger, configFuncs ...tickers.ScheduleTickerConfigFunc) (service.Recoverable, Retryer) {
+func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, retryInterval time.Duration, logger *log.Logger, configFuncs ...tickers.ScheduleTickerConfigFunc) (service.Recoverable, Retryer) {
 	// create observer
 	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
@@ -160,7 +160,7 @@ func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, recoverInterval 
 
 	// create schedule ticker to manage retry interval
 	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
-		recoverInterval,
+		retryInterval,
 		retryObserver,
 		func(func(string, ocr2keepers.UpkeepPayload) error) error {
 			// this schedule ticker doesn't pull data from anywhere
