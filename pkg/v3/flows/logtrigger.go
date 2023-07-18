@@ -24,6 +24,8 @@ type Runner interface {
 	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
 
+// TODO cleanup, this one is not used, ocr2keepersv3.PreProcessor is used instead
+//
 //go:generate mockery --name PreProcessor --structname MockPreProcessor --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename preprocessor.generated.go
 type PreProcessor interface {
 	// PreProcess takes a slice of payloads and returns a new slice
@@ -41,6 +43,8 @@ type MetadataStore interface {
 }
 
 // Retryer provides the ability to push retries to an observer
+//
+//go:generate mockery --name Retryer --structname MockRetryer --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename retryer.generated.go
 type Retryer interface {
 	// Retry provides an entry point for new retryable results
 	Retry(ocr2keepers.CheckResult) error
@@ -69,6 +73,7 @@ type LogTriggerEligibility struct{}
 
 // NewLogTriggerEligibility ...
 func NewLogTriggerEligibility(
+	coord PreProcessor,
 	rStore ResultStore,
 	mStore MetadataStore,
 	runner Runner,
@@ -80,9 +85,10 @@ func NewLogTriggerEligibility(
 	retryConfigs []tickers.ScheduleTickerConfigFunc,
 	recoverConfigs []tickers.ScheduleTickerConfigFunc,
 ) (*LogTriggerEligibility, []service.Recoverable) {
-	svc0, recoverer := newRecoveryProposalFlow(rStore, mStore, rp, recoveryInterval, logger, recoverConfigs...)
-	svc1, retryer := newRetryFlow(rStore, runner, recoverer, recoveryInterval, logger, retryConfigs...)
-	svc2 := newLogTriggerFlow(rStore, runner, retryer, recoverer, logProvider, logInterval, logger)
+	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	svc0, recoverer := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger, recoverConfigs...)
+	svc1, retryer := newRetryFlow(preprocessors, rStore, runner, recoverer, recoveryInterval, logger, retryConfigs...)
+	svc2 := newLogTriggerFlow(preprocessors, rStore, runner, retryer, recoverer, logProvider, logInterval, logger)
 
 	svcs := []service.Recoverable{
 		svc0,
@@ -99,93 +105,6 @@ func (flow *LogTriggerEligibility) ProcessOutcome(_ ocr2keepersv3.AutomationOutc
 	// panic("log trigger observation pre-build hook not implemented")
 
 	return nil
-}
-
-func newRecoveryProposalFlow(rs ResultStore, ms MetadataStore, rp RecoverableProvider, recoveryInterval time.Duration, logger *log.Logger, configFuncs ...tickers.ScheduleTickerConfigFunc) (service.Recoverable, Retryer) {
-	// items come into the recovery path from multiple sources
-	// 1. [done] from the log provider as UpkeepPayload
-	// 2. [done] from retry ticker as CheckResult
-	// 3. [done] from primary flow as CheckResult if retry fails
-	// 4. [todo] from timeouts of the result store
-
-	// the recovery observer doesn't do any processing on the identifiers
-	// so this function is just a pass-through
-	f := func(_ context.Context, ids ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
-		return ids, nil
-	}
-
-	// the recovery observer is just a pass-through to the metadata store
-	// add postprocessor for metatdata store
-	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms)
-
-	// TODO: add preprocessor that filters out in-progress ids
-	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepPayload](nil, post, f, ObservationProcessLimit)
-
-	// create a schedule ticker that pulls recoverable items from an outside
-	// source and provides point for recoverables to be pushed to the ticker
-	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
-		recoveryInterval,
-		recoveryObserver,
-		func(f func(string, ocr2keepers.UpkeepPayload) error) error {
-			// pull payloads from RecoverableProvider
-			recovers, err := rp.GetRecoverables()
-			if err != nil {
-				return err
-			}
-
-			for _, rec := range recovers {
-				if err := f(rec.ID, rec); err != nil {
-					return err
-				}
-			}
-
-			return nil
-		},
-		logger,
-		configFuncs...,
-	)
-
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &scheduledRetryer{scheduler: ticker}
-
-	return ticker, retryer
-}
-
-func newRetryFlow(rs ResultStore, rn Runner, recoverer Retryer, retryInterval time.Duration, logger *log.Logger, configFuncs ...tickers.ScheduleTickerConfigFunc) (service.Recoverable, Retryer) {
-	// create observer
-	// no preprocessors required for retry flow at this point
-	// leave postprocessor empty to start with
-	retryObserver := ocr2keepersv3.NewRunnableObserver(nil, nil, rn, ObservationProcessLimit)
-
-	// create schedule ticker to manage retry interval
-	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
-		retryInterval,
-		retryObserver,
-		func(func(string, ocr2keepers.UpkeepPayload) error) error {
-			// this schedule ticker doesn't pull data from anywhere
-			return nil
-		},
-		logger,
-		configFuncs...,
-	)
-
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &scheduledRetryer{scheduler: ticker}
-
-	// postprocessing is a combination of multiple smaller postprocessors
-	post := postprocessors.NewCombinedPostprocessor(
-		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs),
-		// create retry postprocessor
-		postprocessors.NewRetryPostProcessor(retryer, recoverer),
-	)
-
-	retryObserver.SetPostProcessor(post)
-
-	// return retry ticker as a recoverable and retryer
-	return ticker, retryer
 }
 
 type Scheduler[T any] interface {
@@ -226,6 +145,7 @@ func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 
 // log trigger flow is the happy path entry point for log triggered upkeeps
 func newLogTriggerFlow(
+	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
 	rn Runner,
 	retryer Retryer,
@@ -243,7 +163,7 @@ func newLogTriggerFlow(
 	)
 
 	// create observer
-	obs := ocr2keepersv3.NewRunnableObserver(nil, post, rn, ObservationProcessLimit)
+	obs := ocr2keepersv3.NewRunnableObserver(preprocessors, post, rn, ObservationProcessLimit)
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
