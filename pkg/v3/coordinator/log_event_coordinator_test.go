@@ -96,4 +96,27 @@ func TestLogEventCoordinator(t *testing.T) {
 		assert.True(t, ok, "expected active key to exist")
 		assert.Equal(t, true, value, "expected active key value to be true")
 	})
+
+	t.Run("Pre Process", func(t *testing.T) {
+		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
+		rc.activeKeys.Set("payload1", true, util.DefaultCacheExpiration)
+
+		// Define some example payloads
+		payloads := []ocr2keepers.UpkeepPayload{
+			{ID: "payload1"},
+			{ID: "payload2"},
+			{ID: "payload3"},
+		}
+
+		// Call the PreProcess git st
+		filteredPayloads, err := rc.PreProcess(context.Background(), payloads)
+		assert.NoError(t, err, "no error expected from PreProcess")
+
+		// Assert that only payload2 and payload3 are included in the filteredPayloads slice
+		expectedPayloads := []ocr2keepers.UpkeepPayload{
+			{ID: "payload2"},
+			{ID: "payload3"},
+		}
+		assert.Equal(t, expectedPayloads, filteredPayloads, "filteredPayloads should match the expected payloads")
+	})
 }
