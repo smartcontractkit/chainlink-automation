@@ -16,6 +16,14 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
 
+type mockUpkeepObserver struct {
+	processFn func(context.Context, Tick[[]ocr2keepers.UpkeepPayload]) error
+}
+
+func (o *mockUpkeepObserver) Process(ctx context.Context, t Tick[[]ocr2keepers.UpkeepPayload]) error {
+	return o.processFn(ctx, t)
+}
+
 func TestSampleTicker(t *testing.T) {
 	tests := []struct {
 		Name                 string
@@ -61,9 +69,9 @@ func TestSampleTicker(t *testing.T) {
 	mr := new(MockRatio)
 
 	// create an observer that tracks sampling and mocks pipeline results
-	mockObserver := &mockObserver{
-		processFn: func(ctx context.Context, t Tick) error {
-			upkeeps, _ := t.GetUpkeeps(ctx)
+	mockObserver := &mockUpkeepObserver{
+		processFn: func(ctx context.Context, t Tick[[]ocr2keepers.UpkeepPayload]) error {
+			upkeeps, _ := t.Value(ctx)
 
 			// assert that retry was in tick at least once
 			mu.Lock()
@@ -183,9 +191,9 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 			mr := new(MockRatio)
 
 			// create an observer that tracks sampling and mocks pipeline results
-			mockObserver := &mockObserver{
-				processFn: func(ctx context.Context, t Tick) error {
-					upkeeps, _ := t.GetUpkeeps(ctx)
+			mockObserver := &mockUpkeepObserver{
+				processFn: func(ctx context.Context, t Tick[[]ocr2keepers.UpkeepPayload]) error {
+					upkeeps, _ := t.Value(ctx)
 
 					// assert that retry was in tick at least once
 					mu.Lock()
@@ -261,22 +269,6 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 			assert.Contains(t, b.String(), test.ExpectedErr, "should contain expected log: %s", test.ExpectedErr)
 		})
 	}
-}
-
-func TestSampleTick_GetUpkeeps(t *testing.T) {
-	// Create a retryTick instance
-	upkeeps := []ocr2keepers.UpkeepPayload{
-		{ID: "payload1"},
-		{ID: "payload2"},
-	}
-	tick := upkeepTick{upkeeps: upkeeps}
-
-	// Call GetUpkeeps to retrieve the upkeeps
-	retrievedUpkeeps, err := tick.GetUpkeeps(context.Background())
-
-	// Assert that the retrieved upkeeps match the original upkeeps
-	assert.NoError(t, err)
-	assert.Equal(t, upkeeps, retrievedUpkeeps)
 }
 
 type MockRatio struct {

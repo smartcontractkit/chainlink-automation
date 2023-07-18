@@ -13,7 +13,8 @@ type MetadataKey string
 
 const (
 	BlockHistoryMetadata     MetadataKey = "block history"
-	CoordinatedBlockMetaData MetadataKey = "coordinated block"
+	CoordinatedBlockMetadata MetadataKey = "coordinated block"
+	ProposalRecoveryMetadata MetadataKey = "proposed for recovery"
 )
 
 type Metadata struct {

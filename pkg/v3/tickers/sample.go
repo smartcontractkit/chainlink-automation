@@ -26,7 +26,7 @@ type upkeepsGetter interface {
 
 type sampleTicker struct {
 	// provided dependencies
-	observer      observer
+	observer      observer[[]ocr2keepers.UpkeepPayload]
 	getter        upkeepsGetter
 	ratio         ratio
 	samplingLimit time.Duration
@@ -102,7 +102,7 @@ func (st *sampleTicker) Close() error {
 	return nil
 }
 
-func (ticker *sampleTicker) getterFn(ctx context.Context, block ocr2keepers.BlockKey) (Tick, error) {
+func (ticker *sampleTicker) getterFn(ctx context.Context, block ocr2keepers.BlockKey) (Tick[[]ocr2keepers.UpkeepPayload], error) {
 	var (
 		upkeeps []ocr2keepers.UpkeepPayload
 		err     error
@@ -118,20 +118,20 @@ func (ticker *sampleTicker) getterFn(ctx context.Context, block ocr2keepers.Bloc
 	size := ticker.ratio.OfInt(len(upkeeps))
 
 	if len(upkeeps) == 0 || size <= 0 {
-		return upkeepTick{upkeeps: nil}, nil
+		return staticTick[[]ocr2keepers.UpkeepPayload]{value: nil}, nil
 	}
 
 	if len(upkeeps) <= size {
-		return upkeepTick{upkeeps: upkeeps}, nil
+		return staticTick[[]ocr2keepers.UpkeepPayload]{value: upkeeps}, nil
 	}
 
-	return upkeepTick{upkeeps: upkeeps[:size]}, nil
+	return staticTick[[]ocr2keepers.UpkeepPayload]{value: upkeeps[:size]}, nil
 }
 
 func NewSampleTicker(
 	ratio ratio,
 	getter upkeepsGetter,
-	observer observer,
+	observer observer[[]ocr2keepers.UpkeepPayload],
 	subscriber BlockSubscriber,
 	samplingLimit time.Duration,
 	logger *log.Logger,

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"log"
+	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
@@ -23,6 +24,7 @@ func newPlugin(
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
 	blockSource tickers.BlockSubscriber,
+	rp flows.RecoverableProvider,
 	encoder Encoder,
 	runnable runner.Runnable,
 	rConf runner.RunnerConfig,
@@ -52,10 +54,24 @@ func newPlugin(
 	// initialize the log trigger eligibility flow
 	ltFlow, svcs := flows.NewLogTriggerEligibility(
 		rs,
+		ms,
 		rn,
 		logProvider,
+		rp,
+		flows.LogCheckInterval,
+		flows.RecoveryCheckInterval,
 		logger,
-		tickers.RetryWithDefaults,
+		[]tickers.ScheduleTickerConfigFunc{ // retry configs
+			// TODO: provide configuration inputs
+			tickers.ScheduleTickerWithDefaults,
+		},
+		[]tickers.ScheduleTickerConfigFunc{ // recovery configs
+			func(c *tickers.ScheduleTickerConfig) {
+				// TODO: provide configuration inputs
+				c.SendDelay = 5 * time.Minute
+				c.MaxSendDuration = 24 * time.Hour
+			},
+		},
 	)
 
 	// create the event coordinator

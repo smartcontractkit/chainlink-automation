@@ -67,7 +67,7 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		assert.True(t, iStore.Has(instructions.DoCoordinateBlock))
 		assert.False(t, iStore.Has(instructions.ShouldCoordinateBlock))
 
-		_, ok := mStore.Get(store.CoordinatedBlockMetaData)
+		_, ok := mStore.Get(store.CoordinatedBlockMetadata)
 		assert.False(t, ok)
 	})
 
@@ -111,7 +111,7 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		assert.False(t, iStore.Has(instructions.DoCoordinateBlock), "no instructions should exist")
 		assert.False(t, iStore.Has(instructions.ShouldCoordinateBlock), "no instructions should exist")
 
-		v, ok := mStore.Get(store.CoordinatedBlockMetaData)
+		v, ok := mStore.Get(store.CoordinatedBlockMetadata)
 		assert.True(t, ok, "coordinated block should be in metadata store")
 		assert.Equal(t, v, blockKey, "value for coordinated block should be from outcome")
 	})

@@ -35,7 +35,7 @@ func (p *retryPostProcessor) attemptRetry(res ocr2keepers.CheckResult) error {
 		return nil
 	}
 
-	if errors.Is(err, tickers.ErrRetryDurationExceeded) {
+	if errors.Is(err, tickers.ErrSendDurationExceeded) {
 		if err := p.recoverer.Retry(res); err != nil {
 			return err
 		}
