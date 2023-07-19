@@ -1,16 +1,29 @@
-# Log Event Provider
+# EVM Log Events
 
-This document describes the log event provider, which is the data source for log triggers. \
-The provider is responsible for reading logs of active log upkeeps from log poller, 
-and exposing them to the log observer.
+This document describes the design for log triggers components for managing evm log events.
+
+<br />
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Log Event Provider](#log-event-provider)
+- [Log Buffer](#log-buffer)
+- [Log Recoverer](#log-recoverer)
+- [Upkeep States](#upkeep-states)
+- [Configuration](#configuration)
+- [Open Issues / TODOs](#open-issues--todos)
+- [Rational / Q&A](#rational--qa)
+
+<br />
 
 ## Overview
 
-The provider reads logs from log poller, 
-and stores them in the log buffer, which will be queried by the 
-log observer (pre processor) for latest logs w/o input, i.e. with no range or any indication for desired upkeeps.
+The **log event provider** is responsible for reading logs from the log poller,
+and storing them in the **log buffer**, which will be queried by the log observer for latest logs.
 
-In addition, the provider also manages the log filters life-cycle. 
+The **log recoverer** is responsible for picking up logs that were missed by the log event provider,
+implemented as separate components that will be run on a separate thread.
 
 The following block diagram describes the involved components:
 
@@ -18,20 +31,30 @@ The following block diagram describes the involved components:
 
 <br />
 
+## Log Event Provider
+
+The provider reads logs from log poller, 
+and stores them in the log buffer, which will be queried by the 
+log observer (pre processor) for latest logs w/o input, i.e. with no range or any indication for desired upkeeps.
+The buffer ensures that logs will be kept for a certain amount of time, and to be visited/seen only once.
+
+In addition, the provider also manages the log filters life-cycle. 
+
 ### Log Filters Life-Cycle
 
 Upon registration or unpausing of an upkeep, the provider registers the corresponding filter in `LogPoller`, while upon canceled or paused upkeep we unregister the filter to avoid overloading the DB with redundant filters.
 
-**TBD: unfunded upkeeps**
+In case of an **unfunded upkeep**, the filter is kept in log poller, but we don't read logs for it
+(see [TBD](#open-issues--todos)) for more info).
 
-For each relevant state event, the provider will get the actual config from the contract and update the filter accordingly. 
-We don't rely on the log event as it is unfinalized.
+In the future, migrated upkeeps might require to update the filter in log poller, 
+therefore we first remove the old filter and then add the new one that was created post migration.
+The same applies for config updates, where a new filter might be needed.
 
-<br />
 
 ### Reading Logs from DB
 
-The provider reads logs from the log poller continouosly in the background and stores them in the [log buffer](#log-buffer).
+The provider reads logs from the log poller continouosly in the background and stores them (once per upkeep+log pair) in the [log buffer](#log-buffer).
 
 Every `ReadInterval` the provider reads logs for `ReadMaxBatchSize` active log upkeeps.
 
@@ -64,7 +87,13 @@ sequenceDiagram
             LogEventProvider->>+LogPoller: get latest block
             LogPoller-->>-LogEventProvider: block
             LogEventProvider->>LogEventProvider: get entries/filters 
-            loop for each entry execute
+            loop for each batch of entries
+                LogEventProvider->>LogEventProvider: schdule batch
+            end
+            LogEventProvider->>LogEventProvider: bump partition
+        end
+        loop for each scheduled batch
+            loop for each entry in batch
                 LogEventProvider->>LogEventProvider: check last poll block
                 LogEventProvider->>LogEventProvider: block rate limiting
                 LogEventProvider->>+LogPoller: GetLogs
@@ -74,7 +103,6 @@ sequenceDiagram
                 LogEventProvider->>LogBuffer: enqueue
                 LogBuffer->>LogBuffer: store unknown logs
             end
-            LogEventProvider->>LogEventProvider: bump partition
         end
 end
 ```
@@ -104,9 +132,9 @@ Logs are saved in DB for `LogRetention` amount of time.
 
 **NOTE:** managed by the log poller, each filter holds a retention field.
 
-<br />
+<br/>
 
-### Log Buffer
+## Log Buffer
 
 A circular/ring buffer of blocks and their corresponding logs.
 The block number is calculated as `blockNumber % LogBufferSize`.
@@ -121,6 +149,42 @@ In case of multiple upkeeps with the same filter, we will have multiple entries 
 The log buffer is implemented with capped slice that is allocated upon buffer creation or restart, and a rw mutex for thread safety.
 
 ![Log Buffer Diagram](./images/log_buffer.png)
+
+<br />
+
+## Log Recoverer
+
+The log recoverer will be implemented as a separate component that will be run on a separate thread.
+It will be responsible for querying the log poller for logs that were missed by the log event provider.
+The recoverer will query `LogUpkeepState` collection to check if the upkeep was already recovered or is currently inflight. 
+
+Every second the log recovery ticker will query the recoverer for a random subset of upkeeps and a random range of blocks. The recoverer will check if the log poller has logs for these pairs, while taking into account the `lastPollBlock` of each upkeep, which gets updated by the log provider when it read logs for the upkeep.
+ 
+**Alternatives** 
+
+- to distribute work among nodes is a DHT approach with some redundancy to account for malicious nodes. The major drawback here is complexity comparing to the sampling approach.
+- each node does all the work on its own or maintains consistent block ranges for better guarantees. The major drawback here is that we might overload the log poller.
+
+<br/>
+
+## Upkeep States
+
+The states are used to track the status of log upkeeps across the system,
+and avoid double recovery of logs or redundant work by the recoverer or other components in the pipeline.
+
+The states will be persisted to protect against restarts, by flushing the deltas into the DB. **TBD: table**
+
+The states are saved with a key that is composed of the upkeep id and trigger.
+
+The following struct is used to represent the state:
+
+```go
+type LogUpkeepState struct {
+    uid ocr2keepers.UpkeepIdentifier
+    trigger ocr2keepers.Trigger
+    state ocr2keepers.LogUpkeepState // (eligible, performed, recovered)
+}
+```
 
 <br />
 
@@ -148,16 +212,20 @@ The following configurations are used by the log event provider:
 ## Open Issues / TODOs
 
 - [ ] Unfunded upkeeps - currently we keep the filter in log poller, 
-but we don't read logs for it. The filter should be removed from log poller after some time
-to avoid overloading the poller with redundant filters.
+but we don't read logs for it. The filter should be removed from log poller
+to reduce workload of redundant filters. \
+Unfunding is an horizontal problem for both log and condional upkeeps.
+Current ideas are that unfunded upkeep will automatically get paused when we add offchain charge, 
+so this component likely doesn't need to worry about it.
+Another idea is to handle this on subscription level cross chainlink services.
 - [ ] Simplify/abstract configurations and add chain specific defaults
-- [ ] Missed logs - there might be edge cases where some logs are missed, 
-while the provider is not in control e.g. high DB latency.
-One option to mitigate these cases is to have additional thread that continuously tries to fill the gaps by reading logs from the DB and adding them to the buffer.
 - [ ] Dropped logs - in cases of fast chains or slow OCR rounds we might need to drop logs.
 The buffer size can be increased to allow bursting, but if the consumer (OCR) is slow for a while then some logs might be dropped.
 - [ ] Call log poller once per contract address - currently the filters are grouped by contract address, but we call log poller for each upkeep separately. 
 One option is to call log poller once per contract address, and filter the results "manually". Another option is to implement this kind of logic within log poller.
+- [ ] Buffer memory footprint - currently we keep the entire log per each upkeep in the buffer, while we can save logs per block and have additional collection of log references per upkeep, i.e. sort of an inverted index. 
+
+<br />
 
 ## Rational / Q&A
 
