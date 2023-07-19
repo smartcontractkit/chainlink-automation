@@ -156,14 +156,17 @@ The log buffer is implemented with capped slice that is allocated upon buffer cr
 
 The log recoverer will be implemented as a separate component that will be run on a separate thread.
 It will be responsible for querying the log poller for logs that were missed by the log event provider.
-The recoverer will query `LogUpkeepState` collection to check if the upkeep was already recovered or is currently inflight. 
 
-Every second the log recovery ticker will query the recoverer for a random subset of upkeeps and a random range of blocks. The recoverer will check if the log poller has logs for these pairs, while taking into account the `lastPollBlock` of each upkeep, which gets updated by the log provider when it read logs for the upkeep.
- 
+The log recovery ticker will query the recoverer that will pick random subset of upkeeps and a random range of blocks. The recoverer will check if the log poller has logs for these pairs, while taking into account the `lastPollBlock` of each upkeep, which gets updated by the log provider when it read logs for the upkeep.
+
+<aside> 
 **Alternatives** 
 
 - to distribute work among nodes is a DHT approach with some redundancy to account for malicious nodes. The major drawback here is complexity comparing to the sampling approach.
 - each node does all the work on its own or maintains consistent block ranges for better guarantees. The major drawback here is that we might overload the log poller.
+</aside>
+
+The recoverer will query upkeep states to check if the upkeep was already performed or is currently inflight, and the log buffer to check if we read the log already.
 
 <br/>
 
@@ -172,7 +175,7 @@ Every second the log recovery ticker will query the recoverer for a random subse
 The states are used to track the status of log upkeeps across the system,
 and avoid double recovery of logs or redundant work by the recoverer or other components in the pipeline.
 
-The states will be persisted to protect against restarts, by flushing the deltas into the DB. **TBD: table**
+The states will be persisted to protect against restarts, by flushing the deltas into the DB, every minute (**TBD**) or upon shutdown.
 
 The states are saved with a key that is composed of the upkeep id and trigger.
 
@@ -180,9 +183,9 @@ The following struct is used to represent the state:
 
 ```go
 type LogUpkeepState struct {
-    uid ocr2keepers.UpkeepIdentifier
-    trigger ocr2keepers.Trigger
-    state ocr2keepers.LogUpkeepState // (eligible, performed, recovered)
+    UpkeepID ocr2keepers.UpkeepIdentifier
+    Trigger  ocr2keepers.Trigger
+    State    ocr2keepers.LogUpkeepState // (eligible, performed)
 }
 ```
 
