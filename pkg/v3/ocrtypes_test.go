@@ -51,27 +51,29 @@ func TestAutomationObservation(t *testing.T) {
 func TestAutomationOutcome(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	expected := AutomationOutcome{
-		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata:     map[OutcomeMetadataKey]interface{}{"key": "value"},
-		Performable: []ocr2keepers.CheckResult{
-			{
-				Payload: ocr2keepers.UpkeepPayload{
-					ID: "abc",
-					Upkeep: ocr2keepers.ConfiguredUpkeep{
-						ID:   []byte("111"),
-						Type: 1,
+		BasicOutcome: BasicOutcome{
+			Metadata: map[OutcomeMetadataKey]interface{}{"key": "value"},
+			Performable: []ocr2keepers.CheckResult{
+				{
+					Payload: ocr2keepers.UpkeepPayload{
+						ID: "abc",
+						Upkeep: ocr2keepers.ConfiguredUpkeep{
+							ID:   []byte("111"),
+							Type: 1,
+						},
+						CheckData: []byte("check data"),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   "hash",
+						},
 					},
-					CheckData: []byte("check data"),
-					Trigger: ocr2keepers.Trigger{
-						BlockNumber: 4,
-						BlockHash:   "hash",
-					},
+					Retryable:   true,
+					Eligible:    true,
+					PerformData: []byte("testing"),
 				},
-				Retryable:   true,
-				Eligible:    true,
-				PerformData: []byte("testing"),
 			},
 		},
+		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
 	}
 
 	jsonData, _ := json.Marshal(expected)

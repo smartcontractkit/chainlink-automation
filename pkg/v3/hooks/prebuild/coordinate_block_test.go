@@ -49,10 +49,12 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		}
 
 		outcome := ocr2keepers.AutomationOutcome{
+			BasicOutcome: ocr2keepers.BasicOutcome{
+				Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{},
+			},
 			Instructions: []instructions.Instruction{
 				instructions.ShouldCoordinateBlock,
 			},
-			Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{},
 		}
 
 		iStore.Set(instructions.ShouldCoordinateBlock)
@@ -92,11 +94,13 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		blockKey := ocr2keepers2.BlockKey("testBlockKey")
 
 		outcome := ocr2keepers.AutomationOutcome{
+			BasicOutcome: ocr2keepers.BasicOutcome{
+				Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{
+					ocr2keepers.CoordinatedBlockOutcomeKey: blockKey,
+				},
+			},
 			Instructions: []instructions.Instruction{
 				instructions.DoCoordinateBlock,
-			},
-			Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{
-				ocr2keepers.CoordinatedBlockOutcomeKey: blockKey,
 			},
 		}
 
@@ -135,11 +139,13 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		}
 
 		outcome := ocr2keepers.AutomationOutcome{
+			BasicOutcome: ocr2keepers.BasicOutcome{
+				Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{
+					ocr2keepers.CoordinatedBlockOutcomeKey: "not a block",
+				},
+			},
 			Instructions: []instructions.Instruction{
 				instructions.ShouldCoordinateBlock,
-			},
-			Metadata: map[ocr2keepers.OutcomeMetadataKey]interface{}{
-				ocr2keepers.CoordinatedBlockOutcomeKey: "not a block",
 			},
 		}
 

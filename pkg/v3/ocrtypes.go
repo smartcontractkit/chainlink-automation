@@ -34,9 +34,15 @@ func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
 
 // AutomationOutcome represents decisions proposed by a single node based on observations.
 type AutomationOutcome struct {
+	BasicOutcome
 	Instructions []instructions.Instruction
-	Metadata     map[OutcomeMetadataKey]interface{}
-	Performable  []ocr2keepers.CheckResult
+	History      []BasicOutcome
+	LatestIdx    int
+}
+
+type BasicOutcome struct {
+	Metadata    map[OutcomeMetadataKey]interface{}
+	Performable []ocr2keepers.CheckResult
 }
 
 func (outcome AutomationOutcome) Encode() ([]byte, error) {
