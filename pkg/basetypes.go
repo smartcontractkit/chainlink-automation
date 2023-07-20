@@ -161,3 +161,25 @@ const (
 	Eligible LogUpkeepState = iota
 	Performed
 )
+
+type LogUpkeep struct {
+	UpkeepID UpkeepIdentifier
+	Trigger  Trigger
+	State    LogUpkeepState
+}
+
+type LogUpkeepStateReader interface {
+	// SelectByBlock retrieves log upkeep states at a specific block
+	SelectByBlock(block int64) ([]LogUpkeep, error)
+	// SelectByBlockRange retrieves log upkeep states within block range from start (inclusive) to end (exclusive)
+	SelectByBlockRange(start, end int64) ([]LogUpkeep, error)
+	// SelectByUpkeepID retrieves log upkeep states for an upkeep
+	SelectByUpkeepID(upkeepId *big.Int) ([]LogUpkeep, error)
+	// SelectByUpkeepIDs retrieves log upkeep states for provided upkeeps
+	SelectByUpkeepIDs([]*big.Int) ([]LogUpkeep, error)
+}
+
+type LogUpkeepStateUpdater interface {
+	InsertLogUpkeep(LogUpkeep) error
+	InsertLogUpkeeps([]LogUpkeep) error
+}
