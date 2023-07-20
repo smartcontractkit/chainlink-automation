@@ -14,6 +14,10 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 )
 
+const (
+	OutcomeHistoryLimit = 10
+)
+
 type AutomationReportInfo struct{}
 
 type Encoder interface {
@@ -105,11 +109,28 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	}
 
 	outcome := ocr2keepersv3.AutomationOutcome{
-		Metadata: make(map[ocr2keepersv3.OutcomeMetadataKey]interface{}),
+		BasicOutcome: ocr2keepersv3.BasicOutcome{
+			Metadata: make(map[ocr2keepersv3.OutcomeMetadataKey]interface{}),
+		},
 	}
 
 	p.set(&outcome)
 	c.set(&outcome)
+
+	var previous *ocr2keepersv3.AutomationOutcome
+	if outctx.SeqNr != 1 {
+		p, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: validate outcome (even though it is a signed outcome)
+
+		previous = &p
+	}
+
+	// set the latest value in the history
+	UpdateHistory(previous, &outcome, OutcomeHistoryLimit)
 
 	plugin.Logger.Printf("returning outcome with %d results", len(outcome.Performable))
 
