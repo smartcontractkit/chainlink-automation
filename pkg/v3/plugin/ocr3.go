@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -50,6 +49,8 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 			return nil, err
 		}
 
+		// TODO: validate outcome (even though it is a signed outcome)
+
 		// Execute pre-build hooks
 		plugin.Logger.Printf("running pre-build hooks")
 		for _, hook := range plugin.PrebuildHooks {
@@ -87,47 +88,28 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	type resultAndCount struct {
-		result ocr2keepers.CheckResult
-		count  int
-	}
+	p := newPerformables(len(attributedObservations) / 2)
+	c := newCoordinateBlock(len(attributedObservations) / 2)
 
-	resultCount := make(map[string]resultAndCount)
-
+	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, result := range observation.Performable {
-			uid := fmt.Sprintf("%v", result)
-			payloadCount, ok := resultCount[uid]
-			if !ok {
-				payloadCount = resultAndCount{
-					result: result,
-					count:  1,
-				}
-			} else {
-				payloadCount.count++
-			}
-			resultCount[uid] = payloadCount
-		}
-	}
+		// TODO: validate incoming observation
 
-	submittedObservations := len(attributedObservations)
-	quorumThreshold := submittedObservations / 2
-
-	var performable []ocr2keepers.CheckResult
-	for _, payload := range resultCount {
-		if payload.count > quorumThreshold {
-			performable = append(performable, payload.result)
-		}
+		p.add(observation)
+		c.add(observation)
 	}
 
 	outcome := ocr2keepersv3.AutomationOutcome{
-		Performable: performable,
+		Metadata: make(map[ocr2keepersv3.OutcomeMetadataKey]interface{}),
 	}
+
+	p.set(&outcome)
+	c.set(&outcome)
 
 	plugin.Logger.Printf("returning outcome with %d results", len(outcome.Performable))
 
@@ -144,6 +126,8 @@ func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.
 	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw); err != nil {
 		return nil, err
 	}
+
+	// TODO: validate outcome (even though it is a signed outcome)
 
 	plugin.Logger.Printf("creating report from outcome with %d results", len(outcome.Performable))
 
