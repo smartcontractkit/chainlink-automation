@@ -12,21 +12,25 @@ import (
 
 func TestAutomationObservation(t *testing.T) {
 	// set non-default values to test encoding/decoding
-	expected := AutomationObservation{
+	input := AutomationObservation{
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata:     map[ObservationMetadataKey]interface{}{"key": "value"},
+		Metadata: map[ObservationMetadataKey]interface{}{
+			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{("2")}),
+		},
 		Performable: []ocr2keepers.CheckResult{
 			{
 				Payload: ocr2keepers.UpkeepPayload{
 					ID: "abc",
 					Upkeep: ocr2keepers.ConfiguredUpkeep{
-						ID:   []byte("111"),
-						Type: 1,
+						ID:     []byte("111"),
+						Type:   1,
+						Config: "value",
 					},
 					CheckData: []byte("check data"),
 					Trigger: ocr2keepers.Trigger{
 						BlockNumber: 4,
 						BlockHash:   "hash",
+						Extension:   8,
 					},
 				},
 				Retryable:   true,
@@ -36,8 +40,36 @@ func TestAutomationObservation(t *testing.T) {
 		},
 	}
 
-	jsonData, _ := json.Marshal(expected)
-	data, err := expected.Encode()
+	expected := AutomationObservation{
+		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
+		Metadata: map[ObservationMetadataKey]interface{}{
+			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{("2")}),
+		},
+		Performable: []ocr2keepers.CheckResult{
+			{
+				Payload: ocr2keepers.UpkeepPayload{
+					ID: "abc",
+					Upkeep: ocr2keepers.ConfiguredUpkeep{
+						ID:     []byte("111"),
+						Type:   1,
+						Config: []byte(`"value"`),
+					},
+					CheckData: []byte("check data"),
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 4,
+						BlockHash:   "hash",
+						Extension:   []byte("8"),
+					},
+				},
+				Retryable:   true,
+				Eligible:    true,
+				PerformData: []byte("testing"),
+			},
+		},
+	}
+
+	jsonData, _ := json.Marshal(input)
+	data, err := input.Encode()
 
 	assert.Equal(t, jsonData, data, "json marshalling should return the same result")
 	assert.NoError(t, err, "no error from encoding")
@@ -50,21 +82,25 @@ func TestAutomationObservation(t *testing.T) {
 
 func TestAutomationOutcome(t *testing.T) {
 	// set non-default values to test encoding/decoding
-	expected := AutomationOutcome{
+	input := AutomationOutcome{
 		BasicOutcome: BasicOutcome{
-			Metadata: map[OutcomeMetadataKey]interface{}{"key": "value"},
+			Metadata: map[OutcomeMetadataKey]interface{}{
+				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+			},
 			Performable: []ocr2keepers.CheckResult{
 				{
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "abc",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:   []byte("111"),
-							Type: 1,
+							ID:     []byte("111"),
+							Type:   1,
+							Config: "value",
 						},
 						CheckData: []byte("check data"),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   "hash",
+							Extension:   8,
 						},
 					},
 					Retryable:   true,
@@ -76,8 +112,38 @@ func TestAutomationOutcome(t *testing.T) {
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
 	}
 
-	jsonData, _ := json.Marshal(expected)
-	data, err := expected.Encode()
+	expected := AutomationOutcome{
+		BasicOutcome: BasicOutcome{
+			Metadata: map[OutcomeMetadataKey]interface{}{
+				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+			},
+			Performable: []ocr2keepers.CheckResult{
+				{
+					Payload: ocr2keepers.UpkeepPayload{
+						ID: "abc",
+						Upkeep: ocr2keepers.ConfiguredUpkeep{
+							ID:     []byte("111"),
+							Type:   1,
+							Config: []byte(`"value"`),
+						},
+						CheckData: []byte("check data"),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   "hash",
+							Extension:   []byte("8"),
+						},
+					},
+					Retryable:   true,
+					Eligible:    true,
+					PerformData: []byte("testing"),
+				},
+			},
+		},
+		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
+	}
+
+	jsonData, _ := json.Marshal(input)
+	data, err := input.Encode()
 
 	assert.Equal(t, jsonData, data, "json marshalling should return the same result")
 	assert.NoError(t, err, "no error from encoding")

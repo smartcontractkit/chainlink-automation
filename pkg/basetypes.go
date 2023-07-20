@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -81,6 +82,39 @@ type CheckResult struct {
 	Extension interface{}
 }
 
+func (r *CheckResult) UnmarshalJSON(b []byte) error {
+	type raw struct {
+		Eligible     bool
+		Retryable    bool
+		GasAllocated uint64
+		Payload      UpkeepPayload
+		PerformData  []byte
+		Extension    json.RawMessage
+	}
+
+	var basicRaw raw
+
+	if err := json.Unmarshal(b, &basicRaw); err != nil {
+		return err
+	}
+
+	output := CheckResult{
+		Eligible:     basicRaw.Eligible,
+		Retryable:    basicRaw.Retryable,
+		GasAllocated: basicRaw.GasAllocated,
+		Payload:      basicRaw.Payload,
+		PerformData:  basicRaw.PerformData,
+	}
+
+	if string(basicRaw.Extension) != "null" {
+		output.Extension = []byte(basicRaw.Extension)
+	}
+
+	*r = output
+
+	return nil
+}
+
 type ConfiguredUpkeep struct {
 	// ID uniquely identifies the upkeep
 	ID UpkeepIdentifier
@@ -88,6 +122,33 @@ type ConfiguredUpkeep struct {
 	Type int
 	// Config is configuration data specific to the type
 	Config interface{}
+}
+
+func (u *ConfiguredUpkeep) UnmarshalJSON(b []byte) error {
+	type raw struct {
+		ID     UpkeepIdentifier
+		Type   int
+		Config json.RawMessage
+	}
+
+	var basicRaw raw
+
+	if err := json.Unmarshal(b, &basicRaw); err != nil {
+		return err
+	}
+
+	output := ConfiguredUpkeep{
+		ID:   basicRaw.ID,
+		Type: basicRaw.Type,
+	}
+
+	if string(basicRaw.Config) != "null" {
+		output.Config = []byte(basicRaw.Config)
+	}
+
+	*u = output
+
+	return nil
 }
 
 type UpkeepPayload struct {
@@ -133,6 +194,33 @@ type Trigger struct {
 	Extension interface{}
 }
 
+func (t *Trigger) UnmarshalJSON(b []byte) error {
+	type raw struct {
+		BlockNumber int64
+		BlockHash   string
+		Extension   json.RawMessage
+	}
+
+	var basicRaw raw
+
+	if err := json.Unmarshal(b, &basicRaw); err != nil {
+		return err
+	}
+
+	output := Trigger{
+		BlockNumber: basicRaw.BlockNumber,
+		BlockHash:   basicRaw.BlockHash,
+	}
+
+	if string(basicRaw.Extension) != "null" {
+		output.Extension = []byte(basicRaw.Extension)
+	}
+
+	*t = output
+
+	return nil
+}
+
 func NewTrigger(blockNumber int64, blockHash string, extension interface{}) Trigger {
 	return Trigger{
 		BlockNumber: blockNumber,
@@ -168,6 +256,23 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 
 func (bh BlockHistory) Keys() []BlockKey {
 	return bh
+}
+
+func (bh *BlockHistory) UnmarshalJSON(b []byte) error {
+	var raw []string
+
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+
+	output := make([]BlockKey, len(raw))
+	for i, value := range raw {
+		output[i] = BlockKey(value)
+	}
+
+	*bh = output
+
+	return nil
 }
 
 type UpkeepState uint8
