@@ -157,28 +157,22 @@ type BlockHistory []BlockKey
 
 type LogUpkeepState uint8
 
-const (
-	Performed LogUpkeepState = iota
-)
+const Performed LogUpkeepState = iota
 
-type LogUpkeep struct {
-	UpkeepID UpkeepIdentifier
-	Trigger  Trigger
-	State    LogUpkeepState
+type UpkeepStateReader interface {
+	// SelectByID retrieves a single upkeep state
+	SelectByID(ID string) (*UpkeepPayload, LogUpkeepState, error)
+	// SelectByBlock retrieves upkeep states at a specific block
+	SelectByBlock(block int64) ([]*UpkeepPayload, []LogUpkeepState, error)
+	// SelectByBlockRange retrieves upkeep states within block range from start (inclusive) to end (exclusive)
+	SelectByBlockRange(start, end int64) ([]*UpkeepPayload, []LogUpkeepState, error)
+	// SelectByUpkeepID retrieves upkeep states for an upkeep
+	SelectByUpkeepID(upkeepId *big.Int) ([]*UpkeepPayload, []LogUpkeepState, error)
+	// SelectByUpkeepIDs retrieves upkeep states for provided upkeeps
+	SelectByUpkeepIDs([]*big.Int) ([]*UpkeepPayload, []LogUpkeepState, error)
 }
 
-type LogUpkeepStateReader interface {
-	// SelectByBlock retrieves log upkeep states at a specific block
-	SelectByBlock(block int64) ([]LogUpkeep, error)
-	// SelectByBlockRange retrieves log upkeep states within block range from start (inclusive) to end (exclusive)
-	SelectByBlockRange(start, end int64) ([]LogUpkeep, error)
-	// SelectByUpkeepID retrieves log upkeep states for an upkeep
-	SelectByUpkeepID(upkeepId *big.Int) ([]LogUpkeep, error)
-	// SelectByUpkeepIDs retrieves log upkeep states for provided upkeeps
-	SelectByUpkeepIDs([]*big.Int) ([]LogUpkeep, error)
-}
-
-type LogUpkeepStateUpdater interface {
-	InsertLogUpkeep(LogUpkeep) error
-	InsertLogUpkeeps([]LogUpkeep) error
+type UpkeepStateUpdater interface {
+	SetUpkeepState(UpkeepPayload, LogUpkeepState) error
+	SetUpkeepStates([]UpkeepPayload, []LogUpkeepState) error
 }
