@@ -18,17 +18,25 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
+type mockedRunner struct {
+	mu            sync.Mutex
+	count         int
+	eligibleAfter int
+}
+
+// Happy path, log trigger flow only
+func TestLogTriggerFlow_EmptySet(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
+	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 
-	// will call preprocess on the log source x times and return the same
-	// values every time
+	// get logs should run the same number of times as the happy path
+	// ticker
 	src.On("GetLogs", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
 	// get recoverable should run the same number of times as the happy path
@@ -42,6 +50,7 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 	tickerInterval := 50 * time.Millisecond
 
 	_, svcs := NewLogTriggerEligibility(
+		coord,
 		rStore,
 		mStore,
 		runner,
@@ -77,15 +86,18 @@ func TestLogTriggerEligibilityFlow_EmptySet(t *testing.T) {
 
 	wg.Wait()
 
+	assert.Equal(t, 6, coord.Calls())
 	src.AssertExpectations(t)
 	rec.AssertExpectations(t)
 	rStore.AssertExpectations(t)
 	mStore.AssertExpectations(t)
 }
 
+// Happy path, log trigger flow only
 func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
+	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
@@ -96,16 +108,16 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 		{ID: "test"},
 	}
 
-	// will call preprocess on the log source x times and return the same
-	// values every time
-	src.On("GetLogs", mock.Anything).
-		Return(testData, nil).Times(5)
+	// 1 time with test data, 4 times nil
+	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(4)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
 	rec.On("GetRecoverables").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(5)
 
-	rStore.On("Add", mock.Anything).Times(5)
+	// only test data will be added to result store, nil will not
+	rStore.On("Add", mock.Anything).Times(1)
 
 	// metadata store should set the value 5 times with empty data
 	mStore.On("Set", store.ProposalRecoveryMetadata, []ocr2keepers.UpkeepPayload{}).Times(5)
@@ -114,6 +126,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	tickerInterval := 50 * time.Millisecond
 
 	_, svcs := NewLogTriggerEligibility(
+		coord,
 		rStore,
 		mStore,
 		runner,
@@ -149,6 +162,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	wg.Wait()
 
+	assert.Equal(t, 15, coord.Calls())
 	src.AssertExpectations(t)
 	rec.AssertExpectations(t)
 	rStore.AssertExpectations(t)
@@ -158,6 +172,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
+	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 2}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
@@ -168,7 +183,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		{ID: "test"},
 	}
 
-	// ensure logs preprocessor is called
+	// 1 time with test data, 2 times nil
 	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
 	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(2)
 
@@ -195,6 +210,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	tickerInterval := 50 * time.Millisecond
 
 	_, svcs := NewLogTriggerEligibility(
+		coord,
 		rStore,
 		mStore,
 		runner,
@@ -205,7 +221,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		logger,
 		[]tickers.ScheduleTickerConfigFunc{ // retry configs
 			tickers.ScheduleTickerWithDefaults,
-			// set some short time values to confine the tests. the schuduled time that
+			// set some short time values to confine the tests. the scheduled time that
 			// follows should allow the scheduled ticker to retry the provided value on
 			// the second tick
 			func(c *tickers.ScheduleTickerConfig) {
@@ -233,6 +249,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
 	}
 
+	assert.Equal(t, 9, coord.Calls())
 	src.AssertExpectations(t)
 	src.AssertExpectations(t)
 	rStore.AssertExpectations(t)
@@ -244,6 +261,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
+	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 2}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
@@ -254,7 +272,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 		{ID: "test"},
 	}
 
-	// ensure logs preprocessor is called
+	// 1 time with test data and 2 times nil
 	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
 	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(2)
 
@@ -271,12 +289,13 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	// put in the recoverable path
 
 	// metadata store should set the value once
-	mStore.On("Set", store.ProposalRecoveryMetadata, mock.Anything)
+	mStore.On("Set", store.ProposalRecoveryMetadata, mock.Anything).Times(3)
 
 	// set the ticker time lower to reduce the test time
 	tickerInterval := 50 * time.Millisecond
 
 	_, svcs := NewLogTriggerEligibility(
+		coord,
 		rStore,
 		mStore,
 		runner,
@@ -320,101 +339,13 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
 	}
 
+	assert.Equal(t, 9, coord.Calls())
 	src.AssertExpectations(t)
 	rec.AssertExpectations(t)
 	rStore.AssertExpectations(t)
 	mStore.AssertExpectations(t)
 
 	wg.Wait()
-}
-
-func TestLogTriggerEligibilityFlow_RecoverFromProvider(t *testing.T) {
-	logger := log.New(io.Discard, "", log.LstdFlags)
-
-	runner := &mockedRunner{eligibleAfter: 2}
-	src := new(mocks.MockLogEventProvider)
-	rec := new(mocks.MockRecoverableProvider)
-	rStore := new(mocks.MockResultStore)
-	mStore := new(mocks.MockMetadataStore)
-
-	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
-	}
-
-	// ensure logs preprocessor is called
-	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(4)
-
-	// get recoverable should run the same number of times as the happy path
-	// ticker
-	rec.On("GetRecoverables").Return(testData, nil).Times(1)
-	rec.On("GetRecoverables").Return(nil, nil).Times(3)
-
-	// within the standard happy path, check upkeeps is called and returns
-	// as retryable.
-	// the upkeep should be added to the retry path and retried once where the
-	// runner again returns retryable.
-
-	// after the first retry returns a retryable result, the upkeep should be
-	// put in the recoverable path
-
-	// metadata store should set the value once
-	mStore.On("Set", store.ProposalRecoveryMetadata, []ocr2keepers.UpkeepPayload{}).Times(3)
-	mStore.On("Set", store.ProposalRecoveryMetadata, testData).Times(1)
-
-	// set the ticker time lower to reduce the test time
-	tickerInterval := 50 * time.Millisecond
-
-	_, svcs := NewLogTriggerEligibility(
-		rStore,
-		mStore,
-		runner,
-		src,
-		rec,
-		tickerInterval,
-		tickerInterval,
-		logger,
-		[]tickers.ScheduleTickerConfigFunc{ // retry configs
-			tickers.ScheduleTickerWithDefaults,
-		},
-		[]tickers.ScheduleTickerConfigFunc{ // recovery configs
-			tickers.ScheduleTickerWithDefaults,
-			// set some short time values to confine the tests. the schuduled time that
-			// follows should allow the scheduled ticker to retry the provided value on
-			// the second tick
-			func(c *tickers.ScheduleTickerConfig) {
-				c.SendDelay = 30 * time.Millisecond
-			},
-		},
-	)
-
-	var wg sync.WaitGroup
-
-	for i := range svcs {
-		wg.Add(1)
-		go func(svc service.Recoverable, ctx context.Context) {
-			assert.NoError(t, svc.Start(ctx))
-			wg.Done()
-		}(svcs[i], context.Background())
-	}
-
-	time.Sleep(210 * time.Millisecond)
-
-	for i := range svcs {
-		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
-	}
-
-	src.AssertExpectations(t)
-	rec.AssertExpectations(t)
-	rStore.AssertExpectations(t)
-	mStore.AssertExpectations(t)
-
-	wg.Wait()
-}
-
-type mockedRunner struct {
-	mu            sync.Mutex
-	count         int
-	eligibleAfter int
 }
 
 func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
@@ -439,4 +370,25 @@ func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keeper
 	}
 
 	return results, nil
+}
+
+type mockedPreprocessor struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (_m *mockedPreprocessor) PreProcess(_ context.Context, b []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
+	_m.mu.Lock()
+	defer _m.mu.Unlock()
+
+	_m.calls++
+
+	return b, nil
+}
+
+func (_m *mockedPreprocessor) Calls() int {
+	_m.mu.Lock()
+	defer _m.mu.Unlock()
+
+	return _m.calls
 }

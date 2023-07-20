@@ -22,6 +22,5 @@ func NewAddPayloadToMetadataStorePostprocessor(store MetadataStore) *addPayloadT
 func (a *addPayloadToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.UpkeepPayload) error {
 	// TODO: should only add values and not remove them
 	a.store.Set(store.ProposalRecoveryMetadata, results)
-
 	return nil
 }

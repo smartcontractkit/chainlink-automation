@@ -189,7 +189,6 @@ func (o *Runner) wrapAggregate(r *Result) func([]ocr2keepers.UpkeepResult, error
 			for _, res := range result {
 				key, _, _ := o.encoder.Detail(res)
 				o.cache.Set(string(key), res, pkgutil.DefaultCacheExpiration)
-
 				r.Add(res)
 			}
 		} else {

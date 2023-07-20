@@ -51,8 +51,12 @@ func newPlugin(
 		return nil, err
 	}
 
+	// create the event coordinator
+	coord := coordinator.NewReportCoordinator(events, conf, logger)
+
 	// initialize the log trigger eligibility flow
 	ltFlow, svcs := flows.NewLogTriggerEligibility(
+		coord,
 		rs,
 		ms,
 		rn,
@@ -73,9 +77,6 @@ func newPlugin(
 			},
 		},
 	)
-
-	// create the event coordinator
-	coord := coordinator.NewReportCoordinator(events, conf, logger)
 
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
