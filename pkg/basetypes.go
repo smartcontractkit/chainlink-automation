@@ -158,21 +158,3 @@ type BlockHistory []BlockKey
 type UpkeepState uint8
 
 const Performed UpkeepState = iota
-
-type UpkeepStateReader interface {
-	// SelectByID retrieves a single upkeep state
-	SelectByID(ID string) (*UpkeepPayload, UpkeepState, error)
-	// SelectByBlock retrieves upkeep states at a specific block
-	SelectByBlock(block int64) ([]*UpkeepPayload, []UpkeepState, error)
-	// SelectByBlockRange retrieves upkeep states within block range from start (inclusive) to end (exclusive)
-	SelectByBlockRange(start, end int64) ([]*UpkeepPayload, []UpkeepState, error)
-	// SelectByUpkeepID retrieves upkeep states for an upkeep
-	SelectByUpkeepID(upkeepId *big.Int) ([]*UpkeepPayload, []UpkeepState, error)
-	// SelectByUpkeepIDs retrieves upkeep states for provided upkeeps
-	SelectByUpkeepIDs([]*big.Int) ([]*UpkeepPayload, []UpkeepState, error)
-}
-
-type UpkeepStateUpdater interface {
-	SetUpkeepState(UpkeepPayload, UpkeepState) error
-	SetUpkeepStates([]UpkeepPayload, []UpkeepState) error
-}
