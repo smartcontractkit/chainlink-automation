@@ -108,28 +108,6 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 		c.add(observation)
 	}
 
-	var latestIdx int
-	var history []ocr2keepersv3.BasicOutcome
-
-	if outctx.SeqNr != 1 {
-		prev, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
-		if err != nil {
-			return nil, err
-		}
-
-		// TODO: validate outcome (even though it is a signed outcome)
-
-		latestIdx = prev.LatestIdx
-
-		if len(prev.History) < OutcomeHistoryLimit {
-			history = make([]ocr2keepersv3.BasicOutcome, len(prev.History))
-			copy(history, prev.History[:len(prev.History)])
-		} else {
-			history = make([]ocr2keepersv3.BasicOutcome, OutcomeHistoryLimit)
-			copy(history, prev.History[:OutcomeHistoryLimit])
-		}
-	}
-
 	outcome := ocr2keepersv3.AutomationOutcome{
 		BasicOutcome: ocr2keepersv3.BasicOutcome{
 			Metadata: make(map[ocr2keepersv3.OutcomeMetadataKey]interface{}),
@@ -139,24 +117,20 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	p.set(&outcome)
 	c.set(&outcome)
 
-	// advance the latest by 1 and apply the basic outcome to the history
-	latestIdx++
-	if latestIdx >= OutcomeHistoryLimit {
-		latestIdx = 0
+	var previous *ocr2keepersv3.AutomationOutcome
+	if outctx.SeqNr != 1 {
+		p, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: validate outcome (even though it is a signed outcome)
+
+		previous = &p
 	}
 
-	if len(history) < OutcomeHistoryLimit {
-		// if the history is still less than the limit the new value can be
-		// safely appended
-		history = append(history, outcome.BasicOutcome)
-	} else {
-		// if the history is at the limit the latest value reset the value at
-		// the latest index. this creates a ring buffer of history values
-		history[latestIdx] = outcome.BasicOutcome
-	}
-
-	outcome.History = history
-	outcome.LatestIdx = latestIdx
+	// set the latest value in the history
+	UpdateHistory(previous, &outcome, OutcomeHistoryLimit)
 
 	plugin.Logger.Printf("returning outcome with %d results", len(outcome.Performable))
 

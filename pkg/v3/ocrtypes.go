@@ -37,7 +37,7 @@ type AutomationOutcome struct {
 	BasicOutcome
 	Instructions []instructions.Instruction
 	History      []BasicOutcome
-	LatestIdx    int
+	NextIdx      int
 }
 
 type BasicOutcome struct {
