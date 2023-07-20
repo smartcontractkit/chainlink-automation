@@ -169,3 +169,7 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 func (bh BlockHistory) Keys() []BlockKey {
 	return bh
 }
+
+type UpkeepState uint8
+
+const Performed UpkeepState = iota

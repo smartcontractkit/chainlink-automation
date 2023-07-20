@@ -8,11 +8,16 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
+
+type UpkeepStateUpdater interface {
+	SetUpkeepState(ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepState) error
+}
 
 // DelegateConfig provides a single configuration struct for all options
 // to be passed to the oracle, oracle factory, and underlying plugin/services.
