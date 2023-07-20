@@ -158,8 +158,7 @@ type BlockHistory []BlockKey
 type LogUpkeepState uint8
 
 const (
-	Eligible LogUpkeepState = iota
-	Performed
+	Performed LogUpkeepState = iota
 )
 
 type LogUpkeep struct {
