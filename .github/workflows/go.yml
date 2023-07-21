@@ -19,10 +19,23 @@ jobs:
         go-version-file: "go.mod"
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: smartcontractkit/golangci-lint-action@54ab6c5f11d66a92d14c3f7cc41ea13f676644bd
       with:
         # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
-        version: latest
+        version: v1.52.1
+        allow-extra-out-format-args: true
+        args: --out-format checkstyle:golangci-lint-report.xml
+
+    - name: Print golangci lint report
+      if: always()
+      run: test -f golangci-lint-report.xml && cat golangci-lint-report.xml || true
+
+    - name: Upload golangci lint report artifact
+      if: always()
+      uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # v3.1.0
+      with:
+        name: golangci-lint-report
+        path: golangci-lint-report.xml
 
   unit-test:
     runs-on: ubuntu-latest
@@ -35,7 +48,14 @@ jobs:
         go-version-file: "go.mod"
 
     - name: Run Unit Tests
-      run: go test -v ./...
+      run: go test -v ./... -coverpkg=./... -coverprofile=coverage.txt
+    
+    - name: Upload Go test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: go-test-results
+        path: ./coverage.txt
 
   race-test:
     runs-on: ubuntu-latest
@@ -48,7 +68,14 @@ jobs:
         go-version-file: "go.mod"
 
     - name: Run Race Tests
-      run: go test -race ./...
+      run: go test -race ./... -coverpkg=./... -coverprofile=race_coverage.txt
+    
+    - name: Upload Go race test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: go-test-results
+        path: ./race_coverage.txt
 
   fuzz-test:
     runs-on: ubuntu-latest
@@ -62,3 +89,34 @@ jobs:
 
     - name: Run Keepers Package Fuzz Tests
       run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/pkg
+
+  sonar-scan:
+    name: SonarQube
+    needs: [lint, unit-test, race-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # fetches all history for all tags and branches to provide more metadata for sonar reports
+
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: Set SonarQube Report Paths
+        id: sonarqube_report_paths
+        shell: bash
+        run: |
+          echo "sonarqube_coverage_report_paths=$(find -type f -name '*coverage.txt' -printf "%p,")" >> $GITHUB_OUTPUT
+          echo "sonarqube_golangci_report_paths=$(find -type f -name 'golangci-lint-report.xml' -printf "%p,")" >> $GITHUB_OUTPUT
+      
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@a6ba0aafc293e03de5437af7edbc97f7d3ebc91a # v1.2.0
+        with:
+          args: >
+            -Dsonar.go.coverage.reportPaths=${{ steps.sonarqube_report_paths.outputs.sonarqube_coverage_report_paths }}
+            -Dsonar.go.golangci-lint.reportPaths=${{ steps.sonarqube_report_paths.outputs.sonarqube_golangci_report_paths }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
