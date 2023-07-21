@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
@@ -102,7 +104,7 @@ func newPlugin(
 		Coordinators:  []Coordinator{coord},
 		Services:      recoverSvcs,
 		Config:        conf,
-		Logger:        logger,
+		Logger:        log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 
 	plugin.startServices()

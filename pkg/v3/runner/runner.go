@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 )
 
 const WorkerBatchLimit int = 10
@@ -68,7 +69,7 @@ func NewRunner(
 	conf RunnerConfig,
 ) (*Runner, error) {
 	return &Runner{
-		logger:           logger,
+		logger:           log.New(logger.Writer(), fmt.Sprintf("[%s | check-pipeline-runner]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		runnable:         runnable,
 		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.CheckResult](conf.Workers, conf.WorkerQueueLength),
 		cache:            pkgutil.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
@@ -98,6 +99,8 @@ func (o *Runner) Start(_ context.Context) error {
 	}
 
 	o.running.Swap(true)
+	o.logger.Println("starting service")
+
 	go o.cacheCleaner.Run(o.cache)
 
 	<-o.chClose
