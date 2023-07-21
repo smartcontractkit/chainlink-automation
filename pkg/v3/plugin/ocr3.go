@@ -263,7 +263,9 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(context.Context, uint64, oc
 func (plugin *ocr3Plugin) startServices() {
 	for i := range plugin.Services {
 		go func(svc service.Recoverable) {
-			_ = svc.Start(context.Background())
+			if err := svc.Start(context.Background()); err != nil {
+				plugin.Logger.Printf("error starting plugin services: %s", err)
+			}
 		}(plugin.Services[i])
 	}
 }
