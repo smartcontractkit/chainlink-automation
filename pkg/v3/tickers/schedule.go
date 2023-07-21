@@ -84,12 +84,16 @@ func (st *scheduleTicker[T]) Schedule(key string, value T) error {
 	if !ok {
 		entryTime = now
 		st.scheduledLookup.Set(key, entryTime, util.DefaultCacheExpiration)
+
+		st.logger.Printf("initial scheduled entry: %s", key)
 	}
 
 	if now.Sub(entryTime) > st.config.MaxSendDuration {
 		// exit condition for exceeding maximum retry time
 		return fmt.Errorf("%w: %s", ErrSendDurationExceeded, key)
 	}
+
+	st.logger.Printf("schedule delay for key '%s' set to %d", key, now.Add(st.config.SendDelay).UnixNano())
 
 	st.scheduled.Set(fmt.Sprintf("%d", now.Add(st.config.SendDelay).UnixNano()), value, util.DefaultCacheExpiration)
 
@@ -118,6 +122,8 @@ func (st *scheduleTicker[T]) getterFn(_ context.Context, t time.Time) (Tick[[]T]
 		runTime := time.Unix(0, nano)
 		if t.After(runTime) {
 			if value, ok := st.scheduled.Get(nanoStr); ok {
+				st.logger.Printf("scheduled value '%v' was added to next tick", value)
+
 				allValues = append(allValues, value)
 			}
 

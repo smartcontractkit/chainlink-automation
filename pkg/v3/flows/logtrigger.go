@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
@@ -168,7 +169,7 @@ func newLogTriggerFlow(
 	// create time ticker
 	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
-	}, logger)
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return timeTick
 }

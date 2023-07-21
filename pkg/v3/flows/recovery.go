@@ -2,6 +2,7 @@ package flows
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
@@ -51,7 +53,7 @@ func newRecoveryProposalFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keep
 
 			return nil
 		},
-		logger,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		configFuncs...,
 	)
 

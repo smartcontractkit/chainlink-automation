@@ -49,6 +49,8 @@ func (t *timeTicker[T]) Start(ctx context.Context) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 
+	t.logger.Printf("starting ticker service")
+
 Loop:
 	for {
 		select {
