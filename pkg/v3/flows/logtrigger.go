@@ -64,7 +64,7 @@ type RecoverableProvider interface {
 
 //go:generate mockery --name PayloadBuilder --structname MockPayloadBuilder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename payloadbuilder.generated.go
 type PayloadBuilder interface {
-	BuildPayload(trigger string, block ocr2keepers.BlockKey) (ocr2keepers.UpkeepPayload, error)
+	BuildPayload(ocr2keepers.CoordinatedProposal) (ocr2keepers.UpkeepPayload, error)
 }
 
 const (
@@ -158,7 +158,7 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 	}
 
 	// proposals are trigger ids
-	proposals, ok := rawProposals.([]string)
+	proposals, ok := rawProposals.([]ocr2keepers.CoordinatedProposal)
 	if !ok {
 		return fmt.Errorf("%w: coordinated proposals are not of type `string`", ErrWrongDataType)
 	}
@@ -196,7 +196,9 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 
 	// merge block number and recoverables
 	for _, proposal := range proposals {
-		payload, err := flow.builder.BuildPayload(proposal, block)
+		proposal.Block = block
+
+		payload, err := flow.builder.BuildPayload(proposal)
 		if err != nil {
 			flow.logger.Printf("error encountered when")
 			continue

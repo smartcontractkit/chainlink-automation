@@ -12,23 +12,23 @@ type MockPayloadBuilder struct {
 	mock.Mock
 }
 
-// BuildPayload provides a mock function with given fields: trigger, block
-func (_m *MockPayloadBuilder) BuildPayload(trigger string, block ocr2keepers.BlockKey) (ocr2keepers.UpkeepPayload, error) {
-	ret := _m.Called(trigger, block)
+// BuildPayload provides a mock function with given fields: _a0
+func (_m *MockPayloadBuilder) BuildPayload(_a0 ocr2keepers.CoordinatedProposal) (ocr2keepers.UpkeepPayload, error) {
+	ret := _m.Called(_a0)
 
 	var r0 ocr2keepers.UpkeepPayload
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, ocr2keepers.BlockKey) (ocr2keepers.UpkeepPayload, error)); ok {
-		return rf(trigger, block)
+	if rf, ok := ret.Get(0).(func(ocr2keepers.CoordinatedProposal) (ocr2keepers.UpkeepPayload, error)); ok {
+		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func(string, ocr2keepers.BlockKey) ocr2keepers.UpkeepPayload); ok {
-		r0 = rf(trigger, block)
+	if rf, ok := ret.Get(0).(func(ocr2keepers.CoordinatedProposal) ocr2keepers.UpkeepPayload); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(ocr2keepers.UpkeepPayload)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, ocr2keepers.BlockKey) error); ok {
-		r1 = rf(trigger, block)
+	if rf, ok := ret.Get(1).(func(ocr2keepers.CoordinatedProposal) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}

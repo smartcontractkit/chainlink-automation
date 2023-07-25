@@ -386,8 +386,14 @@ func TestProcessOutcome(t *testing.T) {
 		testOutcome := ocr2keepersv3.AutomationOutcome{
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedRecoveryProposalKey: []string{
-						"test",
+					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
+						{
+							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 10,
+								BlockHash:   "testhash",
+							},
+						},
 					},
 				},
 			},
@@ -411,14 +417,29 @@ func TestProcessOutcome(t *testing.T) {
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
 					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
-					ocr2keepersv3.CoordinatedRecoveryProposalKey: []string{
-						"test",
+					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
+						{
+							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 10,
+								BlockHash:   "testhash",
+							},
+						},
 					},
 				},
 			},
 		}
 
-		pb.On("BuildPayload", "test", ocr2keepers.BlockKey("4")).Return(ocr2keepers.UpkeepPayload{
+		expectedProposal := ocr2keepers.CoordinatedProposal{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+			Trigger: ocr2keepers.Trigger{
+				BlockNumber: 10,
+				BlockHash:   "testhash",
+			},
+			Block: ocr2keepers.BlockKey("4"),
+		}
+
+		pb.On("BuildPayload", expectedProposal).Return(ocr2keepers.UpkeepPayload{
 			ID: "test",
 		}, nil)
 
