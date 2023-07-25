@@ -55,6 +55,9 @@ Loop:
 	for {
 		select {
 		case tm := <-t.ticker.C:
+			if t.getterFn == nil {
+				continue
+			}
 			tick, err := t.getterFn(ctx, tm)
 			if err != nil {
 				t.logger.Printf("error fetching tick: %s", err.Error())
@@ -71,6 +74,8 @@ Loop:
 	cancel()
 
 	t.running.Store(false)
+
+	t.logger.Printf("ticker service stopped")
 
 	return nil
 }

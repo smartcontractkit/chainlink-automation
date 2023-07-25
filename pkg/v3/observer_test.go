@@ -3,6 +3,8 @@ package ocr2keepers
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -253,6 +255,7 @@ func TestObserve_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Observer[int, int64]{
+				lggr:             log.New(io.Discard, "", 0),
 				Preprocessors:    tt.fields.Preprocessors,
 				Postprocessor:    tt.fields.Postprocessor,
 				processFunc:      tt.fields.Processor.Process,

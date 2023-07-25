@@ -2,6 +2,8 @@ package postprocessors
 
 import (
 	"context"
+	"log"
+	"os"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
@@ -20,21 +22,25 @@ type PostProcessor interface {
 }
 
 type eligiblePostProcessor struct {
+	lggr         *log.Logger
 	resultsAdder checkResultAdder
 }
 
 func NewEligiblePostProcessor(resultsAdder checkResultAdder) *eligiblePostProcessor {
 	return &eligiblePostProcessor{
+		lggr:         log.New(os.Stdout, "", 0),
 		resultsAdder: resultsAdder,
 	}
 }
 
 func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
+	eligible := 0
 	for _, res := range results {
 		if res.Eligible {
+			eligible++
 			p.resultsAdder.Add(res)
 		}
 	}
-
+	p.lggr.Printf("[automation-ocr3/EligiblePostProcessor] post-processing %d results, %d eligible\n", len(results), eligible)
 	return nil
 }
