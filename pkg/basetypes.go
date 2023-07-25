@@ -115,6 +115,18 @@ func (r *CheckResult) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func ValidateCheckResult(r CheckResult) error {
+	if r.Eligible && r.Retryable {
+		return fmt.Errorf("check result cannot be both eligible and retryable")
+	}
+
+	if r.GasAllocated == 0 {
+		return fmt.Errorf("gas allocated cannot be zero")
+	}
+
+	return ValidateUpkeepPayload(r.Payload)
+}
+
 type ConfiguredUpkeep struct {
 	// ID uniquely identifies the upkeep
 	ID UpkeepIdentifier
@@ -151,12 +163,20 @@ func (u *ConfiguredUpkeep) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func ValidateConfiguredUpkeep(u ConfiguredUpkeep) error {
+	if len(u.ID) == 0 {
+		return fmt.Errorf("invalid upkeep identifier")
+	}
+
+	return nil
+}
+
 type UpkeepPayload struct {
 	// ID uniquely identifies the upkeep payload
 	ID string
 	// Upkeep is all the information that identifies the upkeep
 	Upkeep ConfiguredUpkeep
-	// CheckBlock
+	// CheckBlock: Deprecated
 	CheckBlock BlockKey
 	// CheckData is the data used to check the upkeep
 	CheckData []byte
@@ -178,6 +198,18 @@ func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, che
 	return p
 }
 
+func ValidateUpkeepPayload(p UpkeepPayload) error {
+	if len(p.ID) == 0 {
+		return fmt.Errorf("upkeep payload id cannot be empty")
+	}
+
+	if err := ValidateConfiguredUpkeep(p.Upkeep); err != nil {
+		return err
+	}
+
+	return ValidateTrigger(p.Trigger)
+}
+
 func (p UpkeepPayload) GenerateID() string {
 	id := fmt.Sprintf("%s:%s", p.Upkeep.ID, p.Trigger)
 	idh := crypto.Keccak256([]byte(id))
@@ -192,6 +224,18 @@ type Trigger struct {
 	// Extension is the extensions' data that can differ between triggers.
 	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extension to be a map with all keys and values in string format
 	Extension interface{}
+}
+
+func ValidateTrigger(t Trigger) error {
+	if t.BlockNumber == 0 {
+		return fmt.Errorf("block number cannot be zero")
+	}
+
+	if len(t.BlockHash) == 0 {
+		return fmt.Errorf("block hash cannot be empty")
+	}
+
+	return nil
 }
 
 func (t *Trigger) UnmarshalJSON(b []byte) error {
