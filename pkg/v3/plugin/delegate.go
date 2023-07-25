@@ -50,6 +50,14 @@ type DelegateConfig struct {
 	// data
 	BlockSubscriber tickers.BlockSubscriber
 
+	// RecoverableProvider provides recoverable payloads to be proposed to the
+	// network
+	RecoverableProvider flows.RecoverableProvider
+
+	// PayloadBuilder provides a utility method to build an upkeep payload from
+	// a trigger id and block key
+	PayloadBuilder flows.PayloadBuilder
+
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is
 	// generated with every block so a good setting might come from block time

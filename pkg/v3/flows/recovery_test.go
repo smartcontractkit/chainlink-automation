@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
@@ -19,6 +20,44 @@ import (
 )
 
 func TestRecoveryFlow(t *testing.T) {
+
+	runner := &mockedRunner{eligibleAfter: 0}
+	rStore := new(mocks.MockResultStore)
+	coord := new(mockedPreprocessor)
+	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+
+	rStore.On("Add", mock.Anything).Times(1)
+
+	svc, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, 20*time.Millisecond, log.New(io.Discard, "", 0))
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func(svc service.Recoverable, ctx context.Context) {
+		assert.NoError(t, svc.Start(ctx))
+		wg.Done()
+	}(svc, context.Background())
+
+	retryable := ocr2keepers.CheckResult{
+		Payload: ocr2keepers.UpkeepPayload{
+			ID: "test",
+		},
+	}
+
+	assert.NoError(t, recoverer.Retry(retryable), "no error from retrying")
+
+	// allow 2 ticks
+	time.Sleep(50 * time.Millisecond)
+
+	assert.NoError(t, svc.Close(), "no error expected on shut down")
+	assert.Equal(t, 2, coord.Calls())
+
+	rStore.AssertExpectations(t)
+
+	wg.Wait()
+}
+
+func TestRecoveryProposalFlow(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
 	mStore := new(mocks.MockMetadataStore)
