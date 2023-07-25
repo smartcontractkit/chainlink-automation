@@ -48,6 +48,7 @@ func (p *retryPostProcessor) attemptRetry(res ocr2keepers.CheckResult) error {
 
 func NewRetryPostProcessor(retryer checkResultRetryer, recoverer checkResultRetryer) *retryPostProcessor {
 	return &retryPostProcessor{
-		retryer: retryer,
+		retryer:   retryer,
+		recoverer: recoverer,
 	}
 }
