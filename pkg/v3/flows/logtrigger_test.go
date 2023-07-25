@@ -439,7 +439,7 @@ func TestProcessOutcome(t *testing.T) {
 			Block: ocr2keepers.BlockKey("4"),
 		}
 
-		pb.On("BuildPayload", expectedProposal).Return(ocr2keepers.UpkeepPayload{
+		pb.On("BuildPayload", mock.Anything, expectedProposal).Return(ocr2keepers.UpkeepPayload{
 			ID: "test",
 		}, nil)
 
