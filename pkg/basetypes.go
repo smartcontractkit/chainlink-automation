@@ -189,8 +189,8 @@ type Trigger struct {
 	BlockNumber int64
 	// BlockHash is the block hash of the corresponding block
 	BlockHash string
-	// Extension is the extensions data that can differ between triggers.
-	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extention to be a map with all keys and values in string format
+	// Extension is the extensions' data that can differ between triggers.
+	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extension to be a map with all keys and values in string format
 	Extension interface{}
 }
 
@@ -277,4 +277,7 @@ func (bh *BlockHistory) UnmarshalJSON(b []byte) error {
 
 type UpkeepState uint8
 
-const Performed UpkeepState = iota
+const (
+	Performed UpkeepState = iota
+	Eligible
+)
