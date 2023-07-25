@@ -22,7 +22,7 @@ func TestObservation(t *testing.T) {
 
 	// Create a sample outcome for decoding
 	outcome := ocr3types.OutcomeContext{
-		PreviousOutcome: []byte(`{"Instructions":["instruction1"],"Metadata":{"key":"value"},"Performable":[]}`),
+		PreviousOutcome: []byte(`{"Instructions":["do coordinate block"],"Metadata":{"blockHistory":["4"]},"Performable":[]}`),
 	}
 
 	// Define a mock hook function for testing pre-build hooks
@@ -86,14 +86,15 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 		// Create a sample outcome for decoding
 		outcomeContext := ocr3types.OutcomeContext{
-			PreviousOutcome: []byte(`{"Instructions":["instruction1"],"Metadata":{"key":"value"},"Performable":[]}`),
+			PreviousOutcome: []byte(`{"Instructions":["should coordinate block"],"Metadata":{"blockHistory":["4"]},"Performable":[]}`),
 		}
 
 		automationObservation1 := ocr2keepersv3.AutomationObservation{
 			Performable: []ocr2keepers.CheckResult{
 				{
-					Eligible:  true,
-					Retryable: false,
+					Eligible:     true,
+					Retryable:    false,
+					GasAllocated: 10,
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "123",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
@@ -112,8 +113,9 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		automationObservation2 := ocr2keepersv3.AutomationObservation{
 			Performable: []ocr2keepers.CheckResult{
 				{
-					Eligible:  true,
-					Retryable: false,
+					Eligible:     true,
+					Retryable:    false,
+					GasAllocated: 10,
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "123",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
@@ -132,8 +134,9 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		automationObservation3 := ocr2keepersv3.AutomationObservation{
 			Performable: []ocr2keepers.CheckResult{
 				{
-					Eligible:  true,
-					Retryable: false,
+					Eligible:     true,
+					Retryable:    false,
+					GasAllocated: 10,
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "112233",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
