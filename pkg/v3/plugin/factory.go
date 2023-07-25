@@ -36,6 +36,8 @@ type pluginFactory struct {
 	blocks      tickers.BlockSubscriber
 	rp          flows.RecoverableProvider
 	builder     flows.PayloadBuilder
+	ratio       flows.Ratio
+	getter      flows.UpkeepProvider
 	runnable    runner.Runnable
 	runnerConf  runner.RunnerConfig
 	encoder     Encoder
@@ -48,6 +50,8 @@ func NewReportingPluginFactory(
 	blocks tickers.BlockSubscriber,
 	rp flows.RecoverableProvider,
 	builder flows.PayloadBuilder,
+	ratio flows.Ratio,
+	getter flows.UpkeepProvider,
 	runnable runner.Runnable,
 	runnerConf runner.RunnerConfig,
 	encoder Encoder,
@@ -59,6 +63,8 @@ func NewReportingPluginFactory(
 		blocks:      blocks,
 		rp:          rp,
 		builder:     builder,
+		ratio:       ratio,
+		getter:      getter,
 		runnable:    runnable,
 		runnerConf:  runnerConf,
 		encoder:     encoder,
@@ -91,6 +97,8 @@ func (factory *pluginFactory) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3t
 		factory.blocks,
 		factory.rp,
 		factory.builder,
+		factory.ratio,
+		factory.getter,
 		factory.encoder,
 		factory.runnable,
 		factory.runnerConf,

@@ -58,6 +58,9 @@ type DelegateConfig struct {
 	// a trigger id and block key
 	PayloadBuilder flows.PayloadBuilder
 
+	// UpkeepProvider ...
+	UpkeepProvider flows.UpkeepProvider
+
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is
 	// generated with every block so a good setting might come from block time
