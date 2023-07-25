@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -110,6 +111,9 @@ func TestBasicTicker(t *testing.T) {
 		wg.Wait()
 
 		assert.Equal(t, 3, len(sent), "tick should have been sent exactly 3 times")
+
+		sort.Ints(sent)
+
 		assert.Equal(t, []int{5, 6, 7}, sent, "sent values should be equal to expected")
 	})
 }
