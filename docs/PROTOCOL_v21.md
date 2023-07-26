@@ -1,4 +1,4 @@
-# E2E offchain protocol overview v2.1
+# Offchain protocol overview v2.1
 
 This document aims to give a high level overview of a full e2e protocol for automation `v2.1`. 
 
@@ -28,7 +28,7 @@ This document aims to give a high level overview of a full e2e protocol for auto
         - [Recovery Observer](#recovery-observer)
         - [Log Recoverer](#log-recoverer)
         - [Upkeep States](#upkeep-states)
-    - [Plugin](#plugin)
+    - [OCR3 Plugin](#plugin)
         - [Observation](#observation)
         - [Outcome](#outcome)
         - [Reports](#reports)
