@@ -10,6 +10,7 @@ The documents in this folder describe the architecture and design of Autmation p
 - [Trigger Flows](./ELIGIBILITY_FLOW.md)
 - [EVM Log Triggers](./EVM_LOGS.md)
 - [Coordinator](./COORDINATOR.md)
+- [Diagrams Source](https://miro.com/app/board/uXjVPntyh4E=/)
 
 ## Overview
 
