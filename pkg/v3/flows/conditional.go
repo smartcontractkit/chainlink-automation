@@ -2,6 +2,7 @@ package flows
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -10,6 +11,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
@@ -28,6 +30,7 @@ type UpkeepProvider interface {
 // ConditionalEligibility is a flow controller that surfaces conditional upkeeps
 type ConditionalEligibility struct {
 	builder PayloadBuilder
+	mStore  MetadataStore
 	final   Retryer
 	logger  *log.Logger
 }
@@ -57,6 +60,7 @@ func NewConditionalEligibility(
 	}
 
 	return &ConditionalEligibility{
+		mStore:  ms,
 		builder: builder,
 		final:   point,
 		logger:  logger,
@@ -64,49 +68,25 @@ func NewConditionalEligibility(
 }
 
 func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	var ok bool
+	samples, err := ocr2keepersv3.UpkeepIdentifiersFromOutcome(outcome)
+	if err != nil {
+		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
+			return err
+		}
 
-	rawSamples, ok := outcome.Metadata[ocr2keepersv3.CoordinatedSamplesProposalKey]
-	if !ok {
-		flow.logger.Printf("no proposed samples found in outcome")
+		flow.logger.Printf("%s", err)
 
 		return nil
 	}
 
-	samples, ok := rawSamples.([]ocr2keepers.UpkeepIdentifier)
-	if !ok {
-		return fmt.Errorf("%w: coordinated proposals are not of type `UpkeepIdentifier`", ErrWrongDataType)
-	}
-
 	// get latest coordinated block
 	// by checking latest outcome first and then looping through the history
-	var (
-		rawBlock       interface{}
-		blockAvailable bool
-		block          ocr2keepers.BlockKey
-	)
-
-	if rawBlock, ok = outcome.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
-		for _, h := range historyFromRingBuffer(outcome.History, outcome.NextIdx) {
-			if rawBlock, ok = h.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
-				continue
-			}
-
-			blockAvailable = true
-
-			break
+	block, err := ocr2keepersv3.LatestBlockFromOutcome(outcome)
+	if err != nil {
+		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
+			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {
+			return err
 		}
-	} else {
-		blockAvailable = true
-	}
-
-	// we have proposals but a latest block isn't available
-	if !blockAvailable {
-		return ErrBlockNotAvailable
-	}
-
-	if block, ok = rawBlock.(ocr2keepers.BlockKey); !ok {
-		return fmt.Errorf("%w: coordinated block value not of type `BlockKey`", ErrWrongDataType)
 	}
 
 	// limit timeout to get all proposal data
@@ -134,6 +114,9 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 			continue
 		}
 	}
+
+	// reset samples in metadata
+	flow.mStore.Set(store.ProposalSampleMetadata, []ocr2keepers.UpkeepIdentifier{})
 
 	return nil
 }

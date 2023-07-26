@@ -51,7 +51,7 @@ func TestObservation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert that the returned observation matches the expected encoded outcome
-	expectedEncodedOutcome := []byte(`{"Instructions":null,"Metadata":null,"Performable":null}`)
+	expectedEncodedOutcome := []byte(`{"Instructions":null,"Metadata":{},"Performable":null}`)
 	assert.Equal(t, types.Observation(expectedEncodedOutcome), observation)
 }
 

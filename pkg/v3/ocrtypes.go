@@ -14,6 +14,7 @@ type OutcomeMetadataKey string
 const (
 	BlockHistoryObservationKey     ObservationMetadataKey = "blockHistory"
 	SampleProposalObservationKey   ObservationMetadataKey = "sampleProposals"
+	RecoveryProposalObservationKey ObservationMetadataKey = "recoveryProposals"
 	CoordinatedBlockOutcomeKey     OutcomeMetadataKey     = "coordinatedBlock"
 	CoordinatedRecoveryProposalKey OutcomeMetadataKey     = "coordinatedRecoveryProposals"
 	CoordinatedSamplesProposalKey  OutcomeMetadataKey     = "coordinatedSampleProposals"
@@ -21,6 +22,8 @@ const (
 
 var (
 	ErrInvalidMetadataKey = fmt.Errorf("invalid metadata key")
+	ErrWrongDataType      = fmt.Errorf("wrong data type")
+	ErrBlockNotAvailable  = fmt.Errorf("coordinated block not available in outcome")
 )
 
 func ValidateObservationMetadataKey(key ObservationMetadataKey) error {
@@ -234,4 +237,94 @@ func ValidateAutomationOutcome(o AutomationOutcome) error {
 	}
 
 	return nil
+}
+
+func RecoveryProposalsFromOutcome(outcome AutomationOutcome) ([]ocr2keepers.CoordinatedProposal, error) {
+	var ok bool
+	var rawProposals interface{}
+	var proposals []ocr2keepers.CoordinatedProposal
+
+	// if recoverable items are in outcome, proceed with values
+	if rawProposals, ok = outcome.Metadata[CoordinatedRecoveryProposalKey]; !ok {
+		return nil, fmt.Errorf("no value for key: %s", CoordinatedRecoveryProposalKey)
+	}
+
+	// proposals are trigger ids
+	if proposals, ok = rawProposals.([]ocr2keepers.CoordinatedProposal); !ok {
+		return nil, fmt.Errorf("%w: coordinated proposals are not of type `CoordinatedProposal`", ErrWrongDataType)
+	}
+
+	return proposals, nil
+}
+
+func UpkeepIdentifiersFromOutcome(outcome AutomationOutcome) ([]ocr2keepers.UpkeepIdentifier, error) {
+	var ok bool
+	var rawProposals interface{}
+	var proposals []ocr2keepers.UpkeepIdentifier
+
+	// if recoverable items are in outcome, proceed with values
+	if rawProposals, ok = outcome.Metadata[CoordinatedSamplesProposalKey]; !ok {
+		return nil, fmt.Errorf("no value for key: %s", CoordinatedRecoveryProposalKey)
+	}
+
+	// proposals are upkeep ids
+	if proposals, ok = rawProposals.([]ocr2keepers.UpkeepIdentifier); !ok {
+		return nil, fmt.Errorf("%w: coordinated proposals are not of type `CoordinatedProposal`", ErrWrongDataType)
+	}
+
+	return proposals, nil
+}
+
+func LatestBlockFromOutcome(outcome AutomationOutcome) (ocr2keepers.BlockKey, error) {
+	// get latest coordinated block
+	// by checking latest outcome first and then looping through the history
+	var (
+		rawBlock       interface{}
+		blockAvailable bool
+		block          ocr2keepers.BlockKey
+		ok             bool
+	)
+
+	if rawBlock, ok = outcome.Metadata[CoordinatedBlockOutcomeKey]; !ok {
+		// TODO: need to fix this as the history is a ring buffer and the values
+		// are not sorted by 0-len
+		for _, h := range historyFromRingBuffer(outcome.History, outcome.NextIdx) {
+			if rawBlock, ok = h.Metadata[CoordinatedBlockOutcomeKey]; !ok {
+				continue
+			}
+
+			blockAvailable = true
+
+			break
+		}
+	} else {
+		blockAvailable = true
+	}
+
+	// a latest block isn't available
+	if !blockAvailable {
+		return block, ErrBlockNotAvailable
+	}
+
+	if block, ok = rawBlock.(ocr2keepers.BlockKey); !ok {
+		return block, fmt.Errorf("%w: coordinated block value not of type `BlockKey`", ErrWrongDataType)
+	}
+
+	return block, nil
+}
+
+func historyFromRingBuffer(ring []BasicOutcome, nextIdx int) []BasicOutcome {
+	outcome := make([]BasicOutcome, len(ring))
+	idx := nextIdx
+
+	for x := 0; x < len(ring); x++ {
+		outcome[x] = ring[idx]
+		idx++
+
+		if idx >= len(ring) {
+			idx = 0
+		}
+	}
+
+	return outcome
 }

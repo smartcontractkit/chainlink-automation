@@ -2,6 +2,7 @@ package flows
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -41,6 +42,7 @@ type ResultStore interface {
 //go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename metadatastore.generated.go
 type MetadataStore interface {
 	Set(store.MetadataKey, interface{})
+	Get(store.MetadataKey) (interface{}, bool)
 }
 
 // Retryer provides the ability to push retries to an observer
@@ -73,15 +75,11 @@ const (
 	ObservationProcessLimit = 5 * time.Second
 )
 
-var (
-	ErrWrongDataType     = fmt.Errorf("wrong data type")
-	ErrBlockNotAvailable = fmt.Errorf("recovery proposals are available but a coordinated block is not")
-)
-
 // LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
 // with retry attempts.
 type LogTriggerEligibility struct {
 	builder   PayloadBuilder
+	mStore    MetadataStore
 	recoverer Retryer
 	logger    *log.Logger
 }
@@ -139,6 +137,7 @@ func NewLogTriggerEligibility(
 	// to pass data to internal flows
 	return &LogTriggerEligibility{
 		builder:   builder,
+		mStore:    mStore,
 		recoverer: recoverer,
 		logger:    logger,
 	}, svcs
@@ -147,65 +146,46 @@ func NewLogTriggerEligibility(
 // ProcessOutcome functions as an observation pre-build hook to allow data from
 // outcomes to feed inputs in the eligibility flow
 func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	var ok bool
+	networkProposals, err := ocr2keepersv3.RecoveryProposalsFromOutcome(outcome)
+	if err != nil {
+		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
+			return err
+		}
 
-	// if recoverable items are in outcome, proceed with values
-	rawProposals, ok := outcome.Metadata[ocr2keepersv3.CoordinatedRecoveryProposalKey]
-	if !ok {
-		flow.logger.Printf("no proposed recoverables found in outcome")
+		flow.logger.Printf("%s", err)
 
 		return nil
 	}
 
-	// proposals are trigger ids
-	proposals, ok := rawProposals.([]ocr2keepers.CoordinatedProposal)
-	if !ok {
-		return fmt.Errorf("%w: coordinated proposals are not of type `CoordinatedProposal`", ErrWrongDataType)
-	}
-
 	// get latest coordinated block
 	// by checking latest outcome first and then looping through the history
-	var (
-		rawBlock       interface{}
-		blockAvailable bool
-		block          ocr2keepers.BlockKey
-	)
-
-	if rawBlock, ok = outcome.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
-		// TODO: need to fix this as the history is a ring buffer and the values
-		// are not sorted by 0-len
-		for _, h := range historyFromRingBuffer(outcome.History, outcome.NextIdx) {
-			if rawBlock, ok = h.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
-				continue
-			}
-
-			blockAvailable = true
-
-			break
+	block, err := ocr2keepersv3.LatestBlockFromOutcome(outcome)
+	if err != nil {
+		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
+			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {
+			return err
 		}
-	} else {
-		blockAvailable = true
 	}
 
-	// we have proposals but a latest block isn't available
-	if !blockAvailable {
-		return ErrBlockNotAvailable
-	}
-
-	if block, ok = rawBlock.(ocr2keepers.BlockKey); !ok {
-		return fmt.Errorf("%w: coordinated block value not of type `BlockKey`", ErrWrongDataType)
+	cachedProposals, err := store.RecoveryProposalCacheFromMetadata(flow.mStore)
+	if err != nil {
+		return err
 	}
 
 	// limit timeout to get all proposal data
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
 	// merge block number and recoverables
-	for _, proposal := range proposals {
+	for _, proposal := range networkProposals {
 		proposal.Block = block
+
+		// remove from local metadata store
+		cachedProposals.Delete(fmt.Sprintf("%v", proposal))
 
 		payload, err := flow.builder.BuildPayload(ctx, proposal)
 		if err != nil {
-			flow.logger.Printf("error encountered when")
+			flow.logger.Printf("error encountered when building payload")
+
 			continue
 		}
 
@@ -216,6 +196,8 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 			continue
 		}
 	}
+
+	cachedProposals.ClearExpired()
 
 	cancel()
 

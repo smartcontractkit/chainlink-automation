@@ -12,6 +12,32 @@ type MockMetadataStore struct {
 	mock.Mock
 }
 
+// Get provides a mock function with given fields: _a0
+func (_m *MockMetadataStore) Get(_a0 store.MetadataKey) (interface{}, bool) {
+	ret := _m.Called(_a0)
+
+	var r0 interface{}
+	var r1 bool
+	if rf, ok := ret.Get(0).(func(store.MetadataKey) (interface{}, bool)); ok {
+		return rf(_a0)
+	}
+	if rf, ok := ret.Get(0).(func(store.MetadataKey) interface{}); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(store.MetadataKey) bool); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
+}
+
 // Set provides a mock function with given fields: _a0, _a1
 func (_m *MockMetadataStore) Set(_a0 store.MetadataKey, _a1 interface{}) {
 	_m.Called(_a0, _a1)

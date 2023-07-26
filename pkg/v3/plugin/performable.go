@@ -7,20 +7,20 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 )
 
-type resultAndCount struct {
-	result ocr2keepers.CheckResult
+type resultAndCount[T any] struct {
+	result T
 	count  int
 }
 
 type performables struct {
 	threshold   int
-	resultCount map[string]resultAndCount
+	resultCount map[string]resultAndCount[ocr2keepers.CheckResult]
 }
 
 func newPerformables(threshold int) *performables {
 	return &performables{
 		threshold:   threshold,
-		resultCount: make(map[string]resultAndCount),
+		resultCount: make(map[string]resultAndCount[ocr2keepers.CheckResult]),
 	}
 }
 
@@ -34,7 +34,7 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 		payloadCount, ok := p.resultCount[uid]
 
 		if !ok {
-			payloadCount = resultAndCount{
+			payloadCount = resultAndCount[ocr2keepers.CheckResult]{
 				result: result,
 				count:  1,
 			}

@@ -16,7 +16,9 @@ race: dependencies
 	@go test -race $(GOPACKAGES)
 
 coverage: 
-	@go test -coverprofile cover.out $(GOPACKAGES)
+	@go test -coverprofile cover.out $(GOPACKAGES) && \
+	go test github.com/smartcontractkit/ocr2keepers/pkg/v3/... -coverprofile coverV3.out -covermode count && \
+	go tool cover -func=coverV3.out | grep total | grep -Eo '[0-9]+\.[0-9]+'
 
 benchmark: dependencies fmt
 	@go test $(GOPACKAGES) -bench=. -benchmem -run=^#
