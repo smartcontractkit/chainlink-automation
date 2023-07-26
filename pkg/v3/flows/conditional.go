@@ -67,16 +67,11 @@ func newSampleProposalFlow(
 
 	// create a metadata store postprocessor
 
-	ticker, err := tickers.NewSampleTicker(
+	return tickers.NewSampleTicker(
 		ratio,
 		getter,
 		observer,
 		subscriber,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	return ticker, nil
 }
