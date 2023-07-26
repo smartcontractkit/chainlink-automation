@@ -142,6 +142,8 @@ func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio,
 	n := complex(float64(nodes), 0)
 	p := complex(float64(probability), 0)
 
+	// calculate the probability that x of total selection collectively will
+	// cover all of a selection by all nodes over number of rounds
 	g := -1.0 * (p - 1.0)
 	x := cmplx.Pow(cmplx.Pow(g, 1.0/r), 1.0/n)
 	rat := cmplx.Abs(-1.0 * (x - 1.0))
