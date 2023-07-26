@@ -147,20 +147,17 @@ func newSampleProposalFlow(
 	rn Runner,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
-	// create observer
-	observer := ocr2keepersv3.NewRunnableObserver(
-		preprocessors,
-		new(emptyPP),
-		rn,
-		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
-
 	// create a metadata store postprocessor
 	pp := postprocessors.NewAddSamplesToMetadataStorePostprocessor(ms)
 
 	// create observer
-	observer := ocr2keepersv3.NewRunnableObserver(preprocessors, pp, rn, ObservationProcessLimit)
+	observer := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		pp,
+		rn,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
 
 	return tickers.NewSampleTicker(
 		ratio,
@@ -183,9 +180,10 @@ func newFinalConditionalFlow(
 	// recovery proposals that originate from network agreements
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		postprocessors.NewEligiblePostProcessor(rs),
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
 		rn,
 		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
 	// create schedule ticker to manage retry interval
