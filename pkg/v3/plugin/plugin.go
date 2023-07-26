@@ -28,6 +28,8 @@ func newPlugin(
 	blockSource tickers.BlockSubscriber,
 	rp flows.RecoverableProvider,
 	builder flows.PayloadBuilder,
+	ratio flows.Ratio,
+	getter flows.UpkeepProvider,
 	encoder Encoder,
 	runnable runner.Runnable,
 	rConf runner.RunnerConfig,
@@ -84,6 +86,14 @@ func newPlugin(
 
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
+
+	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, rs, ms, rn, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	allSvcs = append(allSvcs, svcs...)
+
 	recoverSvcs := []service.Recoverable{}
 
 	for i := range allSvcs {
@@ -95,6 +105,7 @@ func newPlugin(
 	plugin := &ocr3Plugin{
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
+			cFlow.ProcessOutcome,
 			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
 			prebuild.NewCoordinateBlockHook(is, ms).RunHook,
 		},
