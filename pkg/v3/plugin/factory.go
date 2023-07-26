@@ -92,6 +92,7 @@ func (factory *pluginFactory) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3t
 
 	// create the plugin; all services start automatically
 	p, err := newPlugin(
+		c.ConfigDigest,
 		factory.logProvider,
 		factory.events,
 		factory.blocks,

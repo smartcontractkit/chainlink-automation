@@ -160,7 +160,7 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 	// proposals are trigger ids
 	proposals, ok := rawProposals.([]ocr2keepers.CoordinatedProposal)
 	if !ok {
-		return fmt.Errorf("%w: coordinated proposals are not of type `string`", ErrWrongDataType)
+		return fmt.Errorf("%w: coordinated proposals are not of type `CoordinatedProposal`", ErrWrongDataType)
 	}
 
 	// get latest coordinated block
@@ -172,7 +172,9 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 	)
 
 	if rawBlock, ok = outcome.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
-		for _, h := range outcome.History {
+		// TODO: need to fix this as the history is a ring buffer and the values
+		// are not sorted by 0-len
+		for _, h := range historyFromRingBuffer(outcome.History, outcome.NextIdx) {
 			if rawBlock, ok = h.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
 				continue
 			}

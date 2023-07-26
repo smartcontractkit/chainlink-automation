@@ -24,3 +24,28 @@ func (a *addPayloadToMetadataStorePostprocessor) PostProcess(_ context.Context, 
 	a.store.Set(store.ProposalRecoveryMetadata, results)
 	return nil
 }
+
+type addSamplesToMetadataStorePostprocessor struct {
+	store MetadataStore
+}
+
+func NewAddSamplesToMetadataStorePostprocessor(store MetadataStore) *addSamplesToMetadataStorePostprocessor {
+	return &addSamplesToMetadataStorePostprocessor{store: store}
+}
+
+func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
+	// extract ids only
+	ids := make([]ocr2keepers.UpkeepIdentifier, 0, len(results))
+	for _, r := range results {
+		if !r.Eligible {
+			continue
+		}
+
+		ids = append(ids, r.Payload.Upkeep.ID)
+	}
+
+	// should always reset values every time sampling runs
+	a.store.Set(store.ProposalSampleMetadata, ids)
+
+	return nil
+}
