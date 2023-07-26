@@ -233,6 +233,14 @@ func (t Trigger) String() string {
 	return fmt.Sprintf("%d:%s:%+v", t.BlockNumber, t.BlockHash, t.Extension)
 }
 
+// CoordinatedProposal contains all required values to construct a complete
+// UpkeepPayload for use in a runner
+type CoordinatedProposal struct {
+	UpkeepID UpkeepIdentifier
+	Trigger  Trigger
+	Block    BlockKey
+}
+
 type ReportedUpkeep struct {
 	// ID uniquely identifies the upkeep in the report
 	ID string

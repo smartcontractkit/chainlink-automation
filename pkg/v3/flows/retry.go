@@ -13,9 +13,16 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-func newRetryFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload], rs ResultStore, rn Runner, recoverer Retryer, retryInterval time.Duration, logger *log.Logger, configFuncs ...tickers.ScheduleTickerConfigFunc) (service.Recoverable, Retryer) {
+func newRetryFlow(
+	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	rs ResultStore,
+	rn Runner,
+	recoverer Retryer,
+	retryInterval time.Duration,
+	logger *log.Logger,
+	configFuncs ...tickers.ScheduleTickerConfigFunc,
+) (service.Recoverable, Retryer) {
 	// create observer
-	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
 	retryObserver := ocr2keepersv3.NewRunnableObserver(preprocessors, nil, rn, ObservationProcessLimit)
 
@@ -27,7 +34,7 @@ func newRetryFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepP
 			// this schedule ticker doesn't pull data from anywhere
 			return nil
 		},
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-retry]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		configFuncs...,
 	)
 

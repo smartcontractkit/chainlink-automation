@@ -14,12 +14,51 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-func newRecoveryProposalFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload], ms MetadataStore, rp RecoverableProvider, recoveryInterval time.Duration, logger *log.Logger, configFuncs ...tickers.ScheduleTickerConfigFunc) (service.Recoverable, Retryer) {
+func newFinalRecoveryFlow(
+	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	rs ResultStore,
+	rn Runner,
+	recoveryInterval time.Duration,
+	logger *log.Logger,
+) (service.Recoverable, Retryer) {
+	// create observer that only pushes results to result store. everything at
+	// this point can be dropped. this process is only responsible for running
+	// recovery proposals that originate from network agreements
+	recoveryObserver := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		postprocessors.NewEligiblePostProcessor(rs),
+		rn,
+		ObservationProcessLimit,
+	)
+
+	// create schedule ticker to manage retry interval
+	ticker := tickers.NewBasicTicker[ocr2keepers.UpkeepPayload](
+		recoveryInterval,
+		recoveryObserver,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-final-recovery]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
+
+	// wrap schedule ticker as a Retryer
+	// this provides a common interface for processors and hooks
+	retryer := &basicRetryer{ticker: ticker}
+
+	return ticker, retryer
+}
+
+func newRecoveryProposalFlow(
+	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	ms MetadataStore,
+	rp RecoverableProvider,
+	recoveryInterval time.Duration,
+	logger *log.Logger,
+	configFuncs ...tickers.ScheduleTickerConfigFunc,
+) (service.Recoverable, Retryer) {
 	// items come into the recovery path from multiple sources
 	// 1. [done] from the log provider as UpkeepPayload
 	// 2. [done] from retry ticker as CheckResult
 	// 3. [done] from primary flow as CheckResult if retry fails
 	// 4. [todo] from timeouts of the result store
+	// TODO: add preprocessor to check that recoverable is already in metadata
 
 	// the recovery observer doesn't do any processing on the identifiers
 	// so this function is just a pass-through
@@ -53,7 +92,7 @@ func newRecoveryProposalFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keep
 
 			return nil
 		},
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-recovery-proposal]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		configFuncs...,
 	)
 
