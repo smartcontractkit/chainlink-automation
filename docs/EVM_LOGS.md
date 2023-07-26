@@ -172,10 +172,11 @@ The recoverer will query upkeep states to check if the upkeep was already perfor
 
 ## Upkeep States
 
-The states are used to track the status of log upkeeps across the system,
-and avoid double recovery of logs or redundant work by the recoverer or other components in the pipeline.
+The upkeeps states are used to track the status of log upkeeps (eligible, performed) across the system,
+to avoid redundant work by the recoverer.
 
-The states will be persisted to protect against restarts, by flushing the deltas into the DB, every minute (**TBD**) or upon shutdown.
+The states will be persisted to so the latest state to be restored when the node starts up, 
+by flushing the deltas into the DB, every minute (**TBD**) or upon shutdown.
 
 The states are saved with a key that is composed of the upkeep id and trigger.
 
