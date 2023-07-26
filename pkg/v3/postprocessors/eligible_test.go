@@ -16,7 +16,7 @@ import (
 func TestNewEligiblePostProcessor(t *testing.T) {
 	t.Run("create a new eligible post processor", func(t *testing.T) {
 		resultsStore := resultstore.New(log.New(io.Discard, "", 0))
-		processor := NewEligiblePostProcessor(resultsStore)
+		processor := NewEligiblePostProcessor(resultsStore, log.New(io.Discard, "", 0))
 
 		t.Run("process eligible results", func(t *testing.T) {
 			result1 := ocr2keepers.CheckResult{Eligible: false}

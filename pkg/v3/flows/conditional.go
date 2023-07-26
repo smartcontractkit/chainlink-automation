@@ -14,11 +14,13 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
+//go:generate mockery --name Ratio --structname MockRatio --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename ratio.generated.go
 type Ratio interface {
 	// OfInt should return n out of x such that n/x ~ r (ratio)
 	OfInt(int) int
 }
 
+//go:generate mockery --name UpkeepProvider --structname MockUpkeepProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename upkeepprovider.generated.go
 type UpkeepProvider interface {
 	GetActiveUpkeeps(context.Context, ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error)
 }
@@ -145,6 +147,15 @@ func newSampleProposalFlow(
 	rn Runner,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
+	// create observer
+	observer := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		new(emptyPP),
+		rn,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
+
 	// create a metadata store postprocessor
 	pp := postprocessors.NewAddSamplesToMetadataStorePostprocessor(ms)
 

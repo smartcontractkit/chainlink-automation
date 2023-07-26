@@ -24,7 +24,13 @@ func newRetryFlow(
 ) (service.Recoverable, Retryer) {
 	// create observer
 	// leave postprocessor empty to start with
-	retryObserver := ocr2keepersv3.NewRunnableObserver(preprocessors, nil, rn, ObservationProcessLimit)
+	retryObserver := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		nil,
+		rn,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | retry-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
 
 	// create schedule ticker to manage retry interval
 	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
@@ -45,7 +51,7 @@ func newRetryFlow(
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs),
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | retry-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
 		// create retry postprocessor
 		postprocessors.NewRetryPostProcessor(retryer, recoverer),
 	)

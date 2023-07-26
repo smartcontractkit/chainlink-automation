@@ -3,7 +3,6 @@ package postprocessors
 import (
 	"context"
 	"log"
-	"os"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 )
@@ -26,9 +25,9 @@ type eligiblePostProcessor struct {
 	resultsAdder checkResultAdder
 }
 
-func NewEligiblePostProcessor(resultsAdder checkResultAdder) *eligiblePostProcessor {
+func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger) *eligiblePostProcessor {
 	return &eligiblePostProcessor{
-		lggr:         log.New(os.Stdout, "", 0),
+		lggr:         logger,
 		resultsAdder: resultsAdder,
 	}
 }

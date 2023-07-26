@@ -284,13 +284,19 @@ func newLogTriggerFlow(
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs),
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
 		// create retry postprocessor
 		postprocessors.NewRetryPostProcessor(retryer, recoverer),
 	)
 
 	// create observer
-	obs := ocr2keepersv3.NewRunnableObserver(preprocessors, post, rn, ObservationProcessLimit)
+	obs := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		post,
+		rn,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {

@@ -26,9 +26,10 @@ func newFinalRecoveryFlow(
 	// recovery proposals that originate from network agreements
 	recoveryObserver := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		postprocessors.NewEligiblePostProcessor(rs),
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
 		rn,
 		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
 	// create schedule ticker to manage retry interval
@@ -70,7 +71,13 @@ func newRecoveryProposalFlow(
 	// add postprocessor for metatdata store
 	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms)
 
-	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepPayload](preprocessors, post, f, ObservationProcessLimit)
+	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepPayload](
+		preprocessors,
+		post,
+		f,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
 
 	// create a schedule ticker that pulls recoverable items from an outside
 	// source and provides point for recoverables to be pushed to the ticker
