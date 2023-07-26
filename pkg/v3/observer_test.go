@@ -3,6 +3,8 @@ package ocr2keepers
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -62,6 +64,7 @@ func TestNewGenericObserver(t *testing.T) {
 		postprocessor PostProcessor[int64]
 		runner        func(context.Context, ...int) ([]int64, error)
 		limit         time.Duration
+		logger        *log.Logger
 	}
 
 	tests := []struct {
@@ -76,12 +79,14 @@ func TestNewGenericObserver(t *testing.T) {
 				postprocessor: new(mockPostprocessor),
 				runner:        new(mockProcessFunc).Process,
 				limit:         50 * time.Millisecond,
+				logger:        log.New(io.Discard, "", 0),
 			},
 			want: Observer[int, int64]{
 				Preprocessors:    []PreProcessor[int]{new(mockPreprocessor)},
 				Postprocessor:    new(mockPostprocessor),
 				processFunc:      new(mockProcessFunc).Process,
 				processTimeLimit: 50 * time.Millisecond,
+				lggr:             log.New(io.Discard, "", 0),
 			},
 		},
 	}
@@ -97,7 +102,7 @@ func TestNewGenericObserver(t *testing.T) {
 			assert.Equalf(
 				t,
 				want,
-				*NewGenericObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner, 50*time.Millisecond),
+				*NewGenericObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner, 50*time.Millisecond, tt.args.logger),
 				"NewObserver(%v, %v, %v)",
 				tt.args.preprocessors,
 				tt.args.postprocessor,
@@ -253,6 +258,7 @@ func TestObserve_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Observer[int, int64]{
+				lggr:             log.New(io.Discard, "", 0),
 				Preprocessors:    tt.fields.Preprocessors,
 				Postprocessor:    tt.fields.Postprocessor,
 				processFunc:      tt.fields.Processor.Process,

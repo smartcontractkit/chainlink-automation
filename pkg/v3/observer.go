@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"context"
+	"log"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -28,6 +29,8 @@ type Runner interface {
 }
 
 type Observer[T any, R any] struct {
+	lggr *log.Logger
+
 	Preprocessors []PreProcessor[T]
 	Postprocessor PostProcessor[R]
 	processFunc   func(context.Context, ...T) ([]R, error)
@@ -42,8 +45,10 @@ func NewRunnableObserver(
 	postprocessor PostProcessor[ocr2keepers.CheckResult],
 	runner Runner,
 	processLimit time.Duration,
+	logger *log.Logger,
 ) *Observer[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult] {
 	return &Observer[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult]{
+		lggr:             logger,
 		Preprocessors:    preprocessors,
 		Postprocessor:    postprocessor,
 		processFunc:      runner.CheckUpkeeps,
@@ -57,8 +62,10 @@ func NewGenericObserver[T any, R any](
 	postprocessor PostProcessor[R],
 	processor func(context.Context, ...T) ([]R, error),
 	processLimit time.Duration,
+	logger *log.Logger,
 ) *Observer[T, R] {
 	return &Observer[T, R]{
+		lggr:             logger,
 		Preprocessors:    preprocessors,
 		Postprocessor:    postprocessor,
 		processFunc:      processor,
@@ -78,6 +85,8 @@ func (o *Observer[T, R]) Process(ctx context.Context, tick tickers.Tick[[]T]) er
 		return err
 	}
 
+	o.lggr.Printf("got %d payloads from ticker", len(value))
+
 	// Run pre-processors
 	for _, preprocessor := range o.Preprocessors {
 		value, err = preprocessor.PreProcess(pCtx, value)
@@ -86,14 +95,24 @@ func (o *Observer[T, R]) Process(ctx context.Context, tick tickers.Tick[[]T]) er
 		}
 	}
 
+	o.lggr.Printf("processing %d payloads", len(value))
+
 	// Run check pipeline
 	results, err := o.processFunc(pCtx, value...)
 	if err != nil {
 		return err
 	}
 
+	o.lggr.Printf("post-processing %d results", len(results))
+
 	// Run post-processor
-	return o.Postprocessor.PostProcess(pCtx, results)
+	if err := o.Postprocessor.PostProcess(pCtx, results); err != nil {
+		return err
+	}
+
+	o.lggr.Printf("finished processing of %d results: %+v", len(results), results)
+
+	return nil
 }
 
 func (o *Observer[T, R]) SetPostProcessor(pp PostProcessor[R]) {

@@ -144,7 +144,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	return outcome.Encode()
 }
 
-func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
 	var (
 		reports []ocr3types.ReportWithInfo[AutomationReportInfo]
 		outcome ocr2keepersv3.AutomationOutcome
@@ -199,17 +199,26 @@ func (plugin *ocr3Plugin) Reports(_ uint64, raw ocr3types.Outcome) ([]ocr3types.
 		}
 	}
 
-	return reports, err
+	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
+
+	if err != nil {
+		plugin.Logger.Printf("error encountered while encoding: %s", err)
+	}
+
+	return reports, nil
 }
 
-func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
 	}
 
+	plugin.Logger.Printf("%d upkeeps found in report for should accept for sequence number %d", len(upkeeps), seqNr)
+
 	for _, upkeep := range upkeeps {
 		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
+
 		for _, coord := range plugin.Coordinators {
 			if err := coord.Accept(upkeep); err != nil {
 				plugin.Logger.Printf("failed to accept upkeep by id '%s', error is %v", upkeep.UpkeepID, err)
@@ -220,11 +229,13 @@ func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, _ uint6
 	return true, nil
 }
 
-func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, _ uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
 	}
+
+	plugin.Logger.Printf("%d upkeeps found in report for should transmit for sequence number %d", len(upkeeps), seqNr)
 
 	for _, upkeep := range upkeeps {
 		// if any upkeep in the report does not have confirmations from all coordinators, attempt again
@@ -233,6 +244,7 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, _ uint
 			if coord.IsTransmissionConfirmed(upkeep) {
 				allConfirmationsFalse = false
 			}
+
 			plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, coord.IsTransmissionConfirmed(upkeep))
 		}
 
@@ -263,7 +275,9 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(context.Context, uint64, oc
 func (plugin *ocr3Plugin) startServices() {
 	for i := range plugin.Services {
 		go func(svc service.Recoverable) {
-			_ = svc.Start(context.Background())
+			if err := svc.Start(context.Background()); err != nil {
+				plugin.Logger.Printf("error starting plugin services: %s", err)
+			}
 		}(plugin.Services[i])
 	}
 }

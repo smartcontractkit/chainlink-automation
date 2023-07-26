@@ -14,11 +14,13 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
+//go:generate mockery --name Ratio --structname MockRatio --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename ratio.generated.go
 type Ratio interface {
 	// OfInt should return n out of x such that n/x ~ r (ratio)
 	OfInt(int) int
 }
 
+//go:generate mockery --name UpkeepProvider --structname MockUpkeepProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename upkeepprovider.generated.go
 type UpkeepProvider interface {
 	GetActiveUpkeeps(context.Context, ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error)
 }
@@ -149,7 +151,13 @@ func newSampleProposalFlow(
 	pp := postprocessors.NewAddSamplesToMetadataStorePostprocessor(ms)
 
 	// create observer
-	observer := ocr2keepersv3.NewRunnableObserver(preprocessors, pp, rn, ObservationProcessLimit)
+	observer := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		pp,
+		rn,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
 
 	return tickers.NewSampleTicker(
 		ratio,
@@ -172,9 +180,10 @@ func newFinalConditionalFlow(
 	// recovery proposals that originate from network agreements
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		postprocessors.NewEligiblePostProcessor(rs),
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
 		rn,
 		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
 	// create schedule ticker to manage retry interval
