@@ -248,6 +248,10 @@ func (plugin *ocr3Plugin) Close() error {
 	return err
 }
 
+func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(context.Context, uint64, ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+	return true, nil
+}
+
 // this start function should not block
 func (plugin *ocr3Plugin) startServices() {
 	for i := range plugin.Services {
