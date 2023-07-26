@@ -37,7 +37,7 @@ func newPlugin(
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	logger *log.Logger,
-) (ocr3types.ReportingPlugin[AutomationReportInfo], error) {
+) (ocr3types.OCR3Plugin[AutomationReportInfo], error) {
 	blockTicker, err := tickers.NewBlockTicker(blockSource)
 	if err != nil {
 		return nil, err
