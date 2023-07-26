@@ -98,7 +98,7 @@ func TestClose(t *testing.T) {
 		require.NotNil(t, d.keeper, "Delegate keeper should not be nil")
 
 		err = d.Close()
-		assert.Equal(t, err.Error(), "can only close a started Oracle: failed to close keeper oracle")
+		assert.Equal(t, "can only close a started oracle: failed to close keeper oracle", err.Error())
 	})
 
 	t.Run("closing the delegate also closes the wrapped keeper", func(t *testing.T) {

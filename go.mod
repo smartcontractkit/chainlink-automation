@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
-	github.com/smartcontractkit/libocr v0.0.0-20230606215712-82b910bef5c1
+	github.com/smartcontractkit/libocr v0.0.0-20230726142939-a2ab71019d9c
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/multierr v1.11.0
