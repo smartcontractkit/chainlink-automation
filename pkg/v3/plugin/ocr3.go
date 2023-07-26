@@ -201,7 +201,11 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
 
-	return reports, err
+	if err != nil {
+		plugin.Logger.Printf("error encountered while encoding: %s", err)
+	}
+
+	return reports, nil
 }
 
 func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
@@ -214,6 +218,7 @@ func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, seqNr u
 
 	for _, upkeep := range upkeeps {
 		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
+
 		for _, coord := range plugin.Coordinators {
 			if err := coord.Accept(upkeep); err != nil {
 				plugin.Logger.Printf("failed to accept upkeep by id '%s', error is %v", upkeep.UpkeepID, err)
