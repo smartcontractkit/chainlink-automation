@@ -109,6 +109,7 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 
 	// limit timeout to get all proposal data
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	// merge block number and recoverables
 	for _, sample := range samples {
@@ -119,7 +120,8 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 
 		payload, err := flow.builder.BuildPayload(ctx, proposal)
 		if err != nil {
-			flow.logger.Printf("error encountered when")
+			flow.logger.Printf("error encountered when building payload")
+
 			continue
 		}
 
@@ -130,8 +132,6 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 			continue
 		}
 	}
-
-	cancel()
 
 	return nil
 }
