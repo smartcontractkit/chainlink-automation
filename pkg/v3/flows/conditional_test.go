@@ -12,6 +12,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -65,7 +66,7 @@ func TestNewSampleProposalFlow(t *testing.T) {
 
 	up.On("GetActiveUpkeeps", mock.Anything, mock.Anything).Return(testValues, nil)
 	r.On("OfInt", 4).Return(1)
-	// ms.On("Set", store.ProposalRecoveryMetadata, testValues).Times(1)
+	ms.On("Set", store.ProposalSampleMetadata, mock.Anything).Times(1)
 
 	bs.ch <- ocr2keepers.BlockHistory{
 		ocr2keepers.BlockKey("4"),
