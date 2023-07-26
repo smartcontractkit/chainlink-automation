@@ -86,6 +86,34 @@ func TestNewSampleProposalFlow(t *testing.T) {
 	wg.Wait()
 }
 
+func TestNewFinalConditionalFlow(t *testing.T) {
+	pp := new(mockedPreprocessor)
+	rs := new(mocks.MockResultStore)
+	rn := &mockedRunner{eligibleAfter: 0}
+
+	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{pp}
+
+	svc, _ := newFinalConditionalFlow(preprocessors, rs, rn, 20*time.Millisecond, log.New(io.Discard, "", 0))
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func(svc service.Recoverable, ctx context.Context) {
+		assert.NoError(t, svc.Start(ctx))
+		wg.Done()
+	}(svc, context.Background())
+
+	time.Sleep(50 * time.Millisecond)
+
+	assert.NoError(t, svc.Close(), "no error expected on shut down")
+
+	rs.AssertExpectations(t)
+
+	assert.Equal(t, 2, pp.Calls())
+
+	wg.Wait()
+}
+
 type mockBlockSubscriber struct {
 	ch chan ocr2keepers.BlockHistory
 }
