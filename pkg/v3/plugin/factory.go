@@ -92,6 +92,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 
 	// create the plugin; all services start automatically
 	p, err := newPlugin(
+		c.ConfigDigest,
 		factory.logProvider,
 		factory.events,
 		factory.blocks,

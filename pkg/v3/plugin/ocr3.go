@@ -2,11 +2,13 @@ package plugin
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+	"golang.org/x/crypto/sha3"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
@@ -16,6 +18,7 @@ import (
 
 const (
 	OutcomeHistoryLimit = 10
+	OutcomeSamplesLimit = 100
 )
 
 type AutomationReportInfo struct{}
@@ -31,6 +34,7 @@ type Coordinator interface {
 }
 
 type ocr3Plugin struct {
+	ConfigDigest  types.ConfigDigest
 	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
 	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
 	ReportEncoder Encoder
@@ -94,6 +98,7 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
 	p := newPerformables(len(attributedObservations) / 2)
 	c := newCoordinateBlock(len(attributedObservations) / 2)
+	s := newSamples(OutcomeSamplesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
@@ -106,6 +111,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 
 		p.add(observation)
 		c.add(observation)
+		s.add(observation)
 	}
 
 	outcome := ocr2keepersv3.AutomationOutcome{
@@ -116,6 +122,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 
 	p.set(&outcome)
 	c.set(&outcome)
+	s.set(&outcome)
 
 	var previous *ocr2keepersv3.AutomationOutcome
 	if outctx.SeqNr != 1 {
@@ -259,4 +266,19 @@ func (plugin *ocr3Plugin) startServices() {
 			_ = svc.Start(context.Background())
 		}(plugin.Services[i])
 	}
+}
+
+// Generates a randomness source derived from the config and seq # so
+// that it's the same across the network for the same round
+func getRandomKeySource(cd types.ConfigDigest, seqNr uint64) [16]byte {
+	// similar key building as libocr transmit selector
+	hash := sha3.NewLegacyKeccak256()
+	hash.Write(cd[:])
+	temp := make([]byte, 8)
+	binary.LittleEndian.PutUint64(temp, seqNr)
+	hash.Write(temp)
+
+	var keyRandSource [16]byte
+	copy(keyRandSource[:], hash.Sum(nil))
+	return keyRandSource
 }

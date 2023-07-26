@@ -15,6 +15,7 @@ const (
 	BlockHistoryMetadata     MetadataKey = "block history"
 	CoordinatedBlockMetadata MetadataKey = "coordinated block"
 	ProposalRecoveryMetadata MetadataKey = "proposed for recovery"
+	ProposalSampleMetadata   MetadataKey = "proposed samples"
 )
 
 type Metadata struct {

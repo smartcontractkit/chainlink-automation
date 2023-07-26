@@ -12,8 +12,10 @@ type OutcomeMetadataKey string
 
 const (
 	BlockHistoryObservationKey     ObservationMetadataKey = "blockHistory"
+	SampleProposalObservationKey   ObservationMetadataKey = "sampleProposals"
 	CoordinatedBlockOutcomeKey     OutcomeMetadataKey     = "coordinatedBlock"
 	CoordinatedRecoveryProposalKey OutcomeMetadataKey     = "coordinatedRecoveryProposals"
+	CoordinatedSamplesProposalKey  OutcomeMetadataKey     = "coordinatedSampleProposals"
 )
 
 // AutomationObservation models the proposed actionable decisions made by a single node
