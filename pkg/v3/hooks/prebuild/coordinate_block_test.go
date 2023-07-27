@@ -73,7 +73,7 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		assert.False(t, ok)
 	})
 
-	t.Run("pre build hook adds DoCoordinateBlock to the instruction store", func(t *testing.T) {
+	t.Run("pre build hook removes DoCoordinateBlock to the instruction store", func(t *testing.T) {
 		storeState := make(map[instructions.Instruction]bool)
 		iStore := &mockInstructionStore{
 			SetFn: func(i instructions.Instruction) {
@@ -113,7 +113,7 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		assert.NoError(t, hook.RunHook(outcome), "no error from running hook")
 
 		assert.False(t, iStore.Has(instructions.DoCoordinateBlock), "no instructions should exist")
-		assert.False(t, iStore.Has(instructions.ShouldCoordinateBlock), "no instructions should exist")
+		assert.True(t, iStore.Has(instructions.ShouldCoordinateBlock), "should coordinate should exist")
 
 		v, ok := mStore.Get(store.CoordinatedBlockMetadata)
 		assert.True(t, ok, "coordinated block should be in metadata store")
