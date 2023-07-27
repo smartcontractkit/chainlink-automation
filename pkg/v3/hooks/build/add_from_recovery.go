@@ -25,6 +25,8 @@ func (h *addFromRecoveryHook) RunHook(obs *ocr2keepersv3.AutomationObservation) 
 		v, ok := cache.Get(key)
 		if !ok {
 			cache.Delete(key)
+
+			continue
 		}
 
 		proposals = append(proposals, v)

@@ -240,9 +240,11 @@ func ValidateAutomationOutcome(o AutomationOutcome) error {
 }
 
 func RecoveryProposalsFromOutcome(outcome AutomationOutcome) ([]ocr2keepers.CoordinatedProposal, error) {
-	var ok bool
-	var rawProposals interface{}
-	var proposals []ocr2keepers.CoordinatedProposal
+	var (
+		ok           bool
+		rawProposals interface{}
+		proposals    []ocr2keepers.CoordinatedProposal
+	)
 
 	// if recoverable items are in outcome, proceed with values
 	if rawProposals, ok = outcome.Metadata[CoordinatedRecoveryProposalKey]; !ok {
@@ -258,9 +260,11 @@ func RecoveryProposalsFromOutcome(outcome AutomationOutcome) ([]ocr2keepers.Coor
 }
 
 func UpkeepIdentifiersFromOutcome(outcome AutomationOutcome) ([]ocr2keepers.UpkeepIdentifier, error) {
-	var ok bool
-	var rawProposals interface{}
-	var proposals []ocr2keepers.UpkeepIdentifier
+	var (
+		ok           bool
+		rawProposals interface{}
+		proposals    []ocr2keepers.UpkeepIdentifier
+	)
 
 	// if recoverable items are in outcome, proceed with values
 	if rawProposals, ok = outcome.Metadata[CoordinatedSamplesProposalKey]; !ok {
