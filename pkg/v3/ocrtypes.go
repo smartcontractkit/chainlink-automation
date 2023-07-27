@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"encoding/json"
+	"fmt"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
@@ -17,6 +18,28 @@ const (
 	CoordinatedRecoveryProposalKey OutcomeMetadataKey     = "coordinatedRecoveryProposals"
 	CoordinatedSamplesProposalKey  OutcomeMetadataKey     = "coordinatedSampleProposals"
 )
+
+var (
+	ErrInvalidMetadataKey = fmt.Errorf("invalid metadata key")
+)
+
+func ValidateObservationMetadataKey(key ObservationMetadataKey) error {
+	switch key {
+	case BlockHistoryObservationKey:
+		return nil
+	default:
+		return fmt.Errorf("%w: %s", ErrInvalidMetadataKey, key)
+	}
+}
+
+func ValidateOutcomeMetadataKey(key OutcomeMetadataKey) error {
+	switch key {
+	case CoordinatedBlockOutcomeKey:
+		return nil
+	default:
+		return fmt.Errorf("%w: %s", ErrInvalidMetadataKey, key)
+	}
+}
 
 // AutomationObservation models the proposed actionable decisions made by a single node
 type AutomationObservation struct {
@@ -65,6 +88,28 @@ func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
 	obs.Performable = rawObs.Performable
 
 	return obs, nil
+}
+
+func ValidateAutomationObservation(o AutomationObservation) error {
+	for _, in := range o.Instructions {
+		if err := instructions.Validate(in); err != nil {
+			return err
+		}
+	}
+
+	for key := range o.Metadata {
+		if err := ValidateObservationMetadataKey(key); err != nil {
+			return err
+		}
+	}
+
+	for _, res := range o.Performable {
+		if err := ocr2keepers.ValidateCheckResult(res); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // AutomationOutcome represents decisions proposed by a single node based on observations.
@@ -149,4 +194,44 @@ func DecodeAutomationOutcome(data []byte) (AutomationOutcome, error) {
 		History:      rawOutcome.History,
 		NextIdx:      rawOutcome.NextIdx,
 	}, nil
+}
+
+func ValidateAutomationOutcome(o AutomationOutcome) error {
+	for _, in := range o.Instructions {
+		if err := instructions.Validate(in); err != nil {
+			return err
+		}
+	}
+
+	for key := range o.Metadata {
+		if err := ValidateOutcomeMetadataKey(key); err != nil {
+			return err
+		}
+	}
+
+	for _, res := range o.Performable {
+		if err := ocr2keepers.ValidateCheckResult(res); err != nil {
+			return err
+		}
+	}
+
+	if o.NextIdx > len(o.History) {
+		return fmt.Errorf("invalid ring buffer index: %d for history length %d", o.NextIdx, len(o.History))
+	}
+
+	for _, h := range o.History {
+		for key := range h.Metadata {
+			if err := ValidateOutcomeMetadataKey(key); err != nil {
+				return err
+			}
+		}
+
+		for _, res := range h.Performable {
+			if err := ocr2keepers.ValidateCheckResult(res); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

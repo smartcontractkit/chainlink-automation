@@ -57,7 +57,10 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 			return nil, err
 		}
 
-		// TODO: validate outcome (even though it is a signed outcome)
+		// validate outcome (even though it is a signed outcome)
+		if err := ocr2keepersv3.ValidateAutomationOutcome(automationOutcome); err != nil {
+			return nil, err
+		}
 
 		// Execute pre-build hooks
 		plugin.Logger.Printf("running pre-build hooks")
@@ -92,7 +95,12 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 }
 
 func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
-	return nil
+	o, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation)
+	if err != nil {
+		return err
+	}
+
+	return ocr2keepersv3.ValidateAutomationObservation(o)
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
@@ -107,7 +115,13 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			return nil, err
 		}
 
-		// TODO: validate incoming observation
+		if err := ocr2keepersv3.ValidateAutomationObservation(observation); err != nil {
+			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
+
+			// if the validation for an observation fails at this point, discard
+			// the observation and move to the next one
+			continue
+		}
 
 		p.add(observation)
 		c.add(observation)
@@ -131,7 +145,10 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			return nil, err
 		}
 
-		// TODO: validate outcome (even though it is a signed outcome)
+		// validate outcome (even though it is a signed outcome)
+		if err := ocr2keepersv3.ValidateAutomationOutcome(p); err != nil {
+			return nil, err
+		}
 
 		previous = &p
 	}
@@ -155,7 +172,10 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		return nil, err
 	}
 
-	// TODO: validate outcome (even though it is a signed outcome)
+	// validate outcome (even though it is a signed outcome)
+	if err := ocr2keepersv3.ValidateAutomationOutcome(outcome); err != nil {
+		return nil, err
+	}
 
 	plugin.Logger.Printf("creating report from outcome with %d results", len(outcome.Performable))
 

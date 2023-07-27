@@ -80,6 +80,84 @@ func TestAutomationObservation(t *testing.T) {
 	assert.Equal(t, expected, result, "final result from encoding and decoding should match")
 }
 
+func TestValidateAutomationObservation(t *testing.T) {
+	t.Run("invalid instructions", func(t *testing.T) {
+		testData := AutomationObservation{
+			Instructions: []instructions.Instruction{
+				"invalid instruction",
+			},
+		}
+
+		err := ValidateAutomationObservation(testData)
+
+		assert.ErrorIs(t, err, instructions.ErrInvalidInstruction, "invalid instruction should return validation error")
+	})
+
+	t.Run("invalid metadata key", func(t *testing.T) {
+		testData := AutomationObservation{
+			Metadata: map[ObservationMetadataKey]interface{}{
+				"invalid key": "string",
+			},
+		}
+
+		err := ValidateAutomationObservation(testData)
+
+		assert.ErrorIs(t, err, ErrInvalidMetadataKey, "invalid metadata key should return validation error")
+	})
+
+	t.Run("invalid check result", func(t *testing.T) {
+		testData := AutomationObservation{
+			Performable: []ocr2keepers.CheckResult{
+				{},
+			},
+		}
+
+		err := ValidateAutomationObservation(testData)
+
+		assert.NotNil(t, err, "invalid check result should return validation error")
+	})
+
+	t.Run("no error on empty", func(t *testing.T) {
+		testData := AutomationObservation{}
+
+		err := ValidateAutomationObservation(testData)
+
+		assert.NoError(t, err, "no error should return from empty observation")
+	})
+
+	t.Run("no error on valid", func(t *testing.T) {
+		testData := AutomationObservation{
+			Instructions: []instructions.Instruction{
+				instructions.DoCoordinateBlock,
+			},
+			Metadata: map[ObservationMetadataKey]interface{}{
+				BlockHistoryObservationKey: ocr2keepers.BlockKey("3"),
+			},
+			Performable: []ocr2keepers.CheckResult{
+				{
+					Eligible:     true,
+					Retryable:    false,
+					GasAllocated: 1,
+					Payload: ocr2keepers.UpkeepPayload{
+						ID: "test",
+						Upkeep: ocr2keepers.ConfiguredUpkeep{
+							ID: ocr2keepers.UpkeepIdentifier("test"),
+						},
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 10,
+							BlockHash:   "0x",
+						},
+					},
+				},
+			},
+		}
+
+		err := ValidateAutomationObservation(testData)
+
+		assert.NoError(t, err, "no error should return from a valid observation")
+	})
+}
+
 func TestAutomationOutcome(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationOutcome{
@@ -152,5 +230,103 @@ func TestAutomationOutcome(t *testing.T) {
 	assert.NoError(t, err, "no error from decoding")
 
 	assert.Equal(t, expected, result, "final result from encoding and decoding should match")
+
+}
+
+func TestValidateAutomationOutcome(t *testing.T) {
+	t.Run("invalid instructions", func(t *testing.T) {
+		testData := AutomationOutcome{
+			Instructions: []instructions.Instruction{
+				"invalid instruction",
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.ErrorIs(t, err, instructions.ErrInvalidInstruction, "invalid instruction should return validation error")
+	})
+
+	t.Run("invalid metadata key", func(t *testing.T) {
+		testData := AutomationOutcome{
+			BasicOutcome: BasicOutcome{
+				Metadata: map[OutcomeMetadataKey]interface{}{
+					"invalid key": "string",
+				},
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.ErrorIs(t, err, ErrInvalidMetadataKey, "invalid metadata key should return validation error")
+	})
+
+	t.Run("invalid check result", func(t *testing.T) {
+		testData := AutomationOutcome{
+			BasicOutcome: BasicOutcome{
+				Performable: []ocr2keepers.CheckResult{
+					{},
+				},
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NotNil(t, err, "invalid check result should return validation error")
+	})
+
+	t.Run("invalid ring buffer", func(t *testing.T) {
+		testData := AutomationOutcome{
+			History: []BasicOutcome{
+				{},
+			},
+			NextIdx: 3,
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NotNil(t, err, "invalid ring buffer index should return validation error")
+	})
+
+	t.Run("no error on empty", func(t *testing.T) {
+		testData := AutomationOutcome{}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NoError(t, err, "no error should return from empty outcome")
+	})
+
+	t.Run("no error on valid", func(t *testing.T) {
+		testData := AutomationOutcome{
+			Instructions: []instructions.Instruction{
+				instructions.DoCoordinateBlock,
+			},
+			BasicOutcome: BasicOutcome{
+				Metadata: map[OutcomeMetadataKey]interface{}{
+					CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+				},
+				Performable: []ocr2keepers.CheckResult{
+					{
+						Eligible:     true,
+						Retryable:    false,
+						GasAllocated: 1,
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("test"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 10,
+								BlockHash:   "0x",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NoError(t, err, "no error should return from a valid outcome")
+	})
 
 }
