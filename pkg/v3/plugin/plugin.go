@@ -48,6 +48,10 @@ func newPlugin(
 	ms := store.NewMetadata(blockTicker)
 	is := instructions.NewStore()
 
+	// on plugin startup, begin broadcasting that block coordination should
+	// happen immediately
+	is.Set(instructions.ShouldCoordinateBlock)
+
 	// create a new runner instance
 	rn, err := runner.NewRunner(
 		logger,
