@@ -69,6 +69,7 @@ type conditionalReportCoordinator struct {
 	// run state data
 	running atomic.Bool
 	chStop  chan struct{}
+	chDone  chan struct{}
 }
 
 // NewConditionalReportCoordinator provides a new conditional report coordinator. The coordinator
@@ -89,6 +90,7 @@ func NewConditionalReportCoordinator(
 		cacheCleaner:   util.NewIntervalCacheCleaner[bool](DefaultCacheClean),
 		chStop:         make(chan struct{}, 1),
 		encoder:        encoder,
+		chDone:         make(chan struct{}, 1),
 	}
 
 	return c
@@ -306,6 +308,7 @@ func (rc *conditionalReportCoordinator) Close() error {
 		rc.idCacheCleaner.Stop()
 		rc.cacheCleaner.Stop()
 		rc.running.Swap(false)
+		<-rc.chDone
 	}
 
 	return nil
@@ -336,6 +339,7 @@ func (rc *conditionalReportCoordinator) run() {
 			}
 		case <-rc.chStop:
 			timer.Stop()
+			rc.chDone <- struct{}{}
 			return
 		}
 	}
