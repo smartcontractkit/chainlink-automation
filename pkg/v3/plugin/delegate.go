@@ -164,6 +164,8 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			c.EventProvider,
 			c.BlockSubscriber,
 			c.RecoverableProvider,
+			c.PayloadBuilder,
+			c.UpkeepProvider,
 			c.Runnable,
 			runner.RunnerConfig{
 				Workers:           conf.MaxServiceWorkers,
