@@ -672,8 +672,8 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 	}, config.DefaultCacheExpiration)
 
 	err := coordinator.checkEvents(context.Background())
-	assert.NoError(t, err)
-
+	assert.Error(t, err)
+	assert.Equal(t, "increment error", err.Error())
 	assert.True(t, strings.Contains(buf.String(), "Skipping transmit event in transaction  as confirmations (1) is less than min confirmations (2)"))
 	assert.True(t, strings.Contains(buf.String(), "Got a stale event for previously accepted key  in transaction  at block 124, with confirmations 3"))
 	assert.True(t, strings.Contains(buf.String(), "Stale event found for key  in transaction  at block 123, with confirmations 3"))
