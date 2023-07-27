@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 )
 
 // Transmit sends the report to the on-chain OCR2Aggregator smart
@@ -16,16 +18,16 @@ import (
 // asynchronously.
 func (ct *SimulatedContract) Transmit(
 	ctx context.Context,
-	rc types.ReportContext,
-	r types.Report,
+	digest types.ConfigDigest,
+	v uint64,
+	r ocr3types.ReportWithInfo[plugin.AutomationReportInfo],
 	s []types.AttributedOnchainSignature,
 ) error {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
 
-	ct.lastEpoch = rc.Epoch
 	// TODO: simulate gas bumping
-	return ct.transmitter.Transmit(ct.account, []byte(r), rc.Epoch, rc.Round)
+	return ct.transmitter.Transmit(ct.account, []byte(r.Report), 0, 0)
 }
 
 // LatestConfigDigestAndEpoch returns the logically latest configDigest and
