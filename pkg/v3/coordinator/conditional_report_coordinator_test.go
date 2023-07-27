@@ -505,33 +505,32 @@ func TestConditionalReportCoordinator_Accept(t *testing.T) {
 }
 
 func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
-	// TODO check this test should fail - why should a key not existing result in transmission confirmed?
-	//t.Run("a non existent key is not confirmed", func(t *testing.T) {
-	//	events := &mockEvents{}
-	//	encoder := &mockEncoder{
-	//		AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-	//			return false, nil
-	//		},
-	//	}
-	//
-	//	var buf bytes.Buffer
-	//	coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
-	//	assert.NotNil(t, coordinator)
-	//
-	//	confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
-	//		ID: "123",
-	//		Upkeep: ocr2keepers.ConfiguredUpkeep{
-	//			ID:   ocr2keepers.UpkeepIdentifier("4"),
-	//			Type: 1,
-	//		},
-	//		CheckBlock: "500",
-	//		Trigger: ocr2keepers.Trigger{
-	//			BlockNumber: 501,
-	//		},
-	//	})
-	//
-	//	assert.False(t, confirmed)
-	//})
+	t.Run("a non existent key is confirmed", func(t *testing.T) {
+		events := &mockEvents{}
+		encoder := &mockEncoder{
+			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+				return false, nil
+			},
+		}
+
+		var buf bytes.Buffer
+		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+		assert.NotNil(t, coordinator)
+
+		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
+			ID: "123",
+			Upkeep: ocr2keepers.ConfiguredUpkeep{
+				ID:   ocr2keepers.UpkeepIdentifier("4"),
+				Type: 1,
+			},
+			CheckBlock: "500",
+			Trigger: ocr2keepers.Trigger{
+				BlockNumber: 501,
+			},
+		})
+
+		assert.True(t, confirmed)
+	})
 
 	t.Run("a key set to true is confirmed", func(t *testing.T) {
 		events := &mockEvents{}
