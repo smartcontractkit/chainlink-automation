@@ -108,6 +108,11 @@ func (r *CheckResult) UnmarshalJSON(b []byte) error {
 
 	if string(basicRaw.Extension) != "null" {
 		output.Extension = []byte(basicRaw.Extension)
+
+		var v []byte
+		if err := json.Unmarshal(basicRaw.Extension, &v); err == nil {
+			output.Extension = v
+		}
 	}
 
 	*r = output
@@ -156,6 +161,11 @@ func (u *ConfiguredUpkeep) UnmarshalJSON(b []byte) error {
 
 	if string(basicRaw.Config) != "null" {
 		output.Config = []byte(basicRaw.Config)
+
+		var v []byte
+		if err := json.Unmarshal(basicRaw.Config, &v); err == nil {
+			output.Config = v
+		}
 	}
 
 	*u = output
@@ -242,11 +252,11 @@ func (t *Trigger) UnmarshalJSON(b []byte) error {
 	type raw struct {
 		BlockNumber int64
 		BlockHash   string
-		Extension   json.RawMessage
+		// TODO: consider using map[string]interface{} instead
+		Extension json.RawMessage
 	}
 
 	var basicRaw raw
-
 	if err := json.Unmarshal(b, &basicRaw); err != nil {
 		return err
 	}
@@ -258,6 +268,15 @@ func (t *Trigger) UnmarshalJSON(b []byte) error {
 
 	if string(basicRaw.Extension) != "null" {
 		output.Extension = []byte(basicRaw.Extension)
+
+		// when decoding the first time, the exension data is set as a byte array
+		// of the raw encoded original json. if this is encoded again, it is encoded
+		// as a byte array. in that case, decode it into a byte array first before
+		// passing the bytes on.
+		var v []byte
+		if err := json.Unmarshal(basicRaw.Extension, &v); err == nil {
+			output.Extension = v
+		}
 	}
 
 	*t = output
