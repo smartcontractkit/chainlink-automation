@@ -68,7 +68,7 @@ func NewConditionalEligibility(
 }
 
 func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	samples, err := ocr2keepersv3.UpkeepIdentifiersFromOutcome(outcome)
+	samples, err := outcome.UpkeepIdentifiers()
 	if err != nil {
 		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
 			return err
@@ -81,7 +81,7 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 
 	// get latest coordinated block
 	// by checking latest outcome first and then looping through the history
-	block, err := ocr2keepersv3.LatestBlockFromOutcome(outcome)
+	block, err := outcome.LatestCoordinatedBlock()
 	if err != nil {
 		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
 			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {

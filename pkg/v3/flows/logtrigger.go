@@ -146,7 +146,7 @@ func NewLogTriggerEligibility(
 // ProcessOutcome functions as an observation pre-build hook to allow data from
 // outcomes to feed inputs in the eligibility flow
 func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	networkProposals, err := ocr2keepersv3.RecoveryProposalsFromOutcome(outcome)
+	networkProposals, err := outcome.RecoveryProposals()
 	if err != nil {
 		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
 			return err
@@ -159,7 +159,7 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 
 	// get latest coordinated block
 	// by checking latest outcome first and then looping through the history
-	block, err := ocr2keepersv3.LatestBlockFromOutcome(outcome)
+	block, err := outcome.LatestCoordinatedBlock()
 	if err != nil {
 		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
 			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {

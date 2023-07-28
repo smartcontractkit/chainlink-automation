@@ -197,8 +197,9 @@ type UpkeepPayload struct {
 func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload {
 	p := UpkeepPayload{
 		Upkeep: ConfiguredUpkeep{
-			ID:   UpkeepIdentifier(uid.Bytes()),
-			Type: tp,
+			ID:     UpkeepIdentifier(uid.Bytes()),
+			Type:   tp,
+			Config: struct{}{}, // empty struct by default
 		},
 		CheckBlock: block,
 		Trigger:    trigger,
