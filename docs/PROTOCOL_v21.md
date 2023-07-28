@@ -23,7 +23,8 @@ This document aims to give a high level overview of a full e2e protocol for auto
         - [Conditional Observer](#conditional-observer)
     - Log Triggers:
         - [Log Provider](#log-provider)
-        - [Log Buffer](#log-buffer)
+            - [Log Buffer](#log-buffer)
+        - [Log Recoverer](#log-recoverer)
         - [Log Observer](#log-observer)
         - [Recovery Observer](#recovery-observer)
         - [Log Recoverer](#log-recoverer)
@@ -65,10 +66,9 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 - `upkeepID`: Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
 - `trigger`: Used to represent the trigger for a particular upkeep performance
     - For conditionals: (checkBlockNum, checkBlockHash)
-    - For log triggers: (logTxHash, logIndex, blockNum, blockHash)
-- `upkeepTriggerID`: Uniquely identifies an attempt to do a unit of work and is represented as:
-`keccak256(upkeepID, trigger)`
+    - For log triggers: (checkBlockNum, checkBlockHash, logTxHash, logIndex)
 - `logIdentifier`: unique identifier for a log → (logTxHash, logIndex)
+- `upkeepTriggerID`: Uniquely identifies an attempt to do a unit of work and is represented as: `keccak256(upkeepID, abi.encode(trigger))` for evm chains.
 - `upkeepPayload`: Input information to process an upkeep → (upkeepID, trigger, checkData)
     - For conditionals checkData is empty (derived onchain in checkUpkeep)
     - For log: checkData is log information
@@ -100,26 +100,31 @@ Log triggers:
 
 ### Registry
 
-This is the main component that connects the offchain node with the registry onchain. The main functionality it offers
+This is the main component that connects the offchain node with the registry onchain.
 
-- Sync the upkeep config onchain with node’s local state in the upkeep index
-    - Listens to upkeep events on chain for log trigger upkeep events
-    - Periodically (~10min) does a fullSync of upkeep onchain state so that any potential missed / reorged logs are accounted for
-- Expose a checkPipeline to call checkUpkeep
-    - Takes in a list of upkeepPayloads to process
-    - For log triggers verifies log is still part of chain at checkBlockNum
-    - Does a batch RPC call to checkUpkeep (for conditionals calls `checkUpkeep()` and for log calls `checkUpkeep(logData)`)
-    - Does batch mercury fetch and callback for upkeeps that need mercury data
-    - Does batch RPC call to simulatePerformUpkeep for upkeeps that are eligible
-    - Returns list of results for each payload. Result can be **eligible** with upkeepResult / **non-eligible** with failure reason / **error.** Error can be retryable if it’s transient or non retryable in case the checkBlockNum is too old
+The registry offers the following functionality:
 
-### Upkeep Index (Life Cycle)
+**Upkeeps life-cycle management**
 
-This component maintains the config for an upkeep in memory so that it can be read by different components.
+The regsitry sync the active upkeeps and corresponding config onchain with node’s local state.
 
-- Called by registry upon any changes (or potentially without any change during a fullSync)
-- Stores a list of active upkeepIDs and their associated offchain config
-- For log upkeeps, stores the log filter config and the block number from when it is active. Upon any changes to the log filter config does a call to log event provider
+It does so by listening to the relevant events on chain for the following:
+- Upkeep registration/cancellation
+- Upkeep pause/unpause
+- Upkeep config changes
+
+Periodically (~10min) does a full sync of all upkeeps onchain state so that any potential missed / reorged logs are accounted for.
+
+**Check upkeeps**
+
+The registry exposes `checkUpkeep` so the runner could execute the pipeline:
+
+- For log triggers verifies log is still part of chain at checkBlockNum
+- Does a batch RPC call to checkUpkeep (for conditionals calls `checkUpkeep()` and for log calls `checkUpkeep(logData)`).
+- Does batch mercury fetch and callback for upkeeps that requires mercury data
+- Does batch RPC call to simulatePerformUpkeep for upkeeps that are eligible
+
+Returns list of results for each payload. Result can be **eligible** with upkeepResult / **non-eligible** with failure reason / **error.** Error can be retryable if it’s transient or non retryable in case the checkBlockNum is too old.
 
 ### Runner
 
@@ -133,29 +138,51 @@ This component is responsible for parallelizing upkeep executions and providing 
 
 <aside>
 💡 Note: This component can be made synchronous instead of giving a callback while callers can call it asynchronously
-
 </aside>
 
 ### Coordinator
 
-This component stores in-flight & confirmed reports in memory. It does not maintain any state in DB for itself.
+This component stores in-flight & confirmed reports in memory, and allows other components in the system to query that information. 
+It maintains a single item per `upkeepTriggerID`, and stores `confirmed` flag, the `upkeepID` and `trigger`.
 
-- Stores the trigger, upkeepID and triggerID for a report which is inflight (called via plugin shouldAccept)
+**Inflight reports**
+
+The coordinator stores upkeep and trigger for a report which is inflight.
+
     - For conditionals only one inflight report should be present per upkeepID
     - For log upkeeps only one inflight report per (upkeepID, logIdentifier)
-    - If a new report is seen for an upkeepID / (upkeepID, logIdentifier) then it waits on the higher checkBlockNumber report
-- Listens to upkeepPerformed / StaleUpkeep (stale / reorged / cancelled / insufficient funds) logs for stored triggerIDs in memory
-    - In case of upkeepPerformed log: (trigger, upkeep) is marked as performed at the log block number for conditionals
-    - Write to DB (trigger, upkeepID) as being performed (used within recovery flow)
-    - In case of staleUpkeep log
-        - For conditional: Marked as stale at the log block number. It will be sampled and checked again automatically
-        - For log (only for reorged, insufficient funds reason): Put (upkeepID, logTxHash, logIndex) into recovery flow
-- All keys stored expire after TTL. In case it was not marked as performed, it is assumed tx got lost
-    - For conditional: Just remove from memory. It will be sampled and checked again automatically
-    - For log: Put (upkeepID, logTxHash, logIndex) into recovery flow
-- Provides readAPI to check whether (trigger, upkeepID) is in flight. (Used within shouldTransmit)
-- Provides additional read API to check whether an upkeep should be processed which is used for pre-processing / filtering to prevent duplicate reports. 
-**Note that the input is different from trigger and doesn’t include checkBlockNumber, checkBlockHash**. i.e.
+
+In case of conflict - a new report is seen for an upkeepID / (upkeepID, logIdentifier), it waits on the higher checkBlockNumber report.
+
+Enables to mark as inflight with `Accept` function that is called from the `shouldAccept`.
+
+**Transmit Events**
+
+The coordinator listens to transmit event logs (stale / reorged / cancelled / insufficient funds) of stored `upkeepTriggerID` in memory, and act accordingly:
+
+- Upkeep performed - the `upkeepTriggerID` is marked as confirmed.
+- Stale report - the `upkeepTriggerID` is marked as confirmed.
+    - conditional upkeeps will be sampled and checked again automatically
+    - log upkeeps that were missed are expected to be picked up by the log recoverer **TBD**
+- Reorged / insufficient funds - the `upkeepTriggerID` is removed from the inflight reports set. 
+    - log upkeeps that were missed are expected to be picked up by the log recoverer
+
+**TTL**
+
+All keys stored expire after TTL. In case it was not marked as performed, it is assumed tx got lost.
+- conditional upkeeps will be sampled and checked again automatically
+- log upkeeps that were missed are expected to be picked up by the log recoverer
+
+**Is Transmission Confirmed**
+
+Provides additional read API to check whether some reported upkeep can be transmitted.
+It expects the full trigger as input, i.e. with concrete checkBlockNum and checkBlockHash:
+`isTransmissionConfirmed(upkeepID, trigger)`
+
+**Should Process**
+
+Provides additional read API to check whether an upkeep should be processed which is used for pre-processing / filtering to prevent duplicate reports. 
+**Note that the input is a partially populated trigger which doesn’t include checkBlockNumber, checkBlockHash**. i.e.
     - For conditional: shouldProcess(upkeepID, blockNum)
         - False if report is inflight for upkeepID
         - False if report has been confirmed after blockNum (This can happen when network latest block is lagging this node’s logs)
@@ -168,11 +195,12 @@ This component stores in-flight & confirmed reports in memory. It does not maint
 
 This component is responsible for storing upkeepResults that a node thinks should be performed. It hopes to get consensus from the network on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. For results that do not achieve consensus within TTL go into recovery flow.
 
-- Maintains an in-memory collection of upkeepResults. It should maintain a single result per `upkeepTriggerID``. If it gets a same result for the identifier it overwrites it.
+- Maintains an in-memory collection of upkeepResults. It should maintain a single result per `upkeepTriggerID`. 
+    - Overwrites results for duplicated `upkeepTriggerID`.
 - Each result has a TTL. When the TTL expires
-    - For conditional: just remove from memory. It will be sampled and checked again
-    - For log: Put (upkeepID, logTxHash, logIndex) into recovery flow
-- Provides a read API which takes as input (`pseudoRandomSeed`, `limit`). Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. We do not do FIFO here as potentially out of sync old results will block new results sent by the node for consensus.
+    - conditional upkeeps will be sampled and checked again automatically
+    - log upkeeps that were missed are expected to be picked up by the log recoverer **TBD**
+- Provides a read API to view results, which takes as input (`pseudoRandomSeed`, `limit`). Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. We do not do FIFO here as potentially out of sync old results will block new results sent by the node for consensus.
 - Provides an API to remove (trigger, upkeepID) from the store
 
 ### Metadata Store
@@ -208,20 +236,23 @@ Processes coordinated block + upkeep payload coming from plugin and does the fol
 
 ### Log Observer
 
-- Calls `getLatestLogs` every second (via Log Trigger Ticker). Gets the full upkeep payload as input
-- If log block number is older than threshold then put log into recovery flow, else continue
+Processes latest logs for active upkeeps. It does the following procedures:
+
+- Called every second by Log Trigger Ticker with latest logs as full payloads.
+- Filter out logs with block number that is older than threshold
+    - These are expected to be picked up by the log recoverer 
 - Pre-processes to filter the logs already present in coordinator
 - Calls runner with upkeep payload
 - If upkeep is eligible enqueue into result store
-- If runner gave an error, put back into log ticker after a fixed timeout (can extend to exponential backoff)
-
-<aside>
-💡 Note: This starts with a simple retry mechanism. Retries will automatically end once log goes into recovery flow
-</aside>
+- If runner gave an error, put back into log retry ticker, to be performed after a fixed timeout (can extend to exponential backoff)
 
 <aside>
 💡 Note: Duplicate logs can enter this flow, this component should be able to handle that. This component can maintain in-memory state for processed logs and can also use that state for exponential backoff
 </aside>
+
+### Retry Observer
+
+**TODO**
 
 ### Recovery Observer
 
@@ -263,7 +294,7 @@ This component’s purpose is to surface latest logs for registered upkeeps. It 
 - Provides an interface `getPayloadLog` to build an upkeep payload for a particular log on demand by giving a trigger as in input.
 It gets only the required log from the log buffer or reads it from log poller if not found in buffer. This is used by the recovery flow
 
-### Log Buffer
+#### Log Buffer
 
 A circular/ring buffer of blocks and their corresponding logs, that act as a cache for logs. 
 It is used to store the last `lookbackBlocks*3` blocks, where each block holds a list of that block's logs. 
@@ -288,9 +319,11 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 - It will start scanning from `lastRePollBlock` on each iteration, and update the block number when it finishes scanning.
 - Logs that are older than 24hr are ignored, therefore `lastRePollBlock` starts at `latestBlock - (24hr block)` in case it was not populated before.
 
-### Upkeep States
+#### Upkeep States
 
-The upkeeps states are used to track the status of log upkeeps (eligible, performed) across the system, to avoid redundant work by the recoverer.
+The upkeeps states are used to track the status of log upkeeps (eligible, performed) across the system, to avoid redundant work by the recoverer. Enables to select by (upkeepID, logIdentifier) is used as a key to store the state of a log upkeep.
+
+The state is updated by the coordinator when the upkeep is performed or after positive check (eligible).
 
 The states will be persisted to so the latest state to be restored when the node starts up.
 
