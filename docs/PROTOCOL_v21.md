@@ -74,6 +74,15 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
     - For log: checkData is log information
 - `upkeepResult`: Output information to perform an upkeep. Same across both types: (fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)
 
+## Upkeep Flows
+
+### Conditional Upkeep Sampling/Eligibility Flow
+
+### Conditional Upkeep Perform Flow
+
+### Log Trigger Flow
+
+### Log Recovery Flow
 
 ## [WIP] Visuals
 
@@ -173,22 +182,28 @@ This component stores the metadata to be sent within observations to the network
 - Conditional Upkeep Instructions
 - Log recovery Instructions
 - Latest block history
-- Provides an add / view / remove API for other components
-- Every item has a TTL. Upon expiry items are just removed without any action
+
+Every item has a TTL, and upon expiry items are just removed without any action.
+
+The store provides an add / view / remove API for other components.
 
 ### Samples Observer
 
-- On a constant time interval (via Sampler ticker) fetch a sample of current conditional upkeep IDs from registry. Use local latest block number as trigger.
-- Filter the sampled IDs from coordinator shouldProcess(upkeepID, latestBlock)
-- Calls runner on the list of upkeepIDs and latestBlock
-- In callback of runner if upkeep is eligible then put upkeepID into metadata store (Conditional Upkeep Instructions)
+Processes samples of upkeeps to be checked, using the latest block number as a trigger. It does the following procedures:
+
+- Pre-processes to filter upkeep present in coordinator
+- Calls runner with upkeep payload
+- If upkeep is eligible enqueue into **metadata store**
+with conditional Upkeep instructions
+- Errors and ineligible results are ignored
 
 ### Conditional Observer
 
-- Gets coordinated block + upkeep payload from plugin
+Processes coordinated block + upkeep payload coming from plugin and does the following:
+
 - Pre-processes to filter upkeep present in coordinator
 - Calls runner with upkeep payload
-- If upkeep is eligible enqueue into result store
+- If upkeep is eligible enqueue into **result store**
 - Errors and ineligible results are ignored
 
 ### Log Observer
