@@ -79,6 +79,10 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 		return nil
 	}
 
+	if len(samples) == 0 {
+		return nil
+	}
+
 	// get latest coordinated block
 	// by checking latest outcome first and then looping through the history
 	block, err := outcome.LatestCoordinatedBlock()
