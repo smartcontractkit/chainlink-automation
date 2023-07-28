@@ -157,6 +157,10 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 		return nil
 	}
 
+	if len(networkProposals) == 0 {
+		return nil
+	}
+
 	// get latest coordinated block
 	// by checking latest outcome first and then looping through the history
 	block, err := outcome.LatestCoordinatedBlock()
