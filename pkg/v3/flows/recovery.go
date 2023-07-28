@@ -18,15 +18,24 @@ func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
 	rn Runner,
+	recoverer Retryer,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
 ) (service.Recoverable, Retryer) {
+	// postprocessing is a combination of multiple smaller postprocessors
+	post := postprocessors.NewCombinedPostprocessor(
+		// create eligibility postprocessor with result store
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
+		// create retry postprocessor
+		postprocessors.NewRetryPostProcessor(nil, recoverer),
+	)
+
 	// create observer that only pushes results to result store. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
 	recoveryObserver := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
+		post,
 		rn,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),

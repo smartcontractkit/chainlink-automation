@@ -30,19 +30,23 @@ func (p *retryPostProcessor) PostProcess(_ context.Context, results []ocr2keeper
 }
 
 func (p *retryPostProcessor) attemptRetry(res ocr2keepers.CheckResult) error {
-	err := p.retryer.Retry(res)
-	if err == nil {
-		return nil
+	var err error
+
+	if p.retryer != nil {
+		err = p.retryer.Retry(res)
+		if err == nil {
+			return nil
+		}
 	}
 
-	if errors.Is(err, tickers.ErrSendDurationExceeded) {
+	if err == nil || errors.Is(err, tickers.ErrSendDurationExceeded) {
 		if err := p.recoverer.Retry(res); err != nil {
 			return err
 		}
-
-		return nil
 	}
 
+	// if an item cannot be retried nor can it be recovered, it can be assumed
+	// that the item should no longer be processed
 	return err
 }
 
