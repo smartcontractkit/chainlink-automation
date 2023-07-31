@@ -106,11 +106,18 @@ The results are collected, filtered, and checked again. Eligible results will go
 The log trigger flow is used to determine if a log is eligible to perform. It is triggered by a ticker that get the latest logs from log event provider.
 The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain. 
 
-#### Log Recovery Flow
+#### Log Recovery Proposal Flow
 
 The log recovery flow is used to recover logs that were missed by the log trigger flow. It is triggered by a ticker that gets missed logs from log recoverer.
 The results are collected, filtered, and checked again. Eligible results are then pushed into the metadata store with `RecoveredLog` [instruction](#instructions). 
-The plugin will then collect the instructions and push them into the outcome to be processed in next round, where they will go into log trigger flow.
+The plugin will then collect the instructions and push them into the outcome to be processed in next round where they gets picked up into recovery finalization flow. 
+
+#### Log Recovery Finalization Flow
+
+The recovery finalization flow takes recoverable payloads merged with the latest
+blocks and runs the pipeline for them.
+
+The recovery finalization ticker will call log provider to build payloads with the latest logs. Then they will go into log observer to be checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
 
 ## Visuals
 
