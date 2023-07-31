@@ -263,7 +263,7 @@ The store provides an add / view / remove API for other components.
 
 ### Samples Observer
 
-Processes samples of upkeeps to be checked, using the latest block number as a trigger. It does the following procedures:
+The sampler ticker calls the samples observer every second, with samples of upkeeps to checked. It uses the latest block number as the trigger. It does the following procedures:
 
 - Pre-processes to filter upkeep present in coordinator
 - Calls runner with upkeep payload
@@ -294,7 +294,7 @@ Processes latest logs for active upkeeps. It does the following procedures:
 
 ### Retry Observer
 
-**TODO**
+Allows to retry log upkeeps with scheduled retry timing. 
 
 ### Recovery Observer
 
@@ -358,8 +358,9 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 
 - The recoverer maintains a `lastRePollBlock` for each upkeep, .i.e. the last block it scanned for that upkeep.
 - Every second, the recoverer will scan logs for a subset of `n=10` upkeeps, where `n/2` upkeeps are randomly chosen and `n/2` upkeeps are chosen by the oldest `lastRePollBlock`.
-- It will start scanning from `lastRePollBlock` on each iteration, and update the block number when it finishes scanning.
+- It will start scanning from `lastRePollBlock` on each iteration
 - Logs that are older than 24hr are ignored, therefore `lastRePollBlock` starts at `latestBlock - (24hr block)` in case it was not populated before.
+- `lastRePollBlock` is updated in case there are no logs in a specific range, otherwise will wait for performed events to know that all logs in that range were processed before updating `lastRePollBlock`.
 
 #### Upkeep States
 
