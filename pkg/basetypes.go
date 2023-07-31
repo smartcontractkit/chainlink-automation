@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -194,13 +193,9 @@ type UpkeepPayload struct {
 	Trigger Trigger
 }
 
-func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload {
+func NewUpkeepPayload(configuredUpkeep ConfiguredUpkeep, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload {
 	p := UpkeepPayload{
-		Upkeep: ConfiguredUpkeep{
-			ID:     UpkeepIdentifier(uid.Bytes()),
-			Type:   tp,
-			Config: struct{}{}, // empty struct by default
-		},
+		Upkeep:     configuredUpkeep,
 		CheckBlock: block,
 		Trigger:    trigger,
 		CheckData:  checkData,

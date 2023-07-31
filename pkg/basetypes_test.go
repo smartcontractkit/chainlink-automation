@@ -9,7 +9,11 @@ import (
 )
 
 func TestUpkeepPayload_GenerateID(t *testing.T) {
-	payload := NewUpkeepPayload(big.NewInt(111), 1, BlockKey("4"), Trigger{
+	id := big.NewInt(111)
+	payload := NewUpkeepPayload(ConfiguredUpkeep{
+		ID:   UpkeepIdentifier(id.Bytes()),
+		Type: 1,
+	}, BlockKey("4"), Trigger{
 		BlockNumber: 11,
 		BlockHash:   "0x11111",
 		Extension:   "extension111",
