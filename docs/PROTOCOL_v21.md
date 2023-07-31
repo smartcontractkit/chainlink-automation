@@ -8,10 +8,13 @@ This document aims to give a high level overview of a full e2e protocol for auto
   - [Boundaries](#boundaries)
   - [Definitions](#definitions)
   - [Upkeep Flows](#upkeep-flows)
-    - [Sampling Flow](#sampling-flow)
-    - [Perform Flow](#perform-flow)
-    - [Log Trigger Flow](#log-trigger-flow)
-    - [Log Recovery Flow](#log-recovery-flow)
+    - [Conditional Triggers Flows](#1-conditional-triggers-flows)
+        - [Sampling Flow](#sampling-flow)
+        - [Coordination Flow](#coordination-flow)
+    - [Log Triggers](#2-log-triggers)
+        - [Log Trigger Flow](#log-trigger-flow)
+        - [Log Recovery Proposal Flow](#log-recovery-proposal-flow)
+        - [Log Recovery Finalization Flow](#log-recovery-finalization-flow)
   - [Visuals](#visuals)
   - [Components](#components)
     - Common:
@@ -26,12 +29,10 @@ This document aims to give a high level overview of a full e2e protocol for auto
         - [Samples Observer](#samples-observer)
         - [Conditional Observer](#conditional-observer)
     - Log Triggers:
-        - [Log Provider](#log-provider)
-            - [Log Buffer](#log-buffer)
-        - [Log Recoverer](#log-recoverer)
         - [Log Observer](#log-observer)
         - [Retry Observer](#retry-observer)
         - [Recovery Observer](#recovery-observer)
+        - [Log Provider](#log-provider)
         - [Log Recoverer](#log-recoverer)
         - [Upkeep States](#upkeep-states)
     - [OCR3 Plugin](#plugin)
@@ -129,7 +130,11 @@ The recovery finalization ticker will call log provider to build payloads with t
 
 ## Visuals
 
-Source of truth here: https://miro.com/app/board/uXjVPntyh4E=/
+The diagrams below shows the data flow between components. The diagrams are simplified to show only the relevant components for each trigger and the corresponding flows.
+
+<aside>
+💡 Note: source is available [here](https://miro.com/app/board/uXjVPntyh4E=/).
+</aside>
 
 Conditional triggers:
 
