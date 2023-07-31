@@ -438,7 +438,7 @@ For a list of upkeepResults, we only need to send one fastGasWei, linkNative to 
 Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
 
 <aside>
-💡 Note: We cannot guarantee that the same (upkeepID) / (logIdentifier, upkeepID) will not be already existing in coordinator. (e.g. node’s local chain is lagging the network). We need to have an override behaviour where we wait on the higher checkBlockNum report.
+💡 Note: We cannot guarantee that the same (upkeepID) / (logIdentifier, upkeepID) will not be already existing in coordinator. (e.g. node’s local chain is lagging the network). As a result we have an override behaviour where we wait on the higher checkBlockNum report.
 </aside>
 
 #### ShouldTransmitAcceptedReport
