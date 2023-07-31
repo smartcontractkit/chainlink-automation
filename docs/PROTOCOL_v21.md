@@ -193,14 +193,14 @@ Provides additional read API to check whether an upkeep should be processed whic
 
 ### Result Store
 
-This component is responsible for storing upkeepResults that a node thinks should be performed. It hopes to get consensus from the network on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. For results that do not achieve consensus within TTL go into recovery flow.
+This component is responsible for storing upkeepResults that a node thinks should be performed. It hopes to get agreement from quorum of nodes on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. For results that do not achieve agreement within TTL go into recovery flow.
 
 - Maintains an in-memory collection of upkeepResults. It should maintain a single result per `upkeepTriggerID`. 
     - Overwrites results for duplicated `upkeepTriggerID`.
 - Each result has a TTL. When the TTL expires
     - conditional upkeeps will be sampled and checked again automatically
     - log upkeeps that were missed are expected to be picked up by the log recoverer **TBD**
-- Provides a read API to view results, which takes as input (`pseudoRandomSeed`, `limit`). Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. We do not do FIFO here as potentially out of sync old results will block new results sent by the node for consensus.
+- Provides a read API to view results, which takes as input (`pseudoRandomSeed`, `limit`). Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. We do not do FIFO here as potentially out of sync old results will block new results sent by the node for agreement.
 - Provides an API to remove (trigger, upkeepID) from the store
 
 ### Metadata Store
@@ -285,7 +285,7 @@ This component’s purpose is to surface latest logs for registered upkeeps. It 
 - Provides a simple interface `getLatestLogs` to provide new **unseen** logs across all upkeeps within a limit
     - Repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` (~200) blocks. Stores them in the log buffer (see below)
     - Handles load balancing and rate limiting across upkeeps
-    - `getLatestLogs` limits the number of logs returned per upkeep in a single call. If there are more logs present, then the provider gives the logs starting from an offset (`latestBlock-latestBlock%lookbackBlocks`). Offset is calculated such that the nodes try to choose the same logs from big pool of logs so they can get consensus
+    - `getLatestLogs` limits the number of logs returned per upkeep in a single call. If there are more logs present, then the provider gives the logs starting from an offset (`latestBlock-latestBlock%lookbackBlocks`). Offset is calculated such that the nodes try to choose the same logs from big pool of logs so they can get agreement
 
 <aside>
 💡 Note: `getLatestLogs` might miss logs when there is a surge of logs which lasts longer than `lookbackBlocks`. Upon node restarts it can **miss logs** when it restarts after a gap, or **provide same logs again** when it quickly restarts
