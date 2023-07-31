@@ -109,6 +109,8 @@ The results are collected, filtered, and checked again. Eligible results will go
 The log trigger flow is used to determine if a log needs to be perform. It is triggered by a ticker that get the latest logs from log event provider.
 The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
 
+In cases of retryable failures, the payloads are scheduled to be retried into the retry ticker.
+
 #### Log Recovery Proposal Flow
 
 The log recovery flow is used to recover logs that were missed by the log trigger flow. It is triggered by a ticker that gets missed logs from log recoverer.
