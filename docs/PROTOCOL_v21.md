@@ -2,8 +2,6 @@
 
 This document aims to give a high level overview of a full e2e protocol for automation `v2.1`. 
 
-<br />
-
 ## Table of Contents
 
   - [Overview](#overview)
@@ -14,7 +12,7 @@ This document aims to give a high level overview of a full e2e protocol for auto
     - [Perform Flow](#perform-flow)
     - [Log Trigger Flow](#log-trigger-flow)
     - [Log Recovery Flow](#log-recovery-flow)
-  - [Visuals](#wip-visuals)
+  - [Visuals](#visuals)
   - [Components](#components)
     - Common:
         - [Registry](#registry)
