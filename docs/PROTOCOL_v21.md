@@ -321,9 +321,9 @@ Observer does the following:
 
 This component’s purpose is to surface latest logs for registered upkeeps. It does not maintain any state across restarts (no DB). The main functionality it exposes
 
-- Listening for log filter config changes from Upkeep Index and syncing log poller with the filters
+- Listening for log filter config changes from Registry and sync log poller with the filters
 - Provides a simple interface `getLatestLogs` to provide new **unseen** logs across all upkeeps within a limit
-    - Repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` (~200) blocks. Stores them in the log buffer (see below)
+    - Repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` (200) blocks. Stores them in the log buffer (see below)
     - Handles load balancing and rate limiting across upkeeps
     - `getLatestLogs` limits the number of logs returned per upkeep in a single call. If there are more logs present, then the provider gives the logs starting from an offset (`latestBlock-latestBlock%lookbackBlocks`). Offset is calculated such that the nodes try to choose the same logs from big pool of logs so they can get agreement
 
@@ -332,14 +332,18 @@ This component’s purpose is to surface latest logs for registered upkeeps. It 
 </aside>
 
 - Provides an interface `getPayloadLog` to build an upkeep payload for a particular log on demand by giving a trigger as in input.
-It gets only the required log from the log buffer or reads it from log poller if not found in buffer. This is used by the recovery flow
 - It does not return a payload for a newer log to ensure recovery logs are isolated from latest logs. It verifies that the log is part of the filters for that upkeep and it is still present on chain
-- Checks whether the log has been already processed within the upkeepState
+- It checks whether the log has been already processed within the upkeepState. If so then doesn't return a payload
+- It gets only the required log from the log buffer or reads it from log poller if not found in buffer. This is used by the recovery flow
+Q. Can we have a clean split between recovery and log buffer ranges
+
 
 #### Log Buffer
 
 A circular/ring buffer of blocks and their corresponding logs, that act as a cache for logs. 
 It is used to store the last `lookbackBlocks*3` blocks, where each block holds a list of that block's logs. 
+Q. Do we really need to store lookBack*3? These will not get processed by log observer anyway (will need to be recovered) 
+
 Logs are marked as seen when they are returned by the buffer, to avoid working with logs that have already been seen.
 
 It is used by the log provider to provide unknown logs to the node, and by by the log recoverer to identify known logs during recovery flow.
@@ -350,13 +354,13 @@ It is used by the log provider to provide unknown logs to the node, and by by th
 The log recoverer is responsible to ensure that no logs are missed.
 It does that by running a background process for re-scanning of logs and putting the ones we missed into the recovery flow (without checkBlockNum/Hash).
 
-Logs will be considered as missed if they are older than `latestBlock - lookbackBlocks` and has not been performed or successfully checked already (eligible).
+Logs will be considered as missed if they are older than `latestBlock - lookbackBlocks` and has not been performed or successfully checked already (ineligible result).
 
 While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, up to `latestBlock - lookbackBlocks`, newer blocks will be under the provider's lookback window.
 
 **Recoverer scanning process**
 
-- The recoverer maintains a `lastRePollBlock` for each upkeep, .i.e. the last block it scanned for that upkeep.
+- The recoverer maintains a `lastRePollBlock` for each upkeep, i.e. the last block it scanned for that upkeep.
 - Every second, the recoverer will scan logs for a subset of `n=10` upkeeps, where `n/2` upkeeps are randomly chosen and `n/2` upkeeps are chosen by the oldest `lastRePollBlock`.
 - It will start scanning from `lastRePollBlock` on each iteration
 - Logs that are older than 24hr are ignored, therefore `lastRePollBlock` starts at `latestBlock - (24hr block)` in case it was not populated before.
@@ -364,9 +368,9 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 
 #### Upkeep States
 
-The upkeeps states are used to track the status of log upkeeps (eligible, performed) across the system, to avoid redundant work by the recoverer. Enables to select by (upkeepID, logIdentifier) is used as a key to store the state of a log upkeep.
+The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system, to avoid redundant work by the recoverer. Enables to select by (upkeepID, logIdentifier) is used as a key to store the state of a log upkeep.
 
-The state is updated by the coordinator when the upkeep is performed or after positive check (eligible).
+The state is updated by the coordinator when the upkeep is performed or after ineligible check by observer.
 
 The states will be persisted to so the latest state to be restored when the node starts up.
 
@@ -378,26 +382,26 @@ The plugin is performing the following tasks upon OCR3 procedures:
 
 Observation starts with a processing of the previous outcome:
 - Remove agreed upon finalized results from result store
-- For `acceptedSamples` (bound to a trigger - latest coordinated block from the previous outcome)
+- For `acceptedSamples` (already bound to a trigger - latest coordinated block from the previous outcome)
+    - Remove `upkeepID` from metadata store
+    - Enqueue (trigger, upkeepID) into coordinated ticker
+- For `acceptedRecoveryLogs` (already bound to a trigger - latest coordinated block from the previous outcome)
     - Remove from metadata store
-    - Enqueue (trigger, upkeepID) into conditional observer
-- For `acceptedRecoveryLogs` (bound to a trigger - latest coordinated block from the previous outcome)
-    - Remove from metadata store
-    - Enqueue (trigger, upkeepID) into recovery observer
+    - Enqueue (trigger, upkeepID) into recovery ticker
 
 Then we do the following for current observation:
 - Query results from result store giving seqNr as pseudoRandom seed and predefined limit. Filter results using coordinator and add them to observation
-- Query from metadata store for sample and recovery instructions using seqNr as pseudoRandom seed within limits, filter using coordinator and add them to observation
+- Query from metadata store for sample and recovery instructions within limits, filter using coordinator and add them to observation
 - Query latest block number and hashes from local chain, add them to observation
 
 #### Outcome
 
-- Derive latest blockNumber and blockHash, by looking on block history and using the most recent block/hash that the majority of nodes have in common
+- Derive latest blockNumber and blockHash, by looking on block history and using the most recent block/hash that the majority of nodes have in common. It is not added to the outcome automatically but is used below
 - Any result which has f+1 agreement is added to finalized result
-- All samples are collected from observations within limits, deduped and filtered from existing `acceptedSamples`. These are then added to `acceptedSamples` in the outcome bound to the current latestBlockNumber and hash.
-    - `acceptedSamples` is a ring buffer where samples are held for ‘x’ (~30) rounds so that they do not get bound to a new blockNumber for some time
+- All samples are collected from observations within limits, deduped and filtered from existing `acceptedSamples`. These are then added to `acceptedSamples` in the outcome **bound to the current latestBlockNumber and hash**.
+    - `acceptedSamples` is a ring buffer where samples are held for ~30 rounds so that they get deduped and not bound to a new blockNumber for some time
 - Similar behaviour as samples is done for recovery logs to maintain `acceptedRecoveryLogs`
- 
+
 #### Reports
 
 Takes finalised results from the outcome, package them into reports with potential batching of upkeeps.
