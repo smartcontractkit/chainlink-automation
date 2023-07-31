@@ -105,16 +105,16 @@ func NewLogTriggerEligibility(
 	// each flow can add preprocessors to this provided slice
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 
+	// the recovery proposal flow is for nodes to surface payloads that should
+	// be recovered. these values are passed to the network and the network
+	// votes on the proposed values
+	svc0, recoveryProposer := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger, recoverConfigs...)
+
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived
 	// from node coordination and it can be assumed that all values should be
 	// run.
-	svc0, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, recoveryInterval, logger)
-
-	// the recovery proposal flow is for nodes to surface payloads that should
-	// be recovered. these values are passed to the network and the network
-	// votes on the proposed values
-	svc1, recoveryProposer := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger, recoverConfigs...)
+	svc1, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, recoveryProposer, recoveryInterval, logger)
 
 	// the retry flow is for payloads where the block number is still within
 	// range of RPC data. this is a short range retry and failures here get

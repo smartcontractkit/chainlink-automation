@@ -40,7 +40,7 @@ func TestRetryPostProcessor_PostProcess(t *testing.T) {
 		recoverer.AssertExpectations(t)
 	})
 
-	t.Run("retry error; bump to recoverer", func(t *testing.T) {
+	t.Run("retry error bump to recoverer", func(t *testing.T) {
 		// Create a mock retryer with error
 		retryer := new(mockRetryer)
 		recoverer := new(mockRetryer)
@@ -69,7 +69,7 @@ func TestRetryPostProcessor_PostProcess(t *testing.T) {
 		retryer.AssertExpectations(t)
 		recoverer.AssertExpectations(t)
 	})
-	t.Run("unexpected retry error; early exit", func(t *testing.T) {
+	t.Run("unexpected retry error early exit", func(t *testing.T) {
 		// Create a mock retryer with error
 		retryer := new(mockRetryer)
 		recoverer := new(mockRetryer)

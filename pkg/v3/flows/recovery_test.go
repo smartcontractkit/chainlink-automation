@@ -20,15 +20,15 @@ import (
 )
 
 func TestRecoveryFlow(t *testing.T) {
-
 	runner := &mockedRunner{eligibleAfter: 0}
 	rStore := new(mocks.MockResultStore)
 	coord := new(mockedPreprocessor)
+	rtyr := new(mocks.MockRetryer)
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 
 	rStore.On("Add", mock.Anything).Times(1)
 
-	svc, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, 20*time.Millisecond, log.New(io.Discard, "", 0))
+	svc, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, rtyr, 20*time.Millisecond, log.New(io.Discard, "", 0))
 
 	var wg sync.WaitGroup
 	wg.Add(1)
