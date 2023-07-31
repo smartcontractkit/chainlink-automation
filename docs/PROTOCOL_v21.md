@@ -282,42 +282,40 @@ Observer does the following:
 
 ### Log Observer
 
-Processes latest logs for active upkeeps. It does the following procedures:
+Powered by the log trigger ticker. On every tick it calls `getLatestPayloads` from the Log Provider and calls observer with the payloads.
 
-- Called every second by Log Trigger Ticker with latest logs as full payloads.
-- Filter out logs with block number that is older than threshold
-    - These are expected to be picked up by the log recoverer 
 - Pre-processes to filter the logs already present in coordinator
 - Calls runner with upkeep payload
 - If upkeep is eligible enqueue into result store
-- If runner gave an error, put back into log retry ticker, to be performed after a fixed timeout (can extend to exponential backoff)
+- If runner gave an ineligible result, update log state in upkeep state to be ineligble
+- If runner gave a retryable error, put into scheduled retry ticker which will be scheduled for retry
+- If runner gave a non-retryable error, ignore. Will be picked up by log recoverer.
 
 ### Retry Observer
 
-Allows to retry log upkeeps with scheduled retry timing. 
+Powered by the scheduled retry ticker. The ticker manages scheduling of the retryable payloads, on every tick calls the observer with the payloads that should be retried.
+
+The rest of the flow of the observer is the same as Log Observer.
 
 ### Recovery Observer
 
-This flow gets as input an upkeepID and a logIdentifier. It is a backup flow which verifies that a log was fully processed. Logs can be put here from the node itself (through Log Recoverer) or from other nodes (through Plugin)
+This observer is powered by the recovery ticker. Recovery ticker can get two types of input from different components
+- Log Recovery proposals `(upkeepID, logIdentifier)` which are not tied to a coordinated check block [Through log recoverer]
+- Coordinated log recovery: `(upkeepID, logIdentifer)` with a coordinated `checkBlockNum/checkBlockHash` [Through plugin]
 
-- Input is an upkeepID, logTxHash, logIndex (optional checkBlockNum, checkBlockHash when passed from plugin)
-- Checks whether log should be processed
-    - Whether its part of the filters for that upkeep and it is still present on chain (DB call to log poller)
-    - Whether it is older from the latest block within a threshold (To prevent malicious node requesting recovery on a new log)
-- Checks whether the log has been already processed
-    - If node locally checked (logTxHash, logIndex) and got a non eligible result then skip (DB call)
-    - If chain has a perform for the log then skip (DB call which looks at upkeepPerformed logs)
-- If checkBlockNum not present: puts into an **in-memory recovery queue** which is then read in the plugin and put back in the flow with a coordinated checkBlock
-- If checkBlockNum present
-    - get payload from log provider for (upkeepID, logTxHash, logIndex)
+On every tick
+- Recovery ticker fetches full `upkeepPayloads` for the coordinated logs given as input within the tick and surfaces them to observer
+- Calls `getMissedLogs` and surfaces recovery proposals to the observer 
+
+Q. Do we want getMissedLogs to be the only source, or allow sources from other components too?
+
+Observer does the following:
+- Puts the recovery proposals into **metadata store** (`recovery logs`)
+- For given payloads
     - call runner with payload
     - upon result, if eligible add into result store
     - non-eligible are written to DB
-    - If runner gave an error then it is ignored (it might get picked up again by log recoverer, but we do not keep retrying here)
-
-<aside>
-💡 Note: Duplicate logs can enter this flow, this component should be able to handle that
-</aside>
+    - If runner gave an error then it is ignored (it will get picked up again by log recoverer, but we do not keep retrying here)
 
 ### Log Provider
 
@@ -335,6 +333,8 @@ This component’s purpose is to surface latest logs for registered upkeeps. It 
 
 - Provides an interface `getPayloadLog` to build an upkeep payload for a particular log on demand by giving a trigger as in input.
 It gets only the required log from the log buffer or reads it from log poller if not found in buffer. This is used by the recovery flow
+- It does not return a payload for a newer log to ensure recovery logs are isolated from latest logs. It verifies that the log is part of the filters for that upkeep and it is still present on chain
+- Checks whether the log has been already processed within the upkeepState
 
 #### Log Buffer
 
