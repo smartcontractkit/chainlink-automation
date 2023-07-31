@@ -86,30 +86,31 @@ The eligibility flows are the sequence of events and procedures used to determin
 The protocol supports two types of triggers:
 
 ### 1. Conditional Triggers Flows
-
-A trigger that is based on a block number and block hash. It is used to trigger an upkeep based on a condition that is evaluated on-chain.
-
 #### Sampling Flow
 
 The sampling flow is used to determine if an upkeep is eligible to perform. It is
 triggered by a ticker that provides samples of upkeeps to check. The samples are
-collected, filtered, and checked. The results are then pushed into the metadata store with the corresponding instructions. 
-The plugin will then collect the instructions and push them into the outcome to be processed in next round.
+collected, filtered, and checked. The results are then pushed into the metadata store with `EligibleSample` [instruction](#instructions). 
+The plugin will then collect the instructions and push them into the outcome to be processed in next round, where they will go into coordinated flow.
 
-Supported instructions:
-- Coordinated samples - are sample upkeeps that are eligible to perform
-  - The upkeeps are performed with an assoicated block
-- Recovered logs - are logs that we identify as missed and need to be recovered
-  - The logs are performed with an associated block
+#### Coordination Flow
 
-#### Perform Flow
-
+The coordination flow is used to come to agreement among node on what upkeeps to perform,
+based on the results of the sampling flow. It is triggered by a ticker that provides
+payloads based on a coordinated block and upkeepIDs. 
+The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
 
 ### 2. Log Triggers
-
 #### Log Trigger Flow
 
+The log trigger flow is used to determine if a log is eligible to perform. It is triggered by a ticker that get the latest logs from log event provider.
+The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain. 
+
 #### Log Recovery Flow
+
+The log recovery flow is used to recover logs that were missed by the log trigger flow. It is triggered by a ticker that gets missed logs from log recoverer.
+The results are collected, filtered, and checked again. Eligible results are then pushed into the metadata store with `RecoveredLog` [instruction](#instructions). 
+The plugin will then collect the instructions and push them into the outcome to be processed in next round, where they will go into log trigger flow.
 
 ## Visuals
 
@@ -168,7 +169,7 @@ This component is responsible for parallelizing upkeep executions and providing 
 - A call to CheckUpkeeps on the runner is synchronous. A worker is spawned per a batch of upkeeps to check, and all workers needs to finish before returning.
 
 <aside>
-Note: Because of the sync nature, we don't track pending requests, so there might be double checking of same payloads. Once a payload was checked, we cache the result in memory, so next time we don't need to check it again.
+💡 Note: Because of the sync nature, we don't track pending requests, so there might be double checking of same payloads. Once a payload was checked, we cache the result in memory, so next time we don't need to check it again.
 </aside>
 
 ### Coordinator
@@ -258,8 +259,18 @@ This component stores the metadata to be sent within observations to the network
 - Latest block history
 
 Every item has a TTL, and upon expiry items are just removed without any action.
-
 The store provides an add / view / remove API for other components.
+
+#### Instructions
+
+**Eligible samples** 
+are sample upkeeps (upkeepID) that are eligible to perform.
+**handling:** the upkeeps are performed with an assoicated block.
+
+**Recovered logs**
+are logs that we identify as missed and need to be recovered.
+**handking** the logs are performed for all relevant upkeeps (upkeepID,logID), with an associated block.
+
 
 ### Samples Observer
 
