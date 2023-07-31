@@ -416,20 +416,20 @@ Observation starts with a processing of the previous outcome:
     - Enqueue (trigger, upkeepID) into coordinated ticker
 - For `acceptedRecoveryLogs` (already bound to a trigger - latest coordinated block from the previous outcome)
     - Remove from metadata store
-    - Enqueue (trigger, upkeepID) into recovery ticker
+    - Enqueue (trigger, upkeepID) into recovery finalization ticker
 
 Then we do the following for current observation:
 - Query results from result store giving seqNr as pseudoRandom seed and predefined limit. Filter results using coordinator and add them to observation
-- Query from metadata store for sample and recovery instructions within limits, filter using coordinator and add them to observation
-- Query latest block number and hashes from local chain, add them to observation
+- Query from metadata store for conditional samples and recovery instructions within limits, filter using coordinator and add them to observation
+- Query block history and hashes from metadata store, add them to observation
 
 #### Outcome
 
 - Derive latest blockNumber and blockHash, by looking on block history and using the most recent block/hash that the majority of nodes have in common. It is not added to the outcome automatically but is used below
 - Any result which has f+1 agreement is added to finalized result
-- All samples are collected from observations within limits, deduped and filtered from existing `acceptedSamples`. These are then added to `acceptedSamples` in the outcome **bound to the current latestBlockNumber and hash**.
-    - `acceptedSamples` is a ring buffer where samples are held for ~30 rounds so that they get deduped and not bound to a new blockNumber for some time
-- Similar behaviour as samples is done for recovery logs to maintain `acceptedRecoveryLogs`
+- All conditional samples are collected from observations within limits, deduped and filtered from existing `acceptedSamples`. These are then added to `acceptedSamples` in the outcome **bound to the current latestBlockNumber and hash**.
+    - `acceptedSamples` is a ring buffer where samples are held for ~30 rounds so that they get deduped and not get bound to a new blockNumber for some rounds
+- Similar behaviour as conditional samples is done for recovery logs to maintain `acceptedRecoveryLogs`
 
 #### Reports
 
