@@ -1,6 +1,6 @@
 # EVM Log Events
 
-This document describes the design for log triggers components for managing evm log events.
+This document describes the design for evm log triggers components.
 
 <br />
 
@@ -8,9 +8,13 @@ This document describes the design for log triggers components for managing evm 
 
 - [Overview](#overview)
 - [Log Event Provider](#log-event-provider)
-- [Log Buffer](#log-buffer)
+    - [Log Buffer](#log-buffer)
+    - [Log Filters Life-Cycle](#log-filters-life-cycle)
+    - [Blocks Range](#blocks-range)
+    - [Rate Limiting](#rate-limiting)
+    - [Log Retention](#log-retention)
 - [Log Recoverer](#log-recoverer)
-- [Upkeep States](#upkeep-states)
+    - [Upkeep States](#upkeep-states)
 - [Configuration](#configuration)
 - [Open Issues / TODOs](#open-issues--todos)
 - [Rational / Q&A](#rational--qa)
@@ -19,11 +23,16 @@ This document describes the design for log triggers components for managing evm 
 
 ## Overview
 
-The **log event provider** is responsible for reading logs from the log poller,
-and storing them in the **log buffer**, which will be queried by the log observer for latest logs.
+Logs needs to be fetched and used as input data for log upkeeps pipeline.
 
-The **log recoverer** is responsible for picking up logs that were missed by the log event provider,
-implemented as separate components that will be run on a separate thread.
+The log poller is responsible for fetching & storing logs event in a DB, and expose them to other services within the node, based on registered log filters.
+
+There are 2 seperate components that are responsible for reading logs, each runs on a separate thread:
+
+The **log event provider** is responsible for reading latest logs from the poller,
+and storing them in the **log buffer** for future processing as part of the log trigger flow.
+
+The **log recoverer** is responsible for reading older logs, to do rescanning and pick up logs that were missed by the log event provider.
 
 The following block diagram describes the involved components:
 
@@ -118,13 +127,19 @@ the same point with some buffer to catch reorgs: `[u.lastPollBlock-LookbackBuffe
 
 #### Rate Limiting
 
+There are two levels of rate limiting:
+
+**Blocks/queries**
+
 Each upkeep has a rate limiter for blocks in order to control the amount of queries per upkeep, i.e. to control the number of blocks that are queried from log poller. `BlockRateLimit` and `BlockLimitBurst` are used to configure the limit.
 
 Upon initial read/restart the burst is automatically increased as we ask for `LogBlocksLookback` blocks.
 
 Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `AllowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
 
-**TBD** additional limiting of upkeep-checks/sec rate
+**Upkeep**
+
+Each upkeep has a rate limiter for logs, where we limit the number of logs we read per upkeep. `UpkeepLogsLimit` is used to configure the limit.
 
 #### Log Retention
 
@@ -154,35 +169,45 @@ The log buffer is implemented with capped slice that is allocated upon buffer cr
 
 ## Log Recoverer
 
-The log recoverer will be implemented as a separate component that will be run on a separate thread.
-It will be responsible for querying the log poller for logs that were missed by the log event provider.
-The recoverer will query `LogUpkeepState` collection to check if the upkeep was already recovered or is currently inflight. 
+The log recoverer is responsible to ensure that no logs are missed.
+It does that by running a background process for re-scanning of logs and putting the ones we missed into the recovery flow (without checkBlockNum/Hash).
 
-Every second the log recovery ticker will query the recoverer for a random subset of upkeeps and a random range of blocks. The recoverer will check if the log poller has logs for these pairs, while taking into account the `lastPollBlock` of each upkeep, which gets updated by the log provider when it read logs for the upkeep.
- 
-**Alternatives** 
+Logs will be considered as missed if they are older than `latestBlock - LogBlocksLookback` and has not been performed or successfully checked already (eligible).
 
-- to distribute work among nodes is a DHT approach with some redundancy to account for malicious nodes. The major drawback here is complexity comparing to the sampling approach.
-- each node does all the work on its own or maintains consistent block ranges for better guarantees. The major drawback here is that we might overload the log poller.
+While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, up to `latestBlock - LogBlocksLookback`, newer blocks will be under the provider's lookback window.
+
+**Recoverer scanning process**
+
+- The recoverer maintains a `lastRePollBlock` for each upkeep, .i.e. the last block it scanned for that upkeep.
+- Every second, the recoverer will scan logs for a subset of `n=10` upkeeps, where `n/2` upkeeps are randomly chosen and `n/2` upkeeps are chosen by the oldest `lastRePollBlock`.
+- It will start scanning from `lastRePollBlock` on each iteration, and update the block number when it finishes scanning.
+- Logs that are older than 24hr are ignored, therefore `lastRePollBlock` starts at `latestBlock - (24hr block)` in case it was not populated before.
+- The recoverer will query upkeep states to check if the upkeep was already performed or is currently inflight, and the log buffer to check if we read the log already.
 
 <br/>
 
-## Upkeep States
+### Upkeep States
 
-The states are used to track the status of log upkeeps across the system,
-and avoid double recovery of logs or redundant work by the recoverer or other components in the pipeline.
+The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system,
+to avoid redundant work by the recoverer.
 
-The states will be persisted to protect against restarts, by flushing the deltas into the DB. **TBD: table**
+The states will be persisted to so the latest state to be restored when the node starts up.
+
+<aside>
+💡 Note: starting with an in memory storage, and will be persisted to DB in the future.
+A dedicated table will be used, to avoid overloading the existing tables (log poller). 
+</aside>
 
 The states are saved with a key that is composed of the upkeep id and trigger.
 
 The following struct is used to represent the state:
 
 ```go
-type LogUpkeepState struct {
-    uid ocr2keepers.UpkeepIdentifier
-    trigger ocr2keepers.Trigger
-    state ocr2keepers.LogUpkeepState // (eligible, performed, recovered)
+type upkeepState struct {
+	payload  *ocr2keepers.UpkeepPayload
+	state    *ocr2keepers.UpkeepState // (ineligible, performed)
+	block    int64
+	upkeepId string
 }
 ```
 
@@ -206,6 +231,7 @@ The following configurations are used by the log event provider:
 | `LookbackBuffer` | Number of blocks to add to the range | `32` |
 | `BlockRateLimit` | Max number of blocks to query per upkeep | `1/sec` |
 | `BlockLimitBurst` | Burst of blocks to query per upkeep | `128` |
+| `UpkeepLogsLimit` | The number of logs allowed for upkeep per second | `5` |
 
 <br />
 
