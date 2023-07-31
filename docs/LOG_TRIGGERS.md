@@ -120,7 +120,7 @@ end
 
 #### Blocks Range
 
-Upon initial read/restart, we ask for `LogBlocksLookback` blocks, i.e. range of `[latestBlock-LogBlocksLookback, latestBlock]`.
+Upon initial read/restart, we ask for `LookbackBlocks` blocks, i.e. range of `[latestBlock-LookbackBlocks, latestBlock]`.
 
 After initialization, each upkeep has a `lastPollBlock` assiciated with it so we can continue next read from 
 the same point with some buffer to catch reorgs: `[u.lastPollBlock-LookbackBuffer, latestBlock]`
@@ -133,7 +133,7 @@ There are two levels of rate limiting:
 
 Each upkeep has a rate limiter for blocks in order to control the amount of queries per upkeep, i.e. to control the number of blocks that are queried from log poller. `BlockRateLimit` and `BlockLimitBurst` are used to configure the limit.
 
-Upon initial read/restart the burst is automatically increased as we ask for `LogBlocksLookback` blocks.
+Upon initial read/restart the burst is automatically increased as we ask for `LookbackBlocks` blocks.
 
 Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `AllowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
 
@@ -154,7 +154,7 @@ Logs are saved in DB for `LogRetention` amount of time.
 A circular/ring buffer of blocks and their corresponding logs.
 The block number is calculated as `blockNumber % LogBufferSize`.
 
-We limit the amount of logs per block with `BufferMaxBlockSize`, and logs per block & upkeep with `AllowedLogsPerBlock`. While the number of blocks `LogBufferSize` is currently set as `LogBlocksLookback*3` to have enough space.
+We limit the amount of logs per block with `BufferMaxBlockSize`, and logs per block & upkeep with `AllowedLogsPerBlock`. While the number of blocks `LogBufferSize` is currently set as `LookbackBlocks`.
 
 No cleanup of data is needed, new blocks will override older blocks. 
 In addition to new log events, each block holds history of the logs that were dequeued, in order to filter out duplicates. 
@@ -172,9 +172,9 @@ The log buffer is implemented with capped slice that is allocated upon buffer cr
 The log recoverer is responsible to ensure that no logs are missed.
 It does that by running a background process for re-scanning of logs and putting the ones we missed into the recovery flow (without checkBlockNum/Hash).
 
-Logs will be considered as missed if they are older than `latestBlock - LogBlocksLookback` and has not been performed or successfully checked already (eligible).
+Logs will be considered as missed if they are older than `latestBlock - LookbackBlocks` and has not been performed or successfully checked already (eligible).
 
-While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, up to `latestBlock - LogBlocksLookback`, newer blocks will be under the provider's lookback window.
+While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, up to `latestBlock - LookbackBlocks`, newer blocks will be under the provider's lookback window.
 
 **Recoverer scanning process**
 
@@ -221,9 +221,9 @@ The following configurations are used by the log event provider:
 
 | Config | Description | Default |
 | --- | --- | --- |
-| `LogBlocksLookback` | Number of blocks to read upon initial read/restart | `512` |
+| `LookbackBlocks` | Number of blocks that we consider as blocks that could contain **latest logs**, `latest-lookbackBlocks` is the oldest logs read by the provider, while it's also the newest logs the recoverer reads. | `200` |
 | `LogRetention` | Time to keep logs in DB | `24hr` |
-| `LogBufferSize` | Number of blocks to keep in buffer | `LogBlocksLookback*3` |
+| `LogBufferSize` | Number of blocks to keep in buffer | `LookbackBlocks` |
 | `BufferMaxBlockSize` | Max number of logs per block | `1000` |
 | `AllowedLogsPerBlock` | Max number of logs per block & upkeep | `100` |
 | `ReadInterval` | Interval between reads | `1s` |
