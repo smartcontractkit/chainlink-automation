@@ -271,6 +271,9 @@ are sample upkeeps (upkeepID) that are eligible to perform.
 are logs that we identify as missed and need to be recovered.
 **handking** the logs are performed for all relevant upkeeps (upkeepID,logID), with an associated block.
 
+### Block Ticker
+
+Powered by the block subscriber. On every tick, it fetches latest block history from the block subscriber (last 256 block and hashes) and updates them in the metadata store.
 
 ### Samples Observer
 
