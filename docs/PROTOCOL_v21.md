@@ -377,7 +377,17 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 - Logs that are older than 24hr are ignored, therefore `lastRePollBlock` starts at `latestBlock - (24hr block)` in case it was not populated before.
 - `lastRePollBlock` is updated in case there are no logs in a specific range, otherwise will wait for performed events to know that all logs in that range were processed before updating `lastRePollBlock`.
 
-#### Upkeep States
+### Transmit Event Provider
+
+This component listens to transmit events from log poller. Upon seeing new events calls the coordinator. Transmit events are the events that can happen when a report is sent onchain to the contract. These are
+
+- UpkeepPerformed: Report successfully performed the upkeep it was meant for. It was the `upkeepTriggerId` within the log to identify the payload which performed the upkeep
+- StateUpkeep: For conditionals this happens when an upkeep is tried to be performed on a checkBockNumber which is older than the last perform block (Stale check). For logs this happens when the particular (upkeepID, logIdentifier) has been performed before
+- InsufficientFunds: This happens when pre upkeep execution when not enough funds are found on chain for the execution. Funds check is done in checkPipeline, but actual funds required on chain at execution time can change, e.g. to gas price changes / link price changes. In such cases upkeep is not performed or charged. These reports should really be an edge case, on chain we have a multiplier during checkPipeline to overestimate funds before even attempting an upkeep.
+- CancelledUpkeep: This happens when the upkeep gets cancelled in between check time and perform time. To protect against malicious users, the contract adds a 50 block delay to any user cancellation requests.
+
+
+### Upkeep States
 
 The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system, to avoid redundant work by the recoverer. Enables to select by (upkeepID, logIdentifier) is used as a key to store the state of a log upkeep.
 
