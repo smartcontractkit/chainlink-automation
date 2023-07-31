@@ -356,7 +356,9 @@ Observer does the following:
 
 This component’s purpose is to surface latest logs for registered upkeeps. It does not maintain any state across restarts (no DB). The main functionality it exposes
 
-- Listening for log filter config changes from Registry and sync log poller with the filters
+- Listening for log filter config changes from Registry: 
+    - sync log poller with the filters
+    - sync the local filter store with changes in filters
 - Provides a simple interface `getLatestLogs` to provide new **unseen** logs across all upkeeps within a limit
     - Repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` (200) blocks. Stores them in the log buffer (see below)
     - Handles load balancing and rate limiting across upkeeps
@@ -380,6 +382,9 @@ Logs are marked as seen when they are returned by the buffer, to avoid working w
 
 It is used by the log provider to provide unknown logs to the node, and by by the log recoverer to identify known logs during recovery flow.
 
+#### Log Filter Store
+
+A local store of log filters for each upkeep. It is used by the log provider and log recoverer as a source of truth for the current active log filters.
 
 ### Log Recoverer
 
