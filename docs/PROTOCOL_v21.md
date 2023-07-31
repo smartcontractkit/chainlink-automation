@@ -263,19 +263,19 @@ The store provides an add / view / remove API for other components.
 
 ### Samples Observer
 
-The sampler ticker calls the samples observer every second, with samples of upkeeps to checked. It uses the latest block number as the trigger. It does the following procedures:
+Powered by the sample ticker which calls the samples observer on every tick, with samples of upkeeps to checked. It uses the latest block number as the trigger. It does the following procedures:
 
-- Pre-processes to filter upkeep present in coordinator
+- Pre-processes to filter upkeeps present in coordinator (Using `shouldProcess`)
 - Calls runner with upkeep payload
-- If upkeep is eligible enqueue into **metadata store**
-with coordinated sample instruction
+- If upkeep is eligible add `upkeepID` into **metadata store** (`eligible samples`)
 - Errors and ineligible results are ignored
 
 ### Conditional Observer
 
-Processes coordinated block + upkeep payload coming from plugin and does the following:
+Powered by the coordinated ticker. Coordinated ticker allows for coordinated `upkeepID` + `checkBlockNum/checkBlockHash` to be given as input by the plugin. It stores them in memory and on every tick calls the conditional observer with inputs till that time. 
 
-- Pre-processes to filter upkeep present in coordinator
+Observer does the following:
+- Pre-processes to filter upkeep present in coordinator (Using `shouldProcess`)
 - Calls runner with upkeep payload
 - If upkeep is eligible enqueue into **result store**
 - Errors and ineligible results are ignored
