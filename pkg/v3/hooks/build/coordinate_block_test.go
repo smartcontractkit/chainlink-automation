@@ -101,4 +101,34 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		assert.NoError(t, hook.RunHook(obs))
 		assert.Equal(t, obs.Metadata[ocr2keepers.BlockHistoryObservationKey], blockHistory)
 	})
+
+	t.Run("error on missing metadata", func(t *testing.T) {
+		obs := &ocr2keepers.AutomationObservation{
+			Instructions: []instructions.Instruction{},
+			Metadata:     map[ocr2keepers.ObservationMetadataKey]interface{}{},
+			Performable:  []ocr2keepers2.CheckResult{},
+		}
+
+		instructionStoreMap := map[instructions.Instruction]bool{}
+
+		instructionStore := &mockInstructionStore{
+			SetFn: func(i instructions.Instruction) {
+				instructionStoreMap[i] = true
+			},
+			HasFn: func(i instructions.Instruction) bool {
+				return instructionStoreMap[i]
+			},
+			DeleteFn: func(i instructions.Instruction) {
+				delete(instructionStoreMap, i)
+			},
+		}
+
+		mStore := store.NewMetadata(nil)
+		hook := build.NewCoordinateBlockHook(instructionStore, mStore)
+
+		instructionStore.Set(instructions.DoCoordinateBlock)
+
+		// run the hook and test the results
+		assert.NotNil(t, hook.RunHook(obs))
+	})
 }

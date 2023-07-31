@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sort"
 	"sync"
@@ -9,6 +10,7 @@ import (
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 )
 
 // TODO: make these configurable?
@@ -38,7 +40,7 @@ type resultStore struct {
 
 func New(lggr *log.Logger) *resultStore {
 	return &resultStore{
-		lggr:          lggr,
+		lggr:          log.New(lggr.Writer(), fmt.Sprintf("[%s | result-store]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		close:         make(chan bool, 1),
 		data:          make(map[string]result),
 		lock:          sync.RWMutex{},
@@ -92,6 +94,8 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 		if !ok {
 			added++
 			s.data[id] = result{data: r, addedAt: time.Now()}
+
+			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", string(r.Payload.Upkeep.ID), r.Payload.ID)
 		}
 		// if the element is already exists, we do noting
 	}
@@ -104,6 +108,8 @@ func (s *resultStore) Remove(ids ...string) {
 
 	for _, id := range ids {
 		s.remove(id)
+
+		s.lggr.Printf("result removed for key '%s'", id)
 	}
 }
 
@@ -162,7 +168,11 @@ resultLoop:
 				continue resultLoop
 			}
 		}
+
 		results = append(results, r.data)
+
+		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", string(r.data.Payload.Upkeep.ID), r.data.Payload.ID)
+
 		// if we reached the limit and there are no comparators, we can stop here
 		if len(results) == limit && len(comparators) == 0 {
 			break
@@ -181,6 +191,8 @@ func (s *resultStore) gc() {
 		if time.Since(v.addedAt) > storeTTL {
 			delete(s.data, k)
 			s.notify(ocr2keepersv3.NotifyOpEvict, v.data)
+
+			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", string(v.data.Payload.Upkeep.ID), v.data.Payload.ID)
 		}
 	}
 }

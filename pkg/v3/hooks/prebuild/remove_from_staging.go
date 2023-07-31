@@ -1,9 +1,11 @@
 package prebuild
 
 import (
+	"fmt"
 	"log"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 )
 
 type resultRemover interface {
@@ -11,7 +13,10 @@ type resultRemover interface {
 }
 
 func NewRemoveFromStaging(remover resultRemover, logger *log.Logger) *RemoveFromStagingHook {
-	return &RemoveFromStagingHook{remover: remover, logger: logger}
+	return &RemoveFromStagingHook{
+		remover: remover,
+		logger:  log.New(logger.Writer(), fmt.Sprintf("[%s | pre-build hook:remove-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	}
 }
 
 type RemoveFromStagingHook struct {

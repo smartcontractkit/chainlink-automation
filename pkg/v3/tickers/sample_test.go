@@ -99,7 +99,6 @@ func TestSampleTicker(t *testing.T) {
 		mg,
 		mockObserver,
 		sub,
-		10*time.Millisecond,
 		log.New(io.Discard, "", 0),
 	)
 	assert.NoError(t, err, "no error on instantiation")
@@ -223,7 +222,6 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 				mg,
 				mockObserver,
 				sub,
-				10*time.Millisecond,
 				log.New(b, "[test-log] ", log.LstdFlags),
 			)
 			assert.NoError(t, err, "no error on instantiation")

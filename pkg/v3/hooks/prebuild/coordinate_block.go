@@ -34,6 +34,7 @@ func (h *coordinateBlockHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) e
 		if in == instructions.ShouldCoordinateBlock {
 			h.instructionStore.Set(instructions.DoCoordinateBlock)
 			h.instructionStore.Delete(instructions.ShouldCoordinateBlock)
+
 			break
 		}
 	}
@@ -45,7 +46,8 @@ loop:
 			case ocr2keepers.BlockKey:
 				// since the block key exists, reset the instructions and save
 				// the latest coordinated block
-				h.instructionStore.Delete((instructions.DoCoordinateBlock))
+				h.instructionStore.Delete(instructions.DoCoordinateBlock)
+				h.instructionStore.Set(instructions.ShouldCoordinateBlock)
 				h.metadata.Set(store.CoordinatedBlockMetadata, t)
 
 				break loop

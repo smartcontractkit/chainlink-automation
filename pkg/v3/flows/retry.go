@@ -1,6 +1,7 @@
 package flows
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -8,14 +9,28 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
-func newRetryFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload], rs ResultStore, rn Runner, recoverer Retryer, retryInterval time.Duration, logger *log.Logger, configFuncs ...tickers.ScheduleTickerConfigFunc) (service.Recoverable, Retryer) {
+func newRetryFlow(
+	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	rs ResultStore,
+	rn Runner,
+	recoverer Retryer,
+	retryInterval time.Duration,
+	logger *log.Logger,
+	configFuncs ...tickers.ScheduleTickerConfigFunc,
+) (service.Recoverable, Retryer) {
 	// create observer
-	// no preprocessors required for retry flow at this point
 	// leave postprocessor empty to start with
-	retryObserver := ocr2keepersv3.NewRunnableObserver(preprocessors, nil, rn, ObservationProcessLimit)
+	retryObserver := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		nil,
+		rn,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | retry-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
 
 	// create schedule ticker to manage retry interval
 	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
@@ -25,7 +40,7 @@ func newRetryFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepP
 			// this schedule ticker doesn't pull data from anywhere
 			return nil
 		},
-		logger,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-retry]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		configFuncs...,
 	)
 
@@ -36,7 +51,7 @@ func newRetryFlow(preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepP
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs),
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | retry-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
 		// create retry postprocessor
 		postprocessors.NewRetryPostProcessor(retryer, recoverer),
 	)

@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -81,6 +82,56 @@ type CheckResult struct {
 	Extension interface{}
 }
 
+func (r *CheckResult) UnmarshalJSON(b []byte) error {
+	type raw struct {
+		Eligible     bool
+		Retryable    bool
+		GasAllocated uint64
+		Payload      UpkeepPayload
+		PerformData  []byte
+		Extension    json.RawMessage
+	}
+
+	var basicRaw raw
+
+	if err := json.Unmarshal(b, &basicRaw); err != nil {
+		return err
+	}
+
+	output := CheckResult{
+		Eligible:     basicRaw.Eligible,
+		Retryable:    basicRaw.Retryable,
+		GasAllocated: basicRaw.GasAllocated,
+		Payload:      basicRaw.Payload,
+		PerformData:  basicRaw.PerformData,
+	}
+
+	if string(basicRaw.Extension) != "null" {
+		output.Extension = []byte(basicRaw.Extension)
+
+		var v []byte
+		if err := json.Unmarshal(basicRaw.Extension, &v); err == nil {
+			output.Extension = v
+		}
+	}
+
+	*r = output
+
+	return nil
+}
+
+func ValidateCheckResult(r CheckResult) error {
+	if r.Eligible && r.Retryable {
+		return fmt.Errorf("check result cannot be both eligible and retryable")
+	}
+
+	if r.GasAllocated == 0 {
+		return fmt.Errorf("gas allocated cannot be zero")
+	}
+
+	return ValidateUpkeepPayload(r.Payload)
+}
+
 type ConfiguredUpkeep struct {
 	// ID uniquely identifies the upkeep
 	ID UpkeepIdentifier
@@ -90,12 +141,52 @@ type ConfiguredUpkeep struct {
 	Config interface{}
 }
 
+func (u *ConfiguredUpkeep) UnmarshalJSON(b []byte) error {
+	type raw struct {
+		ID     UpkeepIdentifier
+		Type   int
+		Config json.RawMessage
+	}
+
+	var basicRaw raw
+
+	if err := json.Unmarshal(b, &basicRaw); err != nil {
+		return err
+	}
+
+	output := ConfiguredUpkeep{
+		ID:   basicRaw.ID,
+		Type: basicRaw.Type,
+	}
+
+	if string(basicRaw.Config) != "null" {
+		output.Config = []byte(basicRaw.Config)
+
+		var v []byte
+		if err := json.Unmarshal(basicRaw.Config, &v); err == nil {
+			output.Config = v
+		}
+	}
+
+	*u = output
+
+	return nil
+}
+
+func ValidateConfiguredUpkeep(u ConfiguredUpkeep) error {
+	if len(u.ID) == 0 {
+		return fmt.Errorf("invalid upkeep identifier")
+	}
+
+	return nil
+}
+
 type UpkeepPayload struct {
 	// ID uniquely identifies the upkeep payload
 	ID string
 	// Upkeep is all the information that identifies the upkeep
 	Upkeep ConfiguredUpkeep
-	// CheckBlock
+	// CheckBlock: Deprecated
 	CheckBlock BlockKey
 	// CheckData is the data used to check the upkeep
 	CheckData []byte
@@ -117,6 +208,18 @@ func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, che
 	return p
 }
 
+func ValidateUpkeepPayload(p UpkeepPayload) error {
+	if len(p.ID) == 0 {
+		return fmt.Errorf("upkeep payload id cannot be empty")
+	}
+
+	if err := ValidateConfiguredUpkeep(p.Upkeep); err != nil {
+		return err
+	}
+
+	return ValidateTrigger(p.Trigger)
+}
+
 func (p UpkeepPayload) GenerateID() string {
 	id := fmt.Sprintf("%s:%s", p.Upkeep.ID, p.Trigger)
 	idh := crypto.Keccak256([]byte(id))
@@ -128,9 +231,57 @@ type Trigger struct {
 	BlockNumber int64
 	// BlockHash is the block hash of the corresponding block
 	BlockHash string
-	// Extension is the extensions data that can differ between triggers.
-	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extention to be a map with all keys and values in string format
+	// Extension is the extensions' data that can differ between triggers.
+	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extension to be a map with all keys and values in string format
 	Extension interface{}
+}
+
+func ValidateTrigger(t Trigger) error {
+	if t.BlockNumber == 0 {
+		return fmt.Errorf("block number cannot be zero")
+	}
+
+	if len(t.BlockHash) == 0 {
+		return fmt.Errorf("block hash cannot be empty")
+	}
+
+	return nil
+}
+
+func (t *Trigger) UnmarshalJSON(b []byte) error {
+	type raw struct {
+		BlockNumber int64
+		BlockHash   string
+		// TODO: consider using map[string]interface{} instead
+		Extension json.RawMessage
+	}
+
+	var basicRaw raw
+	if err := json.Unmarshal(b, &basicRaw); err != nil {
+		return err
+	}
+
+	output := Trigger{
+		BlockNumber: basicRaw.BlockNumber,
+		BlockHash:   basicRaw.BlockHash,
+	}
+
+	if string(basicRaw.Extension) != "null" {
+		output.Extension = []byte(basicRaw.Extension)
+
+		// when decoding the first time, the exension data is set as a byte array
+		// of the raw encoded original json. if this is encoded again, it is encoded
+		// as a byte array. in that case, decode it into a byte array first before
+		// passing the bytes on.
+		var v []byte
+		if err := json.Unmarshal(basicRaw.Extension, &v); err == nil {
+			output.Extension = v
+		}
+	}
+
+	*t = output
+
+	return nil
 }
 
 func NewTrigger(blockNumber int64, blockHash string, extension interface{}) Trigger {
@@ -143,6 +294,14 @@ func NewTrigger(blockNumber int64, blockHash string, extension interface{}) Trig
 
 func (t Trigger) String() string {
 	return fmt.Sprintf("%d:%s:%+v", t.BlockNumber, t.BlockHash, t.Extension)
+}
+
+// CoordinatedProposal contains all required values to construct a complete
+// UpkeepPayload for use in a runner
+type CoordinatedProposal struct {
+	UpkeepID UpkeepIdentifier
+	Trigger  Trigger
+	Block    BlockKey
 }
 
 type ReportedUpkeep struct {
@@ -170,6 +329,26 @@ func (bh BlockHistory) Keys() []BlockKey {
 	return bh
 }
 
+func (bh *BlockHistory) UnmarshalJSON(b []byte) error {
+	var raw []string
+
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+
+	output := make([]BlockKey, len(raw))
+	for i, value := range raw {
+		output[i] = BlockKey(value)
+	}
+
+	*bh = output
+
+	return nil
+}
+
 type UpkeepState uint8
 
-const Performed UpkeepState = iota
+const (
+	Performed UpkeepState = iota
+	Eligible
+)

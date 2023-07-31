@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"sync/atomic"
-	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -26,11 +25,10 @@ type upkeepsGetter interface {
 
 type sampleTicker struct {
 	// provided dependencies
-	observer      observer[[]ocr2keepers.UpkeepPayload]
-	getter        upkeepsGetter
-	ratio         ratio
-	samplingLimit time.Duration
-	logger        *log.Logger
+	observer observer[[]ocr2keepers.UpkeepPayload]
+	getter   upkeepsGetter
+	ratio    ratio
+	logger   *log.Logger
 
 	// set by constructor
 	blocks   *BlockTicker
@@ -65,13 +63,9 @@ Loop:
 				continue Loop
 			}
 
-			// do the observation with limited time
-			ctx, cancelFn := context.WithTimeout(ctx, st.samplingLimit)
-
 			tick, err := st.getterFn(ctx, latestBlock)
 			if err != nil {
 				st.logger.Printf("failed to get upkeeps: %s", err)
-				cancelFn()
 
 				continue Loop
 			}
@@ -79,8 +73,6 @@ Loop:
 			if err := st.observer.Process(ctx, tick); err != nil {
 				st.logger.Printf("error processing observer: %s", err)
 			}
-
-			cancelFn()
 		case <-st.chClose:
 			break Loop
 		}
@@ -133,7 +125,6 @@ func NewSampleTicker(
 	getter upkeepsGetter,
 	observer observer[[]ocr2keepers.UpkeepPayload],
 	subscriber BlockSubscriber,
-	samplingLimit time.Duration,
 	logger *log.Logger,
 ) (*sampleTicker, error) {
 	block, err := NewBlockTicker(subscriber)
@@ -142,14 +133,13 @@ func NewSampleTicker(
 	}
 
 	st := &sampleTicker{
-		observer:      observer,
-		getter:        getter,
-		ratio:         ratio,
-		samplingLimit: samplingLimit,
-		logger:        logger,
-		blocks:        block,
-		shuffler:      util.Shuffler[ocr2keepers.UpkeepPayload]{Source: util.NewCryptoRandSource()},
-		chClose:       make(chan struct{}, 1),
+		observer: observer,
+		getter:   getter,
+		ratio:    ratio,
+		logger:   logger,
+		blocks:   block,
+		shuffler: util.Shuffler[ocr2keepers.UpkeepPayload]{Source: util.NewCryptoRandSource()},
+		chClose:  make(chan struct{}, 1),
 	}
 
 	return st, nil

@@ -26,6 +26,10 @@ func newPerformables(threshold int) *performables {
 
 func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 	for _, result := range observation.Performable {
+		if !result.Eligible {
+			continue
+		}
+
 		uid := fmt.Sprintf("%v", result)
 		payloadCount, ok := p.resultCount[uid]
 

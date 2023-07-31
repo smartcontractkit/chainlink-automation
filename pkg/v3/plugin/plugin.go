@@ -1,10 +1,12 @@
 package plugin
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
@@ -17,14 +19,19 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
 func newPlugin(
+	digest types.ConfigDigest,
 	logProvider flows.LogEventProvider,
 	events coordinator.EventProvider,
 	blockSource tickers.BlockSubscriber,
 	rp flows.RecoverableProvider,
+	builder flows.PayloadBuilder,
+	ratio flows.Ratio,
+	getter flows.UpkeepProvider,
 	encoder Encoder,
 	runnable runner.Runnable,
 	rConf runner.RunnerConfig,
@@ -40,6 +47,10 @@ func newPlugin(
 	rs := resultstore.New(logger)
 	ms := store.NewMetadata(blockTicker)
 	is := instructions.NewStore()
+
+	// on plugin startup, begin broadcasting that block coordination should
+	// happen immediately
+	is.Set(instructions.ShouldCoordinateBlock)
 
 	// create a new runner instance
 	rn, err := runner.NewRunner(
@@ -62,6 +73,7 @@ func newPlugin(
 		rn,
 		logProvider,
 		rp,
+		builder,
 		flows.LogCheckInterval,
 		flows.RecoveryCheckInterval,
 		logger,
@@ -80,6 +92,14 @@ func newPlugin(
 
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
+
+	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	allSvcs = append(allSvcs, svcs...)
+
 	recoverSvcs := []service.Recoverable{}
 
 	for i := range allSvcs {
@@ -89,8 +109,10 @@ func newPlugin(
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
 	plugin := &ocr3Plugin{
+		ConfigDigest: digest,
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			ltFlow.ProcessOutcome,
+			cFlow.ProcessOutcome,
 			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
 			prebuild.NewCoordinateBlockHook(is, ms).RunHook,
 		},
@@ -102,7 +124,7 @@ func newPlugin(
 		Coordinators:  []Coordinator{coord},
 		Services:      recoverSvcs,
 		Config:        conf,
-		Logger:        logger,
+		Logger:        log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 
 	plugin.startServices()

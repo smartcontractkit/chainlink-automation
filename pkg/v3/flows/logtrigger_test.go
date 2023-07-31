@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
@@ -32,6 +33,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
+	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 
@@ -56,6 +58,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 		runner,
 		src,
 		rec,
+		pb,
 		tickerInterval,
 		tickerInterval,
 		logger,
@@ -86,7 +89,8 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Equal(t, 6, coord.Calls())
+	assert.Equal(t, 8, coord.Calls(), "calls to coordinator as a preprocessor should equal expected")
+
 	src.AssertExpectations(t)
 	rec.AssertExpectations(t)
 	rStore.AssertExpectations(t)
@@ -101,6 +105,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
+	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 
@@ -132,6 +137,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 		runner,
 		src,
 		rec,
+		pb,
 		tickerInterval,
 		tickerInterval,
 		logger,
@@ -162,7 +168,8 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Equal(t, 15, coord.Calls())
+	assert.Equal(t, 20, coord.Calls(), "calls to coordinator as a preprocessor should equal expected")
+
 	src.AssertExpectations(t)
 	rec.AssertExpectations(t)
 	rStore.AssertExpectations(t)
@@ -176,6 +183,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 2}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
+	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 
@@ -216,6 +224,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		runner,
 		src,
 		rec,
+		pb,
 		tickerInterval,
 		tickerInterval,
 		logger,
@@ -249,7 +258,8 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
 	}
 
-	assert.Equal(t, 9, coord.Calls())
+	assert.Equal(t, 12, coord.Calls(), "calls to coordinator as a preprocessor should equal expected")
+
 	src.AssertExpectations(t)
 	src.AssertExpectations(t)
 	rStore.AssertExpectations(t)
@@ -265,6 +275,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 2}
 	src := new(mocks.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
+	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 
@@ -301,6 +312,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 		runner,
 		src,
 		rec,
+		pb,
 		tickerInterval,
 		tickerInterval,
 		logger,
@@ -339,13 +351,105 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 		assert.NoError(t, svcs[i].Close(), "no error expected on shut down")
 	}
 
-	assert.Equal(t, 9, coord.Calls())
+	assert.Equal(t, 12, coord.Calls(), "calls to coordinator as a preprocessor should equal expected")
+
 	src.AssertExpectations(t)
 	rec.AssertExpectations(t)
 	rStore.AssertExpectations(t)
 	mStore.AssertExpectations(t)
 
 	wg.Wait()
+}
+
+func TestProcessOutcome(t *testing.T) {
+	t.Run("no values in outcome", func(t *testing.T) {
+		pb := new(mocks.MockPayloadBuilder)
+		flow := &LogTriggerEligibility{
+			builder: pb,
+			logger:  log.New(io.Discard, "", 0),
+		}
+
+		testOutcome := ocr2keepersv3.AutomationOutcome{}
+
+		assert.NoError(t, flow.ProcessOutcome(testOutcome), "no error from processing outcome")
+
+		pb.AssertExpectations(t)
+	})
+
+	t.Run("proposals but no block in outcome", func(t *testing.T) {
+		pb := new(mocks.MockPayloadBuilder)
+		flow := &LogTriggerEligibility{
+			builder: pb,
+			logger:  log.New(io.Discard, "", 0),
+		}
+
+		testOutcome := ocr2keepersv3.AutomationOutcome{
+			BasicOutcome: ocr2keepersv3.BasicOutcome{
+				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
+					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
+						{
+							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 10,
+								BlockHash:   "testhash",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		assert.ErrorIs(t, flow.ProcessOutcome(testOutcome), ErrBlockNotAvailable, "error of expected type from processing outcome")
+
+		pb.AssertExpectations(t)
+	})
+
+	t.Run("proposals are added to retryer", func(t *testing.T) {
+		recoverer := new(mocks.MockRetryer)
+		pb := new(mocks.MockPayloadBuilder)
+		flow := &LogTriggerEligibility{
+			recoverer: recoverer,
+			builder:   pb,
+			logger:    log.New(io.Discard, "", 0),
+		}
+
+		testOutcome := ocr2keepersv3.AutomationOutcome{
+			BasicOutcome: ocr2keepersv3.BasicOutcome{
+				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
+						{
+							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 10,
+								BlockHash:   "testhash",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		expectedProposal := ocr2keepers.CoordinatedProposal{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+			Trigger: ocr2keepers.Trigger{
+				BlockNumber: 10,
+				BlockHash:   "testhash",
+			},
+			Block: ocr2keepers.BlockKey("4"),
+		}
+
+		pb.On("BuildPayload", mock.Anything, expectedProposal).Return(ocr2keepers.UpkeepPayload{
+			ID: "test",
+		}, nil)
+
+		recoverer.On("Retry", mock.Anything).Return(nil)
+
+		assert.NoError(t, flow.ProcessOutcome(testOutcome), "no error from processing outcome")
+
+		pb.AssertExpectations(t)
+		recoverer.AssertExpectations(t)
+	})
 }
 
 func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {

@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
@@ -61,15 +62,29 @@ type RecoverableProvider interface {
 	GetRecoverables() ([]ocr2keepers.UpkeepPayload, error)
 }
 
+//go:generate mockery --name PayloadBuilder --structname MockPayloadBuilder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename payloadbuilder.generated.go
+type PayloadBuilder interface {
+	BuildPayload(context.Context, ocr2keepers.CoordinatedProposal) (ocr2keepers.UpkeepPayload, error)
+}
+
 const (
 	LogCheckInterval        = 1 * time.Second
 	RecoveryCheckInterval   = 1 * time.Minute
 	ObservationProcessLimit = 5 * time.Second
 )
 
+var (
+	ErrWrongDataType     = fmt.Errorf("wrong data type")
+	ErrBlockNotAvailable = fmt.Errorf("recovery proposals are available but a coordinated block is not")
+)
+
 // LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
 // with retry attempts.
-type LogTriggerEligibility struct{}
+type LogTriggerEligibility struct {
+	builder   PayloadBuilder
+	recoverer Retryer
+	logger    *log.Logger
+}
 
 // NewLogTriggerEligibility ...
 func NewLogTriggerEligibility(
@@ -79,30 +94,130 @@ func NewLogTriggerEligibility(
 	runner Runner,
 	logProvider LogEventProvider,
 	rp RecoverableProvider,
+	builder PayloadBuilder,
 	logInterval time.Duration,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
 	retryConfigs []tickers.ScheduleTickerConfigFunc,
 	recoverConfigs []tickers.ScheduleTickerConfigFunc,
 ) (*LogTriggerEligibility, []service.Recoverable) {
+	// all flows use the same preprocessor based on the coordinator
+	// each flow can add preprocessors to this provided slice
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
-	svc0, recoverer := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger, recoverConfigs...)
-	svc1, retryer := newRetryFlow(preprocessors, rStore, runner, recoverer, recoveryInterval, logger, retryConfigs...)
-	svc2 := newLogTriggerFlow(preprocessors, rStore, runner, retryer, recoverer, logProvider, logInterval, logger)
 
+	// the final recovery flow takes recoverable payloads merged with the latest
+	// blocks and runs the pipeline for them. these values to run are derived
+	// from node coordination and it can be assumed that all values should be
+	// run.
+	svc0, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, recoveryInterval, logger)
+
+	// the recovery proposal flow is for nodes to surface payloads that should
+	// be recovered. these values are passed to the network and the network
+	// votes on the proposed values
+	svc1, recoveryProposer := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger, recoverConfigs...)
+
+	// the retry flow is for payloads where the block number is still within
+	// range of RPC data. this is a short range retry and failures here get
+	// elevated to the recovery proposal flow.
+	svc2, retryer := newRetryFlow(preprocessors, rStore, runner, recoveryProposer, recoveryInterval, logger, retryConfigs...)
+
+	// the log trigger flow is the happy path for log trigger payloads. all
+	// retryables that are encountered in this flow are elevated to the retry
+	// flow
+	svc3 := newLogTriggerFlow(preprocessors, rStore, runner, retryer, recoveryProposer, logProvider, logInterval, logger)
+
+	// all above flows run internal time-keeper services. each is essential for
+	// running so the return is a slice of all above services as recoverables
 	svcs := []service.Recoverable{
 		svc0,
 		svc1,
 		svc2,
+		svc3,
 	}
 
-	return &LogTriggerEligibility{}, svcs
+	// the final return includes a struct that provides the ability for hooks
+	// to pass data to internal flows
+	return &LogTriggerEligibility{
+		builder:   builder,
+		recoverer: recoverer,
+		logger:    logger,
+	}, svcs
 }
 
 // ProcessOutcome functions as an observation pre-build hook to allow data from
 // outcomes to feed inputs in the eligibility flow
-func (flow *LogTriggerEligibility) ProcessOutcome(_ ocr2keepersv3.AutomationOutcome) error {
-	// panic("log trigger observation pre-build hook not implemented")
+func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
+	var ok bool
+
+	// if recoverable items are in outcome, proceed with values
+	rawProposals, ok := outcome.Metadata[ocr2keepersv3.CoordinatedRecoveryProposalKey]
+	if !ok {
+		flow.logger.Printf("no proposed recoverables found in outcome")
+
+		return nil
+	}
+
+	// proposals are trigger ids
+	proposals, ok := rawProposals.([]ocr2keepers.CoordinatedProposal)
+	if !ok {
+		return fmt.Errorf("%w: coordinated proposals are not of type `CoordinatedProposal`", ErrWrongDataType)
+	}
+
+	// get latest coordinated block
+	// by checking latest outcome first and then looping through the history
+	var (
+		rawBlock       interface{}
+		blockAvailable bool
+		block          ocr2keepers.BlockKey
+	)
+
+	if rawBlock, ok = outcome.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
+		// TODO: need to fix this as the history is a ring buffer and the values
+		// are not sorted by 0-len
+		for _, h := range historyFromRingBuffer(outcome.History, outcome.NextIdx) {
+			if rawBlock, ok = h.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey]; !ok {
+				continue
+			}
+
+			blockAvailable = true
+
+			break
+		}
+	} else {
+		blockAvailable = true
+	}
+
+	// we have proposals but a latest block isn't available
+	if !blockAvailable {
+		return ErrBlockNotAvailable
+	}
+
+	if block, ok = rawBlock.(ocr2keepers.BlockKey); !ok {
+		return fmt.Errorf("%w: coordinated block value not of type `BlockKey`", ErrWrongDataType)
+	}
+
+	// limit timeout to get all proposal data
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	// merge block number and recoverables
+	for _, proposal := range proposals {
+		proposal.Block = block
+
+		payload, err := flow.builder.BuildPayload(ctx, proposal)
+		if err != nil {
+			flow.logger.Printf("error encountered when")
+			continue
+		}
+
+		// pass to recoverer
+		if err := flow.recoverer.Retry(ocr2keepers.CheckResult{
+			Payload: payload,
+		}); err != nil {
+			continue
+		}
+	}
+
+	cancel()
 
 	return nil
 }
@@ -124,6 +239,18 @@ func (s *scheduledRetryer) Retry(r ocr2keepers.CheckResult) error {
 	// TODO: validate that block is still valid for retry; if not error
 
 	return s.scheduler.Schedule(r.Payload.ID, r.Payload)
+}
+
+type BasicRetryer[T any] interface {
+	Add(string, T) error
+}
+
+type basicRetryer struct {
+	ticker BasicRetryer[ocr2keepers.UpkeepPayload]
+}
+
+func (s *basicRetryer) Retry(r ocr2keepers.CheckResult) error {
+	return s.ticker.Add(r.Payload.ID, r.Payload)
 }
 
 type logTick struct {
@@ -157,18 +284,24 @@ func newLogTriggerFlow(
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs),
+		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
 		// create retry postprocessor
 		postprocessors.NewRetryPostProcessor(retryer, recoverer),
 	)
 
 	// create observer
-	obs := ocr2keepersv3.NewRunnableObserver(preprocessors, post, rn, ObservationProcessLimit)
+	obs := ocr2keepersv3.NewRunnableObserver(
+		preprocessors,
+		post,
+		rn,
+		ObservationProcessLimit,
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	)
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
-	}, logger)
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return timeTick
 }
