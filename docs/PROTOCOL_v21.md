@@ -7,7 +7,7 @@ This document aims to give a high level overview of a full e2e protocol for auto
   - [Overview](#overview)
   - [Boundaries](#boundaries)
   - [Definitions](#definitions)
-  - [Upkeep Flows](#upkeep-flows)
+  - [Eligibility Flows](#eligibility-flows)
     - [Conditional Triggers Flows](#1-conditional-triggers-flows)
         - [Sampling Flow](#sampling-flow)
         - [Coordination Flow](#coordination-flow)
@@ -80,7 +80,7 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 - `upkeepTriggerID`: Uniquely identifies an `upkeepPayload` and is represented as: `keccak256(upkeepID, abi.encode(trigger))` for evm chains.
 - `upkeepResult`: Output information to perform an upkeep. Same across both types: (fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)
 
-## Upkeep Flows
+## Eligibility Flows
 
 The eligibility flows are the sequence of events and procedures used to determine if an upkeep is considered eligible to perform.
 
@@ -132,9 +132,7 @@ The recovery finalization ticker will call log provider to build payloads with t
 
 The diagrams below shows the data flow between components. The diagrams are simplified to show only the relevant components for each trigger and the corresponding flows.
 
-<aside>
 💡 Note: source is available [here](https://miro.com/app/board/uXjVPntyh4E=/).
-</aside>
 
 Conditional triggers:
 

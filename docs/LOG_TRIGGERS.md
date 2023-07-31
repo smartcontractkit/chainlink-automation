@@ -188,7 +188,7 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 
 ### Upkeep States
 
-The upkeeps states are used to track the status of log upkeeps (eligible, performed) across the system,
+The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system,
 to avoid redundant work by the recoverer.
 
 The states will be persisted to so the latest state to be restored when the node starts up.
@@ -205,7 +205,7 @@ The following struct is used to represent the state:
 ```go
 type upkeepState struct {
 	payload  *ocr2keepers.UpkeepPayload
-	state    *ocr2keepers.UpkeepState // (eligible, performed)
+	state    *ocr2keepers.UpkeepState // (ineligible, performed)
 	block    int64
 	upkeepId string
 }
