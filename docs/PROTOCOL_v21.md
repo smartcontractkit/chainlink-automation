@@ -18,11 +18,12 @@ This document aims to give a high level overview of a full e2e protocol for auto
   - [Components](#components)
     - Common:
         - [Registry](#registry)
-        - [Upkeep Index (Life Cycle)](#upkeep-index-life-cycle)
         - [Runner](#runner)
+        - [Transmit Event Provider](#transmit-event-provider)
         - [Coordinator](#coordinator)   
         - [Result Store](#result-store)
         - [Metadata Store](#metadata-store)
+        - [Block Ticker](#block-ticker)
     - Conditional Triggers:
         - [Samples Observer](#samples-observer)
         - [Conditional Observer](#conditional-observer)
@@ -31,6 +32,7 @@ This document aims to give a high level overview of a full e2e protocol for auto
             - [Log Buffer](#log-buffer)
         - [Log Recoverer](#log-recoverer)
         - [Log Observer](#log-observer)
+        - [Retry Observer](#retry-observer)
         - [Recovery Observer](#recovery-observer)
         - [Log Recoverer](#log-recoverer)
         - [Upkeep States](#upkeep-states)
@@ -171,6 +173,16 @@ This component is responsible for parallelizing upkeep executions and providing 
 <aside>
 💡 Note: Because of the sync nature, we don't track pending requests, so there might be double checking of same payloads. Once a payload was checked, we cache the result in memory, so next time we don't need to check it again.
 </aside>
+
+### Transmit Event Provider
+
+This component listens to transmit events from log poller. Upon seeing new events calls the coordinator. Transmit events are the events that can happen when a report is sent onchain to the contract. These are
+
+- UpkeepPerformed: Report successfully performed the upkeep it was meant for. It was the `upkeepTriggerId` within the log to identify the payload which performed the upkeep
+- StateUpkeep: For conditionals this happens when an upkeep is tried to be performed on a checkBockNumber which is older than the last perform block (Stale check). For logs this happens when the particular (upkeepID, logIdentifier) has been performed before
+- InsufficientFunds: This happens when pre upkeep execution when not enough funds are found on chain for the execution. Funds check is done in checkPipeline, but actual funds required on chain at execution time can change, e.g. to gas price changes / link price changes. In such cases upkeep is not performed or charged. These reports should really be an edge case, on chain we have a multiplier during checkPipeline to overestimate funds before even attempting an upkeep.
+- CancelledUpkeep: This happens when the upkeep gets cancelled in between check time and perform time. To protect against malicious users, the contract adds a 50 block delay to any user cancellation requests.
+
 
 ### Coordinator
 
@@ -379,16 +391,6 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 - It will start scanning from `lastRePollBlock` on each iteration
 - Logs that are older than 24hr are ignored, therefore `lastRePollBlock` starts at `latestBlock - (24hr block)` in case it was not populated before.
 - `lastRePollBlock` is updated in case there are no logs in a specific range, otherwise will wait for performed events to know that all logs in that range were processed before updating `lastRePollBlock`.
-
-### Transmit Event Provider
-
-This component listens to transmit events from log poller. Upon seeing new events calls the coordinator. Transmit events are the events that can happen when a report is sent onchain to the contract. These are
-
-- UpkeepPerformed: Report successfully performed the upkeep it was meant for. It was the `upkeepTriggerId` within the log to identify the payload which performed the upkeep
-- StateUpkeep: For conditionals this happens when an upkeep is tried to be performed on a checkBockNumber which is older than the last perform block (Stale check). For logs this happens when the particular (upkeepID, logIdentifier) has been performed before
-- InsufficientFunds: This happens when pre upkeep execution when not enough funds are found on chain for the execution. Funds check is done in checkPipeline, but actual funds required on chain at execution time can change, e.g. to gas price changes / link price changes. In such cases upkeep is not performed or charged. These reports should really be an edge case, on chain we have a multiplier during checkPipeline to overestimate funds before even attempting an upkeep.
-- CancelledUpkeep: This happens when the upkeep gets cancelled in between check time and perform time. To protect against malicious users, the contract adds a 50 block delay to any user cancellation requests.
-
 
 ### Upkeep States
 
