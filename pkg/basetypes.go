@@ -1,13 +1,10 @@
 package ocr2keepers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
-
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type UpkeepIdentifier []byte
@@ -205,7 +202,6 @@ func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, che
 		Trigger:    trigger,
 		CheckData:  checkData,
 	}
-	p.ID = p.GenerateID()
 	return p
 }
 
@@ -219,12 +215,6 @@ func ValidateUpkeepPayload(p UpkeepPayload) error {
 	}
 
 	return ValidateTrigger(p.Trigger)
-}
-
-func (p UpkeepPayload) GenerateID() string {
-	id := fmt.Sprintf("%s:%s", p.Upkeep.ID, p.Trigger)
-	idh := crypto.Keccak256([]byte(id))
-	return hex.EncodeToString(idh[:])
 }
 
 type Trigger struct {
