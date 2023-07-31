@@ -91,33 +91,39 @@ The protocol supports two types of triggers:
 The sampling flow is used to determine if an upkeep is eligible to perform. It is
 triggered by a ticker that provides samples of upkeeps to check. The samples are
 collected, filtered, and checked. The results are then pushed into the metadata store with `EligibleSample` [instruction](#instructions). 
-The plugin will then collect the instructions and push them into the outcome to be processed in next round, where they will go into coordinated flow.
+The plugin will then collect the instructions and push them into the outcome to be processed in next rounds, where they will go into coordination flow.
+
+<aside>
+A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated upkeeps is kept for 30 rounds. A node can process coorindated upkeeps for upto last 30 rounds.
+</aside>
 
 #### Coordination Flow
 
-The coordination flow is used to come to agreement among node on what upkeeps to perform,
-based on the results of the sampling flow. It is triggered by a ticker that provides
+The coordination flow is used to come to agreement among nodes on what upkeepPayloads to check, based on the results of the sampling flow. It is triggered by a ticker that provides
 payloads based on a coordinated block and upkeepIDs. 
 The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
 
 ### 2. Log Triggers
 #### Log Trigger Flow
 
-The log trigger flow is used to determine if a log is eligible to perform. It is triggered by a ticker that get the latest logs from log event provider.
-The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain. 
+The log trigger flow is used to determine if a log needs to be perform. It is triggered by a ticker that get the latest logs from log event provider.
+The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
 
 #### Log Recovery Proposal Flow
 
 The log recovery flow is used to recover logs that were missed by the log trigger flow. It is triggered by a ticker that gets missed logs from log recoverer.
-The results are collected, filtered, and checked again. Eligible results are then pushed into the metadata store with `RecoveredLog` [instruction](#instructions). 
-The plugin will then collect the instructions and push them into the outcome to be processed in next round where they gets picked up into recovery finalization flow. 
+The missed logs are pushed into the metadata store with `RecoveredLog` [instruction](#instructions). 
+The plugin will then collect the instructions and push them into the outcome to be processed in next rounds where they gets picked up into recovery finalization flow. 
+
+<aside>
+Similar to coordinated upkeeps in conditional flow, A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of RecoveredLogs is kept for 30 rounds. A node can process recovered logs for upto last 30 rounds.
+</aside>
 
 #### Log Recovery Finalization Flow
 
-The recovery finalization flow takes recoverable payloads merged with the latest
-blocks and runs the pipeline for them.
+The recovery finalization flow takes recoverable payloads merged with the latest check blocks and runs the pipeline for them.
 
-The recovery finalization ticker will call log provider to build payloads with the latest logs. Then they will go into log observer to be checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
+The recovery finalization ticker will call log provider to build payloads with the latest logs. The log provider does necessary checks to ensure that the log should actually be recovered (To protect against malicious nodes surfacing wrong logs for recovery). The payloads will then go into log observer to be checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
 
 ## Visuals
 
