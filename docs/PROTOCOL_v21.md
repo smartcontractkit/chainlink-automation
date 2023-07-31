@@ -73,10 +73,10 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
     - For conditionals: (checkBlockNum, checkBlockHash)
     - For log triggers: (checkBlockNum, checkBlockHash, logTxHash, logIndex)
 - `logIdentifier`: unique identifier for a log → (logTxHash, logIndex)
-- `upkeepTriggerID`: Uniquely identifies an attempt to do a unit of work and is represented as: `keccak256(upkeepID, abi.encode(trigger))` for evm chains.
-- `upkeepPayload`: Input information to process an upkeep → (upkeepID, trigger, checkData)
+- `upkeepPayload`: Input information to process a unit of work for an upkeep → (upkeepID, trigger, checkData)
     - For conditionals checkData is empty (derived onchain in checkUpkeep)
     - For log: checkData is log information
+- `upkeepTriggerID`: Uniquely identifies an `upkeepPayload` and is represented as: `keccak256(upkeepID, abi.encode(trigger))` for evm chains.
 - `upkeepResult`: Output information to perform an upkeep. Same across both types: (fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)
 
 ## Upkeep Flows
@@ -111,7 +111,7 @@ Supported instructions:
 
 #### Log Recovery Flow
 
-## [WIP] Visuals
+## Visuals
 
 Source of truth here: https://miro.com/app/board/uXjVPntyh4E=/
 
@@ -133,7 +133,7 @@ The registry offers the following functionality:
 
 **Upkeeps life-cycle management**
 
-The regsitry sync the active upkeeps and corresponding config onchain with node’s local state that is saved in memory.
+The regsitry sync the active upkeeps and corresponding config onchain with node’s local state in memory.
 
 It does so by listening to the relevant events on chain for the following:
 - Upkeep registration/cancellation/migration
@@ -142,58 +142,54 @@ It does so by listening to the relevant events on chain for the following:
 
 Periodically (~10min) does a full sync of all upkeeps onchain state so that any potential missed / reorged state logs are accounted for.
 
-The registry calls the log event provider in case some log filter needs to be updated, upon registration / cancellation / config changes of an upkeep.
-Upon startup, all upkeeps are synced from chain and the log event provider is called to update the log filters.
+The registry calls the log event provider in case some log filter needs to be updated.
+Upon startup, all upkeeps are synced from chain and the log event provider is called to update all the log filters.
 
 **Check upkeeps**
 
-The registry exposes `checkUpkeep` so the runner could execute the pipeline:
+The registry exposes `checkUpkeep` so the runner could execute the pipeline taking `upkeepPayload` as an input
 
-- For log triggers verifies log is still part of chain at checkBlockNum
+- If the checkBlockNum is lagging latestBlock by more than a threshold (100 blocks) then it returns a non-retryable error
+- For log triggers verifies the log is still part of chain at checkBlockNum
 - Does a batch RPC call to checkUpkeep (for conditionals calls `checkUpkeep()` and for log calls `checkUpkeep(logData)`).
 - Does batch mercury fetch and callback for upkeeps that requires mercury data
 - Does batch RPC call to simulatePerformUpkeep for upkeeps that are eligible
 
-Returns list of results for each payload. Result can be **eligible** with upkeepResult / **non-eligible** with failure reason / **error** can be retryable if it’s transient or non retryable e.g. in case the checkBlockNum is too old.
+Returns list of results for each payload. Result can be **eligible** with upkeepResult / **non-eligible** with failure reason / **error**, which can be retryable if it’s transient or non retryable e.g. in case the checkBlockNum is too old.
 
 ### Runner
 
 This component is responsible for parallelizing upkeep executions and providing a single interface to different components maintaining a shared cache
 
 - Takes a list of upkeepPayloads, calls CheckPipeline asynchronously with upkeeps being batched in a single pipeline execution
-- Maintains in-memory cache of non-errored pipeline executions indexed on (trigger, upkeepID). 
-Directly uses that result instead of a new execution if available
-- Allows for repeated calls for the same upkeep payload (trigger, upkeepID)
+- Maintains in-memory cache of non-errored pipeline executions indexed on (trigger, upkeepID). Directly uses that result instead of a new execution if available
+- Allows for repeated calls for the same upkeep payload
 - Execution automatically fails after a timeout that was provided as argument (~10s, set by Observer)
-- A call to CheckUpkeeps on the runner is synchronous. A worker is spawned per a batch of upkeeps to check,
-and all workers needs to finish before returning.
+- A call to CheckUpkeeps on the runner is synchronous. A worker is spawned per a batch of upkeeps to check, and all workers needs to finish before returning.
 
 <aside>
-Note that because of the sync nature, we don't track pending requests, so there might be double checking of same payloads.
-Once a payload was checked, we cache the result in memory, so next time we don't need to check it again.
+Note: Because of the sync nature, we don't track pending requests, so there might be double checking of same payloads. Once a payload was checked, we cache the result in memory, so next time we don't need to check it again.
 </aside>
 
 ### Coordinator
 
 This component stores in-flight & confirmed reports in memory, and allows other components in the system to query that information.
 
-The coordinator stores inflight reports, in case of conflict - a new report is seen for the same key, 
-it waits on the higher `checkBlockNumber`.
-th `Accept` function that is called from the `shouldAccept`.
+The coordinator stores inflight reports, in case of conflict - a new report is seen for the same key, it waits on the higher `checkBlockNumber`. The `Accept` function is called from the `shouldAccept` on the plugin.
 
-All keys stored expire after TTL. In case an item was not marked as performed, it is assumed tx got lost.
+All keys stored expire after TTL. In case an item is not marked as performed within TTL, it is assumed that the tx got lost. Conditionals and Log upkeeps recover from such scenarios through different logic.
 
 #### Conditional Coordinator
 
 The coordinator for conditional triggers ensures that an upkeep is performed at progressively higher blocks and tracks 'in-flight' status on transmits. This variant sets the last performed block higher in a local cache for an upkeepId on every transmit event.
 
-The coordinator stores inflight reports per upkeepID and an associated `upkeepTriggerID` for identifying transmit events.
+The coordinator stores inflight reports per `upkeepID` and an associated `upkeepTriggerID` for identifying transmit events.
 
 #### Log Trigger Coordinator
 
-The coordinator for log triggers ensures that a triggered log is performed exactly once. It tracks 'in-flight' status when a transmit is sent by at least one node and registers transmit events such as performed or staleReport or reorg.
+The coordinator for log triggers ensures that a triggered log is performed exactly once. It tracks 'in-flight' status when a report is generated and registers transmit events such as performed or staleReport or reorg.
 
-The coordinator stores inflight reports per (upkeepID, logIdentifier) and an associated `upkeepTriggerID` for identifying transmit events.
+The coordinator stores inflight reports per `(upkeepID, logIdentifier)` and an associated `upkeepTriggerID` for identifying transmit events.
 
 
 **Transmit Events**
@@ -201,16 +197,20 @@ The coordinator stores inflight reports per (upkeepID, logIdentifier) and an ass
 The coordinator listens to transmit event logs (stale / reorged / cancelled / insufficient funds) of stored `upkeepTriggerID` in memory, and act accordingly:
 
 - Upkeep performed - the `upkeepTriggerID` is marked as confirmed
-    - log upkeeps state should be updated to `performed`
+    - For log upkeeps, state is updated to `performed` with the Upkeep States component
+    - For conditional upkeeps the perform block number is stored in memory
 - Stale report - the `upkeepTriggerID` is marked as confirmed
     - conditional upkeeps will be sampled and checked again automatically on a later block
-    - for log upkeeps it means there was a duplicate perform. the state should be updated to `performed`
-- Reorged - the `upkeepTriggerID` is removed
-    - expected to be picked up by the log event provider,
-    because we compare block hashes and will identify reorgs logs as new ones
-    - reorged recovery attemtps will be picked up again by the log recoverer
+    - for log upkeeps it means there was a duplicate perform. The state is updated to `performed` in Upkeep States
+- Reorged - the `upkeepTriggerID` is removed from coordinator
+    - conditional upkeeps will be sampled and checked again automatically on a later block
+    - Logs enqueued through log event provider (i.e. checkBlockNum == logBlockNum) are forgotten about since the log got reorged. If reorg causes a new log then it is expected to be surfaced up by the log provider again.
+    - Logs enqueued through recovery attemtps will be picked up again by the log recoverer
 - Insufficient funds - the `upkeepTriggerID` is removed
-    - expected to be picked up by the log recoverer
+    - This can happen when we thought there were sufficient funds during checkPipeline but during onchain execution funds were not enough (e.g. gas price spike)
+    - conditional upkeeps will be sampled and checked again automatically on a later block
+    - Logs are expected to be picked up again by the log recoverer
+- Cancelled Upkeep - the `upkeepTriggerID` is removed. No recovery is needed as upkeep is cancelled
 
 **Is Transmission Confirmed**
 
