@@ -73,7 +73,9 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 	}
 
 	// Create new AutomationObservation
-	observation := ocr2keepersv3.AutomationObservation{}
+	observation := ocr2keepersv3.AutomationObservation{
+		Metadata: make(map[ocr2keepersv3.ObservationMetadataKey]interface{}),
+	}
 
 	// Execute build hooks
 	plugin.Logger.Printf("running build hooks")
@@ -107,6 +109,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	p := newPerformables(len(attributedObservations) / 2)
 	c := newCoordinateBlock(len(attributedObservations) / 2)
 	s := newSamples(OutcomeSamplesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	r := newRecoverables(len(attributedObservations) / 2)
 
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
@@ -126,6 +129,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 		p.add(observation)
 		c.add(observation)
 		s.add(observation)
+		r.add(observation)
 	}
 
 	outcome := ocr2keepersv3.AutomationOutcome{
@@ -137,20 +141,21 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	p.set(&outcome)
 	c.set(&outcome)
 	s.set(&outcome)
+	r.set(&outcome)
 
 	var previous *ocr2keepersv3.AutomationOutcome
 	if outctx.SeqNr != 1 {
-		p, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
+		prev, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
 		if err != nil {
 			return nil, err
 		}
 
 		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(p); err != nil {
+		if err := ocr2keepersv3.ValidateAutomationOutcome(prev); err != nil {
 			return nil, err
 		}
 
-		previous = &p
+		previous = &prev
 	}
 
 	// set the latest value in the history

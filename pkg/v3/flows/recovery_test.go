@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
@@ -74,13 +75,13 @@ func TestRecoveryProposalFlow(t *testing.T) {
 		{ID: "test"},
 	}
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	ar := util.NewSyncedArray[ocr2keepers.UpkeepPayload]()
 
 	rec.On("GetRecoverables").Return(testData, nil).Times(1)
 	rec.On("GetRecoverables").Return(nil, nil).Times(3)
 
 	// metadata store should set the value
-	mStore.On("Set", store.ProposalRecoveryMetadata, testData).Times(1)
-	mStore.On("Set", store.ProposalRecoveryMetadata, []ocr2keepers.UpkeepPayload{}).Times(3)
+	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(4)
 
 	// set the ticker time lower to reduce the test time
 	recoveryInterval := 50 * time.Millisecond

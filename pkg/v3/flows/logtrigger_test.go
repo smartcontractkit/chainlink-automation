@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
@@ -36,6 +37,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
+	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	// get logs should run the same number of times as the happy path
 	// ticker
@@ -46,7 +48,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 	rec.On("GetRecoverables").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
 	// metadata store should set the value twice with empty data
-	mStore.On("Set", store.ProposalRecoveryMetadata, []ocr2keepers.UpkeepPayload{}).Times(2)
+	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(2)
 
 	// set the ticker time lower to reduce the test time
 	tickerInterval := 50 * time.Millisecond
@@ -108,6 +110,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
+	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
 		{ID: "test"},
@@ -125,7 +128,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	rStore.On("Add", mock.Anything).Times(1)
 
 	// metadata store should set the value 5 times with empty data
-	mStore.On("Set", store.ProposalRecoveryMetadata, []ocr2keepers.UpkeepPayload{}).Times(5)
+	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(5)
 
 	// set the ticker time lower to reduce the test time
 	tickerInterval := 50 * time.Millisecond
@@ -186,6 +189,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
+	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
 		{ID: "test"},
@@ -212,7 +216,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	rStore.On("Add", mock.Anything).Times(1)
 
 	// metadata store should set the value thrice with empty data
-	mStore.On("Set", store.ProposalRecoveryMetadata, []ocr2keepers.UpkeepPayload{}).Times(3)
+	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(3)
 
 	// set the ticker time lower to reduce the test time
 	tickerInterval := 50 * time.Millisecond
@@ -278,6 +282,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
+	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
 		{ID: "test"},
@@ -300,7 +305,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	// put in the recoverable path
 
 	// metadata store should set the value once
-	mStore.On("Set", store.ProposalRecoveryMetadata, mock.Anything).Times(3)
+	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(3)
 
 	// set the ticker time lower to reduce the test time
 	tickerInterval := 50 * time.Millisecond
@@ -399,7 +404,7 @@ func TestProcessOutcome(t *testing.T) {
 			},
 		}
 
-		assert.ErrorIs(t, flow.ProcessOutcome(testOutcome), ErrBlockNotAvailable, "error of expected type from processing outcome")
+		assert.ErrorIs(t, flow.ProcessOutcome(testOutcome), ocr2keepersv3.ErrBlockNotAvailable, "error of expected type from processing outcome: %s")
 
 		pb.AssertExpectations(t)
 	})
@@ -407,11 +412,18 @@ func TestProcessOutcome(t *testing.T) {
 	t.Run("proposals are added to retryer", func(t *testing.T) {
 		recoverer := new(mocks.MockRetryer)
 		pb := new(mocks.MockPayloadBuilder)
+		ms := new(mocks.MockMetadataStore)
+
 		flow := &LogTriggerEligibility{
+			mStore:    ms,
 			recoverer: recoverer,
 			builder:   pb,
 			logger:    log.New(io.Discard, "", 0),
 		}
+
+		ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
+
+		ms.On("Get", store.ProposalRecoveryMetadata).Return(ar, true)
 
 		testOutcome := ocr2keepersv3.AutomationOutcome{
 			BasicOutcome: ocr2keepersv3.BasicOutcome{

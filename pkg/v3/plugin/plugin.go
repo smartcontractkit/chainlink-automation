@@ -8,7 +8,9 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
+	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
@@ -51,6 +53,9 @@ func newPlugin(
 	// on plugin startup, begin broadcasting that block coordination should
 	// happen immediately
 	is.Set(instructions.ShouldCoordinateBlock)
+
+	// add recovery cache to metadata store with 24hr timeout
+	ms.Set(store.ProposalRecoveryMetadata, util.NewCache[ocr2keepers.CoordinatedProposal](24*time.Hour))
 
 	// create a new runner instance
 	rn, err := runner.NewRunner(
@@ -119,6 +124,8 @@ func newPlugin(
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
 			build.NewAddFromStaging(rs, logger).RunHook,
 			build.NewCoordinateBlockHook(is, ms).RunHook,
+			build.NewAddFromRecoveryHook(ms).RunHook,
+			build.NewAddFromSamplesHook(ms).RunHook,
 		},
 		ReportEncoder: encoder,
 		Coordinators:  []Coordinator{coord},

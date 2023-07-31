@@ -1,0 +1,450 @@
+package ocr2keepers
+
+import (
+	"encoding/json"
+	"testing"
+
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestValidateOutcomeMetadataKey(t *testing.T) {
+	tests := []struct {
+		key OutcomeMetadataKey
+		err error
+	}{
+		{key: CoordinatedBlockOutcomeKey},
+		{key: CoordinatedRecoveryProposalKey},
+		{key: CoordinatedSamplesProposalKey},
+		{
+			key: "invalid key",
+			err: ErrInvalidMetadataKey,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(string(test.key), func(t *testing.T) {
+			err := ValidateOutcomeMetadataKey(test.key)
+
+			if test.err == nil {
+				assert.NoError(t, err, "no error expected")
+			} else {
+				assert.ErrorIs(t, err, test.err, "error should be of expected type")
+			}
+		})
+	}
+}
+
+func TestAutomationOutcome_Encode_Decode(t *testing.T) {
+	// set non-default values to test encoding/decoding
+	input := AutomationOutcome{
+		BasicOutcome: BasicOutcome{
+			Metadata: map[OutcomeMetadataKey]interface{}{
+				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+			},
+			Performable: []ocr2keepers.CheckResult{
+				{
+					Payload: ocr2keepers.UpkeepPayload{
+						ID: "abc",
+						Upkeep: ocr2keepers.ConfiguredUpkeep{
+							ID:     []byte("111"),
+							Type:   1,
+							Config: "value",
+						},
+						CheckData: []byte("check data"),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   "hash",
+							Extension:   8,
+						},
+					},
+					Retryable:   true,
+					Eligible:    true,
+					PerformData: []byte("testing"),
+				},
+			},
+		},
+		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
+	}
+
+	expected := AutomationOutcome{
+		BasicOutcome: BasicOutcome{
+			Metadata: map[OutcomeMetadataKey]interface{}{
+				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+			},
+			Performable: []ocr2keepers.CheckResult{
+				{
+					Payload: ocr2keepers.UpkeepPayload{
+						ID: "abc",
+						Upkeep: ocr2keepers.ConfiguredUpkeep{
+							ID:     []byte("111"),
+							Type:   1,
+							Config: []byte(`"value"`),
+						},
+						CheckData: []byte("check data"),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   "hash",
+							Extension:   []byte("8"),
+						},
+					},
+					Retryable:   true,
+					Eligible:    true,
+					PerformData: []byte("testing"),
+				},
+			},
+		},
+		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
+	}
+
+	jsonData, _ := json.Marshal(input)
+	data, err := input.Encode()
+
+	assert.Equal(t, jsonData, data, "json marshalling should return the same result")
+	assert.NoError(t, err, "no error from encoding")
+
+	result, err := DecodeAutomationOutcome(data)
+	assert.NoError(t, err, "no error from decoding")
+
+	assert.Equal(t, expected, result, "final result from encoding and decoding should match")
+}
+
+func TestValidateAutomationOutcome(t *testing.T) {
+	t.Run("invalid instructions", func(t *testing.T) {
+		testData := AutomationOutcome{
+			Instructions: []instructions.Instruction{
+				"invalid instruction",
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.ErrorIs(t, err, instructions.ErrInvalidInstruction, "invalid instruction should return validation error")
+	})
+
+	t.Run("invalid metadata key", func(t *testing.T) {
+		testData := AutomationOutcome{
+			BasicOutcome: BasicOutcome{
+				Metadata: map[OutcomeMetadataKey]interface{}{
+					"invalid key": "string",
+				},
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.ErrorIs(t, err, ErrInvalidMetadataKey, "invalid metadata key should return validation error")
+	})
+
+	t.Run("invalid check result", func(t *testing.T) {
+		testData := AutomationOutcome{
+			BasicOutcome: BasicOutcome{
+				Performable: []ocr2keepers.CheckResult{
+					{},
+				},
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NotNil(t, err, "invalid check result should return validation error")
+	})
+
+	t.Run("invalid ring buffer", func(t *testing.T) {
+		testData := AutomationOutcome{
+			History: []BasicOutcome{
+				{},
+			},
+			NextIdx: 3,
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NotNil(t, err, "invalid ring buffer index should return validation error")
+	})
+
+	t.Run("no error on empty", func(t *testing.T) {
+		testData := AutomationOutcome{}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NoError(t, err, "no error should return from empty outcome")
+	})
+
+	t.Run("no error on valid", func(t *testing.T) {
+		testData := AutomationOutcome{
+			Instructions: []instructions.Instruction{
+				instructions.DoCoordinateBlock,
+			},
+			BasicOutcome: BasicOutcome{
+				Metadata: map[OutcomeMetadataKey]interface{}{
+					CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+				},
+				Performable: []ocr2keepers.CheckResult{
+					{
+						Eligible:     true,
+						Retryable:    false,
+						GasAllocated: 1,
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("test"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 10,
+								BlockHash:   "0x",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := ValidateAutomationOutcome(testData)
+
+		assert.NoError(t, err, "no error should return from a valid outcome")
+	})
+}
+
+func TestRecoveryProposals(t *testing.T) {
+	tests := []struct {
+		name        string
+		outcome     AutomationOutcome
+		expected    []ocr2keepers.CoordinatedProposal
+		expectedErr error
+	}{
+		{
+			name:        "happy path - empty",
+			outcome:     AutomationOutcome{},
+			expected:    nil,
+			expectedErr: nil,
+		},
+		{
+			name: "happy path - with results",
+			outcome: AutomationOutcome{
+				BasicOutcome: BasicOutcome{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
+							{UpkeepID: ocr2keepers.UpkeepIdentifier("7")},
+						},
+					},
+				},
+			},
+			expected: []ocr2keepers.CoordinatedProposal{
+				{UpkeepID: ocr2keepers.UpkeepIdentifier("7")},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "error path - wrong type",
+			outcome: AutomationOutcome{
+				BasicOutcome: BasicOutcome{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedRecoveryProposalKey: "wrong data type",
+					},
+				},
+			},
+			expected:    nil,
+			expectedErr: ErrWrongDataType,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			prop, err := test.outcome.RecoveryProposals()
+
+			assert.Equal(t, test.expected, prop, "proposals should match expected")
+
+			if test.expectedErr == nil {
+				assert.NoError(t, err, "no error expected")
+			} else {
+				assert.ErrorIs(t, err, test.expectedErr, "error should be of expected type")
+			}
+		})
+	}
+}
+
+func TestLatestCoordinatedBlock(t *testing.T) {
+	tests := []struct {
+		name        string
+		outcome     AutomationOutcome
+		expected    ocr2keepers.BlockKey
+		expectedErr error
+	}{
+		{
+			name:        "error path - block not available",
+			outcome:     AutomationOutcome{},
+			expected:    ocr2keepers.BlockKey(""),
+			expectedErr: ErrBlockNotAvailable,
+		},
+		{
+			name: "error path - block in latest wrong data type",
+			outcome: AutomationOutcome{
+				BasicOutcome: BasicOutcome{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedBlockOutcomeKey: "wrong data type",
+					},
+				},
+			},
+			expected:    ocr2keepers.BlockKey(""),
+			expectedErr: ErrWrongDataType,
+		},
+		{
+			name: "happy path - block in history wrong data type",
+			outcome: AutomationOutcome{
+				BasicOutcome: BasicOutcome{},
+				History: []BasicOutcome{
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{
+							CoordinatedBlockOutcomeKey: "wrong data type",
+						},
+					},
+				},
+				NextIdx: 1,
+			},
+			expected:    ocr2keepers.BlockKey(""),
+			expectedErr: ErrWrongDataType,
+		},
+		{
+			name: "happy path - block in latest",
+			outcome: AutomationOutcome{
+				BasicOutcome: BasicOutcome{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+					},
+				},
+			},
+			expected:    ocr2keepers.BlockKey("2"),
+			expectedErr: nil,
+		},
+		{
+			name: "happy path - block in history",
+			outcome: AutomationOutcome{
+				BasicOutcome: BasicOutcome{},
+				History: []BasicOutcome{
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+						},
+					},
+				},
+				NextIdx: 1,
+			},
+			expected:    ocr2keepers.BlockKey("2"),
+			expectedErr: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			block, err := test.outcome.LatestCoordinatedBlock()
+
+			assert.Equal(t, test.expected, block, "block key should match expected")
+
+			if test.expectedErr == nil {
+				assert.NoError(t, err, "no error expected")
+			} else {
+				assert.ErrorIs(t, err, test.expectedErr, "error should be of expected type")
+			}
+		})
+	}
+}
+
+func TestSortedHistory(t *testing.T) {
+	tests := []struct {
+		name     string
+		outcome  AutomationOutcome
+		expected []BasicOutcome
+	}{
+		{
+			name:     "happy path - no history",
+			outcome:  AutomationOutcome{},
+			expected: []BasicOutcome{},
+		},
+		{
+			name: "happy path - single item",
+			outcome: AutomationOutcome{
+				History: []BasicOutcome{
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{},
+					},
+				},
+				NextIdx: 1,
+			},
+			expected: []BasicOutcome{
+				{
+					Metadata: map[OutcomeMetadataKey]interface{}{},
+				},
+			},
+		},
+		{
+			name: "happy path - ring buffer sorted latest to oldest",
+			outcome: AutomationOutcome{
+				History: []BasicOutcome{
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+						},
+					},
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("5"),
+						},
+					},
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("1"),
+						},
+					},
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+						},
+					},
+					{
+						Metadata: map[OutcomeMetadataKey]interface{}{
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+						},
+					},
+				},
+				NextIdx: 2,
+			},
+			expected: []BasicOutcome{
+				{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("5"),
+					},
+				},
+				{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+					},
+				},
+				{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+					},
+				},
+				{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+					},
+				},
+				{
+					Metadata: map[OutcomeMetadataKey]interface{}{
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("1"),
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			history := test.outcome.SortedHistory()
+
+			assert.Equal(t, test.expected, history, "history should match expected")
+		})
+	}
+}
