@@ -290,11 +290,11 @@ The store provides an add / view / remove API for other components.
 
 **Eligible samples** 
 are sample upkeeps (upkeepID) that are eligible to perform.
-**handling:** the upkeeps are performed with an assoicated block.
+**handling:** the upkeeps are bound to an associated block in the outcome to be processed in future rounds.
 
 **Recovered logs**
 are logs that we identify as missed and need to be recovered.
-**handking** the logs are performed for all relevant upkeeps (upkeepID,logID), with an associated block.
+**handling:** the logs are bound to an associated block in the outcome to be processed in future rounds.
 
 ### Block Ticker
 
