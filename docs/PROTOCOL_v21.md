@@ -235,7 +235,7 @@ Provides additional read API to check whether an upkeep should be processed whic
 
 ### Result Store
 
-This component is responsible for storing upkeepResults that a node thinks should be performed. It hopes to get agreement from quorum of nodes on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. For results that do not achieve agreement within TTL go into recovery flow.
+This component is responsible for storing `upkeepResults` that a node thinks should be performed. It hopes to get agreement from quorum of nodes on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. Results that do not achieve agreement within TTL are expected to be picked up by recovery flow.
 
 - Maintains an in-memory collection of upkeepResults
     - Conditional upkeeps will be stored by (upkeepID)
@@ -245,16 +245,16 @@ This component is responsible for storing upkeepResults that a node thinks shoul
     - conditional upkeeps will be sampled and checked again automatically
     - log upkeeps that were missed are expected to be picked up by the log recoverer
 - Provides a read API to view results, which takes as input (`pseudoRandomSeed`, `limit`).
-The nodes in the network are expected to use the same seed, for a particular round.
-Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. We do not do FIFO here as potentially out of sync old results will block new results sent by the node for agreement.
+The nodes in the network are expected to use the same seed for a particular round. Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. 
+Note: We do not do FIFO here as potentially out of sync old results will block new results sent by the node for agreement.
 - Provides an API to remove (trigger, upkeepID) from the store
 
 ### Metadata Store
 
 This component stores the metadata to be sent within observations to the network. There are three categories of metadata
 
-- Conditional Upkeep Instructions (`coordinated samples`)
-- Log recovery Instructions (`recovered`)
+- Conditional Upkeep instructions (`eligible samples`)
+- Log recovery instructions (`recovery logs`)
 - Latest block history
 
 Every item has a TTL, and upon expiry items are just removed without any action.
