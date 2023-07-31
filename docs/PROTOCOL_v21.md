@@ -294,7 +294,7 @@ Powered by the block subscriber. On every tick, it fetches latest block history 
 
 ### Samples Observer
 
-Powered by the sample ticker which calls the samples observer on every tick, with samples of upkeeps to checked. It uses the latest block number as the trigger. It does the following procedures:
+Powered by the sample ticker which calls the samples observer on every tick, with samples of upkeeps [taken from registry] to checked. It uses the latest block number as the trigger. It does the following procedures:
 
 - Pre-processes to filter upkeeps present in coordinator (Using `shouldProcess`)
 - Calls runner with upkeep payload
@@ -313,8 +313,11 @@ Observer does the following:
 
 ### Log Observer
 
-Powered by the log trigger ticker. On every tick it calls `getLatestPayloads` from the Log Provider and calls observer with the payloads.
+Powered by the log trigger ticker and recovery finalization ticker. 
+- Log trigger ticker: on every tick it calls `getLatestPayloads` from the Log Provider and calls observer with the payloads.
+- Log recovery finalization ticker: Recovery ticker fetches full `upkeepPayloads` for the coordinated logs given as input within the tick and calls observer with the payloads.
 
+For all payloads, observer does the following:
 - Pre-processes to filter the logs already present in coordinator
 - Calls runner with upkeep payload
 - If upkeep is eligible enqueue into result store
@@ -330,23 +333,13 @@ The rest of the flow of the observer is the same as Log Observer.
 
 ### Recovery Observer
 
-This observer is powered by the recovery ticker. Recovery ticker can get two types of input from different components
-- Log Recovery proposals `(upkeepID, logIdentifier)` which are not tied to a coordinated check block [Through log recoverer]
-- Coordinated log recovery: `(upkeepID, logIdentifer)` with a coordinated `checkBlockNum/checkBlockHash` [Through plugin]
+This observer is powered by the recovery ticker. Recovery ticker gets log recovery proposals `(upkeepID, logIdentifier)` which are not tied to a coordinated check block.
 
 On every tick
-- Recovery ticker fetches full `upkeepPayloads` for the coordinated logs given as input within the tick and surfaces them to observer
-- Calls `getMissedLogs` and surfaces recovery proposals to the observer 
-
-Q. Do we want getMissedLogs to be the only source, or allow sources from other components too?
+- Calls `getMissedLogs` and surfaces recovery proposals to the recovery Observer.
 
 Observer does the following:
 - Puts the recovery proposals into **metadata store** (`recovery logs`)
-- For given payloads
-    - call runner with payload
-    - upon result, if eligible add into result store
-    - non-eligible are written to DB
-    - If runner gave an error then it is ignored (it will get picked up again by log recoverer, but we do not keep retrying here)
 
 ### Log Provider
 
@@ -365,15 +358,12 @@ This component’s purpose is to surface latest logs for registered upkeeps. It 
 - Provides an interface `getPayloadLog` to build an upkeep payload for a particular log on demand by giving a trigger as in input.
 - It does not return a payload for a newer log to ensure recovery logs are isolated from latest logs. It verifies that the log is part of the filters for that upkeep and it is still present on chain
 - It checks whether the log has been already processed within the upkeepState. If so then doesn't return a payload
-- It gets only the required log from the log buffer or reads it from log poller if not found in buffer. This is used by the recovery flow
-Q. Can we have a clean split between recovery and log buffer ranges
+- It gets the required log from log poller. This is used by the recovery flow
 
 
 #### Log Buffer
 
-A circular/ring buffer of blocks and their corresponding logs, that act as a cache for logs. 
-It is used to store the last `lookbackBlocks*3` blocks, where each block holds a list of that block's logs. 
-Q. Do we really need to store lookBack*3? These will not get processed by log observer anyway (will need to be recovered) 
+A circular/ring buffer of blocks and their corresponding logs, that act as a cache for logs. It is used to store the last `lookbackBlocks` blocks, where each block holds a list of that block's logs.
 
 Logs are marked as seen when they are returned by the buffer, to avoid working with logs that have already been seen.
 
