@@ -63,7 +63,9 @@ func TestCheckUpkeep(t *testing.T) {
 		},
 		Trigger: ocr2keepers.NewTrigger(8, "0x123", "conditional"),
 	}
-	payload1.ID = payload1.GenerateID()
+
+	// generateID was deprecated; find new way to create id
+	// payload1.ID = payload1.GenerateID()
 
 	res, err := contract.CheckUpkeeps(context.Background(), payload1)
 	assert.NoError(t, err)
@@ -81,7 +83,9 @@ func TestCheckUpkeep(t *testing.T) {
 		},
 		Trigger: ocr2keepers.NewTrigger(11, "0x123", "conditional"),
 	}
-	payload2.ID = payload2.GenerateID()
+
+	// generateID was deprecated; find new way to create id
+	// payload2.ID = payload2.GenerateID()
 
 	res, err = contract.CheckUpkeeps(context.Background(), payload2)
 	assert.NoError(t, err)
