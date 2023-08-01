@@ -204,6 +204,16 @@ func NewUpkeepPayload(configuredUpkeep ConfiguredUpkeep, block BlockKey, trigger
 	return p
 }
 
+type ConfiguredUpkeepConfig struct {
+	MercuryEnabled bool
+}
+
+func (p *UpkeepPayload) EnableMercuryLookup() {
+	p.Upkeep.Config = ConfiguredUpkeepConfig{
+		MercuryEnabled: true,
+	}
+}
+
 func ValidateUpkeepPayload(p UpkeepPayload) error {
 	if len(p.ID) == 0 {
 		return fmt.Errorf("upkeep payload id cannot be empty")
