@@ -9,9 +9,12 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/mocks"
 )
 
 func TestObservation(t *testing.T) {
@@ -180,5 +183,238 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 		// obs1 and obs2 are identical, so they will be considered the same result. obs3 doesn't reach the quorum threshold
 		assert.Len(t, automationOutcome.Performable, 1)
+	})
+}
+
+func TestReports(t *testing.T) {
+	t.Run("1 report less than limit; 1 report per batch", func(t *testing.T) {
+		me := new(mocks.MockEncoder)
+
+		// Create an instance of ocr3 plugin
+		plugin := &ocr3Plugin{
+			Logger:        log.New(io.Discard, "", 0),
+			ReportEncoder: me,
+			Config: config.OffchainConfig{
+				GasOverheadPerUpkeep: 100_000,
+				GasLimitPerReport:    5_000_000,
+				MaxUpkeepBatchSize:   1,
+			},
+		}
+
+		outcome := ocr2keepersv3.AutomationOutcome{
+			BasicOutcome: ocr2keepersv3.BasicOutcome{
+				Performable: []ocr2keepers.CheckResult{
+					{
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("1"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   "0x",
+							},
+						},
+						GasAllocated: 1_000_000,
+						PerformData:  []byte(`0x`),
+					},
+				},
+			},
+		}
+
+		me.On("Encode", mock.Anything).Return([]byte(``), nil)
+
+		rawOutcome, err := outcome.Encode()
+		assert.NoError(t, err, "no error during encoding")
+
+		reports, err := plugin.Reports(2, rawOutcome)
+		assert.NoError(t, err, "no error from generating reports")
+		assert.Len(t, reports, 1, "report length should be 1")
+
+		me.AssertExpectations(t)
+	})
+
+	t.Run("2 reports less than limit; 1 report per batch", func(t *testing.T) {
+		me := new(mocks.MockEncoder)
+
+		// Create an instance of ocr3 plugin
+		plugin := &ocr3Plugin{
+			Logger:        log.New(io.Discard, "", 0),
+			ReportEncoder: me,
+			Config: config.OffchainConfig{
+				GasOverheadPerUpkeep: 100_000,
+				GasLimitPerReport:    5_000_000,
+				MaxUpkeepBatchSize:   1,
+			},
+		}
+
+		outcome := ocr2keepersv3.AutomationOutcome{
+			BasicOutcome: ocr2keepersv3.BasicOutcome{
+				Performable: []ocr2keepers.CheckResult{
+					{
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("1"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   "0x",
+							},
+						},
+						GasAllocated: 1_000_000,
+						PerformData:  []byte(`0x`),
+					},
+					{
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("1"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   "0x",
+							},
+						},
+						GasAllocated: 1_000_000,
+						PerformData:  []byte(`0x`),
+					},
+				},
+			},
+		}
+
+		me.On("Encode", mock.Anything).Return([]byte(``), nil).Times(2)
+
+		rawOutcome, err := outcome.Encode()
+		assert.NoError(t, err, "no error during encoding")
+
+		reports, err := plugin.Reports(2, rawOutcome)
+		assert.NoError(t, err, "no error from generating reports")
+		assert.Len(t, reports, 2, "report length should be 2")
+
+		me.AssertExpectations(t)
+	})
+
+	t.Run("3 reports less than limit; 2 report per batch", func(t *testing.T) {
+		me := new(mocks.MockEncoder)
+
+		// Create an instance of ocr3 plugin
+		plugin := &ocr3Plugin{
+			Logger:        log.New(io.Discard, "", 0),
+			ReportEncoder: me,
+			Config: config.OffchainConfig{
+				GasOverheadPerUpkeep: 100_000,
+				GasLimitPerReport:    5_000_000,
+				MaxUpkeepBatchSize:   2,
+			},
+		}
+
+		outcome := ocr2keepersv3.AutomationOutcome{
+			BasicOutcome: ocr2keepersv3.BasicOutcome{
+				Performable: []ocr2keepers.CheckResult{
+					{
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("1"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   "0x",
+							},
+						},
+						GasAllocated: 1_000_000,
+						PerformData:  []byte(`0x`),
+					},
+					{
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("1"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   "0x",
+							},
+						},
+						GasAllocated: 1_000_000,
+						PerformData:  []byte(`0x`),
+					},
+					{
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("1"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   "0x",
+							},
+						},
+						GasAllocated: 1_000_000,
+						PerformData:  []byte(`0x`),
+					},
+				},
+			},
+		}
+
+		me.On("Encode", mock.Anything, mock.Anything).Return([]byte(``), nil).Times(1)
+		me.On("Encode", mock.Anything).Return([]byte(``), nil).Times(1)
+
+		rawOutcome, err := outcome.Encode()
+		assert.NoError(t, err, "no error during encoding")
+
+		reports, err := plugin.Reports(2, rawOutcome)
+		assert.NoError(t, err, "no error from generating reports")
+		assert.Len(t, reports, 2, "report length should be 2")
+
+		me.AssertExpectations(t)
+	})
+
+	t.Run("gas allocated larger than report limit", func(t *testing.T) {
+		me := new(mocks.MockEncoder)
+
+		// Create an instance of ocr3 plugin
+		plugin := &ocr3Plugin{
+			Logger:        log.New(io.Discard, "", 0),
+			ReportEncoder: me,
+			Config: config.OffchainConfig{
+				GasOverheadPerUpkeep: 100_000,
+				GasLimitPerReport:    5_000_000,
+				MaxUpkeepBatchSize:   1,
+			},
+		}
+
+		outcome := ocr2keepersv3.AutomationOutcome{
+			BasicOutcome: ocr2keepersv3.BasicOutcome{
+				Performable: []ocr2keepers.CheckResult{
+					{
+						Payload: ocr2keepers.UpkeepPayload{
+							ID: "test",
+							Upkeep: ocr2keepers.ConfiguredUpkeep{
+								ID: ocr2keepers.UpkeepIdentifier("1"),
+							},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   "0x",
+							},
+						},
+						GasAllocated: 5_000_000,
+						PerformData:  []byte(`0x`),
+					},
+				},
+			},
+		}
+
+		// me.On("Encode", mock.Anything).Return([]byte(``), nil)
+
+		rawOutcome, err := outcome.Encode()
+		assert.NoError(t, err, "no error during encoding")
+
+		reports, err := plugin.Reports(2, rawOutcome)
+		assert.NoError(t, err, "no error from generating reports")
+		assert.Len(t, reports, 0, "report length should be 0")
+
+		me.AssertExpectations(t)
 	})
 }
