@@ -65,11 +65,11 @@ func (rc *reportCoordinator) isLogEventUpkeep(upkeep ocr2keepers.ReportedUpkeep)
 
 func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
 	if !rc.isLogEventUpkeep(upkeep) {
-		return fmt.Errorf("Upkeep is not log event based, skipping ID: %s", upkeep.ID)
+		return fmt.Errorf("Upkeep is not log event based, skipping ID: %s", upkeep.WorkID)
 	}
 
-	if _, ok := rc.activeKeys.Get(upkeep.ID); !ok {
-		rc.activeKeys.Set(upkeep.ID, false, util.DefaultCacheExpiration)
+	if _, ok := rc.activeKeys.Get(upkeep.WorkID); !ok {
+		rc.activeKeys.Set(upkeep.WorkID, false, util.DefaultCacheExpiration)
 	}
 
 	return nil
@@ -78,7 +78,7 @@ func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
 func (rc *reportCoordinator) IsTransmissionConfirmed(upkeep ocr2keepers.ReportedUpkeep) bool {
 	// if non-exist in cache, return true
 	// if exist in cache and confirmed by log poller, return true
-	confirmed, ok := rc.activeKeys.Get(upkeep.ID)
+	confirmed, ok := rc.activeKeys.Get(upkeep.WorkID)
 	return !ok || (ok && confirmed)
 }
 
@@ -102,7 +102,7 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 		case ocr2keepers.PerformEvent, ocr2keepers.StaleReportEvent:
 			rc.performEvent(evt)
 		case ocr2keepers.ReorgReportEvent, ocr2keepers.InsufficientFundsReportEvent:
-			rc.activeKeys.Delete(evt.ID)
+			rc.activeKeys.Delete(evt.WorkID)
 			// TODO: push to recovery flow
 		}
 	}
@@ -111,12 +111,12 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 }
 
 func (rc *reportCoordinator) performEvent(evt ocr2keepers.TransmitEvent) {
-	rc.activeKeys.Set(evt.ID, true, util.DefaultCacheExpiration)
+	rc.activeKeys.Set(evt.WorkID, true, util.DefaultCacheExpiration)
 }
 
 // isPending returns true if a key should be filtered out.
 func (rc *reportCoordinator) isPending(payload ocr2keepers.UpkeepPayload) bool {
-	if _, ok := rc.activeKeys.Get(payload.ID); ok {
+	if _, ok := rc.activeKeys.Get(payload.WorkID); ok {
 		// If the payload already exists, return true
 		return true
 	}

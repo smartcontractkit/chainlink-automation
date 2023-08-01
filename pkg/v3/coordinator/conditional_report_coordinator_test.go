@@ -146,6 +146,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		assert.NotNil(t, coordinator)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
+			WorkID: "123",
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
 				ID: []byte("123"),
 			},
@@ -170,6 +171,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
+			WorkID: "123",
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
 				ID: []byte("123"),
 			},
@@ -224,6 +226,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
+			WorkID: "123",
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
 				ID: []byte("123"),
 			},
@@ -484,6 +487,7 @@ func TestConditionalReportCoordinator_Accept(t *testing.T) {
 
 		err := coordinator.Accept(ocr2keepers.ReportedUpkeep{
 			ID:       "123",
+			WorkID:   "10",
 			UpkeepID: ocr2keepers.UpkeepIdentifier("10"),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 567,
@@ -518,12 +522,12 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 		assert.NotNil(t, coordinator)
 
 		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
-			ID: "123",
+			ID:     "123",
+			WorkID: "4",
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
 				ID:   ocr2keepers.UpkeepIdentifier("4"),
 				Type: 1,
 			},
-			CheckBlock: "500",
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
@@ -547,12 +551,12 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 		coordinator.activeKeys.Set("4", true, config.DefaultCacheExpiration)
 
 		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
-			ID: "123",
+			ID:     "123",
+			WorkID: "4",
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
 				ID:   ocr2keepers.UpkeepIdentifier("4"),
 				Type: 1,
 			},
-			CheckBlock: "500",
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
@@ -585,6 +589,7 @@ func TestConditionalReportCoordinator_PreProcess(t *testing.T) {
 
 		filtered, err := coordinator.PreProcess(context.Background(), []ocr2keepers.UpkeepPayload{
 			{
+				WorkID: "123",
 				Upkeep: ocr2keepers.ConfiguredUpkeep{
 					ID: []byte("123"),
 				},
@@ -593,6 +598,7 @@ func TestConditionalReportCoordinator_PreProcess(t *testing.T) {
 				},
 			},
 			{
+				WorkID: "456",
 				Upkeep: ocr2keepers.ConfiguredUpkeep{
 					ID: []byte("456"),
 				},
@@ -601,6 +607,7 @@ func TestConditionalReportCoordinator_PreProcess(t *testing.T) {
 				},
 			},
 			{
+				WorkID: "789",
 				Upkeep: ocr2keepers.ConfiguredUpkeep{
 					ID: []byte("789"),
 				},
@@ -627,6 +634,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 					TransmitBlock: ocr2keepers.BlockKey("123"),
 					Type:          ocr2keepers.PerformEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier("10"),
+					WorkID:        "10",
 					CheckBlock:    ocr2keepers.BlockKey("123"),
 				},
 				{
@@ -634,6 +642,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 					TransmitBlock: ocr2keepers.BlockKey("124"),
 					Type:          ocr2keepers.StaleReportEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier("20"),
+					WorkID:        "20",
 					CheckBlock:    ocr2keepers.BlockKey("124"),
 				},
 				{
@@ -641,6 +650,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 					TransmitBlock: ocr2keepers.BlockKey("200"),
 					Type:          ocr2keepers.StaleReportEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier("30"),
+					WorkID:        "30",
 					CheckBlock:    ocr2keepers.BlockKey("200"),
 				},
 			}, nil

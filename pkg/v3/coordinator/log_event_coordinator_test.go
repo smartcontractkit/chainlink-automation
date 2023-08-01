@@ -32,7 +32,8 @@ func TestLogEventCoordinator(t *testing.T) {
 	t.Run("Accept", func(t *testing.T) {
 		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
 		upkeep := ocr2keepers.ReportedUpkeep{
-			ID: "your-upkeep-id",
+			ID:     "your-upkeep-id",
+			WorkID: "your-upkeep-id",
 			Trigger: ocr2keepers.Trigger{
 				Extension: map[string]interface{}{
 					"txHash": "your-tx-hash",
@@ -47,6 +48,7 @@ func TestLogEventCoordinator(t *testing.T) {
 	t.Run("IsLogEventUpkeep", func(t *testing.T) {
 		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
 		upkeep_true := ocr2keepers.ReportedUpkeep{
+			WorkID: "work-id",
 			Trigger: ocr2keepers.Trigger{
 				Extension: map[string]interface{}{
 					"txHash": "your-tx-hash",
@@ -58,6 +60,7 @@ func TestLogEventCoordinator(t *testing.T) {
 		assert.True(t, result, "expected true for log event-based upkeep")
 
 		upkeep_false := ocr2keepers.ReportedUpkeep{
+			WorkID: "work-id",
 			Trigger: ocr2keepers.Trigger{
 				Extension: "invalid",
 			},
@@ -87,7 +90,8 @@ func TestLogEventCoordinator(t *testing.T) {
 	t.Run("Perform Event", func(t *testing.T) {
 		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
 		evt := ocr2keepers.TransmitEvent{
-			ID: "your-event-id",
+			ID:     "your-event-id",
+			WorkID: "your-event-id",
 		}
 
 		rc.performEvent(evt)
@@ -103,9 +107,9 @@ func TestLogEventCoordinator(t *testing.T) {
 
 		// Define some example payloads
 		payloads := []ocr2keepers.UpkeepPayload{
-			{ID: "payload1"},
-			{ID: "payload2"},
-			{ID: "payload3"},
+			{ID: "payload1", WorkID: "payload1"},
+			{ID: "payload2", WorkID: "payload2"},
+			{ID: "payload3", WorkID: "payload3"},
 		}
 
 		// Call the PreProcess git st
@@ -114,8 +118,8 @@ func TestLogEventCoordinator(t *testing.T) {
 
 		// Assert that only payload2 and payload3 are included in the filteredPayloads slice
 		expectedPayloads := []ocr2keepers.UpkeepPayload{
-			{ID: "payload2"},
-			{ID: "payload3"},
+			{ID: "payload2", WorkID: "payload2"},
+			{ID: "payload3", WorkID: "payload3"},
 		}
 		assert.Equal(t, expectedPayloads, filteredPayloads, "filteredPayloads should match the expected payloads")
 	})

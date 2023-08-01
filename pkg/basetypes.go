@@ -59,8 +59,10 @@ type TransmitEvent struct {
 	Confirmations int64
 	// TransactionHash is the hash for the transaction where the event originated
 	TransactionHash string
-	// ID uniquely identifies the upkeep/trigger that created this perform log
+	// ID uniquely identifies unit of work attempt that created this perform log
 	ID string
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// UpkeepID uniquely identifies the upkeep in the registry
 	UpkeepID UpkeepIdentifier
 	// CheckBlock is the block value that the upkeep was originally checked at
@@ -182,12 +184,13 @@ func ValidateConfiguredUpkeep(u ConfiguredUpkeep) error {
 }
 
 type UpkeepPayload struct {
-	// ID uniquely identifies the upkeep payload
+	// ID uniquely identifies the upkeep payload and tracks attempts for the
+	// unit of work
 	ID string
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// Upkeep is all the information that identifies the upkeep
 	Upkeep ConfiguredUpkeep
-	// CheckBlock: Deprecated
-	CheckBlock BlockKey
 	// CheckData is the data used to check the upkeep
 	CheckData []byte
 	// Trigger is the event that triggered the upkeep to be checked
@@ -201,9 +204,8 @@ func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, che
 			Type:   tp,
 			Config: struct{}{}, // empty struct by default
 		},
-		CheckBlock: block,
-		Trigger:    trigger,
-		CheckData:  checkData,
+		Trigger:   trigger,
+		CheckData: checkData,
 	}
 	p.ID = p.GenerateID()
 	return p
@@ -308,6 +310,8 @@ type CoordinatedProposal struct {
 type ReportedUpkeep struct {
 	// ID uniquely identifies the upkeep in the report
 	ID string
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// UpkeepID is the value that identifies a configured upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger data for the upkeep
