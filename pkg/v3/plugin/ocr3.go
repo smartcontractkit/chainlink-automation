@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -23,11 +24,13 @@ const (
 
 type AutomationReportInfo struct{}
 
+//go:generate mockery --name Encoder --structname MockEncoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename encoder.generated.go
 type Encoder interface {
 	Encode(...ocr2keepers.CheckResult) ([]byte, error)
 	Extract([]byte) ([]ocr2keepers.ReportedUpkeep, error)
 }
 
+//go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename coordinator.generated.go
 type Coordinator interface {
 	Accept(ocr2keepers.ReportedUpkeep) error
 	IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep) bool
@@ -173,6 +176,14 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		err     error
 	)
 
+	if plugin.Config.MaxUpkeepBatchSize <= 0 {
+		return nil, fmt.Errorf("invalid max upkeep batch size: %d", plugin.Config.MaxUpkeepBatchSize)
+	}
+
+	if plugin.Config.GasLimitPerReport == 0 {
+		return nil, fmt.Errorf("invalid gas limit per report: %d", plugin.Config.GasLimitPerReport)
+	}
+
 	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw); err != nil {
 		return nil, err
 	}
@@ -182,26 +193,28 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		return nil, err
 	}
 
-	plugin.Logger.Printf("creating report from outcome with %d results", len(outcome.Performable))
+	plugin.Logger.Printf("creating report from outcome with %d results; max batch size: %d; report gas limit %d", len(outcome.Performable), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
 
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
 
 	for i, result := range outcome.Performable {
-		if gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) || len(toPerform) > plugin.Config.MaxUpkeepBatchSize {
-			// encode current collection
-			encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
-			err = errors.Join(err, encodeErr)
+		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize || gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) {
+			if len(toPerform) > 0 {
+				// encode current collection
+				encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
+				err = errors.Join(err, encodeErr)
 
-			if encodeErr == nil {
-				// add encoded data to reports
-				reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
-					Report: types.Report(encoded),
-				})
+				if encodeErr == nil {
+					// add encoded data to reports
+					reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
+						Report: types.Report(encoded),
+					})
 
-				// reset collection
-				toPerform = []ocr2keepers.CheckResult{}
-				gasUsed = 0
+					// reset collection
+					toPerform = []ocr2keepers.CheckResult{}
+					gasUsed = 0
+				}
 			}
 		}
 
@@ -210,7 +223,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	}
 
 	// if there are still values to add
-	if len(toPerform) > 0 {
+	if len(toPerform) > 0 && gasUsed <= uint64(plugin.Config.GasLimitPerReport) {
 		// encode current collection
 		encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
 		err = errors.Join(err, encodeErr)
