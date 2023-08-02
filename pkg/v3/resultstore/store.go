@@ -197,6 +197,7 @@ func (s *resultStore) gc() {
 	}
 }
 
+// TODO: Do not need notify anymore
 // notify writes to the notifications channel.
 // NOTE: we drop notifications in case the channel is full
 func (s *resultStore) notify(op ocr2keepersv3.NotifyOp, data ocr2keepers.CheckResult) {

@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
+// Should be same as normal observer, just without the ticker
 func newRetryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,

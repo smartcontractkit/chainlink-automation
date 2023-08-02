@@ -33,9 +33,10 @@ func ValidateObservationMetadataKey(key ObservationMetadataKey) error {
 
 // AutomationObservation models the proposed actionable decisions made by a single node
 type AutomationObservation struct {
-	Instructions []instructions.Instruction
-	Metadata     map[ObservationMetadataKey]interface{}
-	Performable  []ocr2keepers.CheckResult
+	BlockHistory               ocr2keepers.BlockHistory
+	ProposedConditionalSamples []ocr2keepers.UpkeepIdentifier
+	ProposedRecoveryLogs       []ocr2keepers.Trigger
+	Performable                []ocr2keepers.CheckResult
 }
 
 func (observation AutomationObservation) Encode() ([]byte, error) {
@@ -43,6 +44,7 @@ func (observation AutomationObservation) Encode() ([]byte, error) {
 }
 
 func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
+	// TODO: simple decode instead of nested structs
 	type raw struct {
 		Instructions []instructions.Instruction
 		Metadata     map[string]json.RawMessage
@@ -81,6 +83,9 @@ func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
 }
 
 func ValidateAutomationObservation(o AutomationObservation) error {
+	// TODO: add proper validation
+	// All values are in range
+	// Number of results are witin limits
 	for _, in := range o.Instructions {
 		if err := instructions.Validate(in); err != nil {
 			return err

@@ -83,43 +83,9 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 		return nil
 	}
 
-	// get latest coordinated block
-	// by checking latest outcome first and then looping through the history
-	block, err := outcome.LatestCoordinatedBlock()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
-			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {
-			return err
-		}
-	}
+	// TODO: Needs to go into coordinated conditional ticker
 
-	// limit timeout to get all proposal data
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// merge block number and recoverables
-	for _, sample := range samples {
-		proposal := ocr2keepers.CoordinatedProposal{
-			UpkeepID: sample,
-			Block:    block,
-		}
-
-		payload, err := flow.builder.BuildPayload(ctx, proposal)
-		if err != nil {
-			flow.logger.Printf("error encountered when building payload")
-
-			continue
-		}
-
-		// pass to recoverer
-		if err := flow.final.Retry(ocr2keepers.CheckResult{
-			Payload: payload,
-		}); err != nil {
-			continue
-		}
-	}
-
-	// reset samples in metadata
+	// TODO: Needs to be a different API to remove particular results
 	flow.mStore.Set(store.ProposalSampleMetadata, []ocr2keepers.UpkeepIdentifier{})
 
 	return nil
@@ -155,6 +121,7 @@ func newSampleProposalFlow(
 	)
 }
 
+// Needs to be part of different flow
 func newFinalConditionalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,

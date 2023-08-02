@@ -73,9 +73,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 	}
 
 	// Create new AutomationObservation
-	observation := ocr2keepersv3.AutomationObservation{
-		Metadata: make(map[ocr2keepersv3.ObservationMetadataKey]interface{}),
-	}
+	observation := ocr2keepersv3.AutomationObservation{}
 
 	// Execute build hooks
 	plugin.Logger.Printf("running build hooks")
@@ -106,11 +104,6 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	p := newPerformables(len(attributedObservations) / 2)
-	c := newCoordinateBlock(len(attributedObservations) / 2)
-	s := newSamples(OutcomeSamplesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	r := newRecoverables(len(attributedObservations) / 2)
-
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
@@ -125,44 +118,16 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			// the observation and move to the next one
 			continue
 		}
-
-		p.add(observation)
-		c.add(observation)
-		s.add(observation)
-		r.add(observation)
 	}
 
-	outcome := ocr2keepersv3.AutomationOutcome{
-		BasicOutcome: ocr2keepersv3.BasicOutcome{
-			Metadata: make(map[ocr2keepersv3.OutcomeMetadataKey]interface{}),
-		},
-	}
-
-	p.set(&outcome)
-	c.set(&outcome)
-	s.set(&outcome)
-	r.set(&outcome)
-
-	var previous *ocr2keepersv3.AutomationOutcome
-	if outctx.SeqNr != 1 {
-		prev, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
-		if err != nil {
-			return nil, err
-		}
-
-		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(prev); err != nil {
-			return nil, err
-		}
-
-		previous = &prev
-	}
-
-	// set the latest value in the history
-	UpdateHistory(previous, &outcome, OutcomeHistoryLimit)
+	outcome := ocr2keepersv3.AutomationOutcome{}
+	// TODO: get coordinated block from block history as the latest block which has majority agreeing
+	// Collect ProposedConditionalSamples from all observations, filter from existing acceptedConditionals
+	// and append array to acceptedConditionals, remove last array if it is over OutcomeHistoryLimit
+	// Similar for ProposedLogRecovery
+	// Add finalised results which have f+1 agreement
 
 	plugin.Logger.Printf("returning outcome with %d results", len(outcome.Performable))
-
 	return outcome.Encode()
 }
 
@@ -263,6 +228,7 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr 
 	plugin.Logger.Printf("%d upkeeps found in report for should transmit for sequence number %d", len(upkeeps), seqNr)
 
 	for _, upkeep := range upkeeps {
+		// TODO: Change to check IsTransmissionPending
 		// if any upkeep in the report does not have confirmations from all coordinators, attempt again
 		allConfirmationsFalse := true
 		for _, coord := range plugin.Coordinators {

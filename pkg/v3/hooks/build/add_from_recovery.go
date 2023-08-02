@@ -15,24 +15,10 @@ func NewAddFromRecoveryHook(ms *store.Metadata) *addFromRecoveryHook {
 }
 
 func (h *addFromRecoveryHook) RunHook(obs *ocr2keepersv3.AutomationObservation) error {
-	cache, err := store.RecoveryProposalCacheFromMetadata(h.metadata)
-	if err != nil {
-		return err
-	}
-
-	proposals := make([]ocr2keepers.CoordinatedProposal, 0)
-	for _, key := range cache.Keys() {
-		v, ok := cache.Get(key)
-		if !ok {
-			cache.Delete(key)
-
-			continue
-		}
-
-		proposals = append(proposals, v)
-	}
-
-	obs.Metadata[ocr2keepersv3.RecoveryProposalObservationKey] = proposals
+	// TODO: Need to pass limit here
+	proposals := make([]ocr2keepers.Trigger, 0)
+	// TODO: Fetch from instruction store and create proposals
+	obs.ProposedRecoveryLogs = proposals
 
 	return nil
 }

@@ -232,6 +232,8 @@ type Trigger struct {
 	BlockNumber int64
 	// BlockHash is the block hash of the corresponding block
 	BlockHash string
+	// TODO: Improve this and other types to be more concrete so it can be easily decoded/encoded into bytes
+	// without losing information and prevent errors when typecasting to type
 	// Extension is the extensions' data that can differ between triggers.
 	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extension to be a map with all keys and values in string format
 	Extension interface{}
@@ -302,7 +304,6 @@ func (t Trigger) String() string {
 type CoordinatedProposal struct {
 	UpkeepID UpkeepIdentifier
 	Trigger  Trigger
-	Block    BlockKey
 }
 
 type ReportedUpkeep struct {

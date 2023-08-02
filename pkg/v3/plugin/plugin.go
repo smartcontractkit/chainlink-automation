@@ -116,16 +116,15 @@ func newPlugin(
 	plugin := &ocr3Plugin{
 		ConfigDigest: digest,
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
-			ltFlow.ProcessOutcome,
-			cFlow.ProcessOutcome,
+			ltFlow.ProcessOutcome, // TODO: Recovery finalization flow
+			cFlow.ProcessOutcome,  // TODO: Conditional coordination flow
 			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
-			prebuild.NewCoordinateBlockHook(is, ms).RunHook,
 		},
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
-			build.NewAddFromStaging(rs, logger).RunHook,
-			build.NewCoordinateBlockHook(is, ms).RunHook,
-			build.NewAddFromRecoveryHook(ms).RunHook,
-			build.NewAddFromSamplesHook(ms).RunHook,
+			build.NewAddFromStaging(rs, logger).RunHook, // TODO: rename to AddPerformableResults
+			build.NewBlockHistoryHook(ms).RunHook,
+			build.NewAddFromRecoveryHook(ms).RunHook, // TODO: rename to AddLogRecoveryProposals
+			build.NewAddFromSamplesHook(ms).RunHook,  // TODO: rename to AddConditionalSampleProposals
 		},
 		ReportEncoder: encoder,
 		Coordinators:  []Coordinator{coord},

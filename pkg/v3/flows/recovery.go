@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 )
 
+// TODO: Change to recovery proposal and recovery finalization flows
 func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,

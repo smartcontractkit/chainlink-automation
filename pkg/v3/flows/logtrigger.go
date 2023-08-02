@@ -2,7 +2,6 @@ package flows
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -145,55 +144,27 @@ func NewLogTriggerEligibility(
 
 // ProcessOutcome functions as an observation pre-build hook to allow data from
 // outcomes to feed inputs in the eligibility flow
+// TODO: Needs to be part of log trigger finalization flow
 func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	networkProposals, err := outcome.RecoveryProposals()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
-			return err
-		}
-
-		flow.logger.Printf("%s", err)
-
+	recoveryProposals := outcome.AcceptedLogRecoveryProposals
+	if len(recoveryProposals) == 0 {
 		return nil
-	}
-
-	if len(networkProposals) == 0 {
-		return nil
-	}
-
-	// get latest coordinated block
-	// by checking latest outcome first and then looping through the history
-	block, err := outcome.LatestCoordinatedBlock()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
-			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {
-			return err
-		}
-	}
-
-	cachedProposals, err := store.RecoveryProposalCacheFromMetadata(flow.mStore)
-	if err != nil {
-		return err
 	}
 
 	// limit timeout to get all proposal data
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	for _, proposalHistory := range recoveryProposals {
+		for _, proposal := range proposalHistory {
 
-	// merge block number and recoverables
-	for _, proposal := range networkProposals {
-		proposal.Block = block
-
-		// remove from local metadata store
-		cachedProposals.Delete(fmt.Sprintf("%v", proposal))
-
+		// TODO: Keep an in-mem cache here to not process the same proposal again
 		payload, err := flow.builder.BuildPayload(ctx, proposal)
 		if err != nil {
 			flow.logger.Printf("error encountered when building payload")
-
 			continue
 		}
 
 		// pass to recoverer
+		// TODO: Needs to directly go into recoverer without any scheduling
 		if err := flow.recoverer.Retry(ocr2keepers.CheckResult{
 			Payload: payload,
 		}); err != nil {
@@ -201,13 +172,10 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 		}
 	}
 
-	cachedProposals.ClearExpired()
-
-	cancel()
-
 	return nil
 }
 
+// Needs to be part of retry flow. A lot of tickers can be simplified
 type Scheduler[T any] interface {
 	Schedule(string, T) error
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 )
 
 type OutcomeMetadataKey string
@@ -28,85 +27,29 @@ func ValidateOutcomeMetadataKey(key OutcomeMetadataKey) error {
 // DecodeAutomationOutcome decodes an AutomationOutcome from an encoded array
 // of bytes. Possible errors come from the encoding/json package
 func DecodeAutomationOutcome(data []byte) (AutomationOutcome, error) {
-	type raw struct {
-		Instructions []instructions.Instruction
-		History      []BasicOutcome
-		NextIdx      int
-	}
-
-	var (
-		outcome         AutomationOutcome
-		rawOutcome      raw
-		rawBasicOutcome BasicOutcome
-	)
-
-	if err := json.Unmarshal(data, &rawOutcome); err != nil {
-		return outcome, err
-	}
-
-	if err := json.Unmarshal(data, &rawBasicOutcome); err != nil {
-		return outcome, err
-	}
-
-	return AutomationOutcome{
-		BasicOutcome: BasicOutcome{
-			Metadata:    rawBasicOutcome.Metadata,
-			Performable: rawBasicOutcome.Performable,
-		},
-		Instructions: rawOutcome.Instructions,
-		History:      rawOutcome.History,
-		NextIdx:      rawOutcome.NextIdx,
-	}, nil
+	var outcome AutomationOutcome
+	err := json.Unmarshal(data, &outcome)
+	return outcome, err
 }
 
 // ValidateAutomationOutcome validates individual values in an AutomationOutcome
 func ValidateAutomationOutcome(o AutomationOutcome) error {
-	for _, in := range o.Instructions {
-		if err := instructions.Validate(in); err != nil {
-			return err
-		}
-	}
-
-	for key := range o.Metadata {
-		if err := ValidateOutcomeMetadataKey(key); err != nil {
-			return err
-		}
-	}
-
+	// TODO: Validate samples and log recovery proposals
 	for _, res := range o.Performable {
 		if err := ocr2keepers.ValidateCheckResult(res); err != nil {
 			return err
 		}
 	}
-
-	if o.NextIdx > len(o.History) {
-		return fmt.Errorf("invalid ring buffer index: %d for history length %d", o.NextIdx, len(o.History))
-	}
-
-	for _, h := range o.History {
-		for key := range h.Metadata {
-			if err := ValidateOutcomeMetadataKey(key); err != nil {
-				return err
-			}
-		}
-
-		for _, res := range h.Performable {
-			if err := ocr2keepers.ValidateCheckResult(res); err != nil {
-				return err
-			}
-		}
-	}
-
 	return nil
 }
 
 // AutomationOutcome represents decisions proposed by a single node based on
 // observations
 type AutomationOutcome struct {
-	BasicOutcome
-	Instructions []instructions.Instruction
-	History      []BasicOutcome
-	NextIdx      int
+	// TODO: This needs to be a different struct with only information needed for report generation
+	Performable                  []ocr2keepers.CheckResult
+	AcceptedSamples              [][]ocr2keepers.CoordinatedProposal
+	AcceptedLogRecoveryProposals [][]ocr2keepers.CoordinatedProposal
 }
 
 // Encode produces a json encoded array of bytes. Possible errors come from the

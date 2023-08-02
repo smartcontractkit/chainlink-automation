@@ -134,6 +134,7 @@ func (rc *conditionalReportCoordinator) Accept(key ocr2keepers.ReportedUpkeep) e
 	return nil
 }
 
+// TODO: Change this to IsTransmissionPending as a better API
 // IsTransmissionConfirmed returns whether the upkeep was successfully
 // completed or not
 func (rc *conditionalReportCoordinator) IsTransmissionConfirmed(key ocr2keepers.UpkeepPayload) bool {
@@ -192,6 +193,7 @@ func (rc *conditionalReportCoordinator) checkEvents(ctx context.Context) error {
 		}
 
 		if confirmed, ok := rc.activeKeys.Get(string(evt.UpkeepID)); ok {
+			// TODO: This all logic can be removed
 			if confirmed {
 				// This can happen if we get a stale log for the same key again on a newer block or in case
 				// the key was unblocked due to a performLog which later got reorged into a stale log
@@ -227,6 +229,8 @@ type idBlocker struct {
 	CheckBlockNumber    ocr2keepers.BlockKey
 	TransmitBlockNumber ocr2keepers.BlockKey
 }
+
+// TODO: we do not need all of this logic anymore. Can have very simple implementation
 
 // idBlock should only be updated if checkBlockNumber is set higher
 // or checkBlockNumber is the same and transmitBlockNumber is higher

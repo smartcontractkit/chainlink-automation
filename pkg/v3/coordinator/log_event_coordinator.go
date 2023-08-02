@@ -64,6 +64,7 @@ func (rc *reportCoordinator) isLogEventUpkeep(upkeep ocr2keepers.ReportedUpkeep)
 }
 
 func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
+	// TODO: Should not be an error here
 	if !rc.isLogEventUpkeep(upkeep) {
 		return fmt.Errorf("Upkeep is not log event based, skipping ID: %s", upkeep.ID)
 	}
@@ -145,6 +146,7 @@ func (rc *reportCoordinator) run() {
 		case <-timer.C:
 			startTime := time.Now()
 
+			// TODO: transmit event provider?
 			if err := rc.checkEvents(context.Background()); err != nil {
 				rc.logger.Printf("failed to check perform and stale report logs: %s", err)
 			}
