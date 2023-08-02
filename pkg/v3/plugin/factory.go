@@ -114,6 +114,7 @@ func (factory *pluginFactory) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3t
 		factory.runnable,
 		factory.runnerConf,
 		conf,
+		c.F,
 		factory.logger,
 	)
 	if err != nil {
