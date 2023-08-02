@@ -47,24 +47,8 @@ func NewReportCoordinator(logs EventProvider, conf config.OffchainConfig, logger
 	}
 }
 
-func (rc *reportCoordinator) isLogEventUpkeep(upkeep ocr2keepers.ReportedUpkeep) bool {
-	// Checking if Extension is a map
-	extension, ok := upkeep.Trigger.Extension.(map[string]interface{})
-	if !ok {
-		return false
-	}
-
-	// Checking if "txHash" exists and is a string
-	if _, ok := extension["txHash"].(string); !ok {
-		return false
-	}
-
-	// Return true if all checks pass
-	return true
-}
-
 func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
-	if !rc.isLogEventUpkeep(upkeep) {
+	if getUpkeepType(upkeep.UpkeepID) != logTrigger {
 		return fmt.Errorf("Upkeep is not log event based, skipping ID: %s", upkeep.ID)
 	}
 
