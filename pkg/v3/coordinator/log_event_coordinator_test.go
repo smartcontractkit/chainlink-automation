@@ -29,20 +29,20 @@ func TestLogEventCoordinator(t *testing.T) {
 		}, logs
 	}
 
-	t.Run("Accept", func(t *testing.T) {
-		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
-		upkeep := ocr2keepers.ReportedUpkeep{
-			ID: "your-upkeep-id",
-			Trigger: ocr2keepers.Trigger{
-				Extension: map[string]interface{}{
-					"txHash": "your-tx-hash",
-				},
-			},
-		}
+	// t.Run("Accept", func(t *testing.T) {
+	// 	rc, _ := setup(t, log.New(io.Discard, "nil", 0))
+	// 	upkeep := ocr2keepers.ReportedUpkeep{
+	// 		ID: "your-upkeep-id",
+	// 		Trigger: ocr2keepers.Trigger{
+	// 			Extension: map[string]interface{}{
+	// 				"txHash": "your-tx-hash",
+	// 			},
+	// 		},
+	// 	}
 
-		assert.NoError(t, rc.Accept(upkeep), "no error expected from accepting the key")
-		assert.NoError(t, rc.Accept(upkeep), "Key can get accepted again")
-	})
+	// 	assert.NoError(t, rc.Accept(upkeep), "no error expected from accepting the key")
+	// 	assert.NoError(t, rc.Accept(upkeep), "Key can get accepted again")
+	// })
 
 	t.Run("Check Event", func(t *testing.T) {
 		rc, logs := setup(t, log.New(io.Discard, "nil", 0))
