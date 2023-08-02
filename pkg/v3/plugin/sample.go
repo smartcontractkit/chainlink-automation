@@ -1,7 +1,9 @@
 package plugin
 
 import (
+	"log"
 	"math/rand"
+	"strings"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -12,13 +14,15 @@ type samples struct {
 	limit        int
 	allValues    []ocr2keepers.UpkeepIdentifier
 	randomSource [16]byte
+	logger       *log.Logger
 }
 
-func newSamples(limit int, rSrc [16]byte) *samples {
+func newSamples(limit int, rSrc [16]byte, logger *log.Logger) *samples {
 	return &samples{
 		limit:        limit,
 		allValues:    []ocr2keepers.UpkeepIdentifier{},
 		randomSource: rSrc,
+		logger:       logger,
 	}
 }
 
@@ -42,6 +46,13 @@ func (s *samples) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	if len(final) > s.limit {
 		final = final[:s.limit]
 	}
+
+	printed := []string{}
+	for _, id := range final {
+		printed = append(printed, string(id))
+	}
+
+	s.logger.Printf("%d samples agreed on: '%s'", len(final), strings.Join(printed, "','"))
 
 	outcome.Metadata[ocr2keepersv3.CoordinatedSamplesProposalKey] = final
 }
