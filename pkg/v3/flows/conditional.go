@@ -44,11 +44,9 @@ func NewConditionalEligibility(
 	rs ResultStore,
 	ms MetadataStore,
 	rn Runner,
+	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
-	// TODO: add coordinator to preprocessor list
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{}
-
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
 	svc0, point := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, logger)
 

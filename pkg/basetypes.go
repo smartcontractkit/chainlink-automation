@@ -192,6 +192,8 @@ type UpkeepPayload struct {
 	CheckData []byte
 	// Trigger is the event that triggered the upkeep to be checked
 	Trigger Trigger
+	// MercuryLookup a flag that determines if a mercury lookup should be performed
+	MercuryLookup bool
 }
 
 func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload {
@@ -207,6 +209,10 @@ func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, che
 	}
 	p.ID = p.GenerateID()
 	return p
+}
+
+func (p *UpkeepPayload) EnableMercuryLookup() {
+	p.MercuryLookup = true
 }
 
 func ValidateUpkeepPayload(p UpkeepPayload) error {

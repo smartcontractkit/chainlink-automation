@@ -17,6 +17,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/prebuild"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
@@ -96,10 +97,17 @@ func newPlugin(
 		},
 	)
 
+	mercuryLookupPreprocessor := preprocessors.NewMercuryPreprocessor(conf.MercuryLookup)
+
+	// TODO: add coordinator to preprocessor list
+	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{
+		mercuryLookupPreprocessor,
+	}
+
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
 
-	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
+	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, preprocessors, logger)
 	if err != nil {
 		return nil, err
 	}
