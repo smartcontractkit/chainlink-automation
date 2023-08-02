@@ -89,13 +89,13 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 
 	added := 0
 	for _, r := range results {
-		id := r.Payload.ID
+		id := r.Payload.WorkID
 		_, ok := s.data[id]
 		if !ok {
 			added++
 			s.data[id] = result{data: r, addedAt: time.Now()}
 
-			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", string(r.Payload.Upkeep.ID), r.Payload.ID)
+			s.lggr.Printf("result added for upkeep id '%s', trigger '%s', and work id '%s'", string(r.Payload.Upkeep.ID), r.Payload.ID, r.Payload.WorkID)
 		}
 		// if the element is already exists, we do noting
 	}
