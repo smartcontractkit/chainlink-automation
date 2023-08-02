@@ -41,6 +41,8 @@ func newPlugin(
 	f int,
 	logger *log.Logger,
 ) (ocr3types.OCR3Plugin[AutomationReportInfo], error) {
+	var cmp coordinator.BlockComparer
+
 	blockTicker, err := tickers.NewBlockTicker(blockSource)
 	if err != nil {
 		return nil, err
@@ -69,11 +71,12 @@ func newPlugin(
 	}
 
 	// create the event coordinator
-	coord := coordinator.NewReportCoordinator(events, conf, logger)
+	logCoord := coordinator.NewReportCoordinator(events, conf, logger)
+	conCoord := coordinator.NewConditionalReportCoordinator(events, conf, cmp, logger)
 
 	// initialize the log trigger eligibility flow
 	ltFlow, svcs := flows.NewLogTriggerEligibility(
-		coord,
+		logCoord,
 		rs,
 		ms,
 		rn,
@@ -97,9 +100,19 @@ func newPlugin(
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
+	allSvcs := append(svcs, []service.Recoverable{rs, ms, logCoord, conCoord, rn, blockTicker}...)
 
-	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
+	cFlow, svcs, err := flows.NewConditionalEligibility(
+		conCoord,
+		ratio,
+		getter,
+		blockSource,
+		builder,
+		rs,
+		ms,
+		rn,
+		logger,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +142,7 @@ func newPlugin(
 			build.NewAddFromSamplesHook(ms).RunHook,
 		},
 		ReportEncoder: encoder,
-		Coordinators:  []Coordinator{coord},
+		Coordinators:  []Coordinator{logCoord, conCoord},
 		Services:      recoverSvcs,
 		Config:        conf,
 		F:             f,

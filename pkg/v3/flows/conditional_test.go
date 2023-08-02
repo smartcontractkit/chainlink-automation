@@ -17,6 +17,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestNewConditionalEligibility(t *testing.T) {
+
+}
+
 func TestNewSampleProposalFlow(t *testing.T) {
 	r := new(mocks.MockRatio)
 	pp := new(mockedPreprocessor)

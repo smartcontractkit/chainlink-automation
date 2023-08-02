@@ -32,6 +32,7 @@ import (
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 )
 
@@ -42,8 +43,8 @@ var (
 	cadence               = time.Second
 )
 
-//go:generate mockery --name Encoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename encoder.generated.go
-type Encoder interface {
+//go:generate mockery --name BlockComparer --structname MockBlockComparer --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator" --case underscore --filename blockcomparer.generated.go
+type BlockComparer interface {
 	// After a is after b
 	After(ocr2keepers.BlockKey, ocr2keepers.BlockKey) (bool, error)
 	// Increment
@@ -52,10 +53,9 @@ type Encoder interface {
 
 type conditionalReportCoordinator struct {
 	// injected dependencies
-	logger *log.Logger
-	events EventProvider
-
-	encoder Encoder
+	logger  *log.Logger
+	events  EventProvider
+	encoder BlockComparer
 
 	// initialised by the constructor
 	idBlocks       *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
@@ -76,14 +76,14 @@ type conditionalReportCoordinator struct {
 // should be started before use.
 func NewConditionalReportCoordinator(
 	events EventProvider,
-	minConfs int,
+	conf config.OffchainConfig,
+	encoder BlockComparer,
 	logger *log.Logger,
-	encoder Encoder,
 ) *conditionalReportCoordinator {
 	c := &conditionalReportCoordinator{
 		logger:         logger,
 		events:         events,
-		minConfs:       minConfs,
+		minConfs:       conf.MinConfirmations,
 		idBlocks:       util.NewCache[idBlocker](DefaultLockoutWindow),
 		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](DefaultCacheClean),
@@ -136,10 +136,10 @@ func (rc *conditionalReportCoordinator) Accept(key ocr2keepers.ReportedUpkeep) e
 
 // IsTransmissionConfirmed returns whether the upkeep was successfully
 // completed or not
-func (rc *conditionalReportCoordinator) IsTransmissionConfirmed(key ocr2keepers.UpkeepPayload) bool {
+func (rc *conditionalReportCoordinator) IsTransmissionConfirmed(key ocr2keepers.ReportedUpkeep) bool {
 	// key is confirmed if it both exists and has been confirmed by the log
 	// poller
-	confirmed, ok := rc.activeKeys.Get(string(key.Upkeep.ID))
+	confirmed, ok := rc.activeKeys.Get(string(key.UpkeepID))
 	return !ok || (ok && confirmed)
 }
 
@@ -235,7 +235,7 @@ type idBlocker struct {
 // For a sequence of updates, updateIdBlock can be called in any order
 // on different nodes, but by maintaining this invariant it results in
 // an eventually consistent value across nodes.
-func (b idBlocker) shouldUpdate(val idBlocker, e Encoder) (bool, error) {
+func (b idBlocker) shouldUpdate(val idBlocker, e BlockComparer) (bool, error) {
 	isAfter, err := e.After(val.CheckBlockNumber, b.CheckBlockNumber)
 	if err != nil {
 		return false, err
@@ -291,25 +291,37 @@ func (rc *conditionalReportCoordinator) updateIdBlock(key string, val idBlocker)
 }
 
 // Start starts all subprocesses
-func (rc *conditionalReportCoordinator) Start() {
-	if !rc.running.Load() {
-		go rc.run()
-		go rc.idCacheCleaner.Run(rc.idBlocks)
-		go rc.cacheCleaner.Run(rc.activeKeys)
-
-		rc.running.Swap(true)
+func (rc *conditionalReportCoordinator) Start(context.Context) error {
+	if rc.running.Load() {
+		return fmt.Errorf("process already running")
 	}
+
+	go rc.idCacheCleaner.Run(rc.idBlocks)
+	go rc.cacheCleaner.Run(rc.activeKeys)
+
+	rc.running.Store(true)
+	rc.run()
+
+	return nil
 }
 
 // Close terminates all subprocesses
 func (rc *conditionalReportCoordinator) Close() error {
-	if rc.running.Load() {
-		rc.chStop <- struct{}{}
-		rc.idCacheCleaner.Stop()
-		rc.cacheCleaner.Stop()
-		rc.running.Swap(false)
-		<-rc.chDone
+	if !rc.running.Load() {
+		return fmt.Errorf("process already stopped")
 	}
+
+	// stop the cache cleaners
+	rc.idCacheCleaner.Stop()
+	rc.cacheCleaner.Stop()
+
+	// send signal to stop main process
+	rc.chStop <- struct{}{}
+
+	// waiting on this channel for complete shutdown
+	<-rc.chDone
+
+	rc.running.Store(false)
 
 	return nil
 }

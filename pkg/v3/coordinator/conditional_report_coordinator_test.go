@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -39,21 +40,36 @@ func (e *mockEvents) Events(ctx context.Context) ([]ocr2keepers.TransmitEvent, e
 
 func TestNewConditionalReportCoordinator(t *testing.T) {
 	t.Run("a new report coordinator is created successfully", func(t *testing.T) {
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
 		events := &mockEvents{
 			EventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 				return []ocr2keepers.TransmitEvent{}, nil
 			},
 		}
 		encoder := &mockEncoder{}
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(io.Discard, "", 0), encoder)
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(io.Discard, "", 0))
 		assert.NotNil(t, coordinator)
 
 		t.Run("coordinator starts successfully", func(t *testing.T) {
-			coordinator.Start()
+			var wg sync.WaitGroup
+
+			wg.Add(1)
+			go func() {
+				assert.NoError(t, coordinator.Start(context.Background()))
+				wg.Done()
+			}()
+
+			time.Sleep(100 * time.Millisecond)
+
 			assert.True(t, coordinator.running.Load())
 
 			t.Run("coordinator stops successfully", func(t *testing.T) {
-				coordinator.Close()
+				assert.NoError(t, coordinator.Close())
+
+				wg.Wait()
+
 				assert.False(t, coordinator.running.Load())
 			})
 		})
@@ -68,6 +84,10 @@ func TestConditionalReportCoordinator_run(t *testing.T) {
 			cadence = oldCadence
 		}()
 
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
 		events := &mockEvents{
 			EventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 				time.Sleep(500 * time.Millisecond)
@@ -77,12 +97,22 @@ func TestConditionalReportCoordinator_run(t *testing.T) {
 		encoder := &mockEncoder{}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
-		coordinator.Start()
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, coordinator.Start(context.Background()))
+			wg.Done()
+		}()
 
 		time.Sleep(time.Second)
 
-		coordinator.Close()
+		assert.NoError(t, coordinator.Close())
+
+		wg.Wait()
+
 		assert.True(t, strings.Contains(buf.String(), "check database indexes and other performance improvements"))
 	})
 
@@ -101,13 +131,27 @@ func TestConditionalReportCoordinator_run(t *testing.T) {
 		}
 		encoder := &mockEncoder{}
 
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
-		coordinator.Start()
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, coordinator.Start(context.Background()))
+			wg.Done()
+		}()
 
 		time.Sleep(time.Second)
 
-		coordinator.Close()
+		assert.NoError(t, coordinator.Close())
+
+		wg.Wait()
+
 		assert.Equal(t, buf.String(), "")
 	})
 
@@ -126,13 +170,27 @@ func TestConditionalReportCoordinator_run(t *testing.T) {
 		}
 		encoder := &mockEncoder{}
 
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
-		coordinator.Start()
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			assert.NoError(t, coordinator.Start(context.Background()))
+			wg.Done()
+		}()
 
 		time.Sleep(time.Second)
 
-		coordinator.Close()
+		assert.NoError(t, coordinator.Close())
+
+		wg.Wait()
+
 		assert.True(t, strings.Contains(buf.String(), "failed to check"))
 	})
 }
@@ -142,7 +200,11 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{}
 
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(io.Discard, "", 0), encoder)
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(io.Discard, "", 0))
 		assert.NotNil(t, coordinator)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
@@ -162,7 +224,11 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 			},
 		}
 
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(io.Discard, "", 0), encoder)
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(io.Discard, "", 0))
 		assert.NotNil(t, coordinator)
 
 		coordinator.idBlocks.Set("123", idBlocker{
@@ -189,7 +255,11 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 			},
 		}
 
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(io.Discard, "", 0), encoder)
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(io.Discard, "", 0))
 		assert.NotNil(t, coordinator)
 
 		coordinator.idBlocks.Set("123", idBlocker{
@@ -216,7 +286,11 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 			},
 		}
 
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(io.Discard, "", 0), encoder)
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(io.Discard, "", 0))
 		assert.NotNil(t, coordinator)
 
 		coordinator.idBlocks.Set("123", idBlocker{
@@ -246,7 +320,12 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 		assert.NotNil(t, coordinator)
 
 		coordinator.updateIdBlock("abc", idBlocker{
@@ -269,7 +348,12 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 		assert.NotNil(t, coordinator)
 
 		blocker := idBlocker{
@@ -295,7 +379,12 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 		assert.NotNil(t, coordinator)
 
 		blocker := idBlocker{
@@ -316,13 +405,13 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		name      string
 		idBlocker idBlocker
 		val       idBlocker
-		encoder   Encoder
+		encoder   BlockComparer
 
 		wantRes bool
 		wantErr error
 	}{
 		{
-			name: "erroring encoder returns false",
+			name: "erroring block comparer returns false",
 			idBlocker: idBlocker{
 				CheckBlockNumber: "123",
 			},
@@ -357,7 +446,7 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "erroring encoder returns false",
+			name: "erroring block comparer returns false",
 			idBlocker: idBlocker{
 				CheckBlockNumber: "999",
 			},
@@ -479,7 +568,12 @@ func TestConditionalReportCoordinator_Accept(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 		assert.NotNil(t, coordinator)
 
 		err := coordinator.Accept(ocr2keepers.ReportedUpkeep{
@@ -514,16 +608,17 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 		assert.NotNil(t, coordinator)
 
-		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
-			ID: "123",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID:   ocr2keepers.UpkeepIdentifier("4"),
-				Type: 1,
-			},
-			CheckBlock: "500",
+		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep{
+			ID:       "123",
+			UpkeepID: ocr2keepers.UpkeepIdentifier("4"),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
@@ -541,18 +636,19 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 		assert.NotNil(t, coordinator)
 
 		coordinator.activeKeys.Set("4", true, config.DefaultCacheExpiration)
 
-		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
-			ID: "123",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID:   ocr2keepers.UpkeepIdentifier("4"),
-				Type: 1,
-			},
-			CheckBlock: "500",
+		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep{
+			ID:       "123",
+			UpkeepID: ocr2keepers.UpkeepIdentifier("4"),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
@@ -575,7 +671,12 @@ func TestConditionalReportCoordinator_PreProcess(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		coordinator := NewConditionalReportCoordinator(events, 1, log.New(&buf, "", 0), encoder)
+
+		conf := config.OffchainConfig{
+			MinConfirmations: 1,
+		}
+
+		coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 		assert.NotNil(t, coordinator)
 
 		coordinator.idBlocks.Set("123", idBlocker{
@@ -659,7 +760,12 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	coordinator := NewConditionalReportCoordinator(events, 2, log.New(&buf, "", 0), encoder)
+
+	conf := config.OffchainConfig{
+		MinConfirmations: 2,
+	}
+
+	coordinator := NewConditionalReportCoordinator(events, conf, encoder, log.New(&buf, "", 0))
 	assert.NotNil(t, coordinator)
 
 	coordinator.activeKeys.Set("10", false, config.DefaultCacheExpiration)

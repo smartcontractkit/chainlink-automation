@@ -35,8 +35,10 @@ type ConditionalEligibility struct {
 	logger  *log.Logger
 }
 
-// NewConditionalEligibility ...
+// NewConditionalEligibility creates a complete conditional trigger eligibility
+// flow and returns a slice of all services required to run the flow
 func NewConditionalEligibility(
+	coord PreProcessor,
 	ratio Ratio,
 	getter UpkeepProvider,
 	subscriber tickers.BlockSubscriber,
@@ -67,6 +69,7 @@ func NewConditionalEligibility(
 	}, []service.Recoverable{svc0, svc1}, err
 }
 
+// ProcessOutcome ...
 func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
 	samples, err := outcome.UpkeepIdentifiers()
 	if err != nil {
