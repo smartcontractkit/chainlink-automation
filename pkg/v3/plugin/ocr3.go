@@ -247,6 +247,8 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 }
 
 func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+	plugin.Logger.Printf("inside should accept for sequence number %d", seqNr)
+
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
