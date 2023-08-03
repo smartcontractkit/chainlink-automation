@@ -1,8 +1,6 @@
 package plugin
 
 import (
-	"io"
-	"log"
 	"testing"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
@@ -13,7 +11,7 @@ import (
 func TestSamples(t *testing.T) {
 	var src [16]byte
 
-	merger := newSamples(2, src, log.New(io.Discard, "", 0))
+	merger := newSamples(2, src)
 
 	observations := []ocr2keepersv3.AutomationObservation{
 		{
