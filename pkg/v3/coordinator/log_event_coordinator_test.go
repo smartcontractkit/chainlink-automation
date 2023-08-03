@@ -29,6 +29,7 @@ func TestLogEventCoordinator(t *testing.T) {
 		}, logs
 	}
 
+	// TODO (auto-4183 Finalize coordinator)
 	// t.Run("Accept", func(t *testing.T) {
 	// 	rc, _ := setup(t, log.New(io.Discard, "nil", 0))
 	// 	upkeep := ocr2keepers.ReportedUpkeep{

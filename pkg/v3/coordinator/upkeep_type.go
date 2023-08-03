@@ -1,5 +1,6 @@
 package coordinator
 
+// TODO: AUTO-4266: Find a better place for this
 import (
 	"math/big"
 
