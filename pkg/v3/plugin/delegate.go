@@ -217,5 +217,5 @@ type logWriter struct {
 func (l *logWriter) Write(p []byte) (n int, err error) {
 	l.l.Debug(string(p), nil)
 	n = len(p)
-	return
+	return n, nil
 }
