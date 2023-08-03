@@ -329,7 +329,8 @@ func mockItems(i, count int) []ocr2keepers.CheckResult {
 		items[j] = ocr2keepers.CheckResult{
 			Retryable: false,
 			Payload: ocr2keepers.UpkeepPayload{
-				ID: fmt.Sprintf("test-id-%d", i+j),
+				ID:     fmt.Sprintf("test-id-%d", i+j),
+				WorkID: fmt.Sprintf("test-id-%d", i+j),
 			},
 		}
 	}
