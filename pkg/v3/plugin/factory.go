@@ -114,6 +114,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		factory.runnable,
 		factory.runnerConf,
 		conf,
+		c.F,
 		factory.logger,
 	)
 	if err != nil {

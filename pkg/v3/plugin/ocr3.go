@@ -44,6 +44,7 @@ type ocr3Plugin struct {
 	Coordinators  []Coordinator
 	Services      []service.Recoverable
 	Config        config.OffchainConfig
+	F             int
 	Logger        *log.Logger
 }
 
@@ -109,10 +110,10 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	p := newPerformables(len(attributedObservations) / 2)
-	c := newCoordinateBlock(len(attributedObservations)/2, plugin.Logger)
-	s := newSamples(OutcomeSamplesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
-	r := newRecoverables(len(attributedObservations) / 2)
+	p := newPerformables(plugin.F + 1)
+	c := newCoordinateBlock(len(attributedObservations) / 2)
+	s := newSamples(OutcomeSamplesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	r := newRecoverables(plugin.F + 1)
 
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {

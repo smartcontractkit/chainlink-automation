@@ -38,6 +38,7 @@ func newPlugin(
 	runnable runner.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
+	f int,
 	logger *log.Logger,
 ) (ocr3types.ReportingPlugin[AutomationReportInfo], error) {
 	blockTicker, err := tickers.NewBlockTicker(blockSource)
@@ -131,6 +132,7 @@ func newPlugin(
 		Coordinators:  []Coordinator{coord},
 		Services:      recoverSvcs,
 		Config:        conf,
+		F:             f,
 		Logger:        log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 
