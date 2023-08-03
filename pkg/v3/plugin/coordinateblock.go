@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -14,15 +13,13 @@ type coordinateBlock struct {
 	threshold int
 	seen      map[heightHash]struct{}
 	recent    map[heightHash]int
-	logger    *log.Logger
 }
 
-func newCoordinateBlock(threshold int, logger *log.Logger) *coordinateBlock {
+func newCoordinateBlock(threshold int) *coordinateBlock {
 	return &coordinateBlock{
 		threshold: threshold,
 		seen:      make(map[heightHash]struct{}),
 		recent:    make(map[heightHash]int),
-		logger:    logger,
 	}
 }
 
@@ -89,8 +86,6 @@ func (p *coordinateBlock) set(outcome *ocr2keepersv3.AutomationOutcome) {
 			}
 		}
 	}
-
-	p.logger.Printf("nodes coordinated on block %d and hash %s", mostRecent.number, mostRecent.hash)
 
 	// TODO: use helper function for composing block key
 	outcome.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey] = fmt.Sprintf("%d%s%s", mostRecent.number, "|", mostRecent.hash)
