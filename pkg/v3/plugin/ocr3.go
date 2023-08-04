@@ -247,13 +247,14 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	return reports, nil
 }
 
-func (plugin *ocr3Plugin) ShouldAcceptFinalizedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+	plugin.Logger.Printf("inside should accept attested report for sequence number %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
 	}
 
-	plugin.Logger.Printf("%d upkeeps found in report for should accept for sequence number %d", len(upkeeps), seqNr)
+	plugin.Logger.Printf("%d upkeeps found in report for should accept attested for sequence number %d", len(upkeeps), seqNr)
 
 	for _, upkeep := range upkeeps {
 		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
@@ -304,10 +305,6 @@ func (plugin *ocr3Plugin) Close() error {
 	}
 
 	return err
-}
-
-func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(context.Context, uint64, ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
-	return true, nil
 }
 
 // this start function should not block

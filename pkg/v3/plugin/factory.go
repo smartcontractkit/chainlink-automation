@@ -57,7 +57,7 @@ func NewReportingPluginFactory(
 	runnerConf runner.RunnerConfig,
 	encoder Encoder,
 	logger *log.Logger,
-) ocr3types.OCR3PluginFactory[AutomationReportInfo] {
+) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
 	return &pluginFactory{
 		logProvider: logProvider,
 		events:      events,
@@ -72,10 +72,10 @@ func NewReportingPluginFactory(
 	}
 }
 
-func (factory *pluginFactory) NewOCR3Plugin(c ocr3types.OCR3PluginConfig) (ocr3types.OCR3Plugin[AutomationReportInfo], ocr3types.OCR3PluginInfo, error) {
-	info := ocr3types.OCR3PluginInfo{
+func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConfig) (ocr3types.ReportingPlugin[AutomationReportInfo], ocr3types.ReportingPluginInfo, error) {
+	info := ocr3types.ReportingPluginInfo{
 		Name: fmt.Sprintf("Oracle: %d: Automation Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
-		Limits: ocr3types.OCR3PluginLimits{
+		Limits: ocr3types.ReportingPluginLimits{
 			MaxQueryLength:       0,
 			MaxObservationLength: MaxObservationLength,
 			MaxOutcomeLength:     MaxObservationLength, // outcome length can be the same as observation length

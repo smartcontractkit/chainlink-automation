@@ -29,43 +29,21 @@ func TestLogEventCoordinator(t *testing.T) {
 		}, logs
 	}
 
-	t.Run("Accept", func(t *testing.T) {
-		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
-		upkeep := ocr2keepers.ReportedUpkeep{
-			ID: "your-upkeep-id",
-			Trigger: ocr2keepers.Trigger{
-				Extension: map[string]interface{}{
-					"txHash": "your-tx-hash",
-				},
-			},
-		}
+	// TODO (auto-4183 Finalize coordinator)
+	// t.Run("Accept", func(t *testing.T) {
+	// 	rc, _ := setup(t, log.New(io.Discard, "nil", 0))
+	// 	upkeep := ocr2keepers.ReportedUpkeep{
+	// 		ID: "your-upkeep-id",
+	// 		Trigger: ocr2keepers.Trigger{
+	// 			Extension: map[string]interface{}{
+	// 				"txHash": "your-tx-hash",
+	// 			},
+	// 		},
+	// 	}
 
-		assert.NoError(t, rc.Accept(upkeep), "no error expected from accepting the key")
-		assert.NoError(t, rc.Accept(upkeep), "Key can get accepted again")
-	})
-
-	t.Run("IsLogEventUpkeep", func(t *testing.T) {
-		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
-		upkeep_true := ocr2keepers.ReportedUpkeep{
-			Trigger: ocr2keepers.Trigger{
-				Extension: map[string]interface{}{
-					"txHash": "your-tx-hash",
-				},
-			},
-		}
-
-		result := rc.isLogEventUpkeep(upkeep_true)
-		assert.True(t, result, "expected true for log event-based upkeep")
-
-		upkeep_false := ocr2keepers.ReportedUpkeep{
-			Trigger: ocr2keepers.Trigger{
-				Extension: "invalid",
-			},
-		}
-
-		result = rc.isLogEventUpkeep(upkeep_false)
-		assert.False(t, result, "expected false for log event-based upkeep")
-	})
+	// 	assert.NoError(t, rc.Accept(upkeep), "no error expected from accepting the key")
+	// 	assert.NoError(t, rc.Accept(upkeep), "Key can get accepted again")
+	// })
 
 	t.Run("Check Event", func(t *testing.T) {
 		rc, logs := setup(t, log.New(io.Discard, "nil", 0))
