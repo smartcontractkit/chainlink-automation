@@ -53,8 +53,10 @@ func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeCon
 }
 
 func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
+	plugin.Logger.Printf("akshayag starting observation for seqNr %+v", outcome.SeqNr)
 	// first round outcome will be nil or empty so no processing should be done
 	if outcome.PreviousOutcome != nil || len(outcome.PreviousOutcome) != 0 {
+		plugin.Logger.Printf("akshay observation for seqNr %+v has previous outcome bytes %+v", outcome.SeqNr, outcome.PreviousOutcome)
 		// Decode the outcome to AutomationOutcome
 		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outcome.PreviousOutcome)
 		if err != nil {
