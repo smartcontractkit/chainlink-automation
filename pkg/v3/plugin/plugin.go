@@ -124,9 +124,9 @@ func newPlugin(
 		},
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
 			build.NewAddFromStaging(rs, logger).RunHook,
-			build.NewCoordinateBlockHook(is, ms).RunHook,
-			build.NewAddFromRecoveryHook(ms).RunHook,
-			build.NewAddFromSamplesHook(ms).RunHook,
+			//build.NewCoordinateBlockHook(is, ms).RunHook,
+			//build.NewAddFromRecoveryHook(ms).RunHook,
+			//build.NewAddFromSamplesHook(ms).RunHook,
 		},
 		ReportEncoder: encoder,
 		Coordinators:  []Coordinator{coord},
