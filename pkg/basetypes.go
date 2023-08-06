@@ -1,16 +1,20 @@
 package ocr2keepers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
-
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type UpkeepIdentifier []byte
+
+type UpkeepType uint8
+
+const (
+	ConditionTrigger UpkeepType = iota
+	LogTrigger
+)
 
 type BlockKey string
 
@@ -59,8 +63,10 @@ type TransmitEvent struct {
 	Confirmations int64
 	// TransactionHash is the hash for the transaction where the event originated
 	TransactionHash string
-	// ID uniquely identifies the upkeep/trigger that created this perform log
+	// TODO: auto-4245 remove this
 	ID string
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// UpkeepID uniquely identifies the upkeep in the registry
 	UpkeepID UpkeepIdentifier
 	// CheckBlock is the block value that the upkeep was originally checked at
@@ -182,8 +188,10 @@ func ValidateConfiguredUpkeep(u ConfiguredUpkeep) error {
 }
 
 type UpkeepPayload struct {
-	// ID uniquely identifies the upkeep payload
+	// TODO: auto-4245 remove this
 	ID string
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// Upkeep is all the information that identifies the upkeep
 	Upkeep ConfiguredUpkeep
 	// CheckBlock: Deprecated
@@ -194,20 +202,9 @@ type UpkeepPayload struct {
 	Trigger Trigger
 }
 
-func NewUpkeepPayload(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload {
-	p := UpkeepPayload{
-		Upkeep: ConfiguredUpkeep{
-			ID:     UpkeepIdentifier(uid.Bytes()),
-			Type:   tp,
-			Config: struct{}{}, // empty struct by default
-		},
-		CheckBlock: block,
-		Trigger:    trigger,
-		CheckData:  checkData,
-	}
-	p.ID = p.GenerateID()
-	return p
-}
+type UpkeepPayloadFactory func(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload
+type WorkIDFactory func() []byte
+type UpkeepTypeGetter func(uid UpkeepIdentifier) UpkeepType
 
 func ValidateUpkeepPayload(p UpkeepPayload) error {
 	if len(p.ID) == 0 {
@@ -219,12 +216,6 @@ func ValidateUpkeepPayload(p UpkeepPayload) error {
 	}
 
 	return ValidateTrigger(p.Trigger)
-}
-
-func (p UpkeepPayload) GenerateID() string {
-	id := fmt.Sprintf("%s:%s", p.Upkeep.ID, p.Trigger)
-	idh := crypto.Keccak256([]byte(id))
-	return hex.EncodeToString(idh[:])
 }
 
 type Trigger struct {
@@ -306,8 +297,10 @@ type CoordinatedProposal struct {
 }
 
 type ReportedUpkeep struct {
-	// ID uniquely identifies the upkeep in the report
+	// TODO: auto-4245 remove this
 	ID string
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// UpkeepID is the value that identifies a configured upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger data for the upkeep
