@@ -203,6 +203,8 @@ type UpkeepPayload struct {
 }
 
 type UpkeepPayloadFactory func(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload
+
+// TODO: Finalize the type
 type WorkIDFactory func() []byte
 type UpkeepTypeGetter func(uid UpkeepIdentifier) UpkeepType
 
