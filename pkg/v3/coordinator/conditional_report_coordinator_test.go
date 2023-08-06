@@ -523,7 +523,6 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 				ID:   ocr2keepers.UpkeepIdentifier("4"),
 				Type: 1,
 			},
-			CheckBlock: "500",
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
@@ -552,7 +551,6 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 				ID:   ocr2keepers.UpkeepIdentifier("4"),
 				Type: 1,
 			},
-			CheckBlock: "500",
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
