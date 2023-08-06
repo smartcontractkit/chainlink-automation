@@ -75,10 +75,8 @@ type DelegateConfig struct {
 	// UpkeepProvider ...
 	UpkeepProvider flows.UpkeepProvider
 
-	// Factories
-	UpkeepPayloadFactory ocr2keepers.UpkeepPayloadFactory
-	WorkIDFactory        ocr2keepers.WorkIDFactory
-	UpkeepTypeGetter     ocr2keepers.UpkeepTypeGetter
+	// Methods passed from core
+	UpkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is

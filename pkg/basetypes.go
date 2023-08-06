@@ -3,7 +3,6 @@ package ocr2keepers
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"strings"
 )
 
@@ -202,10 +201,6 @@ type UpkeepPayload struct {
 	Trigger Trigger
 }
 
-type UpkeepPayloadFactory func(uid *big.Int, tp int, block BlockKey, trigger Trigger, checkData []byte) UpkeepPayload
-
-// TODO: Finalize the type
-type WorkIDFactory func() []byte
 type UpkeepTypeGetter func(uid UpkeepIdentifier) UpkeepType
 
 func ValidateUpkeepPayload(p UpkeepPayload) error {
