@@ -23,8 +23,9 @@ type EventProvider interface {
 
 type reportCoordinator struct {
 	// injected dependencies
-	logger *log.Logger
-	events EventProvider
+	logger           *log.Logger
+	events           EventProvider
+	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 
 	// initialised by the constructor
 	activeKeys        *util.Cache[bool]
@@ -36,10 +37,11 @@ type reportCoordinator struct {
 	chStop  chan struct{}
 }
 
-func NewReportCoordinator(logs EventProvider, conf config.OffchainConfig, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(logs EventProvider, utg ocr2keepers.UpkeepTypeGetter, conf config.OffchainConfig, logger *log.Logger) *reportCoordinator {
 	return &reportCoordinator{
 		logger:            logger,
 		events:            logs,
+		upkeepTypeGetter:  utg,
 		activeKeys:        util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
 		activeKeysCleaner: util.NewIntervalCacheCleaner[bool](DefaultCacheClean),
 		minConfs:          conf.MinConfirmations,
@@ -48,7 +50,7 @@ func NewReportCoordinator(logs EventProvider, conf config.OffchainConfig, logger
 }
 
 func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
-	if getUpkeepType(upkeep.UpkeepID) != logTrigger {
+	if rc.upkeepTypeGetter(upkeep.UpkeepID) != ocr2keepers.LogTrigger {
 		return fmt.Errorf("Upkeep is not log event based, skipping ID: %s", upkeep.ID)
 	}
 
