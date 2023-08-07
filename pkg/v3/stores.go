@@ -1,8 +1,8 @@
 package ocr2keepers
 
 import (
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 // NotifyOp is an operation that can be notified by the ResultStore

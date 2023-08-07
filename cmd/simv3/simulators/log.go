@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func (ct *SimulatedContract) Events(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {

@@ -3,7 +3,7 @@ package simulators
 import (
 	"context"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func (ct *SimulatedContract) HeadTicker() chan ocr2keepers.BlockKey {

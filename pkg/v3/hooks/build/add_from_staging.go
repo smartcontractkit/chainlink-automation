@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 //go:generate mockery --name ResultViewer --structname MockResultViewer --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build" --case underscore --filename resultviewer.generated.go
