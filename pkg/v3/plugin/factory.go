@@ -9,6 +9,7 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
@@ -34,16 +35,17 @@ const (
 )
 
 type pluginFactory struct {
-	logProvider flows.LogEventProvider
-	events      coordinator.EventProvider
-	blocks      tickers.BlockSubscriber
-	rp          flows.RecoverableProvider
-	builder     flows.PayloadBuilder
-	getter      flows.UpkeepProvider
-	runnable    runner.Runnable
-	runnerConf  runner.RunnerConfig
-	encoder     Encoder
-	logger      *log.Logger
+	logProvider      flows.LogEventProvider
+	events           coordinator.EventProvider
+	blocks           tickers.BlockSubscriber
+	rp               flows.RecoverableProvider
+	builder          flows.PayloadBuilder
+	getter           flows.UpkeepProvider
+	runnable         runner.Runnable
+	runnerConf       runner.RunnerConfig
+	encoder          Encoder
+	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+	logger           *log.Logger
 }
 
 func NewReportingPluginFactory(
@@ -56,19 +58,21 @@ func NewReportingPluginFactory(
 	runnable runner.Runnable,
 	runnerConf runner.RunnerConfig,
 	encoder Encoder,
+	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
 	return &pluginFactory{
-		logProvider: logProvider,
-		events:      events,
-		blocks:      blocks,
-		rp:          rp,
-		builder:     builder,
-		getter:      getter,
-		runnable:    runnable,
-		runnerConf:  runnerConf,
-		encoder:     encoder,
-		logger:      logger,
+		logProvider:      logProvider,
+		events:           events,
+		blocks:           blocks,
+		rp:               rp,
+		builder:          builder,
+		getter:           getter,
+		runnable:         runnable,
+		runnerConf:       runnerConf,
+		encoder:          encoder,
+		upkeepTypeGetter: upkeepTypeGetter,
+		logger:           logger,
 	}
 }
 
@@ -111,6 +115,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		sample,
 		factory.getter,
 		factory.encoder,
+		factory.upkeepTypeGetter,
 		factory.runnable,
 		factory.runnerConf,
 		conf,

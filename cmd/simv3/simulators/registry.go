@@ -62,11 +62,7 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 		go func(i int, key ocr2keepers.UpkeepPayload, en plugin.Encoder) {
 			defer wg.Done()
 
-			block, ok := new(big.Int).SetString(string(key.CheckBlock), 10)
-			if !ok {
-				mErr = multierr.Append(mErr, fmt.Errorf("block in key not parsable as big int"))
-				return
-			}
+			block := new(big.Int).SetInt64(key.Trigger.BlockNumber)
 
 			up, ok := ct.upkeeps[string(key.Upkeep.ID)]
 			if !ok {
@@ -74,7 +70,6 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 				return
 			}
 
-			key.CheckBlock = ocr2keepers.BlockKey(block.String())
 			results[i] = ocr2keepers.CheckResult{
 				Eligible:     false,
 				Retryable:    false,
@@ -83,10 +78,6 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 				PerformData:  []byte{}, // TODO: add perform data from configuration
 				Extension:    "value",  // TODO: probably won't need this
 			}
-
-			// call telemetry after RPC delays have been applied. if a check is cancelled
-			// it doesn't count toward telemetry.
-			ct.telemetry.CheckID(key.ID, key.CheckBlock)
 
 			// start at the highest blocks eligible. the first eligible will be a block
 			// lower than the current

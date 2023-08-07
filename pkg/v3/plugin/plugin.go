@@ -35,6 +35,7 @@ func newPlugin(
 	ratio flows.Ratio,
 	getter flows.UpkeepProvider,
 	encoder Encoder,
+	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
 	runnable runner.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
@@ -69,7 +70,7 @@ func newPlugin(
 	}
 
 	// create the event coordinator
-	coord := coordinator.NewReportCoordinator(events, conf, logger)
+	coord := coordinator.NewReportCoordinator(events, upkeepTypeGetter, conf, logger)
 
 	// initialize the log trigger eligibility flow
 	ltFlow, svcs := flows.NewLogTriggerEligibility(

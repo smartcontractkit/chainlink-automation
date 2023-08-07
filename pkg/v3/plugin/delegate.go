@@ -75,6 +75,9 @@ type DelegateConfig struct {
 	// UpkeepProvider ...
 	UpkeepProvider flows.UpkeepProvider
 
+	// Methods passed from core
+	UpkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is
 	// generated with every block so a good setting might come from block time
@@ -174,6 +177,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 				CacheClean:        conf.CacheEvictionInterval,
 			},
 			c.Encoder,
+			c.UpkeepTypeGetter,
 			l,
 		),
 	})
