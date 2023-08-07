@@ -1,26 +1,55 @@
 package ocr2keepers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 )
 
+// Steps
+// 1. Split packages for types for v2 and v3 -> ocr2keepers PR
+//		In core node, update references. evm20 should point to v2 types and evm21 to v3 types
+// 				-> CL PR
+// 2. Update v3 types iteratively. Should only affect evm21 and not 20. For every PR, open corresponding Cl PR
+//   and verify 21 integration test passes
+
+// Create a new base types package for v3
+
+// Only for v2
 type UpkeepIdentifier []byte
+
+// upkeepID is uint256 on contract
+type UpkeepIdentifierV3 [256]byte
+
+// Add function to convert to string
+// Add function to convert to and from bigInt
 
 type UpkeepType uint8
 
+// Add exploratory ticket to add default type (0 value) for unknown
 const (
 	ConditionTrigger UpkeepType = iota
 	LogTrigger
 )
 
+// Only for v2
 type BlockKey string
 
+// Only for v2
 type UpkeepKey []byte
 
+type BlockNumber uint64
+type BlockKeyV3 struct {
+	Number BlockNumber
+	Hash   [32]byte
+}
+
+// Only for v2
 type UpkeepResult interface{}
 
+// Only for v2
 func upkeepKeysToString(keys []UpkeepKey) string {
 	keysStr := make([]string, len(keys))
 	for i, key := range keys {
@@ -30,6 +59,7 @@ func upkeepKeysToString(keys []UpkeepKey) string {
 	return strings.Join(keysStr, ", ")
 }
 
+// Only for v2
 type PerformLog struct {
 	Key             UpkeepKey
 	TransmitBlock   BlockKey
@@ -37,6 +67,7 @@ type PerformLog struct {
 	TransactionHash string
 }
 
+// Only for v2
 type StaleReportLog struct {
 	Key             UpkeepKey
 	TransmitBlock   BlockKey
@@ -53,40 +84,47 @@ const (
 	InsufficientFundsReportEvent
 )
 
+// Only for v3
 type TransmitEvent struct {
 	// Type describes the type of event
 	Type TransmitEventType
 	// TransmitBlock is the block height of the transmit event
-	TransmitBlock BlockKey
+	TransmitBlock BlockNumber
 	// Confirmations is the block height behind latest
 	Confirmations int64
 	// TransactionHash is the hash for the transaction where the event originated
-	TransactionHash string
-	// TODO: auto-4245 remove this
-	ID string
-	// WorkID uniquely identifies the unit of work for the specified upkeep
-	WorkID string
+	TransactionHash [32]byte
 	// UpkeepID uniquely identifies the upkeep in the registry
 	UpkeepID UpkeepIdentifier
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// CheckBlock is the block value that the upkeep was originally checked at
-	CheckBlock BlockKey
+	CheckBlock BlockNumber
 }
 
+// Only for v3
 type CheckResult struct {
 	// Eligible indicates whether this result is eligible to be performed
 	Eligible bool
+	// If result is not eligible then the reason it failed
+	FailureReason uint8
 	// Retryable indicates if this result can be retried on the check pipeline
 	Retryable bool
+	// Upkeep is all the information that identifies the upkeep
+	UpkeepID UpkeepIdentifierV3
+	// Trigger is the event that triggered the upkeep to be checked
+	Trigger Trigger
 	// GasAllocated is the gas to provide an upkeep in a report
 	GasAllocated uint64
-	// Payload is the detail used to check the upkeep
-	Payload UpkeepPayload
 	// PerformData is the raw data returned when simulating an upkeep perform
 	PerformData []byte
-	// Extension is extra data that can differ between contracts
-	Extension interface{}
+	// todo: add comment
+	FastGasWei *big.Int
+	// todo: add comment
+	LinkNative *big.Int
 }
 
+// Can be removed
 func (r *CheckResult) UnmarshalJSON(b []byte) error {
 	type raw struct {
 		Eligible     bool
@@ -137,66 +175,15 @@ func ValidateCheckResult(r CheckResult) error {
 	return ValidateUpkeepPayload(r.Payload)
 }
 
-type ConfiguredUpkeep struct {
-	// ID uniquely identifies the upkeep
-	ID UpkeepIdentifier
-	// Type is the event type required to initiate the upkeep
-	Type int
-	// Config is configuration data specific to the type
-	Config interface{}
-}
-
-func (u *ConfiguredUpkeep) UnmarshalJSON(b []byte) error {
-	type raw struct {
-		ID     UpkeepIdentifier
-		Type   int
-		Config json.RawMessage
-	}
-
-	var basicRaw raw
-
-	if err := json.Unmarshal(b, &basicRaw); err != nil {
-		return err
-	}
-
-	output := ConfiguredUpkeep{
-		ID:   basicRaw.ID,
-		Type: basicRaw.Type,
-	}
-
-	if string(basicRaw.Config) != "null" {
-		output.Config = []byte(basicRaw.Config)
-
-		var v []byte
-		if err := json.Unmarshal(basicRaw.Config, &v); err == nil {
-			output.Config = v
-		}
-	}
-
-	*u = output
-
-	return nil
-}
-
-func ValidateConfiguredUpkeep(u ConfiguredUpkeep) error {
-	if len(u.ID) == 0 {
-		return fmt.Errorf("invalid upkeep identifier")
-	}
-
-	return nil
-}
-
 type UpkeepPayload struct {
-	// TODO: auto-4245 remove this
-	ID string
-	// WorkID uniquely identifies the unit of work for the specified upkeep
-	WorkID string
 	// Upkeep is all the information that identifies the upkeep
-	Upkeep ConfiguredUpkeep
-	// CheckData is the data used to check the upkeep
-	CheckData []byte
+	UpkeepID UpkeepIdentifierV3
 	// Trigger is the event that triggered the upkeep to be checked
 	Trigger Trigger
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
+	// CheckData is the data used to check the upkeep
+	CheckData []byte
 }
 
 type UpkeepTypeGetter func(uid UpkeepIdentifier) UpkeepType
@@ -215,13 +202,19 @@ func ValidateUpkeepPayload(p UpkeepPayload) error {
 
 type Trigger struct {
 	// BlockNumber is the block number in which the event occurred
-	BlockNumber int64
+	BlockNumber BlockNumber
 	// BlockHash is the block hash of the corresponding block
-	BlockHash string
-	// Extension is the extensions' data that can differ between triggers.
-	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extension to be a map with all keys and values in string format
-	Extension interface{}
+	BlockHash [32]byte
+	// Extensions can be different for different triggers
+	LogTriggerExtension *LogTriggerExtenstion
 }
+
+type LogTriggerExtenstion struct {
+	LogTxHash [32]byte
+	Index     uint32
+}
+
+// Add function on LogTriggerExtenstion to generate log identifier (string)
 
 func ValidateTrigger(t Trigger) error {
 	if t.BlockNumber == 0 {
@@ -286,25 +279,19 @@ func (t Trigger) String() string {
 // CoordinatedProposal contains all required values to construct a complete
 // UpkeepPayload for use in a runner
 type CoordinatedProposal struct {
-	UpkeepID UpkeepIdentifier
+	UpkeepID UpkeepIdentifierV3
 	Trigger  Trigger
-	Block    BlockKey
 }
 
+// Details of an upkeep for which a report was generated
 type ReportedUpkeep struct {
-	// TODO: auto-4245 remove this
-	ID string
-	// WorkID uniquely identifies the unit of work for the specified upkeep
-	WorkID string
 	// UpkeepID is the value that identifies a configured upkeep
-	UpkeepID UpkeepIdentifier
+	UpkeepID UpkeepIdentifierV3
 	// Trigger data for the upkeep
 	Trigger Trigger
-	// PerformData is the data to perform an upkeep with
-	PerformData []byte
 }
 
-type BlockHistory []BlockKey
+type BlockHistory []BlockKeyV3
 
 func (bh BlockHistory) Latest() (BlockKey, error) {
 	if len(bh) == 0 {
@@ -339,5 +326,37 @@ type UpkeepState uint8
 
 const (
 	Performed UpkeepState = iota
-	Eligible
+	Ineligible
 )
+
+// Move interfaces for core components here
+type TransmitEventProvider interface {
+	TransmitEvents(context.Context) ([]TransmitEvent, error)
+}
+
+type ConditionalUpkeepProvider interface {
+	GetActiveUpkeeps(context.Context, BlockNumber) ([]UpkeepPayload, error)
+}
+
+type PayloadBuilder interface {
+	// Can get payloads for a subset of proposals along with an error
+	BuildPayloads(context.Context, ...CoordinatedProposal) ([]UpkeepPayload, error)
+}
+
+type Runnable interface {
+	// Can get results for a subset of payloads along with an error
+	CheckUpkeeps(context.Context, ...UpkeepPayload) ([]CheckResult, error)
+}
+
+type Encoder interface {
+	Encode(...CheckResult) ([]byte, error)
+	Extract([]byte) ([]ReportedUpkeep, error)
+}
+
+type LogEventProvider interface {
+	GetLatestPayloads(context.Context) ([]UpkeepPayload, error)
+}
+
+type RecoverableProvider interface {
+	GetRecoveryProposals() ([]UpkeepPayload, error)
+}
