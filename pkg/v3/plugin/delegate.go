@@ -17,10 +17,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type UpkeepStateUpdater interface {
-	SetUpkeepState(ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepState) error
-}
-
 var (
 	newOracleFn = offchainreporting.NewOracle
 )
@@ -71,6 +67,9 @@ type DelegateConfig struct {
 
 	// UpkeepProvider ...
 	UpkeepProvider ocr2keepers.ConditionalUpkeepProvider
+
+	// UpkeepStateUpdater
+	UpkeepStateUpdater ocr2keepers.UpkeepStateUpdater
 
 	// Methods passed from core
 	UpkeepTypeGetter ocr2keepers.UpkeepTypeGetter

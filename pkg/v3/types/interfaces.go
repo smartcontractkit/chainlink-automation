@@ -50,3 +50,7 @@ type BlockSubscriber interface {
 	// Unsubscribe requires an identifier integer and indicates the provided channel should be closed
 	Unsubscribe(int) error
 }
+
+type UpkeepStateUpdater interface {
+	SetUpkeepState(CheckResult, UpkeepState) error
+}
