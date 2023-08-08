@@ -16,15 +16,10 @@ const (
 	DefaultCacheClean = time.Duration(30) * time.Second
 )
 
-//go:generate mockery --name EventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator" --case underscore --filename event_provider.generated.go
-type EventProvider interface {
-	Events(context.Context) ([]ocr2keepers.TransmitEvent, error)
-}
-
 type reportCoordinator struct {
 	// injected dependencies
 	logger           *log.Logger
-	events           EventProvider
+	events           ocr2keepers.TransmitEventProvider
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 
 	// initialised by the constructor
@@ -37,7 +32,7 @@ type reportCoordinator struct {
 	chStop  chan struct{}
 }
 
-func NewReportCoordinator(logs EventProvider, utg ocr2keepers.UpkeepTypeGetter, conf config.OffchainConfig, logger *log.Logger) *reportCoordinator {
+func NewReportCoordinator(logs ocr2keepers.TransmitEventProvider, utg ocr2keepers.UpkeepTypeGetter, conf config.OffchainConfig, logger *log.Logger) *reportCoordinator {
 	return &reportCoordinator{
 		logger:            logger,
 		events:            logs,
@@ -74,7 +69,7 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 		err    error
 	)
 
-	events, err = rc.events.Events(ctx)
+	events, err = rc.events.TransmitEvents(ctx)
 	if err != nil {
 		return err
 	}

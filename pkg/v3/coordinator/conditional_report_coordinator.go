@@ -53,7 +53,7 @@ type Encoder interface {
 type conditionalReportCoordinator struct {
 	// injected dependencies
 	logger *log.Logger
-	events EventProvider
+	events ocr2keepers.TransmitEventProvider
 
 	encoder Encoder
 
@@ -75,7 +75,7 @@ type conditionalReportCoordinator struct {
 // NewConditionalReportCoordinator provides a new conditional report coordinator. The coordinator
 // should be started before use.
 func NewConditionalReportCoordinator(
-	events EventProvider,
+	events ocr2keepers.TransmitEventProvider,
 	minConfs int,
 	logger *log.Logger,
 	encoder Encoder,
@@ -165,7 +165,7 @@ func (rc *conditionalReportCoordinator) checkEvents(ctx context.Context) error {
 		err    error
 	)
 
-	events, err = rc.events.Events(ctx)
+	events, err = rc.events.TransmitEvents(ctx)
 	if err != nil {
 		return err
 	}

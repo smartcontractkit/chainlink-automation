@@ -9,7 +9,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func (ct *SimulatedContract) Events(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+func (ct *SimulatedContract) TransmitEvents(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 	logs := []ocr2keepers.TransmitEvent{}
 	if ct.lastBlock == nil {
 		return logs, nil

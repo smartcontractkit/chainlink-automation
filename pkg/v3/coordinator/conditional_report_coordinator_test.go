@@ -30,17 +30,17 @@ func (e *mockEncoder) Increment(k ocr2keepers.BlockNumber) (ocr2keepers.BlockNum
 }
 
 type mockEvents struct {
-	EventsFn func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error)
+	TransmitEventsFn func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error)
 }
 
-func (e *mockEvents) Events(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
-	return e.EventsFn(ctx)
+func (e *mockEvents) TransmitEvents(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+	return e.TransmitEventsFn(ctx)
 }
 
 func TestNewConditionalReportCoordinator(t *testing.T) {
 	t.Run("a new report coordinator is created successfully", func(t *testing.T) {
 		events := &mockEvents{
-			EventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+			TransmitEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 				return []ocr2keepers.TransmitEvent{}, nil
 			},
 		}
@@ -69,7 +69,7 @@ func TestConditionalReportCoordinator_run(t *testing.T) {
 		}()
 
 		events := &mockEvents{
-			EventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+			TransmitEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 				time.Sleep(500 * time.Millisecond)
 				return []ocr2keepers.TransmitEvent{}, nil
 			},
@@ -94,7 +94,7 @@ func TestConditionalReportCoordinator_run(t *testing.T) {
 		}()
 
 		events := &mockEvents{
-			EventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+			TransmitEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 				time.Sleep(100 * time.Millisecond)
 				return []ocr2keepers.TransmitEvent{}, nil
 			},
@@ -119,7 +119,7 @@ func TestConditionalReportCoordinator_run(t *testing.T) {
 		}()
 
 		events := &mockEvents{
-			EventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+			TransmitEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 				time.Sleep(500 * time.Millisecond)
 				return []ocr2keepers.TransmitEvent{}, errors.New("events error")
 			},
@@ -603,7 +603,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 	upkeep10 := ocr2keepers.UpkeepIdentifier([32]byte{10})
 	upkeep20 := ocr2keepers.UpkeepIdentifier([32]byte{20})
 	events := &mockEvents{
-		EventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+		TransmitEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 			return []ocr2keepers.TransmitEvent{
 				{
 					Confirmations: 1,

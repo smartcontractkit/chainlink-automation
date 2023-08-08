@@ -12,7 +12,6 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
@@ -51,7 +50,7 @@ type DelegateConfig struct {
 	LogProvider ocr2keepers.LogEventProvider
 
 	// EventProvider allows reads on latest transmit events
-	EventProvider coordinator.EventProvider
+	EventProvider ocr2keepers.TransmitEventProvider
 
 	// Runnable is a check pipeline runner
 	Runnable ocr2keepers.Runnable
