@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestScheduleTicker(t *testing.T) {
@@ -189,8 +189,8 @@ func TestScheduleTicker(t *testing.T) {
 func TestStaticTick_Value(t *testing.T) {
 	// Create a retryTick instance
 	upkeeps := []ocr2keepers.UpkeepPayload{
-		{ID: "payload1"},
-		{ID: "payload2"},
+		{WorkID: "payload1"},
+		{WorkID: "payload2"},
 	}
 	tick := staticTick[[]ocr2keepers.UpkeepPayload]{value: upkeeps}
 

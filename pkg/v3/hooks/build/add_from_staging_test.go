@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build/mocks"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestAddFromStaging(t *testing.T) {
@@ -19,8 +19,8 @@ func TestAddFromStaging(t *testing.T) {
 		hook := NewAddFromStaging(ms, log.New(io.Discard, "", 0))
 		observation := &ocr2keepersv3.AutomationObservation{}
 		expected := []ocr2keepers.CheckResult{
-			{Payload: ocr2keepers.UpkeepPayload{ID: "test1"}},
-			{Payload: ocr2keepers.UpkeepPayload{ID: "test2"}},
+			{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1})},
+			{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2})},
 		}
 
 		ms.On("View").Return(expected, nil)

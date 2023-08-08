@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type ratio interface {

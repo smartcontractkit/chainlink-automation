@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestRecoveryFlow(t *testing.T) {
@@ -40,9 +40,7 @@ func TestRecoveryFlow(t *testing.T) {
 	}(svc, context.Background())
 
 	retryable := ocr2keepers.CheckResult{
-		Payload: ocr2keepers.UpkeepPayload{
-			ID: "test",
-		},
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 	}
 
 	assert.NoError(t, recoverer.Retry(retryable), "no error from retrying")
@@ -72,7 +70,7 @@ func TestRecoveryProposalFlow(t *testing.T) {
 	// preprocessor is just a pass through
 	coord := new(mockedPreprocessor)
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 	ar := util.NewSyncedArray[ocr2keepers.UpkeepPayload]()

@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestRemoveFromStagingHook(t *testing.T) {
@@ -23,18 +23,29 @@ func TestRemoveFromStagingHook(t *testing.T) {
 		{
 			Name: "One Result",
 			Input: []ocr2keepers.CheckResult{
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test"}},
+				{
+					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+				},
 			},
 		},
 		{
 			Name: "Five Results",
 			Input: []ocr2keepers.CheckResult{
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test1"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test2"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test3"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test4"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test5"}},
+				{
+					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+				},
+				{
+					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+				},
+				{
+					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
+				},
+				{
+					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
+				},
+				{
+					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
+				},
 			},
 		},
 	}

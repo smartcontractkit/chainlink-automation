@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func (ct *SimulatedContract) Events(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
@@ -20,11 +20,9 @@ func (ct *SimulatedContract) Events(ctx context.Context) ([]ocr2keepers.Transmit
 		lgs, ok := ct.perLogs.Get(key)
 		if ok {
 			for _, log := range lgs {
-				trBlock, trOk := new(big.Int).SetString(string(log.TransmitBlock), 10)
-				if trOk {
-					log.Confirmations = new(big.Int).Sub(ct.lastBlock, trBlock).Int64()
-					logs = append(logs, log)
-				}
+				trBlock := big.NewInt(0).SetUint64(uint64(log.TransmitBlock))
+				log.Confirmations = new(big.Int).Sub(ct.lastBlock, trBlock).Int64()
+				logs = append(logs, log)
 			}
 		}
 	}

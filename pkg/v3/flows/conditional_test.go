@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -43,24 +44,16 @@ func TestNewSampleProposalFlow(t *testing.T) {
 
 	testValues := []ocr2keepers.UpkeepPayload{
 		{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("1"),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		},
 		{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("2"),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 		},
 		{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("3"),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 		},
 		{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("4"),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
 		},
 	}
 
@@ -69,8 +62,12 @@ func TestNewSampleProposalFlow(t *testing.T) {
 	ms.On("Set", store.ProposalSampleMetadata, mock.Anything).Times(1)
 
 	bs.ch <- ocr2keepers.BlockHistory{
-		ocr2keepers.BlockKey("4"),
-		ocr2keepers.BlockKey("3"),
+		ocr2keepers.BlockKey{
+			Number: 4,
+		},
+		ocr2keepers.BlockKey{
+			Number: 3,
+		},
 	}
 
 	time.Sleep(1 * time.Second)

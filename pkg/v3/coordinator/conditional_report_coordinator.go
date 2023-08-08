@@ -27,27 +27,27 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
+	"math"
 	"sync/atomic"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 var (
 	DefaultLockoutWindow  = time.Duration(20) * time.Minute
 	ErrKeyAlreadyAccepted = fmt.Errorf("key already accepted")
-	IndefiniteBlockingKey = ocr2keepers.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
+	IndefiniteBlockingKey = ocr2keepers.BlockNumber(math.MaxUint64) // Higher than possible block numbers (uint64), used to block keys indefintely
 	cadence               = time.Second
 )
 
 //go:generate mockery --name Encoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename encoder.generated.go
 type Encoder interface {
 	// After a is after b
-	After(ocr2keepers.BlockKey, ocr2keepers.BlockKey) (bool, error)
+	After(ocr2keepers.BlockNumber, ocr2keepers.BlockNumber) (bool, error)
 	// Increment
-	Increment(ocr2keepers.BlockKey) (ocr2keepers.BlockKey, error)
+	Increment(ocr2keepers.BlockNumber) (ocr2keepers.BlockNumber, error)
 }
 
 type conditionalReportCoordinator struct {
@@ -98,11 +98,13 @@ func NewConditionalReportCoordinator(
 
 // isPending returns true if a key should be filtered out.
 func (rc *conditionalReportCoordinator) isPending(key ocr2keepers.UpkeepPayload) bool {
-	blockKey := ocr2keepers.BlockKey(strconv.FormatInt(key.Trigger.BlockNumber, 10))
+	blockKey := ocr2keepers.BlockKey{
+		Number: ocr2keepers.BlockNumber(key.Trigger.BlockNumber),
+	}
 
 	// only apply filter if key id is registered in the cache
-	if bl, ok := rc.idBlocks.Get(string(key.Upkeep.ID)); ok {
-		isAfter, err := rc.encoder.After(blockKey, bl.TransmitBlockNumber)
+	if bl, ok := rc.idBlocks.Get(key.UpkeepID.String()); ok {
+		isAfter, err := rc.encoder.After(blockKey.Number, bl.TransmitBlockNumber)
 		if err != nil {
 			return true
 		}
@@ -116,17 +118,18 @@ func (rc *conditionalReportCoordinator) isPending(key ocr2keepers.UpkeepPayload)
 
 // Accept sets the pending status for a key
 func (rc *conditionalReportCoordinator) Accept(key ocr2keepers.ReportedUpkeep) error {
-	blockKey := ocr2keepers.BlockKey(strconv.FormatInt(key.Trigger.BlockNumber, 10))
-
+	blockKey := ocr2keepers.BlockKey{
+		Number: ocr2keepers.BlockNumber(key.Trigger.BlockNumber),
+	}
 	// If a key is already active then don't update filters, but also not throw errors as
 	// there might be other keys in the same report which can get accepted
-	if _, ok := rc.activeKeys.Get(string(key.UpkeepID)); !ok {
+	if _, ok := rc.activeKeys.Get(key.UpkeepID.String()); !ok {
 		// Set the key as accepted within activeKeys
-		rc.activeKeys.Set(string(key.UpkeepID), false, util.DefaultCacheExpiration)
+		rc.activeKeys.Set(key.UpkeepID.String(), false, util.DefaultCacheExpiration)
 
 		// Set idBlocks with the key as checkBlockNumber and IndefiniteBlockingKey as TransmitBlockNumber
-		rc.updateIdBlock(string(key.UpkeepID), idBlocker{
-			CheckBlockNumber:    blockKey,
+		rc.updateIdBlock(key.UpkeepID.String(), idBlocker{
+			CheckBlockNumber:    blockKey.Number,
 			TransmitBlockNumber: IndefiniteBlockingKey,
 		})
 	}
@@ -139,7 +142,7 @@ func (rc *conditionalReportCoordinator) Accept(key ocr2keepers.ReportedUpkeep) e
 func (rc *conditionalReportCoordinator) IsTransmissionConfirmed(key ocr2keepers.UpkeepPayload) bool {
 	// key is confirmed if it both exists and has been confirmed by the log
 	// poller
-	confirmed, ok := rc.activeKeys.Get(string(key.Upkeep.ID))
+	confirmed, ok := rc.activeKeys.Get(key.UpkeepID.String())
 	return !ok || (ok && confirmed)
 }
 
@@ -191,28 +194,28 @@ func (rc *conditionalReportCoordinator) checkEvents(ctx context.Context) error {
 			}
 		}
 
-		if confirmed, ok := rc.activeKeys.Get(string(evt.UpkeepID)); ok {
+		if confirmed, ok := rc.activeKeys.Get(evt.UpkeepID.String()); ok {
 			if confirmed {
 				// This can happen if we get a stale log for the same key again on a newer block or in case
 				// the key was unblocked due to a performLog which later got reorged into a stale log
-				idBlock, ok := rc.idBlocks.Get(string(evt.UpkeepID))
+				idBlock, ok := rc.idBlocks.Get(evt.UpkeepID.String())
 				if ok && idBlock.CheckBlockNumber == evt.CheckBlock &&
 					idBlock.TransmitBlockNumber != nextKey {
 
-					rc.logger.Printf("Got a stale event for previously accepted key %s in transaction %s at block %s, with confirmations %d", evt.ID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
+					rc.logger.Printf("Got a stale event for previously accepted key %s in transaction %s at block %d, with confirmations %d", evt.WorkID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
 
-					rc.updateIdBlock(string(evt.UpkeepID), idBlocker{
+					rc.updateIdBlock(evt.UpkeepID.String(), idBlocker{
 						CheckBlockNumber:    evt.CheckBlock,
 						TransmitBlockNumber: nextKey,
 					})
 				}
 			} else {
 				// Process log if the key hasn't been confirmed yet
-				rc.logger.Printf("Stale event found for key %s in transaction %s at block %s, with confirmations %d", evt.ID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
+				rc.logger.Printf("Stale event found for key %s in transaction %s at block %d, with confirmations %d", evt.WorkID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
 				// set state of key to indicate that the report was transmitted
-				rc.activeKeys.Set(string(evt.UpkeepID), true, util.DefaultCacheExpiration)
+				rc.activeKeys.Set(evt.UpkeepID.String(), true, util.DefaultCacheExpiration)
 
-				rc.updateIdBlock(string(evt.UpkeepID), idBlocker{
+				rc.updateIdBlock(evt.UpkeepID.String(), idBlocker{
 					CheckBlockNumber:    evt.CheckBlock,
 					TransmitBlockNumber: nextKey,
 				})
@@ -224,8 +227,8 @@ func (rc *conditionalReportCoordinator) checkEvents(ctx context.Context) error {
 }
 
 type idBlocker struct {
-	CheckBlockNumber    ocr2keepers.BlockKey
-	TransmitBlockNumber ocr2keepers.BlockKey
+	CheckBlockNumber    ocr2keepers.BlockNumber
+	TransmitBlockNumber ocr2keepers.BlockNumber
 }
 
 // idBlock should only be updated if checkBlockNumber is set higher
@@ -259,12 +262,12 @@ func (b idBlocker) shouldUpdate(val idBlocker, e Encoder) (bool, error) {
 	// Now the checkBlockNumber should be same
 
 	// If b has an IndefiniteBlockingKey, then update
-	if string(b.TransmitBlockNumber) == string(IndefiniteBlockingKey) {
+	if b.TransmitBlockNumber == IndefiniteBlockingKey {
 		return true, nil
 	}
 
 	// If val has an IndefiniteBlockingKey, then don't update
-	if string(val.TransmitBlockNumber) == string(IndefiniteBlockingKey) {
+	if val.TransmitBlockNumber == IndefiniteBlockingKey {
 		return false, nil
 	}
 

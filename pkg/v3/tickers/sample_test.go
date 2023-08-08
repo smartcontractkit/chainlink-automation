@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type mockUpkeepObserver struct {
@@ -34,7 +34,7 @@ func TestSampleTicker(t *testing.T) {
 		{
 			Name: "simple happy path",
 			TestData: []ocr2keepers.UpkeepPayload{
-				{ID: "1"},
+				{WorkID: "1"},
 			},
 			ExpectedSampleCount:  1,
 			ExpectedSampleResult: 1,
@@ -42,9 +42,9 @@ func TestSampleTicker(t *testing.T) {
 		{
 			Name: "reduce to sample size",
 			TestData: []ocr2keepers.UpkeepPayload{
-				{ID: "1"},
-				{ID: "2"},
-				{ID: "3"},
+				{WorkID: "1"},
+				{WorkID: "2"},
+				{WorkID: "3"},
 			},
 			ExpectedSampleCount:  2,
 			ExpectedSampleResult: 2,
@@ -118,9 +118,15 @@ func TestSampleTicker(t *testing.T) {
 
 			// send a block history
 			ch <- []ocr2keepers.BlockKey{
-				("4"),
-				("3"),
-				("2"),
+				{
+					Number: 4,
+				},
+				{
+					Number: 3,
+				},
+				{
+					Number: 2,
+				},
 			}
 
 			// wait a little longer than the sampling timeout
@@ -241,9 +247,15 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 
 			// send a block history
 			ch <- []ocr2keepers.BlockKey{
-				("4"),
-				("3"),
-				("2"),
+				{
+					Number: 4,
+				},
+				{
+					Number: 3,
+				},
+				{
+					Number: 2,
+				},
 			}
 
 			// wait a little longer than the sampling timeout

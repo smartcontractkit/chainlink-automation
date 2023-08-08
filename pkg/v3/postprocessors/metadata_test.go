@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -15,40 +16,50 @@ func TestMetadataAddPayload(t *testing.T) {
 	ms := new(MockMetadataStore)
 	values := []ocr2keepers.UpkeepPayload{
 		{
-			ID: "test",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("1"),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 1,
-				BlockHash:   "test",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 		{
-			ID: "test1",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("2"),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 2,
-				BlockHash:   "test2",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 	}
 
 	expected := []ocr2keepers.CoordinatedProposal{
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("1"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 1,
-				BlockHash:   "test",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("2"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 2,
-				BlockHash:   "test2",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 	}
@@ -78,36 +89,21 @@ func TestMetadataAddSamples(t *testing.T) {
 	values := []ocr2keepers.CheckResult{
 		{
 			Eligible: true,
-			Payload: ocr2keepers.UpkeepPayload{
-				ID: "test",
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier("1"),
-				},
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		},
 		{
 			Eligible: true,
-			Payload: ocr2keepers.UpkeepPayload{
-				ID: "test1",
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier("2"),
-				},
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 		},
 		{
 			Eligible: false,
-			Payload: ocr2keepers.UpkeepPayload{
-				ID: "test2",
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier("3"),
-				},
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 		},
 	}
 
 	expected := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier("1"),
-		ocr2keepers.UpkeepIdentifier("2"),
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{2}),
 	}
 
 	ms.On("Set", store.ProposalSampleMetadata, expected)

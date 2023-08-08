@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,24 +42,13 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 	input := AutomationOutcome{
 		BasicOutcome: BasicOutcome{
 			Metadata: map[OutcomeMetadataKey]interface{}{
-				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+					Number: 2,
+				},
 			},
 			Performable: []ocr2keepers.CheckResult{
 				{
-					Payload: ocr2keepers.UpkeepPayload{
-						ID: "abc",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:     []byte("111"),
-							Type:   1,
-							Config: "value",
-						},
-						CheckData: []byte("check data"),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   "hash",
-							Extension:   8,
-						},
-					},
+					UpkeepID:    [32]byte{111},
 					Retryable:   true,
 					Eligible:    true,
 					PerformData: []byte("testing"),
@@ -71,24 +61,13 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 	expected := AutomationOutcome{
 		BasicOutcome: BasicOutcome{
 			Metadata: map[OutcomeMetadataKey]interface{}{
-				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+					Number: 2,
+				},
 			},
 			Performable: []ocr2keepers.CheckResult{
 				{
-					Payload: ocr2keepers.UpkeepPayload{
-						ID: "abc",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:     []byte("111"),
-							Type:   1,
-							Config: []byte(`"value"`),
-						},
-						CheckData: []byte("check data"),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   "hash",
-							Extension:   []byte("8"),
-						},
-					},
+					UpkeepID:    [32]byte{111},
 					Retryable:   true,
 					Eligible:    true,
 					PerformData: []byte("testing"),
@@ -179,23 +158,16 @@ func TestValidateAutomationOutcome(t *testing.T) {
 			},
 			BasicOutcome: BasicOutcome{
 				Metadata: map[OutcomeMetadataKey]interface{}{
-					CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+					CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+						Number: 3,
+					},
 				},
 				Performable: []ocr2keepers.CheckResult{
 					{
 						Eligible:     true,
 						Retryable:    false,
 						GasAllocated: 1,
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("test"),
-							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 10,
-								BlockHash:   "0x",
-							},
-						},
+						UpkeepID:     [32]byte{111},
 					},
 				},
 			},
@@ -226,13 +198,13 @@ func TestRecoveryProposals(t *testing.T) {
 				BasicOutcome: BasicOutcome{
 					Metadata: map[OutcomeMetadataKey]interface{}{
 						CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
-							{UpkeepID: ocr2keepers.UpkeepIdentifier("7")},
+							{UpkeepID: [32]byte{7}},
 						},
 					},
 				},
 			},
 			expected: []ocr2keepers.CoordinatedProposal{
-				{UpkeepID: ocr2keepers.UpkeepIdentifier("7")},
+				{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{7})},
 			},
 			expectedErr: nil,
 		},
@@ -275,7 +247,7 @@ func TestLatestCoordinatedBlock(t *testing.T) {
 		{
 			name:        "error path - block not available",
 			outcome:     AutomationOutcome{},
-			expected:    ocr2keepers.BlockKey(""),
+			expected:    ocr2keepers.BlockKey{},
 			expectedErr: ErrBlockNotAvailable,
 		},
 		{
@@ -287,7 +259,7 @@ func TestLatestCoordinatedBlock(t *testing.T) {
 					},
 				},
 			},
-			expected:    ocr2keepers.BlockKey(""),
+			expected:    ocr2keepers.BlockKey{},
 			expectedErr: ErrWrongDataType,
 		},
 		{
@@ -303,7 +275,7 @@ func TestLatestCoordinatedBlock(t *testing.T) {
 				},
 				NextIdx: 1,
 			},
-			expected:    ocr2keepers.BlockKey(""),
+			expected:    ocr2keepers.BlockKey{},
 			expectedErr: ErrWrongDataType,
 		},
 		{
@@ -311,11 +283,15 @@ func TestLatestCoordinatedBlock(t *testing.T) {
 			outcome: AutomationOutcome{
 				BasicOutcome: BasicOutcome{
 					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+							Number: 2,
+						},
 					},
 				},
 			},
-			expected:    ocr2keepers.BlockKey("2"),
+			expected: ocr2keepers.BlockKey{
+				Number: 2,
+			},
 			expectedErr: nil,
 		},
 		{
@@ -325,13 +301,17 @@ func TestLatestCoordinatedBlock(t *testing.T) {
 				History: []BasicOutcome{
 					{
 						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+								Number: 2,
+							},
 						},
 					},
 				},
 				NextIdx: 1,
 			},
-			expected:    ocr2keepers.BlockKey("2"),
+			expected: ocr2keepers.BlockKey{
+				Number: 2,
+			},
 			expectedErr: nil,
 		},
 	}
@@ -384,27 +364,37 @@ func TestSortedHistory(t *testing.T) {
 				History: []BasicOutcome{
 					{
 						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+								Number: 4,
+							},
 						},
 					},
 					{
 						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("5"),
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+								Number: 5,
+							},
 						},
 					},
 					{
 						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("1"),
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+								Number: 1,
+							},
 						},
 					},
 					{
 						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+								Number: 2,
+							},
 						},
 					},
 					{
 						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+								Number: 3,
+							},
 						},
 					},
 				},
@@ -413,27 +403,37 @@ func TestSortedHistory(t *testing.T) {
 			expected: []BasicOutcome{
 				{
 					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("5"),
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+							Number: 5,
+						},
 					},
 				},
 				{
 					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+							Number: 4,
+						},
 					},
 				},
 				{
 					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+							Number: 3,
+						},
 					},
 				},
 				{
 					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+							Number: 2,
+						},
 					},
 				},
 				{
 					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("1"),
+						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+							Number: 1,
+						},
 					},
 				},
 			},

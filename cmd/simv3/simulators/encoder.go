@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 var (
@@ -30,10 +30,8 @@ func (re SimulatedReportEncoder) Extract(b []byte) ([]ocr2keepers.ReportedUpkeep
 
 	for i, result := range results {
 		reported[i] = ocr2keepers.ReportedUpkeep{
-			ID:          result.Payload.ID,
-			UpkeepID:    result.Payload.Upkeep.ID,
-			Trigger:     result.Payload.Trigger,
-			PerformData: result.PerformData,
+			UpkeepID: result.UpkeepID,
+			Trigger:  result.Trigger,
 		}
 	}
 

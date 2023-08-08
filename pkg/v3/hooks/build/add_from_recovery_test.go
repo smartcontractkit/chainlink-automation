@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,13 +18,13 @@ func TestAddFromRecoveryHook(t *testing.T) {
 
 	expectedProps := []ocr2keepers.CoordinatedProposal{
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("1"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 1,
 			},
 		},
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("2"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 2,
 			},

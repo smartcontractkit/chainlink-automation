@@ -3,8 +3,9 @@ package plugin
 import (
 	"testing"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,13 +54,13 @@ func TestUpdateHistory(t *testing.T) {
 		previous := ocr2keepersv3.AutomationOutcome{
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(2),
 				},
 			},
 			History: []ocr2keepersv3.BasicOutcome{
 				{
 					Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("1"),
+						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(1),
 					},
 				},
 			},
@@ -77,12 +78,12 @@ func TestUpdateHistory(t *testing.T) {
 		expected := []ocr2keepersv3.BasicOutcome{
 			{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("1"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(1),
 				},
 			},
 			{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(2),
 				},
 			},
 		}
@@ -100,23 +101,23 @@ func TestUpdateHistory(t *testing.T) {
 		previous := ocr2keepersv3.AutomationOutcome{
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(4),
 				},
 			},
 			History: []ocr2keepersv3.BasicOutcome{
 				{
 					Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("1"),
+						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(1),
 					},
 				},
 				{
 					Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(2),
 					},
 				},
 				{
 					Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+						ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(3),
 					},
 				},
 			},
@@ -134,17 +135,17 @@ func TestUpdateHistory(t *testing.T) {
 		expected := []ocr2keepersv3.BasicOutcome{
 			{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(4),
 				},
 			},
 			{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("2"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(2),
 				},
 			},
 			{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("3"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockNumber(3),
 				},
 			},
 		}

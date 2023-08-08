@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type mockedRunner struct {
@@ -113,7 +113,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data, 4 times nil
@@ -192,7 +192,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data, 2 times nil
@@ -285,7 +285,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data and 2 times nil
@@ -381,34 +381,6 @@ func TestProcessOutcome(t *testing.T) {
 		pb.AssertExpectations(t)
 	})
 
-	t.Run("proposals but no block in outcome", func(t *testing.T) {
-		pb := new(mocks.MockPayloadBuilder)
-		flow := &LogTriggerEligibility{
-			builder: pb,
-			logger:  log.New(io.Discard, "", 0),
-		}
-
-		testOutcome := ocr2keepersv3.AutomationOutcome{
-			BasicOutcome: ocr2keepersv3.BasicOutcome{
-				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
-						{
-							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 10,
-								BlockHash:   "testhash",
-							},
-						},
-					},
-				},
-			},
-		}
-
-		assert.ErrorIs(t, flow.ProcessOutcome(testOutcome), ocr2keepersv3.ErrBlockNotAvailable, "error of expected type from processing outcome: %s")
-
-		pb.AssertExpectations(t)
-	})
-
 	t.Run("proposals are added to retryer", func(t *testing.T) {
 		recoverer := new(mocks.MockRetryer)
 		pb := new(mocks.MockPayloadBuilder)
@@ -428,13 +400,15 @@ func TestProcessOutcome(t *testing.T) {
 		testOutcome := ocr2keepersv3.AutomationOutcome{
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+						Number: 4,
+					},
 					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
 						{
-							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 10,
-								BlockHash:   "testhash",
+								BlockHash:   [32]byte{1},
 							},
 						},
 					},
@@ -443,16 +417,15 @@ func TestProcessOutcome(t *testing.T) {
 		}
 
 		expectedProposal := ocr2keepers.CoordinatedProposal{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 10,
-				BlockHash:   "testhash",
+				BlockHash:   [32]byte{1},
 			},
-			Block: ocr2keepers.BlockKey("4"),
 		}
 
 		pb.On("BuildPayload", mock.Anything, expectedProposal).Return(ocr2keepers.UpkeepPayload{
-			ID: "test",
+			WorkID: "test",
 		}, nil)
 
 		recoverer.On("Retry", mock.Anything).Return(nil)
@@ -479,7 +452,8 @@ func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keeper
 		}
 
 		results = append(results, ocr2keepers.CheckResult{
-			Payload:   payloads[i],
+			UpkeepID:  payloads[i].UpkeepID,
+			Trigger:   payloads[i].Trigger,
 			Eligible:  eligible,
 			Retryable: !eligible,
 		})

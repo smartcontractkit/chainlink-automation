@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/mocks"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestObservation(t *testing.T) {
@@ -89,7 +89,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 		// Create a sample outcome for decoding
 		outcomeContext := ocr3types.OutcomeContext{
-			PreviousOutcome: []byte(`{"Instructions":["should coordinate block"],"Metadata":{"blockHistory":["4"]},"Performable":[]}`),
+			PreviousOutcome: []byte(`{"Instructions":["should coordinate block"],"Metadata":{"blockHistory":[]},"Performable":[]}`),
 		}
 
 		automationObservation1 := ocr2keepersv3.AutomationObservation{
@@ -98,16 +98,13 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Eligible:     true,
 					Retryable:    false,
 					GasAllocated: 10,
-					Payload: ocr2keepers.UpkeepPayload{
-						ID: "123",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:   ocr2keepers.UpkeepIdentifier("456"),
-							Type: 1,
-						},
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 987,
-							BlockHash:   "789",
-							Extension:   333,
+					UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{4}),
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 4,
+						BlockHash:   [32]byte{0},
+						LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+							LogTxHash: [32]byte{1},
+							Index:     4,
 						},
 					},
 				},
@@ -119,16 +116,13 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Eligible:     true,
 					Retryable:    false,
 					GasAllocated: 10,
-					Payload: ocr2keepers.UpkeepPayload{
-						ID: "123",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:   ocr2keepers.UpkeepIdentifier("456"),
-							Type: 1,
-						},
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 987,
-							BlockHash:   "789",
-							Extension:   333,
+					UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{4}),
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 4,
+						BlockHash:   [32]byte{0},
+						LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+							LogTxHash: [32]byte{1},
+							Index:     4,
 						},
 					},
 				},
@@ -140,16 +134,13 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Eligible:     true,
 					Retryable:    false,
 					GasAllocated: 10,
-					Payload: ocr2keepers.UpkeepPayload{
-						ID: "112233",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:   ocr2keepers.UpkeepIdentifier("456"),
-							Type: 1,
-						},
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 987,
-							BlockHash:   "789",
-							Extension:   333,
+					UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{4}),
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 4,
+						BlockHash:   [32]byte{0},
+						LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+							LogTxHash: [32]byte{1},
+							Index:     4,
 						},
 					},
 				},
@@ -205,14 +196,13 @@ func TestReports(t *testing.T) {
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Performable: []ocr2keepers.CheckResult{
 					{
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
-							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -252,28 +242,26 @@ func TestReports(t *testing.T) {
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Performable: []ocr2keepers.CheckResult{
 					{
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
-							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
 							},
 						},
 						GasAllocated: 1_000_000,
 						PerformData:  []byte(`0x`),
 					},
 					{
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
-							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -313,42 +301,39 @@ func TestReports(t *testing.T) {
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Performable: []ocr2keepers.CheckResult{
 					{
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
-							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
-							},
-						},
-						GasAllocated: 1_000_000,
-						PerformData:  []byte(`0x`),
-					},
-					{
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
-							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
 							},
 						},
 						GasAllocated: 1_000_000,
 						PerformData:  []byte(`0x`),
 					},
 					{
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
 							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+						},
+						GasAllocated: 1_000_000,
+						PerformData:  []byte(`0x`),
+					},
+					{
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -389,14 +374,13 @@ func TestReports(t *testing.T) {
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Performable: []ocr2keepers.CheckResult{
 					{
-						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
-							},
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+						Trigger: ocr2keepers.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
 							},
 						},
 						GasAllocated: 5_000_000,
