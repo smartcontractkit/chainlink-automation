@@ -41,11 +41,7 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationOutcome{
 		BasicOutcome: BasicOutcome{
-			Metadata: map[OutcomeMetadataKey]interface{}{
-				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-					Number: 2,
-				},
-			},
+			Metadata: map[OutcomeMetadataKey]interface{}{},
 			Performable: []ocr2keepers.CheckResult{
 				{
 					UpkeepID:    [32]byte{111},
@@ -60,11 +56,7 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 
 	expected := AutomationOutcome{
 		BasicOutcome: BasicOutcome{
-			Metadata: map[OutcomeMetadataKey]interface{}{
-				CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-					Number: 2,
-				},
-			},
+			Metadata: map[OutcomeMetadataKey]interface{}{},
 			Performable: []ocr2keepers.CheckResult{
 				{
 					UpkeepID:    [32]byte{111},
