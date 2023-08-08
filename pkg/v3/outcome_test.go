@@ -58,8 +58,11 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 						CheckData: []byte("check data"),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
-							BlockHash:   "hash",
-							Extension:   8,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
+							},
 						},
 					},
 					Retryable:   true,
@@ -90,8 +93,11 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 						CheckData: []byte("check data"),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
-							BlockHash:   "hash",
-							Extension:   []byte("8"),
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
+							},
 						},
 					},
 					Retryable:   true,
@@ -199,8 +205,8 @@ func TestValidateAutomationOutcome(t *testing.T) {
 								ID: [32]byte{111},
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 10,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
 							},
 						},
 					},

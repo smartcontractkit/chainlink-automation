@@ -64,7 +64,7 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 		go func(i int, key ocr2keepers.UpkeepPayload, en plugin.Encoder) {
 			defer wg.Done()
 
-			block := new(big.Int).SetInt64(key.Trigger.BlockNumber)
+			block := new(big.Int).SetInt64(int64(key.Trigger.BlockNumber))
 
 			up, ok := ct.upkeeps[key.Upkeep.ID.String()]
 			if !ok {

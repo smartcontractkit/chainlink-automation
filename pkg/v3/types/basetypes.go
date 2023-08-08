@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -209,12 +210,16 @@ func ValidateUpkeepPayload(p UpkeepPayload) error {
 
 type Trigger struct {
 	// BlockNumber is the block number in which the event occurred
-	BlockNumber int64
+	BlockNumber BlockNumber
 	// BlockHash is the block hash of the corresponding block
-	BlockHash string
-	// Extension is the extensions' data that can differ between triggers.
-	// e.g. for tx hash and log id for log triggers. Log triggers requires this Extension to be a map with all keys and values in string format
-	Extension interface{}
+	BlockHash [32]byte
+	// Extensions can be different for different triggers
+	LogTriggerExtension *LogTriggerExtenstion
+}
+
+type LogTriggerExtenstion struct {
+	LogTxHash [32]byte
+	Index     uint32
 }
 
 func ValidateTrigger(t Trigger) error {
@@ -229,52 +234,15 @@ func ValidateTrigger(t Trigger) error {
 	return nil
 }
 
-func (t *Trigger) UnmarshalJSON(b []byte) error {
-	type raw struct {
-		BlockNumber int64
-		BlockHash   string
-		// TODO: consider using map[string]interface{} instead
-		Extension json.RawMessage
-	}
-
-	var basicRaw raw
-	if err := json.Unmarshal(b, &basicRaw); err != nil {
-		return err
-	}
-
-	output := Trigger{
-		BlockNumber: basicRaw.BlockNumber,
-		BlockHash:   basicRaw.BlockHash,
-	}
-
-	if string(basicRaw.Extension) != "null" {
-		output.Extension = []byte(basicRaw.Extension)
-
-		// when decoding the first time, the exension data is set as a byte array
-		// of the raw encoded original json. if this is encoded again, it is encoded
-		// as a byte array. in that case, decode it into a byte array first before
-		// passing the bytes on.
-		var v []byte
-		if err := json.Unmarshal(basicRaw.Extension, &v); err == nil {
-			output.Extension = v
-		}
-	}
-
-	*t = output
-
-	return nil
-}
-
-func NewTrigger(blockNumber int64, blockHash string, extension interface{}) Trigger {
+func NewTrigger(blockNumber BlockNumber, blockHash [32]byte) Trigger {
 	return Trigger{
 		BlockNumber: blockNumber,
 		BlockHash:   blockHash,
-		Extension:   extension,
 	}
 }
 
 func (t Trigger) String() string {
-	return fmt.Sprintf("%d:%s:%+v", t.BlockNumber, t.BlockHash, t.Extension)
+	return fmt.Sprintf("%d:%s:%+v", t.BlockNumber, t.BlockHash, t.LogTriggerExtension)
 }
 
 // CoordinatedProposal contains all required values to construct a complete
@@ -304,4 +272,36 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 
 func (bh BlockHistory) Keys() []BlockKey {
 	return bh
+}
+
+type Encoder interface {
+	Encode(...CheckResult) ([]byte, error)
+	Extract([]byte) ([]ReportedUpkeep, error)
+}
+
+type LogEventProvider interface {
+	GetLatestPayloads(context.Context) ([]UpkeepPayload, error)
+}
+
+type RecoverableProvider interface {
+	GetRecoveryProposals() ([]UpkeepPayload, error)
+}
+
+// Move interfaces for core components here
+type TransmitEventProvider interface {
+	TransmitEvents(context.Context) ([]TransmitEvent, error)
+}
+
+type ConditionalUpkeepProvider interface {
+	GetActiveUpkeeps(context.Context, BlockNumber) ([]UpkeepPayload, error)
+}
+
+type PayloadBuilder interface {
+	// Can get payloads for a subset of proposals along with an error
+	BuildPayloads(context.Context, ...CoordinatedProposal) ([]UpkeepPayload, error)
+}
+
+type Runnable interface {
+	// Can get results for a subset of payloads along with an error
+	CheckUpkeeps(context.Context, ...UpkeepPayload) ([]CheckResult, error)
 }

@@ -31,13 +31,10 @@ func TestAutomationObservation(t *testing.T) {
 					CheckData: []byte("check data"),
 					Trigger: ocr2keepers.Trigger{
 						BlockNumber: 4,
-						BlockHash:   "hash",
-						Extension: struct {
-							Hash  string
-							Value int64
-						}{
-							Hash:  "0xhash",
-							Value: 18,
+						BlockHash:   [32]byte{0},
+						LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+							LogTxHash: [32]byte{1},
+							Index:     4,
 						},
 					},
 				},
@@ -67,8 +64,11 @@ func TestAutomationObservation(t *testing.T) {
 					CheckData: []byte("check data"),
 					Trigger: ocr2keepers.Trigger{
 						BlockNumber: 4,
-						BlockHash:   "hash",
-						Extension:   []byte(`{"Hash":"0xhash","Value":18}`),
+						BlockHash:   [32]byte{0},
+						LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+							LogTxHash: [32]byte{1},
+							Index:     4,
+						},
 					},
 				},
 				Retryable:   true,
@@ -157,7 +157,7 @@ func TestValidateAutomationObservation(t *testing.T) {
 						},
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 10,
-							BlockHash:   "0x",
+							BlockHash:   [32]byte{2},
 						},
 					},
 				},

@@ -21,8 +21,12 @@ func TestMetadataAddPayload(t *testing.T) {
 				ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			},
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 1,
-				BlockHash:   "test",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 		{
@@ -31,8 +35,12 @@ func TestMetadataAddPayload(t *testing.T) {
 				ID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			},
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 2,
-				BlockHash:   "test2",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 	}
@@ -41,15 +49,23 @@ func TestMetadataAddPayload(t *testing.T) {
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 1,
-				BlockHash:   "test",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 2,
-				BlockHash:   "test2",
+				BlockNumber: 4,
+				BlockHash:   [32]byte{0},
+				LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+					LogTxHash: [32]byte{1},
+					Index:     4,
+				},
 			},
 		},
 	}

@@ -9,20 +9,17 @@ import (
 
 func TestTriggerUnmarshal(t *testing.T) {
 	input := Trigger{
-		BlockNumber: 5,
-		BlockHash:   "0x",
-		Extension: struct {
-			Key   int
-			Value string
-		}{
-			Key:   7,
-			Value: "test",
+		BlockNumber: 4,
+		BlockHash:   [32]byte{1},
+		LogTriggerExtension: &LogTriggerExtenstion{
+			LogTxHash: [32]byte{1, 2, 3},
+			Index:     4,
 		},
 	}
 
 	encoded, _ := json.Marshal(input)
 
-	rawJSON := `{"BlockNumber":5,"BlockHash":"0x","Extension":{"Key":7,"Value":"test"}}`
+	rawJSON := `{"BlockNumber":4,"BlockHash":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":{"LogTxHash":[1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Index":4}}`
 
 	// the encoded value above should match the rawjson expected
 	assert.Equal(t, rawJSON, string(encoded), "encoded should match expected")
@@ -41,9 +38,12 @@ func TestTriggerUnmarshal(t *testing.T) {
 	assert.NoError(t, err, "no error expected from decoding")
 
 	expected := Trigger{
-		BlockNumber: 5,
-		BlockHash:   "0x",
-		Extension:   []byte(`{"Key":7,"Value":"test"}`),
+		BlockNumber: 4,
+		BlockHash:   [32]byte{1},
+		LogTriggerExtension: &LogTriggerExtenstion{
+			LogTxHash: [32]byte{1, 2, 3},
+			Index:     4,
+		},
 	}
 
 	assert.Equal(t, expected, output, "decoding should leave extension in its raw encoded state")
@@ -51,13 +51,13 @@ func TestTriggerUnmarshal(t *testing.T) {
 
 func TestTriggerUnmarshal_EmptyExtension(t *testing.T) {
 	input := Trigger{
-		BlockNumber: 5,
-		BlockHash:   "0x",
+		BlockNumber: 4,
+		BlockHash:   [32]byte{0},
 	}
 
 	encoded, _ := json.Marshal(input)
 
-	rawJSON := `{"BlockNumber":5,"BlockHash":"0x","Extension":null}`
+	rawJSON := `{"BlockNumber":4,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null}`
 
 	// the encoded value above should match the rawjson expected
 	assert.Equal(t, rawJSON, string(encoded), "encoded should match expected")
@@ -76,8 +76,8 @@ func TestTriggerUnmarshal_EmptyExtension(t *testing.T) {
 	assert.NoError(t, err, "no error expected from decoding")
 
 	expected := Trigger{
-		BlockNumber: 5,
-		BlockHash:   "0x",
+		BlockNumber: 4,
+		BlockHash:   [32]byte{0},
 	}
 
 	assert.Equal(t, expected, output, "decoding should leave extension in its raw encoded state")

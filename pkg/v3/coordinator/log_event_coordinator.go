@@ -56,7 +56,7 @@ func NewReportCoordinator(logs EventProvider, utg ocr2keepers.UpkeepTypeGetter, 
 
 // UpkeepWorkID returns the identifier using the given upkeepID and trigger extension(tx hash and log index).
 func UpkeepWorkID(id *big.Int, trigger ocr2keepers.Trigger) (string, error) {
-	extensionBytes, err := json.Marshal(trigger.Extension)
+	extensionBytes, err := json.Marshal(trigger.LogTriggerExtension)
 	if err != nil {
 		return "", err
 	}

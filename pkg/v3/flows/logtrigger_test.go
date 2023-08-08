@@ -408,7 +408,7 @@ func TestProcessOutcome(t *testing.T) {
 							UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 10,
-								BlockHash:   "testhash",
+								BlockHash:   [32]byte{1},
 							},
 						},
 					},
@@ -420,7 +420,7 @@ func TestProcessOutcome(t *testing.T) {
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 10,
-				BlockHash:   "testhash",
+				BlockHash:   [32]byte{1},
 			},
 		}
 

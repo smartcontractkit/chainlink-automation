@@ -61,7 +61,7 @@ func TestCheckUpkeep(t *testing.T) {
 		Upkeep: ocr2keepers.ConfiguredUpkeep{
 			ID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
 		},
-		Trigger: ocr2keepers.NewTrigger(8, "0x123", "conditional"),
+		Trigger: ocr2keepers.NewTrigger(8, [32]byte{1, 2, 3}),
 	}
 	// generateID was deprecated; find new way to create id
 	// payload1.ID = payload1.GenerateID()
@@ -80,7 +80,7 @@ func TestCheckUpkeep(t *testing.T) {
 		Upkeep: ocr2keepers.ConfiguredUpkeep{
 			ID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
 		},
-		Trigger: ocr2keepers.NewTrigger(11, "0x123", "conditional"),
+		Trigger: ocr2keepers.NewTrigger(11, [32]byte{1, 2, 3}),
 	}
 	// generateID was deprecated; find new way to create id
 	// payload2.ID = payload2.GenerateID()

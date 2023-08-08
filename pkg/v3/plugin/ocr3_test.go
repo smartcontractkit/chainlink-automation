@@ -105,9 +105,12 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 							Type: 1,
 						},
 						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 987,
-							BlockHash:   "789",
-							Extension:   333,
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
+							},
 						},
 					},
 				},
@@ -126,9 +129,12 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 							Type: 1,
 						},
 						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 987,
-							BlockHash:   "789",
-							Extension:   333,
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
+							},
 						},
 					},
 				},
@@ -147,9 +153,12 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 							Type: 1,
 						},
 						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 987,
-							BlockHash:   "789",
-							Extension:   333,
+							BlockNumber: 4,
+							BlockHash:   [32]byte{0},
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+								LogTxHash: [32]byte{1},
+								Index:     4,
+							},
 						},
 					},
 				},
@@ -211,8 +220,12 @@ func TestReports(t *testing.T) {
 								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
+								LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+									LogTxHash: [32]byte{1},
+									Index:     4,
+								},
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -258,8 +271,12 @@ func TestReports(t *testing.T) {
 								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
+								LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+									LogTxHash: [32]byte{1},
+									Index:     4,
+								},
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -272,8 +289,12 @@ func TestReports(t *testing.T) {
 								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
+								LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+									LogTxHash: [32]byte{1},
+									Index:     4,
+								},
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -319,8 +340,12 @@ func TestReports(t *testing.T) {
 								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
+								LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+									LogTxHash: [32]byte{1},
+									Index:     4,
+								},
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -333,8 +358,12 @@ func TestReports(t *testing.T) {
 								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
+								LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+									LogTxHash: [32]byte{1},
+									Index:     4,
+								},
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -347,8 +376,12 @@ func TestReports(t *testing.T) {
 								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
+								LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+									LogTxHash: [32]byte{1},
+									Index:     4,
+								},
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -395,8 +428,12 @@ func TestReports(t *testing.T) {
 								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 1,
-								BlockHash:   "0x",
+								BlockNumber: 4,
+								BlockHash:   [32]byte{0},
+								LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
+									LogTxHash: [32]byte{1},
+									Index:     4,
+								},
 							},
 						},
 						GasAllocated: 5_000_000,
