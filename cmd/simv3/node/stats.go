@@ -7,7 +7,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/blocks"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulators"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type upkeepStatsBuilder struct {
@@ -23,7 +23,7 @@ func newUpkeepStatsBuilder(
 	upkeeps []simulators.SimulatedUpkeep,
 	transmits []blocks.TransmitEvent,
 	checks map[string][]string,
-	encoder plugin.Encoder,
+	encoder ocr2keepers.Encoder,
 ) (*upkeepStatsBuilder, error) {
 
 	// count the number of transmits per account

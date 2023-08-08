@@ -8,7 +8,6 @@ import (
 
 	"go.uber.org/multierr"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -61,7 +60,7 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 
 	for i, payload := range payloads {
 		wg.Add(1)
-		go func(i int, key ocr2keepers.UpkeepPayload, en plugin.Encoder) {
+		go func(i int, key ocr2keepers.UpkeepPayload, en ocr2keepers.Encoder) {
 			defer wg.Done()
 
 			block := new(big.Int).SetInt64(int64(key.Trigger.BlockNumber))

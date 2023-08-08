@@ -13,8 +13,8 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/mocks"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 func TestObservation(t *testing.T) {
@@ -180,7 +180,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 func TestReports(t *testing.T) {
 	t.Run("1 report less than limit; 1 report per batch", func(t *testing.T) {
-		me := new(mocks.MockEncoder)
+		me := new(mocks2.MockEncoder)
 
 		// Create an instance of ocr3 plugin
 		plugin := &ocr3Plugin{
@@ -226,7 +226,7 @@ func TestReports(t *testing.T) {
 	})
 
 	t.Run("2 reports less than limit; 1 report per batch", func(t *testing.T) {
-		me := new(mocks.MockEncoder)
+		me := new(mocks2.MockEncoder)
 
 		// Create an instance of ocr3 plugin
 		plugin := &ocr3Plugin{
@@ -285,7 +285,7 @@ func TestReports(t *testing.T) {
 	})
 
 	t.Run("3 reports less than limit; 2 report per batch", func(t *testing.T) {
-		me := new(mocks.MockEncoder)
+		me := new(mocks2.MockEncoder)
 
 		// Create an instance of ocr3 plugin
 		plugin := &ocr3Plugin{
@@ -358,7 +358,7 @@ func TestReports(t *testing.T) {
 	})
 
 	t.Run("gas allocated larger than report limit", func(t *testing.T) {
-		me := new(mocks.MockEncoder)
+		me := new(mocks2.MockEncoder)
 
 		// Create an instance of ocr3 plugin
 		plugin := &ocr3Plugin{

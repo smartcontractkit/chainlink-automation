@@ -13,13 +13,13 @@ import (
 	simio "github.com/smartcontractkit/ocr2keepers/cmd/simv3/io"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type GroupConfig struct {
 	Digester      types.OffchainConfigDigester
 	Cadence       config.Blocks
-	Encoder       plugin.Encoder
+	Encoder       ocr2keepers.Encoder
 	Upkeeps       []simulators.SimulatedUpkeep
 	ConfigEvents  []config.ConfigEvent
 	RPCConfig     config.RPC
@@ -33,7 +33,7 @@ type Group struct {
 	network     *simulators.SimulatedNetwork
 	digester    types.OffchainConfigDigester
 	blockSrc    *blocks.BlockBroadcaster
-	encoder     plugin.Encoder
+	encoder     ocr2keepers.Encoder
 	transmitter *blocks.TransmitLoader
 	confLoader  *blocks.ConfigLoader
 	upkeeps     []simulators.SimulatedUpkeep

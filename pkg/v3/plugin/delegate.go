@@ -58,7 +58,7 @@ type DelegateConfig struct {
 	Runnable runner.Runnable
 
 	// Encoder provides methods to encode/decode reports
-	Encoder Encoder
+	Encoder ocr2keepers.Encoder
 
 	// BlockSubscriber provides subscribe/unsubscribe methods for block source
 	// data

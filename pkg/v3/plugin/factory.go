@@ -43,7 +43,7 @@ type pluginFactory struct {
 	getter           flows.UpkeepProvider
 	runnable         runner.Runnable
 	runnerConf       runner.RunnerConfig
-	encoder          Encoder
+	encoder          ocr2keepers.Encoder
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 	logger           *log.Logger
 }
@@ -57,7 +57,7 @@ func NewReportingPluginFactory(
 	getter flows.UpkeepProvider,
 	runnable runner.Runnable,
 	runnerConf runner.RunnerConfig,
-	encoder Encoder,
+	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {

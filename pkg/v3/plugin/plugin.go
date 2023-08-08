@@ -34,7 +34,7 @@ func newPlugin(
 	builder flows.PayloadBuilder,
 	ratio flows.Ratio,
 	getter flows.UpkeepProvider,
-	encoder Encoder,
+	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
 	runnable runner.Runnable,
 	rConf runner.RunnerConfig,
