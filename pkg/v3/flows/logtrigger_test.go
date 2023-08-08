@@ -381,34 +381,6 @@ func TestProcessOutcome(t *testing.T) {
 		pb.AssertExpectations(t)
 	})
 
-	t.Run("proposals but no block in outcome", func(t *testing.T) {
-		pb := new(mocks.MockPayloadBuilder)
-		flow := &LogTriggerEligibility{
-			builder: pb,
-			logger:  log.New(io.Discard, "", 0),
-		}
-
-		testOutcome := ocr2keepersv3.AutomationOutcome{
-			BasicOutcome: ocr2keepersv3.BasicOutcome{
-				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
-						{
-							UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 10,
-								BlockHash:   "testhash",
-							},
-						},
-					},
-				},
-			},
-		}
-
-		assert.ErrorIs(t, flow.ProcessOutcome(testOutcome), ocr2keepersv3.ErrBlockNotAvailable, "error of expected type from processing outcome: %s")
-
-		pb.AssertExpectations(t)
-	})
-
 	t.Run("proposals are added to retryer", func(t *testing.T) {
 		recoverer := new(mocks.MockRetryer)
 		pb := new(mocks.MockPayloadBuilder)
@@ -449,9 +421,6 @@ func TestProcessOutcome(t *testing.T) {
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 10,
 				BlockHash:   "testhash",
-			},
-			Block: ocr2keepers.BlockKey{
-				Number: 4,
 			},
 		}
 

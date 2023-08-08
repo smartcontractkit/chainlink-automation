@@ -282,7 +282,6 @@ func (t Trigger) String() string {
 type CoordinatedProposal struct {
 	UpkeepID UpkeepIdentifier
 	Trigger  Trigger
-	Block    BlockKey
 }
 
 type ReportedUpkeep struct {

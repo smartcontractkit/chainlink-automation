@@ -161,16 +161,6 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 		return nil
 	}
 
-	// get latest coordinated block
-	// by checking latest outcome first and then looping through the history
-	block, err := outcome.LatestCoordinatedBlock()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
-			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {
-			return err
-		}
-	}
-
 	cachedProposals, err := store.RecoveryProposalCacheFromMetadata(flow.mStore)
 	if err != nil {
 		return err
@@ -181,8 +171,6 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 
 	// merge block number and recoverables
 	for _, proposal := range networkProposals {
-		proposal.Block = block
-
 		// remove from local metadata store
 		cachedProposals.Delete(fmt.Sprintf("%v", proposal))
 
