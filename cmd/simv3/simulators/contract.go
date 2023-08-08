@@ -2,12 +2,15 @@ package simulators
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
@@ -130,6 +133,19 @@ func (ct *SimulatedContract) LatestBlockHeight(_ context.Context) (uint64, error
 	return ct.lastBlock.Uint64(), nil
 }
 
+// UpkeepWorkID returns the identifier using the given upkeepID and trigger extension(tx hash and log index).
+func UpkeepWorkID(id *big.Int, trigger ocr2keepers.Trigger) (string, error) {
+	extensionBytes, err := json.Marshal(trigger.Extension)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO (auto-4314): Ensure it works with conditionals and add unit tests
+	combined := fmt.Sprintf("%s%s", id, extensionBytes)
+	hash := crypto.Keccak256([]byte(combined))
+	return hex.EncodeToString(hash[:]), nil
+}
+
 func (ct *SimulatedContract) run() {
 	sub, chBlocks := ct.src.Subscribe(true)
 	ct.subscription = sub
@@ -162,12 +178,18 @@ func (ct *SimulatedContract) run() {
 
 					logs := make([]ocr2keepers.TransmitEvent, len(reported))
 					for i, result := range reported {
+
+						workID, err := UpkeepWorkID(result.UpkeepID.BigInt(), result.Trigger)
+						if err != nil {
+							continue
+						}
+
 						logs[i] = ocr2keepers.TransmitEvent{
 							Type:            ocr2keepers.PerformEvent,
 							TransmitBlock:   ocr2keepers.BlockNumber(block.BlockNumber.Uint64()),
 							Confirmations:   0,
 							TransactionHash: [32]byte{},
-							WorkID:          result.WorkID,
+							WorkID:          workID,
 							UpkeepID:        result.UpkeepID,
 							CheckBlock:      ocr2keepers.BlockNumber(1), // TODO: need to get this from somewhere
 						}
@@ -178,7 +200,7 @@ func (ct *SimulatedContract) run() {
 							up.Performs[block.BlockNumber.String()] = logs[i]
 						}
 
-						ct.logger.Printf("log for key '%s' found in block '%s'", result.ID, block.BlockNumber)
+						ct.logger.Printf("log for key '%s' found in block '%s'", result.UpkeepID.String(), block.BlockNumber)
 					}
 
 					lgs, ok := ct.perLogs.Get(block.BlockNumber.String())

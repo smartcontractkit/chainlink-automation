@@ -2,10 +2,15 @@ package coordinator
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
@@ -49,22 +54,44 @@ func NewReportCoordinator(logs EventProvider, utg ocr2keepers.UpkeepTypeGetter, 
 	}
 }
 
-func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
-	if rc.upkeepTypeGetter(upkeep.UpkeepID) != ocr2keepers.LogTrigger {
-		return fmt.Errorf("Upkeep is not log event based, skipping ID: %s", upkeep.ID)
+// UpkeepWorkID returns the identifier using the given upkeepID and trigger extension(tx hash and log index).
+func UpkeepWorkID(id *big.Int, trigger ocr2keepers.Trigger) (string, error) {
+	extensionBytes, err := json.Marshal(trigger.Extension)
+	if err != nil {
+		return "", err
 	}
 
-	if _, ok := rc.activeKeys.Get(upkeep.ID); !ok {
-		rc.activeKeys.Set(upkeep.ID, false, util.DefaultCacheExpiration)
+	// TODO (auto-4314): Ensure it works with conditionals and add unit tests
+	combined := fmt.Sprintf("%s%s", id, extensionBytes)
+	hash := crypto.Keccak256([]byte(combined))
+	return hex.EncodeToString(hash[:]), nil
+}
+
+func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
+	if rc.upkeepTypeGetter(upkeep.UpkeepID) != ocr2keepers.LogTrigger {
+		return fmt.Errorf("Upkeep is not log event based, skipping: %s", upkeep.UpkeepID.String())
+	}
+
+	workID, err := UpkeepWorkID(upkeep.UpkeepID.BigInt(), upkeep.Trigger)
+	if err != nil {
+		return fmt.Errorf("Unable to build work ID: %w", err)
+	}
+
+	if _, ok := rc.activeKeys.Get(workID); !ok {
+		rc.activeKeys.Set(workID, false, util.DefaultCacheExpiration)
 	}
 
 	return nil
 }
 
 func (rc *reportCoordinator) IsTransmissionConfirmed(upkeep ocr2keepers.ReportedUpkeep) bool {
+	workID, err := UpkeepWorkID(upkeep.UpkeepID.BigInt(), upkeep.Trigger)
+	if err != nil {
+		return false
+	}
 	// if non-exist in cache, return true
 	// if exist in cache and confirmed by log poller, return true
-	confirmed, ok := rc.activeKeys.Get(upkeep.ID)
+	confirmed, ok := rc.activeKeys.Get(workID)
 	return !ok || (ok && confirmed)
 }
 

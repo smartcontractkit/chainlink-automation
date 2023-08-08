@@ -284,17 +284,12 @@ type CoordinatedProposal struct {
 	Trigger  Trigger
 }
 
+// Details of an upkeep for which a report was generated
 type ReportedUpkeep struct {
-	// TODO: auto-4245 remove this
-	ID string
-	// WorkID uniquely identifies the unit of work for the specified upkeep
-	WorkID string
 	// UpkeepID is the value that identifies a configured upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger data for the upkeep
 	Trigger Trigger
-	// PerformData is the data to perform an upkeep with
-	PerformData []byte
 }
 
 type BlockHistory []BlockKey

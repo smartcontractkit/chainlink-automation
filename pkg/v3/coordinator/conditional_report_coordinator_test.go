@@ -490,7 +490,6 @@ func TestConditionalReportCoordinator_Accept(t *testing.T) {
 		upkeepID := ocr2keepers.UpkeepIdentifier([32]byte{10})
 
 		err := coordinator.Accept(ocr2keepers.ReportedUpkeep{
-			ID:       "123",
 			UpkeepID: upkeepID,
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 567,

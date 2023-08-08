@@ -30,10 +30,8 @@ func (re SimulatedReportEncoder) Extract(b []byte) ([]ocr2keepers.ReportedUpkeep
 
 	for i, result := range results {
 		reported[i] = ocr2keepers.ReportedUpkeep{
-			ID:          result.Payload.ID,
-			UpkeepID:    result.Payload.Upkeep.ID,
-			Trigger:     result.Payload.Trigger,
-			PerformData: result.PerformData,
+			UpkeepID: result.Payload.Upkeep.ID,
+			Trigger:  result.Payload.Trigger,
 		}
 	}
 
