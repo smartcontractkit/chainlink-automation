@@ -123,7 +123,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			// the observation and move to the next one
 			continue
 		}
-
+		plugin.Logger.Printf("Got observation with %d performables from oracle %d in sequence %d", len(observation.Performable), attributedObservation.Observer, outctx.SeqNr)
 		p.add(observation)
 		c.add(observation)
 		s.add(observation)
