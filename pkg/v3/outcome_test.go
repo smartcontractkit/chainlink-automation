@@ -49,12 +49,7 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 			Performable: []ocr2keepers.CheckResult{
 				{
 					Payload: ocr2keepers.UpkeepPayload{
-						ID: "abc",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:     [32]byte{111},
-							Type:   1,
-							Config: "value",
-						},
+						UpkeepID:  [32]byte{111},
 						CheckData: []byte("check data"),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
@@ -84,12 +79,7 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 			Performable: []ocr2keepers.CheckResult{
 				{
 					Payload: ocr2keepers.UpkeepPayload{
-						ID: "abc",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:     [32]byte{111},
-							Type:   1,
-							Config: []byte(`"value"`),
-						},
+						UpkeepID:  [32]byte{111},
 						CheckData: []byte("check data"),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
@@ -200,10 +190,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 						Retryable:    false,
 						GasAllocated: 1,
 						Payload: ocr2keepers.UpkeepPayload{
-							ID: "test",
-							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: [32]byte{111},
-							},
+							UpkeepID: [32]byte{111},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 4,
 								BlockHash:   [32]byte{0},

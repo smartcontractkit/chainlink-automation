@@ -46,7 +46,7 @@ func TestRetryFlow(t *testing.T) {
 	testCheckResult := ocr2keepers.CheckResult{
 		Retryable: true,
 		Payload: ocr2keepers.UpkeepPayload{
-			ID: "test",
+			WorkID: "test",
 		},
 	}
 

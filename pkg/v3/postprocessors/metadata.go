@@ -36,7 +36,7 @@ func (a *addPayloadToMetadataStorePostprocessor) PostProcess(_ context.Context, 
 	// should only add values and not remove them
 	for _, r := range results {
 		proposal := ocr2keepers.CoordinatedProposal{
-			UpkeepID: r.Upkeep.ID,
+			UpkeepID: r.UpkeepID,
 			Trigger:  r.Trigger,
 		}
 
@@ -62,7 +62,7 @@ func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, 
 			continue
 		}
 
-		ids = append(ids, r.Payload.Upkeep.ID)
+		ids = append(ids, r.Payload.UpkeepID)
 	}
 
 	// should always reset values every time sampling runs

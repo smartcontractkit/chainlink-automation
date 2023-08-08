@@ -34,7 +34,7 @@ func TestSampleTicker(t *testing.T) {
 		{
 			Name: "simple happy path",
 			TestData: []ocr2keepers.UpkeepPayload{
-				{ID: "1"},
+				{WorkID: "1"},
 			},
 			ExpectedSampleCount:  1,
 			ExpectedSampleResult: 1,
@@ -42,9 +42,9 @@ func TestSampleTicker(t *testing.T) {
 		{
 			Name: "reduce to sample size",
 			TestData: []ocr2keepers.UpkeepPayload{
-				{ID: "1"},
-				{ID: "2"},
-				{ID: "3"},
+				{WorkID: "1"},
+				{WorkID: "2"},
+				{WorkID: "3"},
 			},
 			ExpectedSampleCount:  2,
 			ExpectedSampleResult: 2,

@@ -113,7 +113,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data, 4 times nil
@@ -192,7 +192,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data, 2 times nil
@@ -285,7 +285,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data and 2 times nil
@@ -425,7 +425,7 @@ func TestProcessOutcome(t *testing.T) {
 		}
 
 		pb.On("BuildPayload", mock.Anything, expectedProposal).Return(ocr2keepers.UpkeepPayload{
-			ID: "test",
+			WorkID: "test",
 		}, nil)
 
 		recoverer.On("Retry", mock.Anything).Return(nil)

@@ -28,7 +28,7 @@ func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutco
 	toRemove := make([]string, 0, len(outcome.Performable))
 
 	for _, result := range outcome.Performable {
-		toRemove = append(toRemove, result.Payload.ID)
+		toRemove = append(toRemove, result.Payload.WorkID)
 	}
 
 	hook.logger.Printf("%d results found in outcome", len(toRemove))

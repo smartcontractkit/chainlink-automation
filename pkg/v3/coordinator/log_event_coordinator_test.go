@@ -81,9 +81,9 @@ func TestLogEventCoordinator(t *testing.T) {
 
 		// Define some example payloads
 		payloads := []ocr2keepers.UpkeepPayload{
-			{ID: "payload1"},
-			{ID: "payload2"},
-			{ID: "payload3"},
+			{WorkID: "payload1"},
+			{WorkID: "payload2"},
+			{WorkID: "payload3"},
 		}
 
 		// Call the PreProcess git st
@@ -92,8 +92,8 @@ func TestLogEventCoordinator(t *testing.T) {
 
 		// Assert that only payload2 and payload3 are included in the filteredPayloads slice
 		expectedPayloads := []ocr2keepers.UpkeepPayload{
-			{ID: "payload2"},
-			{ID: "payload3"},
+			{WorkID: "payload2"},
+			{WorkID: "payload3"},
 		}
 		assert.Equal(t, expectedPayloads, filteredPayloads, "filteredPayloads should match the expected payloads")
 	})

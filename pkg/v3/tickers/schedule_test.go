@@ -189,8 +189,8 @@ func TestScheduleTicker(t *testing.T) {
 func TestStaticTick_Value(t *testing.T) {
 	// Create a retryTick instance
 	upkeeps := []ocr2keepers.UpkeepPayload{
-		{ID: "payload1"},
-		{ID: "payload2"},
+		{WorkID: "payload1"},
+		{WorkID: "payload2"},
 	}
 	tick := staticTick[[]ocr2keepers.UpkeepPayload]{value: upkeeps}
 

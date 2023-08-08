@@ -146,9 +146,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		assert.NotNil(t, coordinator)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: [32]byte{123},
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{123}),
 		})
 
 		assert.False(t, pending)
@@ -171,9 +169,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: upkeepID,
-			},
+			UpkeepID: upkeepID,
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 99,
 			},
@@ -200,9 +196,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: upkeepID,
-			},
+			UpkeepID: upkeepID,
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 101,
 			},
@@ -229,9 +223,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: upkeepID,
-			},
+			UpkeepID: upkeepID,
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 99,
 			},
@@ -524,11 +516,7 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 		assert.NotNil(t, coordinator)
 
 		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
-			ID: "123",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID:   ocr2keepers.UpkeepIdentifier([32]byte{4}),
-				Type: 1,
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
@@ -552,11 +540,7 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 		coordinator.activeKeys.Set("4", true, config.DefaultCacheExpiration)
 
 		confirmed := coordinator.IsTransmissionConfirmed(ocr2keepers.UpkeepPayload{
-			ID: "123",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID:   ocr2keepers.UpkeepIdentifier([32]byte{4}),
-				Type: 1,
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 501,
 			},
@@ -591,25 +575,19 @@ func TestConditionalReportCoordinator_PreProcess(t *testing.T) {
 
 		filtered, err := coordinator.PreProcess(context.Background(), []ocr2keepers.UpkeepPayload{
 			{
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: upkeepID,
-				},
+				UpkeepID: upkeepID,
 				Trigger: ocr2keepers.Trigger{
 					BlockNumber: 99,
 				},
 			},
 			{
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: [32]byte{124},
-				},
+				UpkeepID: [32]byte{124},
 				Trigger: ocr2keepers.Trigger{
 					BlockNumber: 100,
 				},
 			},
 			{
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: [32]byte{125},
-				},
+				UpkeepID: [32]byte{125},
 				Trigger: ocr2keepers.Trigger{
 					BlockNumber: 101,
 				},

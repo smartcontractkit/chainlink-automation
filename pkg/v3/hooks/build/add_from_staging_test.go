@@ -19,8 +19,8 @@ func TestAddFromStaging(t *testing.T) {
 		hook := NewAddFromStaging(ms, log.New(io.Discard, "", 0))
 		observation := &ocr2keepersv3.AutomationObservation{}
 		expected := []ocr2keepers.CheckResult{
-			{Payload: ocr2keepers.UpkeepPayload{ID: "test1"}},
-			{Payload: ocr2keepers.UpkeepPayload{ID: "test2"}},
+			{Payload: ocr2keepers.UpkeepPayload{WorkID: "test1"}},
+			{Payload: ocr2keepers.UpkeepPayload{WorkID: "test2"}},
 		}
 
 		ms.On("View").Return(expected, nil)

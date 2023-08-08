@@ -182,29 +182,19 @@ func ValidateConfiguredUpkeep(u ConfiguredUpkeep) error {
 }
 
 type UpkeepPayload struct {
-	// TODO: auto-4245 remove this
-	ID string
-	// WorkID uniquely identifies the unit of work for the specified upkeep
-	WorkID string
 	// Upkeep is all the information that identifies the upkeep
-	Upkeep ConfiguredUpkeep
-	// CheckData is the data used to check the upkeep
-	CheckData []byte
+	UpkeepID UpkeepIdentifier
 	// Trigger is the event that triggered the upkeep to be checked
 	Trigger Trigger
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
+	// CheckData is the data used to check the upkeep
+	CheckData []byte
 }
 
 type UpkeepTypeGetter func(uid UpkeepIdentifier) UpkeepType
 
 func ValidateUpkeepPayload(p UpkeepPayload) error {
-	if len(p.ID) == 0 {
-		return fmt.Errorf("upkeep payload id cannot be empty")
-	}
-
-	if err := ValidateConfiguredUpkeep(p.Upkeep); err != nil {
-		return err
-	}
-
 	return ValidateTrigger(p.Trigger)
 }
 

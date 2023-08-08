@@ -103,7 +103,7 @@ func (rc *conditionalReportCoordinator) isPending(key ocr2keepers.UpkeepPayload)
 	}
 
 	// only apply filter if key id is registered in the cache
-	if bl, ok := rc.idBlocks.Get(key.Upkeep.ID.String()); ok {
+	if bl, ok := rc.idBlocks.Get(key.UpkeepID.String()); ok {
 		isAfter, err := rc.encoder.After(blockKey.Number, bl.TransmitBlockNumber)
 		if err != nil {
 			return true
@@ -142,7 +142,7 @@ func (rc *conditionalReportCoordinator) Accept(key ocr2keepers.ReportedUpkeep) e
 func (rc *conditionalReportCoordinator) IsTransmissionConfirmed(key ocr2keepers.UpkeepPayload) bool {
 	// key is confirmed if it both exists and has been confirmed by the log
 	// poller
-	confirmed, ok := rc.activeKeys.Get(key.Upkeep.ID.String())
+	confirmed, ok := rc.activeKeys.Get(key.UpkeepID.String())
 	return !ok || (ok && confirmed)
 }
 

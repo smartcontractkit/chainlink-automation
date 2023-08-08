@@ -16,10 +16,7 @@ func TestMetadataAddPayload(t *testing.T) {
 	ms := new(MockMetadataStore)
 	values := []ocr2keepers.UpkeepPayload{
 		{
-			ID: "test",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 4,
 				BlockHash:   [32]byte{0},
@@ -30,10 +27,7 @@ func TestMetadataAddPayload(t *testing.T) {
 			},
 		},
 		{
-			ID: "test1",
-			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 4,
 				BlockHash:   [32]byte{0},
@@ -96,28 +90,19 @@ func TestMetadataAddSamples(t *testing.T) {
 		{
 			Eligible: true,
 			Payload: ocr2keepers.UpkeepPayload{
-				ID: "test",
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-				},
+				UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			},
 		},
 		{
 			Eligible: true,
 			Payload: ocr2keepers.UpkeepPayload{
-				ID: "test1",
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
-				},
+				UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			},
 		},
 		{
 			Eligible: false,
 			Payload: ocr2keepers.UpkeepPayload{
-				ID: "test2",
-				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
-				},
+				UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 			},
 		},
 	}

@@ -207,12 +207,12 @@ type scheduledRetryer struct {
 func (s *scheduledRetryer) Retry(r ocr2keepers.CheckResult) error {
 	if !r.Retryable {
 		// exit condition for not retryable
-		return fmt.Errorf("%w: %s", ErrNotRetryable, r.Payload.ID)
+		return fmt.Errorf("%w: %s", ErrNotRetryable, r.Payload.WorkID)
 	}
 
 	// TODO: validate that block is still valid for retry; if not error
 
-	return s.scheduler.Schedule(r.Payload.ID, r.Payload)
+	return s.scheduler.Schedule(r.Payload.WorkID, r.Payload)
 }
 
 type BasicRetryer[T any] interface {
@@ -224,7 +224,7 @@ type basicRetryer struct {
 }
 
 func (s *basicRetryer) Retry(r ocr2keepers.CheckResult) error {
-	return s.ticker.Add(r.Payload.ID, r.Payload)
+	return s.ticker.Add(r.Payload.WorkID, r.Payload)
 }
 
 type logTick struct {

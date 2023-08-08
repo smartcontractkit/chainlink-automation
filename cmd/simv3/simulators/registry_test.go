@@ -58,10 +58,8 @@ func TestCheckUpkeep(t *testing.T) {
 	mct.On("CheckKey", mock.Anything)
 
 	payload1 := ocr2keepers.UpkeepPayload{
-		Upkeep: ocr2keepers.ConfiguredUpkeep{
-			ID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
-		},
-		Trigger: ocr2keepers.NewTrigger(8, [32]byte{1, 2, 3}),
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
+		Trigger:  ocr2keepers.NewTrigger(8, [32]byte{1, 2, 3}),
 	}
 	// generateID was deprecated; find new way to create id
 	// payload1.ID = payload1.GenerateID()
@@ -77,10 +75,8 @@ func TestCheckUpkeep(t *testing.T) {
 	tel.On("RegisterCall", "checkUpkeep", mock.Anything, nil)
 
 	payload2 := ocr2keepers.UpkeepPayload{
-		Upkeep: ocr2keepers.ConfiguredUpkeep{
-			ID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
-		},
-		Trigger: ocr2keepers.NewTrigger(11, [32]byte{1, 2, 3}),
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
+		Trigger:  ocr2keepers.NewTrigger(11, [32]byte{1, 2, 3}),
 	}
 	// generateID was deprecated; find new way to create id
 	// payload2.ID = payload2.GenerateID()

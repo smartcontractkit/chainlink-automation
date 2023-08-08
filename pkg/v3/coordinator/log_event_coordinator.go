@@ -129,7 +129,7 @@ func (rc *reportCoordinator) performEvent(evt ocr2keepers.TransmitEvent) {
 
 // isPending returns true if a key should be filtered out.
 func (rc *reportCoordinator) isPending(payload ocr2keepers.UpkeepPayload) bool {
-	if _, ok := rc.activeKeys.Get(payload.ID); ok {
+	if _, ok := rc.activeKeys.Get(payload.WorkID); ok {
 		// If the payload already exists, return true
 		return true
 	}

@@ -23,18 +23,18 @@ func TestRemoveFromStagingHook(t *testing.T) {
 		{
 			Name: "One Result",
 			Input: []ocr2keepers.CheckResult{
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test"}},
+				{Payload: ocr2keepers.UpkeepPayload{WorkID: "test"}},
 			},
 		},
 		{
 			Name: "Five Results",
 			Input: []ocr2keepers.CheckResult{
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test1"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test2"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test3"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test4"}},
-				{Payload: ocr2keepers.UpkeepPayload{ID: "test5"}},
+				{Payload: ocr2keepers.UpkeepPayload{WorkID: "test"}},
+				{Payload: ocr2keepers.UpkeepPayload{WorkID: "test1"}},
+				{Payload: ocr2keepers.UpkeepPayload{WorkID: "test2"}},
+				{Payload: ocr2keepers.UpkeepPayload{WorkID: "test3"}},
+				{Payload: ocr2keepers.UpkeepPayload{WorkID: "test4"}},
+				{Payload: ocr2keepers.UpkeepPayload{WorkID: "test5"}},
 			},
 		},
 	}

@@ -101,7 +101,7 @@ func newRecoveryProposalFlow(
 			}
 
 			for _, rec := range recovers {
-				if err := f(rec.ID, rec); err != nil {
+				if err := f(rec.WorkID, rec); err != nil {
 					return err
 				}
 			}

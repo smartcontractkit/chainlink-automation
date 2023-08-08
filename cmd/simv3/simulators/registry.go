@@ -66,7 +66,7 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 
 			block := new(big.Int).SetInt64(int64(key.Trigger.BlockNumber))
 
-			up, ok := ct.upkeeps[key.Upkeep.ID.String()]
+			up, ok := ct.upkeeps[key.UpkeepID.String()]
 			if !ok {
 				mErr = multierr.Append(mErr, fmt.Errorf("upkeep not registered"))
 				return

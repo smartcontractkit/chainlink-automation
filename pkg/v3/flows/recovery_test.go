@@ -41,7 +41,7 @@ func TestRecoveryFlow(t *testing.T) {
 
 	retryable := ocr2keepers.CheckResult{
 		Payload: ocr2keepers.UpkeepPayload{
-			ID: "test",
+			WorkID: "test",
 		},
 	}
 
@@ -72,7 +72,7 @@ func TestRecoveryProposalFlow(t *testing.T) {
 	// preprocessor is just a pass through
 	coord := new(mockedPreprocessor)
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 	ar := util.NewSyncedArray[ocr2keepers.UpkeepPayload]()

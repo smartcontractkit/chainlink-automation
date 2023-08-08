@@ -290,22 +290,22 @@ func TestResultStore_View(t *testing.T) {
 
 	t.Run("sort items by id desc", func(t *testing.T) {
 		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			return a.Payload.ID > b.Payload.ID
+			return a.Payload.WorkID > b.Payload.WorkID
 		}))
 		assert.NoError(t, err)
 		assert.Len(t, v, 10)
-		assert.Equal(t, "test-id-9", v[0].Payload.ID)
+		assert.Equal(t, "test-id-9", v[0].Payload.WorkID)
 	})
 
 	t.Run("sort items by id desc with limit", func(t *testing.T) {
 		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			return a.Payload.ID > b.Payload.ID
+			return a.Payload.WorkID > b.Payload.WorkID
 		}), ocr2keepersv3.WithLimit(3))
 		assert.NoError(t, err)
 		assert.Len(t, v, 3)
-		assert.Equal(t, "test-id-9", v[0].Payload.ID)
-		assert.Equal(t, "test-id-8", v[1].Payload.ID)
-		assert.Equal(t, "test-id-7", v[2].Payload.ID)
+		assert.Equal(t, "test-id-9", v[0].Payload.WorkID)
+		assert.Equal(t, "test-id-8", v[1].Payload.WorkID)
+		assert.Equal(t, "test-id-7", v[2].Payload.WorkID)
 	})
 
 	t.Run("ignore expired items", func(t *testing.T) {
@@ -315,11 +315,11 @@ func TestResultStore_View(t *testing.T) {
 		store.data["test-id-0"] = el
 		store.lock.Unlock()
 		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			return a.Payload.ID < b.Payload.ID
+			return a.Payload.WorkID < b.Payload.WorkID
 		}), ocr2keepersv3.WithLimit(3))
 		assert.NoError(t, err)
 		assert.Len(t, v, 3)
-		assert.Equal(t, "test-id-1", v[0].Payload.ID)
+		assert.Equal(t, "test-id-1", v[0].Payload.WorkID)
 
 	})
 }
@@ -330,7 +330,7 @@ func mockItems(i, count int) []ocr2keepers.CheckResult {
 		items[j] = ocr2keepers.CheckResult{
 			Retryable: false,
 			Payload: ocr2keepers.UpkeepPayload{
-				ID: fmt.Sprintf("test-id-%d", i+j),
+				WorkID: fmt.Sprintf("test-id-%d", i+j),
 			},
 		}
 	}

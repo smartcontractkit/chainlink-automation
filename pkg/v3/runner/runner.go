@@ -135,7 +135,7 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 	for _, payload := range payloads {
 
 		// if in cache, add to result
-		if res, ok := o.cache.Get(payload.ID); ok {
+		if res, ok := o.cache.Get(payload.WorkID); ok {
 			result.Add(res)
 			continue
 		}
@@ -181,7 +181,7 @@ func (o *Runner) wrapWorkerFunc() func(context.Context, []ocr2keepers.UpkeepPayl
 
 		allPayloadKeys := make([]string, len(payloads))
 		for i := range payloads {
-			allPayloadKeys[i] = payloads[i].ID
+			allPayloadKeys[i] = payloads[i].WorkID
 		}
 
 		// perform check and update cache with result
@@ -204,7 +204,7 @@ func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2ke
 			for _, result := range results {
 				// only add to the cache if the result is not retryable
 				if !result.Retryable {
-					o.cache.Set(result.Payload.ID, result, pkgutil.DefaultCacheExpiration)
+					o.cache.Set(result.Payload.WorkID, result, pkgutil.DefaultCacheExpiration)
 				}
 
 				r.Add(result)

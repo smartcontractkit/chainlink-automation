@@ -89,13 +89,13 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 
 	added := 0
 	for _, r := range results {
-		id := r.Payload.ID
+		id := r.Payload.WorkID
 		_, ok := s.data[id]
 		if !ok {
 			added++
 			s.data[id] = result{data: r, addedAt: time.Now()}
 
-			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", r.Payload.Upkeep.ID.String(), r.Payload.ID)
+			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", r.Payload.UpkeepID.String(), r.Payload.WorkID)
 		}
 		// if the element is already exists, we do noting
 	}
@@ -171,7 +171,7 @@ resultLoop:
 
 		results = append(results, r.data)
 
-		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", r.data.Payload.Upkeep.ID.String(), r.data.Payload.ID)
+		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", r.data.Payload.UpkeepID.String(), r.data.Payload.WorkID)
 
 		// if we reached the limit and there are no comparators, we can stop here
 		if len(results) == limit && len(comparators) == 0 {
@@ -192,7 +192,7 @@ func (s *resultStore) gc() {
 			delete(s.data, k)
 			s.notify(ocr2keepersv3.NotifyOpEvict, v.data)
 
-			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", v.data.Payload.Upkeep.ID.String(), v.data.Payload.ID)
+			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", v.data.Payload.UpkeepID.String(), v.data.Payload.WorkID)
 		}
 	}
 }

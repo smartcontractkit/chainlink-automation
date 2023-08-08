@@ -32,11 +32,11 @@ func TestRunnerCache(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
-		{ID: "a"},
-		{ID: "b"},
-		{ID: "c"},
-		{ID: "d"},
-		{ID: "e"},
+		{WorkID: "a"},
+		{WorkID: "b"},
+		{WorkID: "c"},
+		{WorkID: "d"},
+		{WorkID: "e"},
 	}
 
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
@@ -75,18 +75,18 @@ func TestRunnerBatching(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
-		{ID: "a"},
-		{ID: "b"},
-		{ID: "c"},
-		{ID: "d"},
-		{ID: "e"},
-		{ID: "f"},
-		{ID: "g"},
-		{ID: "h"},
-		{ID: "i"},
-		{ID: "j"},
-		{ID: "k"},
-		{ID: "l"},
+		{WorkID: "a"},
+		{WorkID: "b"},
+		{WorkID: "c"},
+		{WorkID: "d"},
+		{WorkID: "e"},
+		{WorkID: "f"},
+		{WorkID: "g"},
+		{WorkID: "h"},
+		{WorkID: "i"},
+		{WorkID: "j"},
+		{WorkID: "k"},
+		{WorkID: "l"},
 	}
 
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
@@ -106,7 +106,7 @@ func TestRunnerBatching(t *testing.T) {
 
 	// sort the results for comparison
 	sort.Slice(results, func(i, j int) bool {
-		return results[i].Payload.ID < results[j].Payload.ID
+		return results[i].Payload.WorkID < results[j].Payload.WorkID
 	})
 
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
@@ -131,18 +131,18 @@ func TestRunnerConcurrent(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
-		{ID: "a"},
-		{ID: "b"},
-		{ID: "c"},
-		{ID: "d"},
-		{ID: "e"},
-		{ID: "f"},
-		{ID: "g"},
-		{ID: "h"},
-		{ID: "i"},
-		{ID: "j"},
-		{ID: "k"},
-		{ID: "l"},
+		{WorkID: "a"},
+		{WorkID: "b"},
+		{WorkID: "c"},
+		{WorkID: "d"},
+		{WorkID: "e"},
+		{WorkID: "f"},
+		{WorkID: "g"},
+		{WorkID: "h"},
+		{WorkID: "i"},
+		{WorkID: "j"},
+		{WorkID: "k"},
+		{WorkID: "l"},
 	}
 
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
@@ -249,7 +249,7 @@ func TestRunnerErr(t *testing.T) {
 		payloads := make([]ocr2keepers.UpkeepPayload, 20)
 		for i := 0; i < 20; i++ {
 			payloads[i] = ocr2keepers.UpkeepPayload{
-				ID: fmt.Sprintf("id: %d", i),
+				WorkID: fmt.Sprintf("id: %d", i),
 			}
 		}
 
