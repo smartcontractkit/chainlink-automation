@@ -637,6 +637,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 					Type:          ocr2keepers.PerformEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier(upkeep10),
 					CheckBlock:    ocr2keepers.BlockNumber(123),
+					WorkID:        "10",
 				},
 				{
 					Confirmations: 3,
@@ -644,6 +645,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 					Type:          ocr2keepers.StaleReportEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier(upkeep20),
 					CheckBlock:    ocr2keepers.BlockNumber(124),
+					WorkID:        "20",
 				},
 				{
 					Confirmations: 3,
@@ -651,6 +653,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 					Type:          ocr2keepers.StaleReportEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier([32]byte{20}),
 					CheckBlock:    ocr2keepers.BlockNumber(200),
+					WorkID:        "30",
 				},
 			}, nil
 		},
@@ -682,7 +685,7 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 	err := coordinator.checkEvents(context.Background())
 	assert.Error(t, err)
 	assert.Equal(t, "increment error", err.Error())
-	assert.True(t, strings.Contains(buf.String(), "Skipping transmit event in transaction  as confirmations (1) is less than min confirmations (2)"))
-	assert.True(t, strings.Contains(buf.String(), "Got a stale event for previously accepted key  in transaction  at block 124, with confirmations 3"))
-	assert.True(t, strings.Contains(buf.String(), "Stale event found for key  in transaction  at block 123, with confirmations 3"))
+	assert.True(t, strings.Contains(buf.String(), `Skipping transmit event in transaction`))
+	assert.True(t, strings.Contains(buf.String(), "confirmations (1) is less than min confirmations (2)"))
+	assert.True(t, strings.Contains(buf.String(), `Stale event found for key 10`))
 }

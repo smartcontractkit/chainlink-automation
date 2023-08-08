@@ -88,7 +88,7 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 		case ocr2keepers.PerformEvent, ocr2keepers.StaleReportEvent:
 			rc.performEvent(evt)
 		case ocr2keepers.ReorgReportEvent, ocr2keepers.InsufficientFundsReportEvent:
-			rc.activeKeys.Delete(evt.ID)
+			rc.activeKeys.Delete(evt.WorkID)
 			// TODO: push to recovery flow
 		}
 	}
@@ -97,7 +97,7 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 }
 
 func (rc *reportCoordinator) performEvent(evt ocr2keepers.TransmitEvent) {
-	rc.activeKeys.Set(evt.ID, true, util.DefaultCacheExpiration)
+	rc.activeKeys.Set(evt.WorkID, true, util.DefaultCacheExpiration)
 }
 
 // isPending returns true if a key should be filtered out.

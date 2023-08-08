@@ -166,8 +166,8 @@ func (ct *SimulatedContract) run() {
 							Type:            ocr2keepers.PerformEvent,
 							TransmitBlock:   ocr2keepers.BlockNumber(block.BlockNumber.Uint64()),
 							Confirmations:   0,
-							TransactionHash: "",
-							ID:              result.ID,
+							TransactionHash: [32]byte{},
+							WorkID:          result.WorkID,
 							UpkeepID:        result.UpkeepID,
 							CheckBlock:      ocr2keepers.BlockNumber(1), // TODO: need to get this from somewhere
 						}

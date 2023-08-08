@@ -202,7 +202,7 @@ func (rc *conditionalReportCoordinator) checkEvents(ctx context.Context) error {
 				if ok && idBlock.CheckBlockNumber == evt.CheckBlock &&
 					idBlock.TransmitBlockNumber != nextKey {
 
-					rc.logger.Printf("Got a stale event for previously accepted key %s in transaction %s at block %d, with confirmations %d", evt.ID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
+					rc.logger.Printf("Got a stale event for previously accepted key %s in transaction %s at block %d, with confirmations %d", evt.WorkID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
 
 					rc.updateIdBlock(evt.UpkeepID.String(), idBlocker{
 						CheckBlockNumber:    evt.CheckBlock,
@@ -211,7 +211,7 @@ func (rc *conditionalReportCoordinator) checkEvents(ctx context.Context) error {
 				}
 			} else {
 				// Process log if the key hasn't been confirmed yet
-				rc.logger.Printf("Stale event found for key %s in transaction %s at block %d, with confirmations %d", evt.ID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
+				rc.logger.Printf("Stale event found for key %s in transaction %s at block %d, with confirmations %d", evt.WorkID, evt.TransactionHash, evt.TransmitBlock, evt.Confirmations)
 				// set state of key to indicate that the report was transmitted
 				rc.activeKeys.Set(evt.UpkeepID.String(), true, util.DefaultCacheExpiration)
 

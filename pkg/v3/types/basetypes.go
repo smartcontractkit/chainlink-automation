@@ -57,13 +57,11 @@ type TransmitEvent struct {
 	// Confirmations is the block height behind latest
 	Confirmations int64
 	// TransactionHash is the hash for the transaction where the event originated
-	TransactionHash string
-	// TODO: auto-4245 remove this
-	ID string
-	// WorkID uniquely identifies the unit of work for the specified upkeep
-	WorkID string
+	TransactionHash [32]byte
 	// UpkeepID uniquely identifies the upkeep in the registry
 	UpkeepID UpkeepIdentifier
+	// WorkID uniquely identifies the unit of work for the specified upkeep
+	WorkID string
 	// CheckBlock is the block value that the upkeep was originally checked at
 	CheckBlock BlockNumber
 }

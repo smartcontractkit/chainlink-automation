@@ -38,7 +38,7 @@ func TestCheckUpkeep(t *testing.T) {
 				},
 				Performs: map[string]ocr2keepers.TransmitEvent{
 					"7": {
-						ID:         "4|20",
+						WorkID:     "4|20",
 						UpkeepID:   ocr2keepers.UpkeepIdentifier([32]byte{20}),
 						CheckBlock: ocr2keepers.BlockNumber(4),
 					},

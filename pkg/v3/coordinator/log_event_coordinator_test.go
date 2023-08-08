@@ -65,12 +65,12 @@ func TestLogEventCoordinator(t *testing.T) {
 	t.Run("Perform Event", func(t *testing.T) {
 		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
 		evt := ocr2keepers.TransmitEvent{
-			ID: "your-event-id",
+			WorkID: "your-event-id",
 		}
 
 		rc.performEvent(evt)
 
-		value, ok := rc.activeKeys.Get(evt.ID)
+		value, ok := rc.activeKeys.Get(evt.WorkID)
 		assert.True(t, ok, "expected active key to exist")
 		assert.Equal(t, true, value, "expected active key value to be true")
 	})
