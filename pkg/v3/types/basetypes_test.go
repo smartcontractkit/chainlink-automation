@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ func TestTriggerUnmarshal(t *testing.T) {
 
 	encoded, _ := json.Marshal(input)
 
-	rawJSON := `{"BlockNumber":5,"BlockHash":[1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],"LogTriggerExtension":{"LogTxHash":[1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],"Index":99}}`
+	rawJSON := `{"BlockNumber":5,"BlockHash":[1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],"LogTriggerExtension":{"LogTxHash":[1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],"Index":99,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"BlockNumber":0}}`
 
 	// the encoded value above should match the rawjson expected
 	assert.Equal(t, rawJSON, string(encoded), "encoded should match expected")
@@ -81,4 +82,38 @@ func TestTriggerUnmarshal_EmptyExtension(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, output, "decoding should leave extension in its raw encoded state")
+}
+
+func TestUpkeepIdentifier_FromBigInt(t *testing.T) {
+	tests := []struct {
+		name       string
+		id         *big.Int
+		want       string
+		upkeepType UpkeepType
+	}{
+		{
+			name: "log trigger from decimal",
+			id: func() *big.Int {
+				id, _ := big.NewInt(0).SetString("32329108151019397958065800113404894502874153543356521479058624064899121404671", 10)
+				return id
+			}(),
+			want: "4779a07400000000000000000000000142d780684c0bbe59fab87e6ea7f3daff",
+		},
+		{
+			name: "condition trigger from hex",
+			id: func() *big.Int {
+				id, _ := big.NewInt(0).SetString("4779a07400000000000000000000000042d780684c0bbe59fab87e6ea7f3daff", 16)
+				return id
+			}(),
+			want: "4779a07400000000000000000000000042d780684c0bbe59fab87e6ea7f3daff",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			uid := new(UpkeepIdentifier)
+			uid.FromBigInt(tc.id)
+			assert.Equal(t, tc.want, uid.String())
+		})
+	}
 }
