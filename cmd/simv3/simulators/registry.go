@@ -27,7 +27,9 @@ func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]ocr2keep
 
 	// TODO: filter out cancelled upkeeps
 	for key := range ct.upkeeps {
-		keys = append(keys, ocr2keepers.UpkeepIdentifier(key))
+		b := [32]byte{}
+		copy(b[:], []byte(key))
+		keys = append(keys, ocr2keepers.UpkeepIdentifier(b))
 	}
 	ct.mu.RUnlock()
 
@@ -64,7 +66,7 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 
 			block := new(big.Int).SetInt64(key.Trigger.BlockNumber)
 
-			up, ok := ct.upkeeps[string(key.Upkeep.ID)]
+			up, ok := ct.upkeeps[key.Upkeep.ID.String()]
 			if !ok {
 				mErr = multierr.Append(mErr, fmt.Errorf("upkeep not registered"))
 				return

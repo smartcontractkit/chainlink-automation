@@ -49,7 +49,7 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "abc",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:     []byte("111"),
+							ID:     [32]byte{111},
 							Type:   1,
 							Config: "value",
 						},
@@ -79,7 +79,7 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "abc",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:     []byte("111"),
+							ID:     [32]byte{111},
 							Type:   1,
 							Config: []byte(`"value"`),
 						},
@@ -190,7 +190,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("test"),
+								ID: [32]byte{111},
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 10,
@@ -227,13 +227,13 @@ func TestRecoveryProposals(t *testing.T) {
 				BasicOutcome: BasicOutcome{
 					Metadata: map[OutcomeMetadataKey]interface{}{
 						CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
-							{UpkeepID: ocr2keepers.UpkeepIdentifier("7")},
+							{UpkeepID: [32]byte{7}},
 						},
 					},
 				},
 			},
 			expected: []ocr2keepers.CoordinatedProposal{
-				{UpkeepID: ocr2keepers.UpkeepIdentifier("7")},
+				{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{7})},
 			},
 			expectedErr: nil,
 		},

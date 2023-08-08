@@ -18,13 +18,13 @@ func TestAddFromRecoveryHook(t *testing.T) {
 
 	expectedProps := []ocr2keepers.CoordinatedProposal{
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("1"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 1,
 			},
 		},
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("2"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 2,
 			},

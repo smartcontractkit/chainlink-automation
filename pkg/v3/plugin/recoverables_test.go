@@ -17,13 +17,13 @@ func TestRecoverables(t *testing.T) {
 			Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{
 				ocr2keepersv3.RecoveryProposalObservationKey: []ocr2keepers.CoordinatedProposal{
 					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier("1"),
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 1,
 						},
 					},
 					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier("2"),
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 2,
 						},
@@ -35,13 +35,13 @@ func TestRecoverables(t *testing.T) {
 			Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{
 				ocr2keepersv3.RecoveryProposalObservationKey: []ocr2keepers.CoordinatedProposal{
 					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier("1"),
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 1,
 						},
 					},
 					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier("3"),
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 3,
 						},
@@ -53,13 +53,13 @@ func TestRecoverables(t *testing.T) {
 			Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{
 				ocr2keepersv3.RecoveryProposalObservationKey: []ocr2keepers.CoordinatedProposal{
 					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier("2"),
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 2,
 						},
 					},
 					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier("3"),
+						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 3,
 						},

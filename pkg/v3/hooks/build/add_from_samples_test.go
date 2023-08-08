@@ -13,8 +13,8 @@ import (
 func TestAddFromSamplesHook(t *testing.T) {
 	mStore := store.NewMetadata(nil)
 	samples := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier("1"),
-		ocr2keepers.UpkeepIdentifier("2"),
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
 	}
 
 	mStore.Set(store.ProposalSampleMetadata, samples)

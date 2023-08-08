@@ -50,7 +50,7 @@ func TestSampleProposalsFromMetadata(t *testing.T) {
 		vg := new(mockValueGetter)
 
 		expected := []ocr2keepers.UpkeepIdentifier{
-			ocr2keepers.UpkeepIdentifier("1"),
+			ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		}
 
 		vg.On("Get", ProposalSampleMetadata).Return(expected, true)

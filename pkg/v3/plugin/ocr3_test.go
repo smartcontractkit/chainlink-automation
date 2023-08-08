@@ -101,7 +101,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "123",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:   ocr2keepers.UpkeepIdentifier("456"),
+							ID:   ocr2keepers.UpkeepIdentifier([32]byte{4}),
 							Type: 1,
 						},
 						Trigger: ocr2keepers.Trigger{
@@ -122,7 +122,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "123",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:   ocr2keepers.UpkeepIdentifier("456"),
+							ID:   ocr2keepers.UpkeepIdentifier([32]byte{4}),
 							Type: 1,
 						},
 						Trigger: ocr2keepers.Trigger{
@@ -143,7 +143,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "112233",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID:   ocr2keepers.UpkeepIdentifier("456"),
+							ID:   ocr2keepers.UpkeepIdentifier([32]byte{4}),
 							Type: 1,
 						},
 						Trigger: ocr2keepers.Trigger{
@@ -208,7 +208,7 @@ func TestReports(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 1,
@@ -255,7 +255,7 @@ func TestReports(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 1,
@@ -269,7 +269,7 @@ func TestReports(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 1,
@@ -316,7 +316,7 @@ func TestReports(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 1,
@@ -330,7 +330,7 @@ func TestReports(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 1,
@@ -344,7 +344,7 @@ func TestReports(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 1,
@@ -392,7 +392,7 @@ func TestReports(t *testing.T) {
 						Payload: ocr2keepers.UpkeepPayload{
 							ID: "test",
 							Upkeep: ocr2keepers.ConfiguredUpkeep{
-								ID: ocr2keepers.UpkeepIdentifier("1"),
+								ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 							},
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 1,

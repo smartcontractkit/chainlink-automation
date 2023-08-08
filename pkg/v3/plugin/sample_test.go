@@ -18,24 +18,24 @@ func TestSamples(t *testing.T) {
 		{
 			Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{
 				ocr2keepersv3.SampleProposalObservationKey: []ocr2keepers.UpkeepIdentifier{
-					ocr2keepers.UpkeepIdentifier("1"),
-					ocr2keepers.UpkeepIdentifier("2"),
+					ocr2keepers.UpkeepIdentifier([32]byte{1}),
+					ocr2keepers.UpkeepIdentifier([32]byte{2}),
 				},
 			},
 		},
 		{
 			Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{
 				ocr2keepersv3.SampleProposalObservationKey: []ocr2keepers.UpkeepIdentifier{
-					ocr2keepers.UpkeepIdentifier("1"),
-					ocr2keepers.UpkeepIdentifier("2"),
-					ocr2keepers.UpkeepIdentifier("3"),
+					ocr2keepers.UpkeepIdentifier([32]byte{1}),
+					ocr2keepers.UpkeepIdentifier([32]byte{2}),
+					ocr2keepers.UpkeepIdentifier([32]byte{3}),
 				},
 			},
 		},
 		{
 			Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{
 				ocr2keepersv3.SampleProposalObservationKey: []ocr2keepers.UpkeepIdentifier{
-					ocr2keepers.UpkeepIdentifier("2"),
+					ocr2keepers.UpkeepIdentifier([32]byte{2}),
 				},
 			},
 		},

@@ -39,7 +39,7 @@ func TestCheckUpkeep(t *testing.T) {
 				Performs: map[string]ocr2keepers.TransmitEvent{
 					"7": {
 						ID:         "4|20",
-						UpkeepID:   ocr2keepers.UpkeepIdentifier("20"),
+						UpkeepID:   ocr2keepers.UpkeepIdentifier([32]byte{20}),
 						CheckBlock: ocr2keepers.BlockKey("4"),
 					},
 				},
@@ -59,7 +59,7 @@ func TestCheckUpkeep(t *testing.T) {
 
 	payload1 := ocr2keepers.UpkeepPayload{
 		Upkeep: ocr2keepers.ConfiguredUpkeep{
-			ID: ocr2keepers.UpkeepIdentifier("201"),
+			ID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
 		},
 		Trigger: ocr2keepers.NewTrigger(8, "0x123", "conditional"),
 	}
@@ -78,7 +78,7 @@ func TestCheckUpkeep(t *testing.T) {
 
 	payload2 := ocr2keepers.UpkeepPayload{
 		Upkeep: ocr2keepers.ConfiguredUpkeep{
-			ID: ocr2keepers.UpkeepIdentifier("201"),
+			ID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
 		},
 		Trigger: ocr2keepers.NewTrigger(11, "0x123", "conditional"),
 	}

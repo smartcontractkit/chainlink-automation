@@ -393,7 +393,7 @@ func TestProcessOutcome(t *testing.T) {
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
 					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
 						{
-							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 10,
 								BlockHash:   "testhash",
@@ -431,7 +431,7 @@ func TestProcessOutcome(t *testing.T) {
 					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
 					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
 						{
-							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 10,
 								BlockHash:   "testhash",
@@ -443,7 +443,7 @@ func TestProcessOutcome(t *testing.T) {
 		}
 
 		expectedProposal := ocr2keepers.CoordinatedProposal{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 10,
 				BlockHash:   "testhash",

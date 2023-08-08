@@ -22,7 +22,7 @@ func TestAutomationObservation(t *testing.T) {
 				Payload: ocr2keepers.UpkeepPayload{
 					ID: "abc",
 					Upkeep: ocr2keepers.ConfiguredUpkeep{
-						ID:     []byte("111"),
+						ID:     [32]byte{111},
 						Type:   1,
 						Config: "value",
 					},
@@ -56,7 +56,7 @@ func TestAutomationObservation(t *testing.T) {
 				Payload: ocr2keepers.UpkeepPayload{
 					ID: "abc",
 					Upkeep: ocr2keepers.ConfiguredUpkeep{
-						ID:     []byte("111"),
+						ID:     [32]byte{111},
 						Type:   1,
 						Config: []byte(`"value"`),
 					},
@@ -147,7 +147,7 @@ func TestValidateAutomationObservation(t *testing.T) {
 					Payload: ocr2keepers.UpkeepPayload{
 						ID: "test",
 						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID: ocr2keepers.UpkeepIdentifier("test"),
+							ID: ocr2keepers.UpkeepIdentifier([32]byte{123}),
 						},
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 10,

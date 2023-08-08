@@ -3,10 +3,21 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
-type UpkeepIdentifier []byte
+type UpkeepIdentifier [32]byte
+
+func (u UpkeepIdentifier) String() string {
+	return hexutil.Encode(u[:])
+}
+
+func (u UpkeepIdentifier) BigInt() *big.Int {
+	return big.NewInt(0).SetBytes(u[:])
+}
 
 type UpkeepType uint8
 

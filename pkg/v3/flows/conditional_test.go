@@ -45,22 +45,22 @@ func TestNewSampleProposalFlow(t *testing.T) {
 	testValues := []ocr2keepers.UpkeepPayload{
 		{
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("1"),
+				ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			},
 		},
 		{
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("2"),
+				ID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			},
 		},
 		{
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("3"),
+				ID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 			},
 		},
 		{
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("4"),
+				ID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
 			},
 		},
 	}

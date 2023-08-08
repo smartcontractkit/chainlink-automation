@@ -18,7 +18,7 @@ func TestMetadataAddPayload(t *testing.T) {
 		{
 			ID: "test",
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("1"),
+				ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			},
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 1,
@@ -28,7 +28,7 @@ func TestMetadataAddPayload(t *testing.T) {
 		{
 			ID: "test1",
 			Upkeep: ocr2keepers.ConfiguredUpkeep{
-				ID: ocr2keepers.UpkeepIdentifier("2"),
+				ID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			},
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 2,
@@ -39,14 +39,14 @@ func TestMetadataAddPayload(t *testing.T) {
 
 	expected := []ocr2keepers.CoordinatedProposal{
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("1"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 1,
 				BlockHash:   "test",
 			},
 		},
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier("2"),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 2,
 				BlockHash:   "test2",
@@ -82,7 +82,7 @@ func TestMetadataAddSamples(t *testing.T) {
 			Payload: ocr2keepers.UpkeepPayload{
 				ID: "test",
 				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier("1"),
+					ID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 				},
 			},
 		},
@@ -91,7 +91,7 @@ func TestMetadataAddSamples(t *testing.T) {
 			Payload: ocr2keepers.UpkeepPayload{
 				ID: "test1",
 				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier("2"),
+					ID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 				},
 			},
 		},
@@ -100,15 +100,15 @@ func TestMetadataAddSamples(t *testing.T) {
 			Payload: ocr2keepers.UpkeepPayload{
 				ID: "test2",
 				Upkeep: ocr2keepers.ConfiguredUpkeep{
-					ID: ocr2keepers.UpkeepIdentifier("3"),
+					ID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 				},
 			},
 		},
 	}
 
 	expected := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier("1"),
-		ocr2keepers.UpkeepIdentifier("2"),
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{2}),
 	}
 
 	ms.On("Set", store.ProposalSampleMetadata, expected)

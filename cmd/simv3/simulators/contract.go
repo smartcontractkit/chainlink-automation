@@ -172,7 +172,7 @@ func (ct *SimulatedContract) run() {
 							CheckBlock:      ocr2keepers.BlockKey("1"), // TODO: need to get this from somewhere
 						}
 
-						up, ok := ct.upkeeps[string(result.UpkeepID)]
+						up, ok := ct.upkeeps[result.UpkeepID.String()]
 						if ok {
 							//result.PerformData
 							up.Performs[block.BlockNumber.String()] = logs[i]
