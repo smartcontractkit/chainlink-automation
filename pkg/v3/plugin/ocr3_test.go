@@ -201,9 +201,9 @@ func TestReports(t *testing.T) {
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-								LogTxHash: [32]byte{1},
-								Index:     4,
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
+								TxHash: [32]byte{1},
+								Index:  4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -247,9 +247,9 @@ func TestReports(t *testing.T) {
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-								LogTxHash: [32]byte{1},
-								Index:     4,
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
+								TxHash: [32]byte{1},
+								Index:  4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -260,9 +260,9 @@ func TestReports(t *testing.T) {
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-								LogTxHash: [32]byte{1},
-								Index:     4,
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
+								TxHash: [32]byte{1},
+								Index:  4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -306,9 +306,9 @@ func TestReports(t *testing.T) {
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-								LogTxHash: [32]byte{1},
-								Index:     4,
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
+								TxHash: [32]byte{1},
+								Index:  4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -319,9 +319,9 @@ func TestReports(t *testing.T) {
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-								LogTxHash: [32]byte{1},
-								Index:     4,
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
+								TxHash: [32]byte{1},
+								Index:  4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -332,9 +332,9 @@ func TestReports(t *testing.T) {
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-								LogTxHash: [32]byte{1},
-								Index:     4,
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
+								TxHash: [32]byte{1},
+								Index:  4,
 							},
 						},
 						GasAllocated: 1_000_000,
@@ -379,9 +379,9 @@ func TestReports(t *testing.T) {
 						Trigger: ocr2keepers.Trigger{
 							BlockNumber: 4,
 							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-								LogTxHash: [32]byte{1},
-								Index:     4,
+							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
+								TxHash: [32]byte{1},
+								Index:  4,
 							},
 						},
 						GasAllocated: 5_000_000,

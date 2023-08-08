@@ -11,7 +11,7 @@ type Trigger struct {
 	// BlockHash is the block hash in which the trigger was checked
 	BlockHash [32]byte
 	// LogTriggerExtension is the extension for log triggers
-	LogTriggerExtension *LogTriggerExtenstion
+	LogTriggerExtension *LogTriggerExtension
 }
 
 func NewTrigger(blockNumber BlockNumber, blockHash [32]byte) Trigger {
@@ -38,9 +38,9 @@ func (t Trigger) Validate() error {
 	return nil
 }
 
-type LogTriggerExtenstion struct {
+type LogTriggerExtension struct {
 	// LogTxHash is the transaction hash of the log event
-	LogTxHash [32]byte
+	TxHash [32]byte
 	// Index is the index of the log event in the transaction
 	Index uint32
 	// BlockHash is the block hash in which the event occurred
@@ -49,15 +49,15 @@ type LogTriggerExtenstion struct {
 	BlockNumber BlockNumber
 }
 
-func (e LogTriggerExtenstion) LogIdentifier() []byte {
+func (e LogTriggerExtension) LogIdentifier() []byte {
 	return bytes.Join([][]byte{
-		e.LogTxHash[:],
+		e.TxHash[:],
 		[]byte(fmt.Sprintf("%d", e.Index)),
 	}, []byte{})
 }
 
-func (e LogTriggerExtenstion) Validate() error {
-	if len(e.LogTxHash) == 0 {
+func (e LogTriggerExtension) Validate() error {
+	if len(e.TxHash) == 0 {
 		return fmt.Errorf("log transaction hash cannot be empty")
 	}
 	if e.Index == 0 {
