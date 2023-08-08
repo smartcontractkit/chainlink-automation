@@ -11,7 +11,6 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
