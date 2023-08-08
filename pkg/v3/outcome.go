@@ -247,17 +247,17 @@ func (bo *BasicOutcome) UnmarshalJSON(b []byte) error {
 	}
 
 	metadata := make(map[OutcomeMetadataKey]interface{})
-	for key, value := range rawOutcome.Metadata {
+	for key, _ := range rawOutcome.Metadata {
 		switch OutcomeMetadataKey(key) {
 		case CoordinatedBlockOutcomeKey:
 			// value is a block history type
-			var bk ocr2keepers.BlockKey
+			// var bk ocr2keepers.BlockKey
 
-			if err := json.Unmarshal(value, &bk); err != nil {
-				return err
-			}
+			// if err := json.Unmarshal(value, &bk); err != nil {
+			// 	return err
+			// }
 
-			metadata[CoordinatedBlockOutcomeKey] = bk
+			// metadata[CoordinatedBlockOutcomeKey] = bk
 		}
 	}
 

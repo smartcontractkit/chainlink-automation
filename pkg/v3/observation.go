@@ -59,17 +59,26 @@ func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
 	}
 
 	metadata := make(map[ObservationMetadataKey]interface{})
-	for key, value := range rawObs.Metadata {
+	for key := range rawObs.Metadata {
 		switch ObservationMetadataKey(key) {
 		case BlockHistoryObservationKey:
 			// value is a block history type
-			var bh ocr2keepers.BlockHistory
+			// var tmp string
+			// var bh ocr2keepers.BlockKey
 
-			if err := json.Unmarshal(value, &bh); err != nil {
-				return obs, err
-			}
-
-			metadata[BlockHistoryObservationKey] = bh
+			// if err := json.Unmarshal(value, &tmp); err != nil {
+			// 	return obs, err
+			// }
+			// parts := strings.Split(tmp, "|")
+			// if len(parts) == 0 {
+			// 	return obs, fmt.Errorf("%w: %s", ErrWrongDataType, tmp)
+			// }
+			// if val, ok := big.NewInt(0).SetString(parts[0], 10); !ok {
+			// 	return obs, fmt.Errorf("%w: %s", ErrWrongDataType, tmp)
+			// } else {
+			// 	bh.Number = ocr2keepers.BlockNumber(val.Int64())
+			// }
+			// metadata[BlockHistoryObservationKey] = ocr2keepers.BlockHistory{bh}
 		}
 	}
 
