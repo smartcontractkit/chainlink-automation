@@ -15,6 +15,7 @@ type LogEventProvider interface {
 	GetLatestPayloads(context.Context) ([]UpkeepPayload, error)
 }
 
+//go:generate mockery --name RecoverableProvider --structname MockRecoverableProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename recoverableprovider.generated.go
 type RecoverableProvider interface {
 	GetRecoveryProposals() ([]UpkeepPayload, error)
 }

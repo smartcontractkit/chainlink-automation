@@ -66,7 +66,7 @@ type DelegateConfig struct {
 
 	// RecoverableProvider provides recoverable payloads to be proposed to the
 	// network
-	RecoverableProvider flows.RecoverableProvider
+	RecoverableProvider ocr2keepers.RecoverableProvider
 
 	// PayloadBuilder provides a utility method to build an upkeep payload from
 	// a trigger id and block key

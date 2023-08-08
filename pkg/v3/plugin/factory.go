@@ -38,7 +38,7 @@ type pluginFactory struct {
 	logProvider      ocr2keepers.LogEventProvider
 	events           coordinator.EventProvider
 	blocks           tickers.BlockSubscriber
-	rp               flows.RecoverableProvider
+	rp               ocr2keepers.RecoverableProvider
 	builder          ocr2keepers.PayloadBuilder
 	getter           flows.UpkeepProvider
 	runnable         ocr2keepers.Runnable
@@ -52,7 +52,7 @@ func NewReportingPluginFactory(
 	logProvider ocr2keepers.LogEventProvider,
 	events coordinator.EventProvider,
 	blocks tickers.BlockSubscriber,
-	rp flows.RecoverableProvider,
+	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	getter flows.UpkeepProvider,
 	runnable ocr2keepers.Runnable,

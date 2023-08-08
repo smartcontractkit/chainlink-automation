@@ -18,6 +18,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 func TestRecoveryFlow(t *testing.T) {
@@ -60,7 +61,7 @@ func TestRecoveryProposalFlow(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
 	mStore := new(mocks.MockMetadataStore)
-	rec := new(mocks.MockRecoverableProvider)
+	rec := new(mocks2.MockRecoverableProvider)
 	configFuncs := []tickers.ScheduleTickerConfigFunc{ // retry configs
 		tickers.ScheduleTickerWithDefaults,
 		func(c *tickers.ScheduleTickerConfig) {
@@ -75,8 +76,8 @@ func TestRecoveryProposalFlow(t *testing.T) {
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 	ar := util.NewSyncedArray[ocr2keepers.UpkeepPayload]()
 
-	rec.On("GetRecoverables").Return(testData, nil).Times(1)
-	rec.On("GetRecoverables").Return(nil, nil).Times(3)
+	rec.On("GetRecoveryProposals").Return(testData, nil).Times(1)
+	rec.On("GetRecoveryProposals").Return(nil, nil).Times(3)
 
 	// metadata store should set the value
 	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(4)

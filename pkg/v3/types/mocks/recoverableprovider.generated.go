@@ -12,8 +12,8 @@ type MockRecoverableProvider struct {
 	mock.Mock
 }
 
-// GetRecoverables provides a mock function with given fields:
-func (_m *MockRecoverableProvider) GetRecoverables() ([]types.UpkeepPayload, error) {
+// GetRecoveryProposals provides a mock function with given fields:
+func (_m *MockRecoverableProvider) GetRecoveryProposals() ([]types.UpkeepPayload, error) {
 	ret := _m.Called()
 
 	var r0 []types.UpkeepPayload

@@ -30,7 +30,7 @@ func newPlugin(
 	logProvider ocr2keepers.LogEventProvider,
 	events coordinator.EventProvider,
 	blockSource tickers.BlockSubscriber,
-	rp flows.RecoverableProvider,
+	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	ratio flows.Ratio,
 	getter flows.UpkeepProvider,

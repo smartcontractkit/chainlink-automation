@@ -58,7 +58,7 @@ func newFinalRecoveryFlow(
 func newRecoveryProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ms MetadataStore,
-	rp RecoverableProvider,
+	rp ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
 	configFuncs ...tickers.ScheduleTickerConfigFunc,
@@ -95,7 +95,7 @@ func newRecoveryProposalFlow(
 		recoveryObserver,
 		func(f func(string, ocr2keepers.UpkeepPayload) error) error {
 			// pull payloads from RecoverableProvider
-			recovers, err := rp.GetRecoverables()
+			recovers, err := rp.GetRecoveryProposals()
 			if err != nil {
 				return err
 			}

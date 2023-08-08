@@ -53,11 +53,6 @@ type Retryer interface {
 	Retry(ocr2keepers.CheckResult) error
 }
 
-//go:generate mockery --name RecoverableProvider --structname MockRecoverableProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename recoverableprovider.generated.go
-type RecoverableProvider interface {
-	GetRecoverables() ([]ocr2keepers.UpkeepPayload, error)
-}
-
 const (
 	LogCheckInterval        = 1 * time.Second
 	RecoveryCheckInterval   = 1 * time.Minute
@@ -80,7 +75,7 @@ func NewLogTriggerEligibility(
 	mStore MetadataStore,
 	runner Runner,
 	logProvider ocr2keepers.LogEventProvider,
-	rp RecoverableProvider,
+	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	logInterval time.Duration,
 	recoveryInterval time.Duration,
