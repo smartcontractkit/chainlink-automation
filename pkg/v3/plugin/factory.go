@@ -35,7 +35,7 @@ const (
 )
 
 type pluginFactory struct {
-	logProvider      flows.LogEventProvider
+	logProvider      ocr2keepers.LogEventProvider
 	events           coordinator.EventProvider
 	blocks           tickers.BlockSubscriber
 	rp               flows.RecoverableProvider
@@ -49,7 +49,7 @@ type pluginFactory struct {
 }
 
 func NewReportingPluginFactory(
-	logProvider flows.LogEventProvider,
+	logProvider ocr2keepers.LogEventProvider,
 	events coordinator.EventProvider,
 	blocks tickers.BlockSubscriber,
 	rp flows.RecoverableProvider,

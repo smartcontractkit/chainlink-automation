@@ -27,7 +27,7 @@ import (
 
 func newPlugin(
 	digest types.ConfigDigest,
-	logProvider flows.LogEventProvider,
+	logProvider ocr2keepers.LogEventProvider,
 	events coordinator.EventProvider,
 	blockSource tickers.BlockSubscriber,
 	rp flows.RecoverableProvider,

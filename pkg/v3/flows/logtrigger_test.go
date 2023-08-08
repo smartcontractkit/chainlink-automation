@@ -18,6 +18,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 type mockedRunner struct {
@@ -32,7 +33,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 0}
-	src := new(mocks.MockLogEventProvider)
+	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
@@ -41,7 +42,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 
 	// get logs should run the same number of times as the happy path
 	// ticker
-	src.On("GetLogs", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
+	src.On("GetLatestPayloads", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
@@ -105,7 +106,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 0}
-	src := new(mocks.MockLogEventProvider)
+	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
@@ -117,8 +118,8 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	}
 
 	// 1 time with test data, 4 times nil
-	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
-	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(4)
+	src.On("GetLatestPayloads", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLatestPayloads", mock.Anything).Return(nil, nil).Times(4)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
@@ -184,7 +185,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 2}
-	src := new(mocks.MockLogEventProvider)
+	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
@@ -196,8 +197,8 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	}
 
 	// 1 time with test data, 2 times nil
-	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
-	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(2)
+	src.On("GetLatestPayloads", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLatestPayloads", mock.Anything).Return(nil, nil).Times(2)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
@@ -277,7 +278,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 2}
-	src := new(mocks.MockLogEventProvider)
+	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
 	pb := new(mocks.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
@@ -289,8 +290,8 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	}
 
 	// 1 time with test data and 2 times nil
-	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
-	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(2)
+	src.On("GetLatestPayloads", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLatestPayloads", mock.Anything).Return(nil, nil).Times(2)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker

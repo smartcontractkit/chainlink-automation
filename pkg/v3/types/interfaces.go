@@ -10,6 +10,7 @@ type Encoder interface {
 	Extract([]byte) ([]ReportedUpkeep, error)
 }
 
+//go:generate mockery --name LogEventProvider --structname MockLogEventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename logeventprovider.generated.go
 type LogEventProvider interface {
 	GetLatestPayloads(context.Context) ([]UpkeepPayload, error)
 }

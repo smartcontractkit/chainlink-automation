@@ -49,7 +49,7 @@ type DelegateConfig struct {
 	LocalConfig                  types.LocalConfig
 
 	// LogProvider allows reads on the latest log events ready to be processed
-	LogProvider flows.LogEventProvider
+	LogProvider ocr2keepers.LogEventProvider
 
 	// EventProvider allows reads on latest transmit events
 	EventProvider coordinator.EventProvider

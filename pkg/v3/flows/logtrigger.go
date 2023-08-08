@@ -53,12 +53,6 @@ type Retryer interface {
 	Retry(ocr2keepers.CheckResult) error
 }
 
-//go:generate mockery --name LogEventProvider --structname MockLogEventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename logeventprovider.generated.go
-type LogEventProvider interface {
-	// GetLogs returns the latest logs
-	GetLogs(context.Context) ([]ocr2keepers.UpkeepPayload, error)
-}
-
 //go:generate mockery --name RecoverableProvider --structname MockRecoverableProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename recoverableprovider.generated.go
 type RecoverableProvider interface {
 	GetRecoverables() ([]ocr2keepers.UpkeepPayload, error)
@@ -90,7 +84,7 @@ func NewLogTriggerEligibility(
 	rStore ResultStore,
 	mStore MetadataStore,
 	runner Runner,
-	logProvider LogEventProvider,
+	logProvider ocr2keepers.LogEventProvider,
 	rp RecoverableProvider,
 	builder PayloadBuilder,
 	logInterval time.Duration,
@@ -237,7 +231,7 @@ func (s *basicRetryer) Retry(r ocr2keepers.CheckResult) error {
 }
 
 type logTick struct {
-	logProvider LogEventProvider
+	logProvider ocr2keepers.LogEventProvider
 	logger      *log.Logger
 }
 
@@ -246,7 +240,7 @@ func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 		return nil, nil
 	}
 
-	logs, err := et.logProvider.GetLogs(ctx)
+	logs, err := et.logProvider.GetLatestPayloads(ctx)
 
 	et.logger.Printf("%d logs returned by log provider", len(logs))
 
@@ -260,7 +254,7 @@ func newLogTriggerFlow(
 	rn Runner,
 	retryer Retryer,
 	recoverer Retryer,
-	logProvider LogEventProvider,
+	logProvider ocr2keepers.LogEventProvider,
 	logInterval time.Duration,
 	logger *log.Logger,
 ) service.Recoverable {

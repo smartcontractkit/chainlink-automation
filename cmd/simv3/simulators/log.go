@@ -30,7 +30,7 @@ func (ct *SimulatedContract) Events(ctx context.Context) ([]ocr2keepers.Transmit
 	return logs, nil
 }
 
-func (ct *SimulatedContract) GetLogs(context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+func (ct *SimulatedContract) GetLatestPayloads(context.Context) ([]ocr2keepers.UpkeepPayload, error) {
 	// TODO: implement for log events
 	return nil, nil
 }
