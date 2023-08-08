@@ -14,7 +14,6 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -43,7 +42,7 @@ type RPCTelemetry interface {
 type SimulatedContract struct {
 	mu     sync.RWMutex
 	src    BlockBroadcaster
-	enc    plugin.Encoder
+	enc    ocr2keepers.Encoder
 	logger *log.Logger
 	dgst   Digester
 	// blocks come from a simulated block provider. this value is to store
@@ -81,7 +80,7 @@ func NewSimulatedContract(
 	src BlockBroadcaster,
 	d Digester,
 	sym []SimulatedUpkeep,
-	enc plugin.Encoder,
+	enc ocr2keepers.Encoder,
 	transmitter Transmitter,
 	avgLatency int,
 	account string,

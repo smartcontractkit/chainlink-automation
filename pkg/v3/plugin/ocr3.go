@@ -24,12 +24,6 @@ const (
 
 type AutomationReportInfo struct{}
 
-//go:generate mockery --name Encoder --structname MockEncoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename encoder.generated.go
-type Encoder interface {
-	Encode(...ocr2keepers.CheckResult) ([]byte, error)
-	Extract([]byte) ([]ocr2keepers.ReportedUpkeep, error)
-}
-
 //go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename coordinator.generated.go
 type Coordinator interface {
 	Accept(ocr2keepers.ReportedUpkeep) error
@@ -40,7 +34,7 @@ type ocr3Plugin struct {
 	ConfigDigest  types.ConfigDigest
 	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
 	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
-	ReportEncoder Encoder
+	ReportEncoder ocr2keepers.Encoder
 	Coordinators  []Coordinator
 	Services      []service.Recoverable
 	Config        config.OffchainConfig
