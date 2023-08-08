@@ -9,7 +9,7 @@ import (
 type UpkeepType uint8
 
 const (
-	// TODO: add type for unknown
+	// Exploratory AUTO 4335: add type for unknown
 	ConditionTrigger UpkeepType = iota
 	LogTrigger
 )
@@ -143,6 +143,7 @@ type ReportedUpkeep struct {
 	UpkeepID UpkeepIdentifier
 	// Trigger data for the upkeep
 	// NOTE: the trigger extension will not be complete, it will include only the log index and tx hash.
+	// Exploratory AUTO-4336: Improve this
 	Trigger Trigger
 	// WorkID represents the unit of work for the reported upkeep
 	WorkID string
