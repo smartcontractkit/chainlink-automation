@@ -2,8 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -24,8 +22,8 @@ func newCoordinateBlock(threshold int) *coordinateBlock {
 }
 
 type heightHash struct {
-	number uint64
-	hash   string
+	number ocr2keepers.BlockNumber
+	hash   [32]byte
 }
 
 func (p *coordinateBlock) add(observation ocr2keepersv3.AutomationObservation) {
@@ -40,20 +38,8 @@ func (p *coordinateBlock) add(observation ocr2keepersv3.AutomationObservation) {
 	}
 
 	for _, key := range history.Keys() {
-		// TODO: use helper function for splitting keys
-		values := strings.Split(string(key), "|")
-		if len(values) != 2 {
-			continue
-		}
-
 		// TODO: don't use values at index
-		v, err := strconv.ParseUint(values[0], 10, 64)
-		if err != nil {
-			continue
-		}
-
-		// TODO: don't use values at index
-		height := heightHash{v, values[1]}
+		height := heightHash{key.Number, key.Hash}
 
 		if _, present := p.seen[height]; !present {
 			p.seen[height] = struct{}{}
@@ -65,7 +51,7 @@ func (p *coordinateBlock) add(observation ocr2keepersv3.AutomationObservation) {
 func (p *coordinateBlock) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	var (
 		mostRecent heightHash
-		zeroHash   string
+		zeroHash   [32]byte
 	)
 
 	for height, count := range p.recent {

@@ -15,7 +15,9 @@ func TestAutomationObservation(t *testing.T) {
 	input := AutomationObservation{
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
 		Metadata: map[ObservationMetadataKey]interface{}{
-			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{("2")}),
+			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{
+				{Number: 2},
+			}),
 		},
 		Performable: []ocr2keepers.CheckResult{
 			{
@@ -49,7 +51,9 @@ func TestAutomationObservation(t *testing.T) {
 	expected := AutomationObservation{
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
 		Metadata: map[ObservationMetadataKey]interface{}{
-			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{("2")}),
+			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{
+				{Number: 2},
+			}),
 		},
 		Performable: []ocr2keepers.CheckResult{
 			{
@@ -137,7 +141,9 @@ func TestValidateAutomationObservation(t *testing.T) {
 				instructions.DoCoordinateBlock,
 			},
 			Metadata: map[ObservationMetadataKey]interface{}{
-				BlockHistoryObservationKey: ocr2keepers.BlockKey("3"),
+				BlockHistoryObservationKey: ocr2keepers.BlockKey{
+					Number: 3,
+				},
 			},
 			Performable: []ocr2keepers.CheckResult{
 				{

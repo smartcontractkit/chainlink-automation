@@ -83,9 +83,15 @@ func TestBlockSource(t *testing.T) {
 	}()
 
 	historyData := ocr2keepers.BlockHistory{
-		("3"),
-		("2"),
-		("1"),
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(3),
+		},
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(2),
+		},
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(1),
+		},
 	}
 
 	ch <- historyData

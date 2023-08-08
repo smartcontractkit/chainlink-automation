@@ -91,7 +91,9 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 			},
 		}
 
-		blockKey := ocr2keepers2.BlockKey("testBlockKey")
+		blockKey := ocr2keepers2.BlockKey{
+			Number: 123,
+		}
 
 		outcome := ocr2keepers.AutomationOutcome{
 			BasicOutcome: ocr2keepers.BasicOutcome{

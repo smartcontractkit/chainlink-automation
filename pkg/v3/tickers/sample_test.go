@@ -118,9 +118,15 @@ func TestSampleTicker(t *testing.T) {
 
 			// send a block history
 			ch <- []ocr2keepers.BlockKey{
-				("4"),
-				("3"),
-				("2"),
+				{
+					Number: 4,
+				},
+				{
+					Number: 3,
+				},
+				{
+					Number: 2,
+				},
 			}
 
 			// wait a little longer than the sampling timeout
@@ -241,9 +247,15 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 
 			// send a block history
 			ch <- []ocr2keepers.BlockKey{
-				("4"),
-				("3"),
-				("2"),
+				{
+					Number: 4,
+				},
+				{
+					Number: 3,
+				},
+				{
+					Number: 2,
+				},
 			}
 
 			// wait a little longer than the sampling timeout

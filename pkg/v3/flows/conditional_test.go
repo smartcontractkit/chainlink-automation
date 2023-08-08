@@ -70,8 +70,12 @@ func TestNewSampleProposalFlow(t *testing.T) {
 	ms.On("Set", store.ProposalSampleMetadata, mock.Anything).Times(1)
 
 	bs.ch <- ocr2keepers.BlockHistory{
-		ocr2keepers.BlockKey("4"),
-		ocr2keepers.BlockKey("3"),
+		ocr2keepers.BlockKey{
+			Number: 4,
+		},
+		ocr2keepers.BlockKey{
+			Number: 3,
+		},
 	}
 
 	time.Sleep(1 * time.Second)

@@ -21,7 +21,9 @@ func (ct *SimulatedContract) forwardHeads(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case block := <-blocksCh:
-			send(ct.chHeads, ocr2keepers.BlockKey(block.BlockNumber.String()))
+			send(ct.chHeads, ocr2keepers.BlockKey{
+				Number: ocr2keepers.BlockNumber(block.BlockNumber.Uint64()),
+			})
 		}
 	}
 }

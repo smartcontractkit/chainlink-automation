@@ -40,7 +40,7 @@ func TestCheckUpkeep(t *testing.T) {
 					"7": {
 						ID:         "4|20",
 						UpkeepID:   ocr2keepers.UpkeepIdentifier([32]byte{20}),
-						CheckBlock: ocr2keepers.BlockKey("4"),
+						CheckBlock: ocr2keepers.BlockNumber(4),
 					},
 				},
 			},

@@ -21,13 +21,27 @@ func (u UpkeepIdentifier) BigInt() *big.Int {
 
 type UpkeepType uint8
 
+// Add exploratory ticket to add default type (0 value) for unknown
 const (
 	ConditionTrigger UpkeepType = iota
 	LogTrigger
 )
 
-type BlockKey string
+type TransmitEventType int
 
+const (
+	PerformEvent TransmitEventType = iota
+	StaleReportEvent
+	ReorgReportEvent
+	InsufficientFundsReportEvent
+)
+
+type BlockNumber uint64
+
+type BlockKey struct {
+	Number BlockNumber
+	Hash   [32]byte
+}
 type UpkeepKey []byte
 
 type UpkeepResult interface{}
@@ -55,20 +69,11 @@ type StaleReportLog struct {
 	TransactionHash string
 }
 
-type TransmitEventType int
-
-const (
-	PerformEvent TransmitEventType = iota
-	StaleReportEvent
-	ReorgReportEvent
-	InsufficientFundsReportEvent
-)
-
 type TransmitEvent struct {
 	// Type describes the type of event
 	Type TransmitEventType
 	// TransmitBlock is the block height of the transmit event
-	TransmitBlock BlockKey
+	TransmitBlock BlockNumber
 	// Confirmations is the block height behind latest
 	Confirmations int64
 	// TransactionHash is the hash for the transaction where the event originated
@@ -80,7 +85,7 @@ type TransmitEvent struct {
 	// UpkeepID uniquely identifies the upkeep in the registry
 	UpkeepID UpkeepIdentifier
 	// CheckBlock is the block value that the upkeep was originally checked at
-	CheckBlock BlockKey
+	CheckBlock BlockNumber
 }
 
 type CheckResult struct {
@@ -319,7 +324,7 @@ type BlockHistory []BlockKey
 
 func (bh BlockHistory) Latest() (BlockKey, error) {
 	if len(bh) == 0 {
-		return BlockKey(""), fmt.Errorf("empty block history")
+		return BlockKey{}, fmt.Errorf("empty block history")
 	}
 
 	return bh[0], nil
@@ -327,23 +332,6 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 
 func (bh BlockHistory) Keys() []BlockKey {
 	return bh
-}
-
-func (bh *BlockHistory) UnmarshalJSON(b []byte) error {
-	var raw []string
-
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-
-	output := make([]BlockKey, len(raw))
-	for i, value := range raw {
-		output[i] = BlockKey(value)
-	}
-
-	*bh = output
-
-	return nil
 }
 
 type UpkeepState uint8

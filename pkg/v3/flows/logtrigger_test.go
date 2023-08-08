@@ -428,7 +428,9 @@ func TestProcessOutcome(t *testing.T) {
 		testOutcome := ocr2keepersv3.AutomationOutcome{
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+						Number: 4,
+					},
 					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
 						{
 							UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
@@ -448,7 +450,9 @@ func TestProcessOutcome(t *testing.T) {
 				BlockNumber: 10,
 				BlockHash:   "testhash",
 			},
-			Block: ocr2keepers.BlockKey("4"),
+			Block: ocr2keepers.BlockKey{
+				Number: 4,
+			},
 		}
 
 		pb.On("BuildPayload", mock.Anything, expectedProposal).Return(ocr2keepers.UpkeepPayload{

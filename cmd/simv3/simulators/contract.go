@@ -164,12 +164,12 @@ func (ct *SimulatedContract) run() {
 					for i, result := range reported {
 						logs[i] = ocr2keepers.TransmitEvent{
 							Type:            ocr2keepers.PerformEvent,
-							TransmitBlock:   ocr2keepers.BlockKey(block.BlockNumber.String()),
+							TransmitBlock:   ocr2keepers.BlockNumber(block.BlockNumber.Uint64()),
 							Confirmations:   0,
 							TransactionHash: "",
 							ID:              result.ID,
 							UpkeepID:        result.UpkeepID,
-							CheckBlock:      ocr2keepers.BlockKey("1"), // TODO: need to get this from somewhere
+							CheckBlock:      ocr2keepers.BlockNumber(1), // TODO: need to get this from somewhere
 						}
 
 						up, ok := ct.upkeeps[result.UpkeepID.String()]

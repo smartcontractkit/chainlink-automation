@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"fmt"
 	"io"
 	"sync"
 
@@ -114,17 +115,17 @@ func (wc *WrappedContractCollector) CheckID(id string, block ocr2keepers.BlockKe
 
 	val, ok := wc.keyIDLookup[id]
 	if !ok {
-		wc.keyIDLookup[id] = []string{string(block)}
+		wc.keyIDLookup[id] = []string{fmt.Sprintf("%d", block.Number)}
 	} else {
 		var found bool
 		for _, v := range val {
-			if v == string(block) {
+			if v == fmt.Sprintf("%d", block.Number) {
 				found = true
 			}
 		}
 
 		if !found {
-			wc.keyIDLookup[id] = append(val, string(block))
+			wc.keyIDLookup[id] = append(val, fmt.Sprintf("%d", block.Number))
 		}
 	}
 }

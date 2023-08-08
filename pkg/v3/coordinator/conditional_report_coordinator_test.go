@@ -17,15 +17,15 @@ import (
 )
 
 type mockEncoder struct {
-	AfterFn     func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error)
-	IncrementFn func(ocr2keepers.BlockKey) (ocr2keepers.BlockKey, error)
+	AfterFn     func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error)
+	IncrementFn func(ocr2keepers.BlockNumber) (ocr2keepers.BlockNumber, error)
 }
 
-func (e *mockEncoder) After(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+func (e *mockEncoder) After(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 	return e.AfterFn(a, b)
 }
 
-func (e *mockEncoder) Increment(k ocr2keepers.BlockKey) (ocr2keepers.BlockKey, error) {
+func (e *mockEncoder) Increment(k ocr2keepers.BlockNumber) (ocr2keepers.BlockNumber, error) {
 	return e.IncrementFn(k)
 }
 
@@ -157,7 +157,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 	t.Run("registered key is pending when block key is not after the transmit block number", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, nil
 			},
 		}
@@ -167,7 +167,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 
 		upkeepID := ocr2keepers.UpkeepIdentifier([32]byte{123})
 		coordinator.idBlocks.Set(upkeepID.String(), idBlocker{
-			TransmitBlockNumber: ocr2keepers.BlockKey("100"),
+			TransmitBlockNumber: ocr2keepers.BlockNumber(100),
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
@@ -185,7 +185,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 	t.Run("registered key is not pending when block key is after the transmit block number", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return true, nil
 			},
 		}
@@ -196,7 +196,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		upkeepID := ocr2keepers.UpkeepIdentifier([32]byte{123})
 
 		coordinator.idBlocks.Set(upkeepID.String(), idBlocker{
-			TransmitBlockNumber: ocr2keepers.BlockKey("100"),
+			TransmitBlockNumber: ocr2keepers.BlockNumber(100),
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
@@ -214,7 +214,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 	t.Run("registered key is pending when the encoder errors", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, errors.New("encoder error")
 			},
 		}
@@ -225,7 +225,7 @@ func TestConditionalReportCoordinator_isPending(t *testing.T) {
 		upkeepID := ocr2keepers.UpkeepIdentifier([32]byte{123})
 
 		coordinator.idBlocks.Set(upkeepID.String(), idBlocker{
-			TransmitBlockNumber: ocr2keepers.BlockKey("100"),
+			TransmitBlockNumber: ocr2keepers.BlockNumber(100),
 		}, config.DefaultCacheExpiration)
 
 		pending := coordinator.isPending(ocr2keepers.UpkeepPayload{
@@ -245,7 +245,7 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 	t.Run("updateIdBlock for a non existent key sets the idBlocker on the cache", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, nil
 			},
 		}
@@ -255,7 +255,7 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 		assert.NotNil(t, coordinator)
 
 		coordinator.updateIdBlock("abc", idBlocker{
-			CheckBlockNumber: "123",
+			CheckBlockNumber: ocr2keepers.BlockNumber(123),
 		})
 
 		assert.True(t, strings.Contains(buf.String(), "updateIdBlock for key abc: value updated"))
@@ -268,7 +268,7 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 	t.Run("updateIdBlock for an existing key checks if the cache should be updated", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, nil
 			},
 		}
@@ -278,7 +278,7 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 		assert.NotNil(t, coordinator)
 
 		blocker := idBlocker{
-			CheckBlockNumber: "123",
+			CheckBlockNumber: ocr2keepers.BlockNumber(123),
 		}
 		coordinator.idBlocks.Set("abc", blocker, config.DefaultCacheExpiration)
 
@@ -294,7 +294,7 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 	t.Run("updateIdBlock for an existing key checks if the cache should be updated, but is a no op when the encoder errors", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, errors.New("after error")
 			},
 		}
@@ -304,7 +304,7 @@ func TestConditionalReportCoordinator_updateIdBlock(t *testing.T) {
 		assert.NotNil(t, coordinator)
 
 		blocker := idBlocker{
-			CheckBlockNumber: "123",
+			CheckBlockNumber: ocr2keepers.BlockNumber(123),
 		}
 		coordinator.idBlocks.Set("abc", blocker, config.DefaultCacheExpiration)
 
@@ -329,13 +329,13 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		{
 			name: "erroring encoder returns false",
 			idBlocker: idBlocker{
-				CheckBlockNumber: "123",
+				CheckBlockNumber: ocr2keepers.BlockNumber(123),
 			},
 			val: idBlocker{
-				CheckBlockNumber: "456",
+				CheckBlockNumber: ocr2keepers.BlockNumber(456),
 			},
 			encoder: &mockEncoder{
-				AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+				AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 					return false, errors.New("after error")
 				},
 			},
@@ -345,14 +345,14 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		{
 			name: "true when the val checkBlockNumber is after this checkBlockNumber",
 			idBlocker: idBlocker{
-				CheckBlockNumber: "123",
+				CheckBlockNumber: ocr2keepers.BlockNumber(123),
 			},
 			val: idBlocker{
-				CheckBlockNumber: "456",
+				CheckBlockNumber: ocr2keepers.BlockNumber(456),
 			},
 			encoder: &mockEncoder{
-				AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-					if string(a) == "456" {
+				AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
+					if a == ocr2keepers.BlockNumber(456) {
 						return true, nil
 					}
 					return false, nil
@@ -364,14 +364,14 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		{
 			name: "erroring encoder returns false",
 			idBlocker: idBlocker{
-				CheckBlockNumber: "999",
+				CheckBlockNumber: ocr2keepers.BlockNumber(999),
 			},
 			val: idBlocker{
-				CheckBlockNumber: "111",
+				CheckBlockNumber: ocr2keepers.BlockNumber(111),
 			},
 			encoder: &mockEncoder{
-				AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-					if string(a) == "999" {
+				AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
+					if a == ocr2keepers.BlockNumber(999) {
 						return false, errors.New("after error")
 					}
 					return false, nil
@@ -383,14 +383,14 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		{
 			name: "false when this check block number is higher than val checkBlockNumber",
 			idBlocker: idBlocker{
-				CheckBlockNumber: "999",
+				CheckBlockNumber: ocr2keepers.BlockNumber(999),
 			},
 			val: idBlocker{
-				CheckBlockNumber: "111",
+				CheckBlockNumber: ocr2keepers.BlockNumber(111),
 			},
 			encoder: &mockEncoder{
-				AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-					if string(a) == "999" {
+				AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
+					if a == ocr2keepers.BlockNumber(999) {
 						return true, nil
 					}
 					return false, nil
@@ -402,15 +402,15 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		{
 			name: "true when this transmitBlockNumber is the IndefiniteBlockingKey",
 			idBlocker: idBlocker{
-				CheckBlockNumber:    "999",
+				CheckBlockNumber:    ocr2keepers.BlockNumber(999),
 				TransmitBlockNumber: IndefiniteBlockingKey,
 			},
 			val: idBlocker{
-				CheckBlockNumber: "111",
+				CheckBlockNumber: ocr2keepers.BlockNumber(111),
 			},
 			encoder: &mockEncoder{
-				AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-					if string(a) == "999" {
+				AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
+					if a == ocr2keepers.BlockNumber(999) {
 						return false, nil
 					}
 					return false, nil
@@ -422,15 +422,15 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		{
 			name: "false when the val transmitBlockNumber is the IndefiniteBlockingKey",
 			idBlocker: idBlocker{
-				CheckBlockNumber: "999",
+				CheckBlockNumber: ocr2keepers.BlockNumber(999),
 			},
 			val: idBlocker{
-				CheckBlockNumber:    "111",
+				CheckBlockNumber:    ocr2keepers.BlockNumber(111),
 				TransmitBlockNumber: IndefiniteBlockingKey,
 			},
 			encoder: &mockEncoder{
-				AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-					if string(a) == "999" {
+				AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
+					if a == ocr2keepers.BlockNumber(999) {
 						return false, nil
 					}
 					return false, nil
@@ -442,16 +442,16 @@ func TestIDBlocker_shouldUpdate(t *testing.T) {
 		{
 			name: "true when the val transmitBlockNumber is higher",
 			idBlocker: idBlocker{
-				CheckBlockNumber:    "999",
-				TransmitBlockNumber: "199",
+				CheckBlockNumber:    ocr2keepers.BlockNumber(999),
+				TransmitBlockNumber: ocr2keepers.BlockNumber(199),
 			},
 			val: idBlocker{
-				CheckBlockNumber:    "111",
-				TransmitBlockNumber: "200",
+				CheckBlockNumber:    ocr2keepers.BlockNumber(111),
+				TransmitBlockNumber: ocr2keepers.BlockNumber(200),
 			},
 			encoder: &mockEncoder{
-				AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-					if string(a) == "200" {
+				AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
+					if a == ocr2keepers.BlockNumber(200) {
 						return true, nil
 					}
 					return false, nil
@@ -478,7 +478,7 @@ func TestConditionalReportCoordinator_Accept(t *testing.T) {
 	t.Run("a non existent key is accepted", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, nil
 			},
 		}
@@ -505,7 +505,7 @@ func TestConditionalReportCoordinator_Accept(t *testing.T) {
 		block, ok := coordinator.idBlocks.Get(upkeepID.String())
 		assert.True(t, ok)
 		assert.Equal(t, idBlocker{
-			CheckBlockNumber:    "567",
+			CheckBlockNumber:    ocr2keepers.BlockNumber(567),
 			TransmitBlockNumber: IndefiniteBlockingKey,
 		}, block)
 	})
@@ -515,7 +515,7 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 	t.Run("a non existent key is confirmed", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, nil
 			},
 		}
@@ -541,7 +541,7 @@ func TestConditionalReportCoordinator_IsTransmissionConfirmed(t *testing.T) {
 	t.Run("a key set to true is confirmed", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 				return false, nil
 			},
 		}
@@ -571,8 +571,8 @@ func TestConditionalReportCoordinator_PreProcess(t *testing.T) {
 	t.Run("filters all non pending payloads", func(t *testing.T) {
 		events := &mockEvents{}
 		encoder := &mockEncoder{
-			AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
-				if string(a) == "99" {
+			AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
+				if a == ocr2keepers.BlockNumber(99) {
 					return false, errors.New("after boom")
 				}
 				return false, nil
@@ -586,8 +586,8 @@ func TestConditionalReportCoordinator_PreProcess(t *testing.T) {
 		upkeepID := ocr2keepers.UpkeepIdentifier([32]byte{123})
 
 		coordinator.idBlocks.Set(upkeepID.String(), idBlocker{
-			CheckBlockNumber:    "99",
-			TransmitBlockNumber: "100",
+			CheckBlockNumber:    ocr2keepers.BlockNumber(99),
+			TransmitBlockNumber: ocr2keepers.BlockNumber(100),
 		}, config.DefaultCacheExpiration)
 
 		filtered, err := coordinator.PreProcess(context.Background(), []ocr2keepers.UpkeepPayload{
@@ -633,37 +633,37 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 				},
 				{
 					Confirmations: 3,
-					TransmitBlock: ocr2keepers.BlockKey("123"),
+					TransmitBlock: ocr2keepers.BlockNumber(123),
 					Type:          ocr2keepers.PerformEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier(upkeep10),
-					CheckBlock:    ocr2keepers.BlockKey("123"),
+					CheckBlock:    ocr2keepers.BlockNumber(123),
 				},
 				{
 					Confirmations: 3,
-					TransmitBlock: ocr2keepers.BlockKey("124"),
+					TransmitBlock: ocr2keepers.BlockNumber(124),
 					Type:          ocr2keepers.StaleReportEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier(upkeep20),
-					CheckBlock:    ocr2keepers.BlockKey("124"),
+					CheckBlock:    ocr2keepers.BlockNumber(124),
 				},
 				{
 					Confirmations: 3,
-					TransmitBlock: ocr2keepers.BlockKey("200"),
+					TransmitBlock: ocr2keepers.BlockNumber(200),
 					Type:          ocr2keepers.StaleReportEvent,
 					UpkeepID:      ocr2keepers.UpkeepIdentifier([32]byte{20}),
-					CheckBlock:    ocr2keepers.BlockKey("200"),
+					CheckBlock:    ocr2keepers.BlockNumber(200),
 				},
 			}, nil
 		},
 	}
 	encoder := &mockEncoder{
-		AfterFn: func(a ocr2keepers.BlockKey, b ocr2keepers.BlockKey) (bool, error) {
+		AfterFn: func(a ocr2keepers.BlockNumber, b ocr2keepers.BlockNumber) (bool, error) {
 			return false, nil
 		},
-		IncrementFn: func(key ocr2keepers.BlockKey) (ocr2keepers.BlockKey, error) {
-			if string(key) == "200" {
+		IncrementFn: func(key ocr2keepers.BlockNumber) (ocr2keepers.BlockNumber, error) {
+			if key == ocr2keepers.BlockNumber(200) {
 				return key, errors.New("increment error")
 			}
-			return ocr2keepers.BlockKey("125"), nil
+			return ocr2keepers.BlockNumber(125), nil
 		},
 	}
 
@@ -675,8 +675,8 @@ func TestConditionalReportCoordinator_checkEvents(t *testing.T) {
 	coordinator.activeKeys.Set(upkeep20.String(), true, config.DefaultCacheExpiration)
 
 	coordinator.idBlocks.Set(upkeep20.String(), idBlocker{
-		CheckBlockNumber:    "124",
-		TransmitBlockNumber: "124",
+		CheckBlockNumber:    ocr2keepers.BlockNumber(124),
+		TransmitBlockNumber: ocr2keepers.BlockNumber(124),
 	}, config.DefaultCacheExpiration)
 
 	err := coordinator.checkEvents(context.Background())

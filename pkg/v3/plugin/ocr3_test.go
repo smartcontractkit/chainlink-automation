@@ -89,7 +89,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 		// Create a sample outcome for decoding
 		outcomeContext := ocr3types.OutcomeContext{
-			PreviousOutcome: []byte(`{"Instructions":["should coordinate block"],"Metadata":{"blockHistory":["4"]},"Performable":[]}`),
+			PreviousOutcome: []byte(`{"Instructions":["should coordinate block"],"Metadata":{"blockHistory":[{"Number":4,"Hash":[1]}]},"Performable":[]}`),
 		}
 
 		automationObservation1 := ocr2keepersv3.AutomationObservation{
