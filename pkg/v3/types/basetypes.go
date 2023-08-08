@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
@@ -42,32 +41,13 @@ type BlockKey struct {
 	Number BlockNumber
 	Hash   [32]byte
 }
-type UpkeepKey []byte
 
-type UpkeepResult interface{}
+type UpkeepState uint8
 
-func upkeepKeysToString(keys []UpkeepKey) string {
-	keysStr := make([]string, len(keys))
-	for i, key := range keys {
-		keysStr[i] = string(key)
-	}
-
-	return strings.Join(keysStr, ", ")
-}
-
-type PerformLog struct {
-	Key             UpkeepKey
-	TransmitBlock   BlockKey
-	Confirmations   int64
-	TransactionHash string
-}
-
-type StaleReportLog struct {
-	Key             UpkeepKey
-	TransmitBlock   BlockKey
-	Confirmations   int64
-	TransactionHash string
-}
+const (
+	Performed UpkeepState = iota
+	Eligible
+)
 
 type TransmitEvent struct {
 	// Type describes the type of event
@@ -333,10 +313,3 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 func (bh BlockHistory) Keys() []BlockKey {
 	return bh
 }
-
-type UpkeepState uint8
-
-const (
-	Performed UpkeepState = iota
-	Eligible
-)

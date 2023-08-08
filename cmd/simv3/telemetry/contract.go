@@ -9,20 +9,18 @@ import (
 )
 
 type ContractEventCollector struct {
-	Splitter KeySplitter
 	baseCollector
 	filePath string
 	nodes    map[string]*WrappedContractCollector
 }
 
-func NewContractEventCollector(path string, s KeySplitter) *ContractEventCollector {
+func NewContractEventCollector(path string) *ContractEventCollector {
 	return &ContractEventCollector{
 		baseCollector: baseCollector{
 			t:        NodeLogType,
 			io:       []io.WriteCloser{},
 			ioLookup: make(map[string]int),
 		},
-		Splitter: s,
 		filePath: path,
 		nodes:    make(map[string]*WrappedContractCollector),
 	}
@@ -81,7 +79,6 @@ func (c *ContractEventCollector) Data() (map[string]int, map[string][]string) {
 
 func (c *ContractEventCollector) AddNode(node string) error {
 	wc := &WrappedContractCollector{
-		Splitter:    c.Splitter,
 		keyChecks:   make(map[string]int),
 		keyIDLookup: make(map[string][]string),
 	}
@@ -91,13 +88,7 @@ func (c *ContractEventCollector) AddNode(node string) error {
 	return nil
 }
 
-type KeySplitter interface {
-	// SplitUpkeepKey ...
-	SplitUpkeepKey(ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error)
-}
-
 type WrappedContractCollector struct {
-	Splitter    KeySplitter
 	mu          sync.Mutex
 	keyChecks   map[string]int
 	keyIDLookup map[string][]string
