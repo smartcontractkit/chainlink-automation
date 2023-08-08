@@ -1,6 +1,9 @@
 package types
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 type Trigger struct {
 	// BlockNumber is the block number in which the trigger was checked
@@ -16,11 +19,6 @@ func NewTrigger(blockNumber BlockNumber, blockHash [32]byte) Trigger {
 		BlockNumber: blockNumber,
 		BlockHash:   blockHash,
 	}
-}
-
-func (t Trigger) String() string {
-	// TODO: check if this is the correct format
-	return fmt.Sprintf("%d:%s", t.BlockNumber, t.BlockHash)
 }
 
 func (t Trigger) Validate() error {
@@ -51,9 +49,11 @@ type LogTriggerExtenstion struct {
 	BlockNumber BlockNumber
 }
 
-func (e LogTriggerExtenstion) LogIdentifier() string {
-	// TODO: check if this is the correct format
-	return fmt.Sprintf("%s:%d", e.LogTxHash, e.Index)
+func (e LogTriggerExtenstion) LogIdentifier() []byte {
+	return bytes.Join([][]byte{
+		e.LogTxHash[:],
+		[]byte(fmt.Sprintf("%d", e.Index)),
+	}, []byte{})
 }
 
 func (e LogTriggerExtenstion) Validate() error {
@@ -63,12 +63,8 @@ func (e LogTriggerExtenstion) Validate() error {
 	if e.Index == 0 {
 		return fmt.Errorf("log index cannot be zero")
 	}
-	if len(e.BlockHash) == 0 {
-		return fmt.Errorf("block hash cannot be empty")
-	}
-	if e.BlockNumber == 0 {
-		return fmt.Errorf("block number cannot be zero")
-	}
+	// not checking block hash or block number because they might not be available
+	// in case we extract ReportedUpkeep from a report, we won't have these fields
 
 	return nil
 }

@@ -34,16 +34,15 @@ const (
 type UpkeepIdentifier [32]byte
 
 func (u UpkeepIdentifier) String() string {
-	return hex.EncodeToString(u[:])
+	return u.BigInt().String()
 }
 
 func (u UpkeepIdentifier) BigInt() *big.Int {
-	return big.NewInt(0).SetBytes(u[:])
+	i, _ := big.NewInt(0).SetString(hex.EncodeToString(u[:]), 16)
+	return i
 }
 
 func (u *UpkeepIdentifier) FromBigInt(i *big.Int) {
-	// TODO: fix this
-	fmt.Printf("i: %+v\n", i.Bytes())
 	copy(u[:], i.Bytes())
 }
 
@@ -141,5 +140,6 @@ type ReportedUpkeep struct {
 	// UpkeepID is the value that identifies a configured upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger data for the upkeep
+	// NOTE: the trigger extension will not be complete, it will include only the log index and tx hash.
 	Trigger Trigger
 }

@@ -84,11 +84,11 @@ func TestTriggerUnmarshal_EmptyExtension(t *testing.T) {
 	assert.Equal(t, expected, output, "decoding should leave extension in its raw encoded state")
 }
 
-func TestUpkeepIdentifier_FromBigInt(t *testing.T) {
+func TestUpkeepIdentifier_BigInt(t *testing.T) {
 	tests := []struct {
 		name       string
 		id         *big.Int
-		want       string
+		wantHex    string
 		upkeepType UpkeepType
 	}{
 		{
@@ -97,7 +97,7 @@ func TestUpkeepIdentifier_FromBigInt(t *testing.T) {
 				id, _ := big.NewInt(0).SetString("32329108151019397958065800113404894502874153543356521479058624064899121404671", 10)
 				return id
 			}(),
-			want: "4779a07400000000000000000000000142d780684c0bbe59fab87e6ea7f3daff",
+			wantHex: "32329108151019397958065800113404894502874153543356521479058624064899121404671",
 		},
 		{
 			name: "condition trigger from hex",
@@ -105,7 +105,7 @@ func TestUpkeepIdentifier_FromBigInt(t *testing.T) {
 				id, _ := big.NewInt(0).SetString("4779a07400000000000000000000000042d780684c0bbe59fab87e6ea7f3daff", 16)
 				return id
 			}(),
-			want: "4779a07400000000000000000000000042d780684c0bbe59fab87e6ea7f3daff",
+			wantHex: "32329108151019397958065800113404894502533871176435583015595249457467353193215",
 		},
 	}
 
@@ -113,7 +113,8 @@ func TestUpkeepIdentifier_FromBigInt(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			uid := new(UpkeepIdentifier)
 			uid.FromBigInt(tc.id)
-			assert.Equal(t, tc.want, uid.String())
+			assert.Equal(t, tc.wantHex, uid.String())
+			assert.Equal(t, tc.id, uid.BigInt())
 		})
 	}
 }
