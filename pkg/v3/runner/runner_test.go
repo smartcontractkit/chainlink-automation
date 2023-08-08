@@ -24,6 +24,7 @@ var (
 			BlockNumber: 1,
 			BlockHash:   [32]byte{1},
 		},
+		WorkID: "workID1",
 	}
 	result2 = ocr2keepers.CheckResult{
 		Retryable: false,
@@ -32,6 +33,7 @@ var (
 			BlockNumber: 2,
 			BlockHash:   [32]byte{2},
 		},
+		WorkID: "workID2",
 	}
 	result3 = ocr2keepers.CheckResult{
 		Retryable: false,
@@ -40,6 +42,7 @@ var (
 			BlockNumber: 3,
 			BlockHash:   [32]byte{3},
 		},
+		WorkID: "workID3",
 	}
 	result4 = ocr2keepers.CheckResult{
 		Retryable: false,
@@ -48,6 +51,7 @@ var (
 			BlockNumber: 4,
 			BlockHash:   [32]byte{4},
 		},
+		WorkID: "workID4",
 	}
 	result5 = ocr2keepers.CheckResult{
 		Retryable: false,
@@ -56,13 +60,8 @@ var (
 			BlockNumber: 5,
 			BlockHash:   [32]byte{5},
 		},
+		WorkID: "workID5",
 	}
-
-	workID1, _ = UpkeepWorkID(result1.UpkeepID.BigInt(), result1.Trigger)
-	workID2, _ = UpkeepWorkID(result2.UpkeepID.BigInt(), result2.Trigger)
-	workID3, _ = UpkeepWorkID(result3.UpkeepID.BigInt(), result3.Trigger)
-	workID4, _ = UpkeepWorkID(result4.UpkeepID.BigInt(), result4.Trigger)
-	workID5, _ = UpkeepWorkID(result5.UpkeepID.BigInt(), result5.Trigger)
 )
 
 func TestRunnerCache(t *testing.T) {
@@ -83,27 +82,27 @@ func TestRunnerCache(t *testing.T) {
 		{
 			UpkeepID: result1.UpkeepID,
 			Trigger:  result1.Trigger,
-			WorkID:   workID1,
+			WorkID:   "workID1",
 		},
 		{
 			UpkeepID: result2.UpkeepID,
 			Trigger:  result2.Trigger,
-			WorkID:   workID2,
+			WorkID:   "workID2",
 		},
 		{
 			UpkeepID: result3.UpkeepID,
 			Trigger:  result3.Trigger,
-			WorkID:   workID3,
+			WorkID:   "workID3",
 		},
 		{
 			UpkeepID: result4.UpkeepID,
 			Trigger:  result4.Trigger,
-			WorkID:   workID4,
+			WorkID:   "workID4",
 		},
 		{
 			UpkeepID: result5.UpkeepID,
 			Trigger:  result5.Trigger,
-			WorkID:   workID5,
+			WorkID:   "workID5",
 		},
 	}
 

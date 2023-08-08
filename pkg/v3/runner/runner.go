@@ -2,16 +2,11 @@ package runner
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"log"
-	"math/big"
 	"strings"
 	"sync/atomic"
 	"time"
-
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
@@ -201,33 +196,15 @@ func (o *Runner) wrapWorkerFunc() func(context.Context, []ocr2keepers.UpkeepPayl
 	}
 }
 
-// UpkeepWorkID returns the identifier using the given upkeepID and trigger extension(tx hash and log index).
-func UpkeepWorkID(id *big.Int, trigger ocr2keepers.Trigger) (string, error) {
-	extensionBytes, err := json.Marshal(trigger.LogTriggerExtension)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO (auto-4314): Ensure it works with conditionals and add unit tests
-	combined := fmt.Sprintf("%s%s", id, extensionBytes)
-	hash := crypto.Keccak256([]byte(combined))
-	return hex.EncodeToString(hash[:]), nil
-}
-
 func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2keepers.CheckResult, error) {
 	return func(results []ocr2keepers.CheckResult, err error) {
 		if err == nil {
 			r.AddSuccesses(1)
 
 			for _, result := range results {
-				workID, err := UpkeepWorkID(result.UpkeepID.BigInt(), result.Trigger)
-				if err != nil {
-					continue
-				}
-
 				// only add to the cache if the result is not retryable
 				if !result.Retryable {
-					o.cache.Set(workID, result, pkgutil.DefaultCacheExpiration)
+					o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
 				}
 
 				r.Add(result)

@@ -2,15 +2,10 @@ package flows
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"time"
-
-	"github.com/ethereum/go-ethereum/crypto"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
@@ -210,36 +205,18 @@ type scheduledRetryer struct {
 	scheduler Scheduler[ocr2keepers.UpkeepPayload]
 }
 
-// UpkeepWorkID returns the identifier using the given upkeepID and trigger extension(tx hash and log index).
-func UpkeepWorkID(id *big.Int, trigger ocr2keepers.Trigger) (string, error) {
-	extensionBytes, err := json.Marshal(trigger.LogTriggerExtension)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO (auto-4314): Ensure it works with conditionals and add unit tests
-	combined := fmt.Sprintf("%s%s", id, extensionBytes)
-	hash := crypto.Keccak256([]byte(combined))
-	return hex.EncodeToString(hash[:]), nil
-}
-
 func (s *scheduledRetryer) Retry(r ocr2keepers.CheckResult) error {
-	workID, err := UpkeepWorkID(r.UpkeepID.BigInt(), r.Trigger)
-	if err != nil {
-		return err
-	}
-
 	if !r.Retryable {
 		// exit condition for not retryable
-		return fmt.Errorf("%w: %s", ErrNotRetryable, workID)
+		return fmt.Errorf("%w: %s", ErrNotRetryable, r.WorkID)
 	}
 
 	// TODO: validate that block is still valid for retry; if not error
 
-	return s.scheduler.Schedule(workID, ocr2keepers.UpkeepPayload{
+	return s.scheduler.Schedule(r.WorkID, ocr2keepers.UpkeepPayload{
 		UpkeepID: r.UpkeepID,
 		Trigger:  r.Trigger,
-		WorkID:   workID,
+		WorkID:   r.WorkID,
 	})
 }
 
@@ -252,15 +229,10 @@ type basicRetryer struct {
 }
 
 func (s *basicRetryer) Retry(r ocr2keepers.CheckResult) error {
-	workID, err := UpkeepWorkID(r.UpkeepID.BigInt(), r.Trigger)
-	if err != nil {
-		return err
-	}
-
-	return s.ticker.Add(workID, ocr2keepers.UpkeepPayload{
+	return s.ticker.Add(r.WorkID, ocr2keepers.UpkeepPayload{
 		UpkeepID: r.UpkeepID,
 		Trigger:  r.Trigger,
-		WorkID:   workID,
+		WorkID:   r.WorkID,
 	})
 }
 

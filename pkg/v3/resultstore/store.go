@@ -2,16 +2,11 @@ package resultstore
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"log"
-	"math/big"
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/ethereum/go-ethereum/crypto"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
@@ -87,19 +82,6 @@ func (s *resultStore) Notifications() <-chan ocr2keepersv3.Notification {
 	return s.notifications
 }
 
-// UpkeepWorkID returns the identifier using the given upkeepID and trigger extension(tx hash and log index).
-func UpkeepWorkID(id *big.Int, trigger ocr2keepers.Trigger) (string, error) {
-	extensionBytes, err := json.Marshal(trigger.LogTriggerExtension)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO (auto-4314): Ensure it works with conditionals and add unit tests
-	combined := fmt.Sprintf("%s%s", id, extensionBytes)
-	hash := crypto.Keccak256([]byte(combined))
-	return hex.EncodeToString(hash[:]), nil
-}
-
 // Add adds element/s to the store.
 func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 	s.lock.Lock()
@@ -107,16 +89,12 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 
 	added := 0
 	for _, r := range results {
-		workID, err := UpkeepWorkID(r.UpkeepID.BigInt(), r.Trigger)
-		if err != nil {
-			continue
-		}
-		_, ok := s.data[workID]
+		_, ok := s.data[r.WorkID]
 		if !ok {
 			added++
-			s.data[workID] = result{data: r, addedAt: time.Now()}
+			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
 
-			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", r.UpkeepID.String(), workID)
+			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", r.UpkeepID.String(), r.WorkID)
 		}
 		// if the element is already exists, we do noting
 	}
@@ -192,12 +170,7 @@ resultLoop:
 
 		results = append(results, r.data)
 
-		workID, err := UpkeepWorkID(r.data.UpkeepID.BigInt(), r.data.Trigger)
-		if err != nil {
-			continue
-		}
-
-		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", r.data.UpkeepID.String(), workID)
+		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", r.data.UpkeepID.String(), r.data.WorkID)
 
 		// if we reached the limit and there are no comparators, we can stop here
 		if len(results) == limit && len(comparators) == 0 {
@@ -218,12 +191,7 @@ func (s *resultStore) gc() {
 			delete(s.data, k)
 			s.notify(ocr2keepersv3.NotifyOpEvict, v.data)
 
-			workID, err := UpkeepWorkID(v.data.UpkeepID.BigInt(), v.data.Trigger)
-			if err != nil {
-				continue
-			}
-
-			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", v.data.UpkeepID.String(), workID)
+			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", v.data.UpkeepID.String(), v.data.WorkID)
 		}
 	}
 }

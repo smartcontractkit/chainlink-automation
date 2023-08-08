@@ -19,6 +19,7 @@ import (
 var (
 	result1 = ocr2keepers.CheckResult{
 		Retryable: false,
+		WorkID:    "workID1",
 		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		Trigger: ocr2keepers.Trigger{
 			BlockNumber: 1,
@@ -27,6 +28,7 @@ var (
 	}
 	result2 = ocr2keepers.CheckResult{
 		Retryable: false,
+		WorkID:    "workID2",
 		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{2}),
 		Trigger: ocr2keepers.Trigger{
 			BlockNumber: 2,
@@ -35,6 +37,7 @@ var (
 	}
 	result3 = ocr2keepers.CheckResult{
 		Retryable: false,
+		WorkID:    "workID3",
 		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{3}),
 		Trigger: ocr2keepers.Trigger{
 			BlockNumber: 3,
@@ -43,6 +46,7 @@ var (
 	}
 	result4 = ocr2keepers.CheckResult{
 		Retryable: false,
+		WorkID:    "workID4",
 		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{4}),
 		Trigger: ocr2keepers.Trigger{
 			BlockNumber: 4,
@@ -51,18 +55,13 @@ var (
 	}
 	result5 = ocr2keepers.CheckResult{
 		Retryable: false,
+		WorkID:    "workID5",
 		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{5}),
 		Trigger: ocr2keepers.Trigger{
 			BlockNumber: 5,
 			BlockHash:   [32]byte{5},
 		},
 	}
-
-	workID1, _ = UpkeepWorkID(result1.UpkeepID.BigInt(), result1.Trigger)
-	workID2, _ = UpkeepWorkID(result2.UpkeepID.BigInt(), result2.Trigger)
-	workID3, _ = UpkeepWorkID(result3.UpkeepID.BigInt(), result3.Trigger)
-	workID4, _ = UpkeepWorkID(result4.UpkeepID.BigInt(), result4.Trigger)
-	workID5, _ = UpkeepWorkID(result5.UpkeepID.BigInt(), result5.Trigger)
 )
 
 func TestResultStore_Sanity(t *testing.T) {
@@ -83,7 +82,7 @@ func TestResultStore_Sanity(t *testing.T) {
 				result4,
 				result5,
 			},
-			itemsToRemove: []string{workID1, workID2, workID3},
+			itemsToRemove: []string{"workID1", "workID2", "workID3"},
 			expected: []ocr2keepers.CheckResult{
 				result4,
 				result5,
@@ -103,8 +102,8 @@ func TestResultStore_Sanity(t *testing.T) {
 			name:       "no items",
 			itemsToAdd: []ocr2keepers.CheckResult{},
 			itemsToRemove: []string{
-				workID4,
-				workID5,
+				"workID4",
+				"workID5",
 			},
 			expected: []ocr2keepers.CheckResult{},
 		},
@@ -175,7 +174,7 @@ func TestResultStore_GC(t *testing.T) {
 		}
 	}()
 
-	store.Remove(workID1, workID2)
+	store.Remove("workID1", "workID2")
 
 	store.lock.Lock()
 	el := store.data["test-id-2"]
@@ -360,43 +359,24 @@ func TestResultStore_View(t *testing.T) {
 
 	t.Run("sort items by id desc", func(t *testing.T) {
 		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			aWorkID, err := UpkeepWorkID(a.UpkeepID.BigInt(), a.Trigger)
-			assert.NoError(t, err)
-			bWorkID, err := UpkeepWorkID(b.UpkeepID.BigInt(), b.Trigger)
-			assert.NoError(t, err)
-			return aWorkID > bWorkID
+			return a.WorkID > b.WorkID
 		}))
 		assert.NoError(t, err)
 		assert.Len(t, v, 4)
 
-		workID, err := UpkeepWorkID(v[0].UpkeepID.BigInt(), v[0].Trigger)
-		assert.NoError(t, err)
-		assert.Equal(t, "e2e5a4857befdd80f630d4e8dd93a98df8e8c97cb103f9d0de44470aad44619b", workID)
+		assert.Equal(t, "workID4", v[0].WorkID)
 	})
 
 	t.Run("sort items by id desc with limit", func(t *testing.T) {
 		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			aWorkID, err := UpkeepWorkID(a.UpkeepID.BigInt(), a.Trigger)
-			assert.NoError(t, err)
-			bWorkID, err := UpkeepWorkID(b.UpkeepID.BigInt(), b.Trigger)
-			assert.NoError(t, err)
-			return aWorkID > bWorkID
+			return a.WorkID > b.WorkID
 		}), ocr2keepersv3.WithLimit(3))
 		assert.NoError(t, err)
 		assert.Len(t, v, 3)
 
-		workID0, err := UpkeepWorkID(v[0].UpkeepID.BigInt(), v[0].Trigger)
-		assert.NoError(t, err)
-
-		workID1, err := UpkeepWorkID(v[1].UpkeepID.BigInt(), v[1].Trigger)
-		assert.NoError(t, err)
-
-		workID2, err := UpkeepWorkID(v[2].UpkeepID.BigInt(), v[2].Trigger)
-		assert.NoError(t, err)
-
-		assert.Equal(t, "e2e5a4857befdd80f630d4e8dd93a98df8e8c97cb103f9d0de44470aad44619b", workID0)
-		assert.Equal(t, "e07969fc7c14b4453a2d8a87c506c95d417d0c9db59d51920bd0c250330103f8", workID1)
-		assert.Equal(t, "ae245c333464f3658fc93bc193a39dafbb5be5900c7e6c2eb795f3e271e57079", workID2)
+		assert.Equal(t, "workID4", v[0].WorkID)
+		assert.Equal(t, "workID3", v[1].WorkID)
+		assert.Equal(t, "workID2", v[2].WorkID)
 	})
 
 	t.Run("ignore expired items", func(t *testing.T) {
@@ -406,19 +386,12 @@ func TestResultStore_View(t *testing.T) {
 		store.data["test-id-0"] = el
 		store.lock.Unlock()
 		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			aWorkID, err := UpkeepWorkID(a.UpkeepID.BigInt(), a.Trigger)
-			assert.NoError(t, err)
-			bWorkID, err := UpkeepWorkID(b.UpkeepID.BigInt(), b.Trigger)
-			assert.NoError(t, err)
-			return aWorkID < bWorkID
+			return a.WorkID < b.WorkID
 		}), ocr2keepersv3.WithLimit(3))
 		assert.NoError(t, err)
 		assert.Len(t, v, 3)
 
-		workID0, err := UpkeepWorkID(v[0].UpkeepID.BigInt(), v[0].Trigger)
-		assert.NoError(t, err)
-
-		assert.Equal(t, "65904d6a23823ee6cf86fab18a883201622f39ab6e9eb07dfd0902f83a9aff85", workID0)
+		assert.Equal(t, "workID1", v[0].WorkID)
 
 	})
 }

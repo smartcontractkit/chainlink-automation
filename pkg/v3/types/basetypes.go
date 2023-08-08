@@ -89,6 +89,8 @@ type CheckResult struct {
 	FastGasWei *big.Int
 	// todo: add comment
 	LinkNative *big.Int
+	// WorkID represents the unit of work for the check result
+	WorkID string
 }
 
 func ValidateCheckResult(r CheckResult) error {
@@ -142,4 +144,6 @@ type ReportedUpkeep struct {
 	// Trigger data for the upkeep
 	// NOTE: the trigger extension will not be complete, it will include only the log index and tx hash.
 	Trigger Trigger
+	g       // WorkID represents the unit of work for the reported upkeep
+	WorkID  string
 }
