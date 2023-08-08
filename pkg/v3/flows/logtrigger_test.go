@@ -35,7 +35,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
@@ -108,7 +108,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 0}
 	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
@@ -187,7 +187,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 2}
 	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
@@ -280,7 +280,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 	runner := &mockedRunner{eligibleAfter: 2}
 	src := new(mocks2.MockLogEventProvider)
 	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
@@ -369,7 +369,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 
 func TestProcessOutcome(t *testing.T) {
 	t.Run("no values in outcome", func(t *testing.T) {
-		pb := new(mocks.MockPayloadBuilder)
+		pb := new(mocks2.MockPayloadBuilder)
 		flow := &LogTriggerEligibility{
 			builder: pb,
 			logger:  log.New(io.Discard, "", 0),
@@ -384,7 +384,7 @@ func TestProcessOutcome(t *testing.T) {
 
 	t.Run("proposals are added to retryer", func(t *testing.T) {
 		recoverer := new(mocks.MockRetryer)
-		pb := new(mocks.MockPayloadBuilder)
+		pb := new(mocks2.MockPayloadBuilder)
 		ms := new(mocks.MockMetadataStore)
 
 		flow := &LogTriggerEligibility{
@@ -425,8 +425,10 @@ func TestProcessOutcome(t *testing.T) {
 			},
 		}
 
-		pb.On("BuildPayload", mock.Anything, expectedProposal).Return(ocr2keepers.UpkeepPayload{
-			WorkID: "test",
+		pb.On("BuildPayloads", mock.Anything, expectedProposal).Return([]ocr2keepers.UpkeepPayload{
+			{
+				WorkID: "test",
+			},
 		}, nil)
 
 		recoverer.On("Retry", mock.Anything).Return(nil)

@@ -58,11 +58,6 @@ type RecoverableProvider interface {
 	GetRecoverables() ([]ocr2keepers.UpkeepPayload, error)
 }
 
-//go:generate mockery --name PayloadBuilder --structname MockPayloadBuilder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename payloadbuilder.generated.go
-type PayloadBuilder interface {
-	BuildPayload(context.Context, ocr2keepers.CoordinatedProposal) (ocr2keepers.UpkeepPayload, error)
-}
-
 const (
 	LogCheckInterval        = 1 * time.Second
 	RecoveryCheckInterval   = 1 * time.Minute
@@ -72,7 +67,7 @@ const (
 // LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
 // with retry attempts.
 type LogTriggerEligibility struct {
-	builder   PayloadBuilder
+	builder   ocr2keepers.PayloadBuilder
 	mStore    MetadataStore
 	recoverer Retryer
 	logger    *log.Logger
@@ -86,7 +81,7 @@ func NewLogTriggerEligibility(
 	runner Runner,
 	logProvider ocr2keepers.LogEventProvider,
 	rp RecoverableProvider,
-	builder PayloadBuilder,
+	builder ocr2keepers.PayloadBuilder,
 	logInterval time.Duration,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
@@ -168,12 +163,13 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 		// remove from local metadata store
 		cachedProposals.Delete(fmt.Sprintf("%v", proposal))
 
-		payload, err := flow.builder.BuildPayload(ctx, proposal)
+		payloads, err := flow.builder.BuildPayloads(ctx, proposal)
 		if err != nil {
 			flow.logger.Printf("error encountered when building payload")
 
 			continue
 		}
+		payload := payloads[0]
 
 		// pass to recoverer
 		if err := flow.recoverer.Retry(ocr2keepers.CheckResult{

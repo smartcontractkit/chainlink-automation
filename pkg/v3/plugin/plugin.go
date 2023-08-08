@@ -31,7 +31,7 @@ func newPlugin(
 	events coordinator.EventProvider,
 	blockSource tickers.BlockSubscriber,
 	rp flows.RecoverableProvider,
-	builder flows.PayloadBuilder,
+	builder ocr2keepers.PayloadBuilder,
 	ratio flows.Ratio,
 	getter flows.UpkeepProvider,
 	encoder ocr2keepers.Encoder,

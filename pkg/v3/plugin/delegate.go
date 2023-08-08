@@ -70,7 +70,7 @@ type DelegateConfig struct {
 
 	// PayloadBuilder provides a utility method to build an upkeep payload from
 	// a trigger id and block key
-	PayloadBuilder flows.PayloadBuilder
+	PayloadBuilder ocr2keepers.PayloadBuilder
 
 	// UpkeepProvider ...
 	UpkeepProvider flows.UpkeepProvider

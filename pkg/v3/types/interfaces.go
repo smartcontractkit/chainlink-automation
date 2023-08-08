@@ -27,6 +27,7 @@ type ConditionalUpkeepProvider interface {
 	GetActiveUpkeeps(context.Context, BlockNumber) ([]UpkeepPayload, error)
 }
 
+//go:generate mockery --name PayloadBuilder --structname MockPayloadBuilder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename payloadbuilder.generated.go
 type PayloadBuilder interface {
 	// Can get payloads for a subset of proposals along with an error
 	BuildPayloads(context.Context, ...CoordinatedProposal) ([]UpkeepPayload, error)

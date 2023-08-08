@@ -29,7 +29,7 @@ type UpkeepProvider interface {
 
 // ConditionalEligibility is a flow controller that surfaces conditional upkeeps
 type ConditionalEligibility struct {
-	builder PayloadBuilder
+	builder ocr2keepers.PayloadBuilder
 	mStore  MetadataStore
 	final   Retryer
 	logger  *log.Logger
@@ -40,7 +40,7 @@ func NewConditionalEligibility(
 	ratio Ratio,
 	getter UpkeepProvider,
 	subscriber tickers.BlockSubscriber,
-	builder PayloadBuilder,
+	builder ocr2keepers.PayloadBuilder,
 	rs ResultStore,
 	ms MetadataStore,
 	rn Runner,
@@ -93,12 +93,13 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 			UpkeepID: sample,
 		}
 
-		payload, err := flow.builder.BuildPayload(ctx, proposal)
+		payloads, err := flow.builder.BuildPayloads(ctx, proposal)
 		if err != nil {
 			flow.logger.Printf("error encountered when building payload")
 
 			continue
 		}
+		payload := payloads[0]
 
 		// pass to recoverer
 		if err := flow.final.Retry(ocr2keepers.CheckResult{
