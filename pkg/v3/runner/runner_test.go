@@ -111,6 +111,7 @@ func TestRunnerCache(t *testing.T) {
 		expected[i] = ocr2keepers.CheckResult{
 			UpkeepID: payloads[i].UpkeepID,
 			Trigger:  payloads[i].Trigger,
+			WorkID:   payloads[i].WorkID,
 		}
 	}
 
