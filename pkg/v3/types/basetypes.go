@@ -144,6 +144,6 @@ type ReportedUpkeep struct {
 	// Trigger data for the upkeep
 	// NOTE: the trigger extension will not be complete, it will include only the log index and tx hash.
 	Trigger Trigger
-	g       // WorkID represents the unit of work for the reported upkeep
-	WorkID  string
+	// WorkID represents the unit of work for the reported upkeep
+	WorkID string
 }
