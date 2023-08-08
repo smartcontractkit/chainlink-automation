@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,7 +22,7 @@ import (
 func TestNewSampleProposalFlow(t *testing.T) {
 	r := new(mocks.MockRatio)
 	pp := new(mockedPreprocessor)
-	up := new(mocks.MockUpkeepProvider)
+	up := new(mocks2.MockConditionalUpkeepProvider)
 	rn := &mockedRunner{eligibleAfter: 0}
 	ms := new(mocks.MockMetadataStore)
 	bs := &mockBlockSubscriber{

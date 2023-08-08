@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 type mockUpkeepObserver struct {
@@ -65,7 +66,7 @@ func TestSampleTicker(t *testing.T) {
 	)
 
 	// create basic mocks
-	mg := new(MockGetter)
+	mg := new(mocks.MockConditionalUpkeepProvider)
 	mr := new(MockRatio)
 
 	// create an observer that tracks sampling and mocks pipeline results
@@ -113,7 +114,7 @@ func TestSampleTicker(t *testing.T) {
 	// run all tests on the same ticker instance
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			mg.On("GetActiveUpkeeps", mock.Anything, mock.Anything).Return(test.TestData, nil)
+			mg.On("GetActiveUpkeeps", mock.Anything).Return(test.TestData, nil)
 			mr.On("OfInt", mock.Anything).Return(test.ExpectedSampleCount)
 
 			// send a block history
@@ -192,7 +193,7 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 			)
 
 			// create basic mocks
-			mg := new(MockGetter)
+			mg := new(mocks.MockConditionalUpkeepProvider)
 			mr := new(MockRatio)
 
 			// create an observer that tracks sampling and mocks pipeline results
@@ -239,7 +240,7 @@ func TestSampleTicker_ErrorStates(t *testing.T) {
 				wg.Done()
 			}()
 
-			mg.On("GetActiveUpkeeps", mock.Anything, mock.Anything).Return(test.TestData, test.GetterFnError)
+			mg.On("GetActiveUpkeeps", mock.Anything).Return(test.TestData, test.GetterFnError)
 
 			if test.GetterFnError == nil {
 				mr.On("OfInt", mock.Anything).Return(test.ExpectedSampleCount)
@@ -296,35 +297,4 @@ func (_m *MockRatio) OfInt(v int) int {
 	}
 
 	return r0
-}
-
-type MockGetter struct {
-	mock.Mock
-}
-
-func (_m *MockGetter) GetActiveUpkeeps(ctx context.Context, bk ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error) {
-	ret := _m.Called(ctx, bk)
-
-	var r0 []ocr2keepers.UpkeepPayload
-	var r1 error
-
-	if rf, ok := ret.Get(0).(func(context.Context, ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error)); ok {
-		return rf(ctx, bk)
-	}
-
-	if rf, ok := ret.Get(0).(func(context.Context, ocr2keepers.BlockKey) []ocr2keepers.UpkeepPayload); ok {
-		r0 = rf(ctx, bk)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]ocr2keepers.UpkeepPayload)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, ocr2keepers.BlockKey) error); ok {
-		r1 = rf(ctx, bk)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }

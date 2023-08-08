@@ -22,11 +22,6 @@ type Ratio interface {
 	OfInt(int) int
 }
 
-//go:generate mockery --name UpkeepProvider --structname MockUpkeepProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename upkeepprovider.generated.go
-type UpkeepProvider interface {
-	GetActiveUpkeeps(context.Context, ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error)
-}
-
 // ConditionalEligibility is a flow controller that surfaces conditional upkeeps
 type ConditionalEligibility struct {
 	builder ocr2keepers.PayloadBuilder
@@ -38,7 +33,7 @@ type ConditionalEligibility struct {
 // NewConditionalEligibility ...
 func NewConditionalEligibility(
 	ratio Ratio,
-	getter UpkeepProvider,
+	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber tickers.BlockSubscriber,
 	builder ocr2keepers.PayloadBuilder,
 	rs ResultStore,
@@ -119,7 +114,7 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 func newSampleProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ratio Ratio,
-	getter UpkeepProvider,
+	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber tickers.BlockSubscriber,
 	ms MetadataStore,
 	rn Runner,

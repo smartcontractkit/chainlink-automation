@@ -73,7 +73,7 @@ type DelegateConfig struct {
 	PayloadBuilder ocr2keepers.PayloadBuilder
 
 	// UpkeepProvider ...
-	UpkeepProvider flows.UpkeepProvider
+	UpkeepProvider ocr2keepers.ConditionalUpkeepProvider
 
 	// Methods passed from core
 	UpkeepTypeGetter ocr2keepers.UpkeepTypeGetter

@@ -19,14 +19,10 @@ type shuffler[T any] interface {
 	Shuffle([]T) []T
 }
 
-type upkeepsGetter interface {
-	GetActiveUpkeeps(context.Context, ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error)
-}
-
 type sampleTicker struct {
 	// provided dependencies
 	observer observer[[]ocr2keepers.UpkeepPayload]
-	getter   upkeepsGetter
+	getter   ocr2keepers.ConditionalUpkeepProvider
 	ratio    ratio
 	logger   *log.Logger
 
@@ -102,7 +98,7 @@ func (ticker *sampleTicker) getterFn(ctx context.Context, block ocr2keepers.Bloc
 
 	// TODO: convert to block key ticker instead of time ticker to provide
 	// block scope to active upkeep provider
-	if upkeeps, err = ticker.getter.GetActiveUpkeeps(ctx, block); err != nil {
+	if upkeeps, err = ticker.getter.GetActiveUpkeeps(ctx); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +118,7 @@ func (ticker *sampleTicker) getterFn(ctx context.Context, block ocr2keepers.Bloc
 
 func NewSampleTicker(
 	ratio ratio,
-	getter upkeepsGetter,
+	getter ocr2keepers.ConditionalUpkeepProvider,
 	observer observer[[]ocr2keepers.UpkeepPayload],
 	subscriber BlockSubscriber,
 	logger *log.Logger,

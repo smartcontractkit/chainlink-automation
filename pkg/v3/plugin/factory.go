@@ -40,7 +40,7 @@ type pluginFactory struct {
 	blocks           tickers.BlockSubscriber
 	rp               ocr2keepers.RecoverableProvider
 	builder          ocr2keepers.PayloadBuilder
-	getter           flows.UpkeepProvider
+	getter           ocr2keepers.ConditionalUpkeepProvider
 	runnable         ocr2keepers.Runnable
 	runnerConf       runner.RunnerConfig
 	encoder          ocr2keepers.Encoder
@@ -54,7 +54,7 @@ func NewReportingPluginFactory(
 	blocks tickers.BlockSubscriber,
 	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
-	getter flows.UpkeepProvider,
+	getter ocr2keepers.ConditionalUpkeepProvider,
 	runnable ocr2keepers.Runnable,
 	runnerConf runner.RunnerConfig,
 	encoder ocr2keepers.Encoder,

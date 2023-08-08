@@ -33,7 +33,7 @@ func newPlugin(
 	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	ratio flows.Ratio,
-	getter flows.UpkeepProvider,
+	getter ocr2keepers.ConditionalUpkeepProvider,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
 	runnable ocr2keepers.Runnable,
