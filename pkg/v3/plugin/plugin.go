@@ -36,7 +36,7 @@ func newPlugin(
 	getter flows.UpkeepProvider,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
-	runnable runner.Runnable,
+	runnable ocr2keepers.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	f int,

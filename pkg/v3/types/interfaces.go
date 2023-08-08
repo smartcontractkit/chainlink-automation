@@ -31,6 +31,7 @@ type PayloadBuilder interface {
 	BuildPayloads(context.Context, ...CoordinatedProposal) ([]UpkeepPayload, error)
 }
 
+//go:generate mockery --name Runnable --structname MockRunnable --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename runnable.generated.go
 type Runnable interface {
 	// Can get results for a subset of payloads along with an error
 	CheckUpkeeps(context.Context, ...UpkeepPayload) ([]CheckResult, error)

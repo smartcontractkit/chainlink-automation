@@ -55,7 +55,7 @@ type DelegateConfig struct {
 	EventProvider coordinator.EventProvider
 
 	// Runnable is a check pipeline runner
-	Runnable runner.Runnable
+	Runnable ocr2keepers.Runnable
 
 	// Encoder provides methods to encode/decode reports
 	Encoder ocr2keepers.Encoder

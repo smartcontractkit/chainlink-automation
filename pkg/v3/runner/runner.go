@@ -18,14 +18,9 @@ const WorkerBatchLimit int = 10
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
-//go:generate mockery --name Runnable --structname MockRunnable --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/runner" --case underscore --filename runnable.generated.go
-type Runnable interface {
-	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
-}
-
 // ensure that the runner implements the same interface it consumes to indicate
 // the runner simply wraps the underlying runnable with extra features
-var _ Runnable = &Runner{}
+var _ ocr2keepers.Runnable = &Runner{}
 
 // Runner is a component that parallelizes calls to the provided runnable both
 // by batching tasks to individual calls as well as using parallel threads to
@@ -38,7 +33,7 @@ var _ Runnable = &Runner{}
 type Runner struct {
 	// injected dependencies
 	logger   *log.Logger
-	runnable Runnable
+	runnable ocr2keepers.Runnable
 
 	// initialized by the constructor
 	workers      *pkgutil.WorkerGroup[[]ocr2keepers.CheckResult]        // parallelizer
@@ -65,7 +60,7 @@ type RunnerConfig struct {
 // NewRunner provides a new configured runner
 func NewRunner(
 	logger *log.Logger,
-	runnable Runnable,
+	runnable ocr2keepers.Runnable,
 	conf RunnerConfig,
 ) (*Runner, error) {
 	return &Runner{

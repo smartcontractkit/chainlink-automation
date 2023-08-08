@@ -41,7 +41,7 @@ type pluginFactory struct {
 	rp               flows.RecoverableProvider
 	builder          flows.PayloadBuilder
 	getter           flows.UpkeepProvider
-	runnable         runner.Runnable
+	runnable         ocr2keepers.Runnable
 	runnerConf       runner.RunnerConfig
 	encoder          ocr2keepers.Encoder
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
@@ -55,7 +55,7 @@ func NewReportingPluginFactory(
 	rp flows.RecoverableProvider,
 	builder flows.PayloadBuilder,
 	getter flows.UpkeepProvider,
-	runnable runner.Runnable,
+	runnable ocr2keepers.Runnable,
 	runnerConf runner.RunnerConfig,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
