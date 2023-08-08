@@ -40,9 +40,7 @@ func TestRecoveryFlow(t *testing.T) {
 	}(svc, context.Background())
 
 	retryable := ocr2keepers.CheckResult{
-		Payload: ocr2keepers.UpkeepPayload{
-			WorkID: "test",
-		},
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 	}
 
 	assert.NoError(t, recoverer.Retry(retryable), "no error from retrying")

@@ -62,7 +62,7 @@ func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, 
 			continue
 		}
 
-		ids = append(ids, r.Payload.UpkeepID)
+		ids = append(ids, r.UpkeepID)
 	}
 
 	// should always reset values every time sampling runs

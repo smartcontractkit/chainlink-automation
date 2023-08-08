@@ -452,7 +452,8 @@ func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keeper
 		}
 
 		results = append(results, ocr2keepers.CheckResult{
-			Payload:   payloads[i],
+			UpkeepID:  payloads[i].UpkeepID,
+			Trigger:   payloads[i].Trigger,
 			Eligible:  eligible,
 			Retryable: !eligible,
 		})

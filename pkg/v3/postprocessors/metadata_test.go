@@ -89,21 +89,15 @@ func TestMetadataAddSamples(t *testing.T) {
 	values := []ocr2keepers.CheckResult{
 		{
 			Eligible: true,
-			Payload: ocr2keepers.UpkeepPayload{
-				UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		},
 		{
 			Eligible: true,
-			Payload: ocr2keepers.UpkeepPayload{
-				UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 		},
 		{
 			Eligible: false,
-			Payload: ocr2keepers.UpkeepPayload{
-				UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
-			},
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
 		},
 	}
 

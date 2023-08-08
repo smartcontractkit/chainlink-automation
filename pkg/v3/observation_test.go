@@ -21,18 +21,7 @@ func TestAutomationObservation(t *testing.T) {
 		},
 		Performable: []ocr2keepers.CheckResult{
 			{
-				Payload: ocr2keepers.UpkeepPayload{
-					UpkeepID:  [32]byte{111},
-					CheckData: []byte("check data"),
-					Trigger: ocr2keepers.Trigger{
-						BlockNumber: 4,
-						BlockHash:   [32]byte{0},
-						LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-							LogTxHash: [32]byte{1},
-							Index:     4,
-						},
-					},
-				},
+				UpkeepID:    [32]byte{111},
 				Retryable:   true,
 				Eligible:    true,
 				PerformData: []byte("testing"),
@@ -49,18 +38,7 @@ func TestAutomationObservation(t *testing.T) {
 		},
 		Performable: []ocr2keepers.CheckResult{
 			{
-				Payload: ocr2keepers.UpkeepPayload{
-					UpkeepID:  [32]byte{111},
-					CheckData: []byte("check data"),
-					Trigger: ocr2keepers.Trigger{
-						BlockNumber: 4,
-						BlockHash:   [32]byte{0},
-						LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-							LogTxHash: [32]byte{1},
-							Index:     4,
-						},
-					},
-				},
+				UpkeepID:    [32]byte{111},
 				Retryable:   true,
 				Eligible:    true,
 				PerformData: []byte("testing"),
@@ -140,13 +118,7 @@ func TestValidateAutomationObservation(t *testing.T) {
 					Eligible:     true,
 					Retryable:    false,
 					GasAllocated: 1,
-					Payload: ocr2keepers.UpkeepPayload{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{123}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 10,
-							BlockHash:   [32]byte{2},
-						},
-					},
+					UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{123}),
 				},
 			},
 		}

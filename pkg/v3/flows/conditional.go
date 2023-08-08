@@ -102,7 +102,8 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 
 		// pass to recoverer
 		if err := flow.final.Retry(ocr2keepers.CheckResult{
-			Payload: payload,
+			UpkeepID: payload.UpkeepID,
+			Trigger:  payload.Trigger,
 		}); err != nil {
 			continue
 		}

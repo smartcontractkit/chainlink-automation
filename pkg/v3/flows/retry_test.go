@@ -45,9 +45,7 @@ func TestRetryFlow(t *testing.T) {
 
 	testCheckResult := ocr2keepers.CheckResult{
 		Retryable: true,
-		Payload: ocr2keepers.UpkeepPayload{
-			WorkID: "test",
-		},
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{1}),
 	}
 
 	var wg sync.WaitGroup

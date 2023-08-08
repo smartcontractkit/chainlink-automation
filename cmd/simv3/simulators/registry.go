@@ -76,9 +76,9 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 				Eligible:     false,
 				Retryable:    false,
 				GasAllocated: 5_000_000, // TODO: make this configurable
-				Payload:      key,
+				UpkeepID:     key.UpkeepID,
+				Trigger:      key.Trigger,
 				PerformData:  []byte{}, // TODO: add perform data from configuration
-				Extension:    "value",  // TODO: probably won't need this
 			}
 
 			// start at the highest blocks eligible. the first eligible will be a block

@@ -70,54 +70,22 @@ type TransmitEvent struct {
 type CheckResult struct {
 	// Eligible indicates whether this result is eligible to be performed
 	Eligible bool
+	// If result is not eligible then the reason it failed
+	FailureReason uint8
 	// Retryable indicates if this result can be retried on the check pipeline
 	Retryable bool
+	// Upkeep is all the information that identifies the upkeep
+	UpkeepID UpkeepIdentifier
+	// Trigger is the event that triggered the upkeep to be checked
+	Trigger Trigger
 	// GasAllocated is the gas to provide an upkeep in a report
 	GasAllocated uint64
-	// Payload is the detail used to check the upkeep
-	Payload UpkeepPayload
 	// PerformData is the raw data returned when simulating an upkeep perform
 	PerformData []byte
-	// Extension is extra data that can differ between contracts
-	Extension interface{}
-}
-
-func (r *CheckResult) UnmarshalJSON(b []byte) error {
-	type raw struct {
-		Eligible     bool
-		Retryable    bool
-		GasAllocated uint64
-		Payload      UpkeepPayload
-		PerformData  []byte
-		Extension    json.RawMessage
-	}
-
-	var basicRaw raw
-
-	if err := json.Unmarshal(b, &basicRaw); err != nil {
-		return err
-	}
-
-	output := CheckResult{
-		Eligible:     basicRaw.Eligible,
-		Retryable:    basicRaw.Retryable,
-		GasAllocated: basicRaw.GasAllocated,
-		Payload:      basicRaw.Payload,
-		PerformData:  basicRaw.PerformData,
-	}
-
-	if string(basicRaw.Extension) != "null" {
-		output.Extension = []byte(basicRaw.Extension)
-
-		var v []byte
-		if err := json.Unmarshal(basicRaw.Extension, &v); err == nil {
-			output.Extension = v
-		}
-	}
-
-	*r = output
-
-	return nil
+	// todo: add comment
+	FastGasWei *big.Int
+	// todo: add comment
+	LinkNative *big.Int
 }
 
 func ValidateCheckResult(r CheckResult) error {
@@ -129,7 +97,7 @@ func ValidateCheckResult(r CheckResult) error {
 		return fmt.Errorf("gas allocated cannot be zero")
 	}
 
-	return ValidateUpkeepPayload(r.Payload)
+	return nil
 }
 
 type ConfiguredUpkeep struct {

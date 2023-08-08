@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +14,55 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner/mocks"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+)
+
+var (
+	result1 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 1,
+			BlockHash:   [32]byte{1},
+		},
+	}
+	result2 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 2,
+			BlockHash:   [32]byte{2},
+		},
+	}
+	result3 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{3}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 3,
+			BlockHash:   [32]byte{3},
+		},
+	}
+	result4 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{4}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 4,
+			BlockHash:   [32]byte{4},
+		},
+	}
+	result5 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{5}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 5,
+			BlockHash:   [32]byte{5},
+		},
+	}
+
+	workID1, _ = UpkeepWorkID(result1.UpkeepID.BigInt(), result1.Trigger)
+	workID2, _ = UpkeepWorkID(result2.UpkeepID.BigInt(), result2.Trigger)
+	workID3, _ = UpkeepWorkID(result3.UpkeepID.BigInt(), result3.Trigger)
+	workID4, _ = UpkeepWorkID(result4.UpkeepID.BigInt(), result4.Trigger)
+	workID5, _ = UpkeepWorkID(result5.UpkeepID.BigInt(), result5.Trigger)
 )
 
 func TestRunnerCache(t *testing.T) {
@@ -32,17 +80,38 @@ func TestRunnerCache(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
-		{WorkID: "a"},
-		{WorkID: "b"},
-		{WorkID: "c"},
-		{WorkID: "d"},
-		{WorkID: "e"},
+		{
+			UpkeepID: result1.UpkeepID,
+			Trigger:  result1.Trigger,
+			WorkID:   workID1,
+		},
+		{
+			UpkeepID: result2.UpkeepID,
+			Trigger:  result2.Trigger,
+			WorkID:   workID2,
+		},
+		{
+			UpkeepID: result3.UpkeepID,
+			Trigger:  result3.Trigger,
+			WorkID:   workID3,
+		},
+		{
+			UpkeepID: result4.UpkeepID,
+			Trigger:  result4.Trigger,
+			WorkID:   workID4,
+		},
+		{
+			UpkeepID: result5.UpkeepID,
+			Trigger:  result5.Trigger,
+			WorkID:   workID5,
+		},
 	}
 
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
 	for i := range payloads {
 		expected[i] = ocr2keepers.CheckResult{
-			Payload: payloads[i],
+			UpkeepID: payloads[i].UpkeepID,
+			Trigger:  payloads[i].Trigger,
 		}
 	}
 
@@ -92,7 +161,8 @@ func TestRunnerBatching(t *testing.T) {
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
 	for i := range payloads {
 		expected[i] = ocr2keepers.CheckResult{
-			Payload: payloads[i],
+			UpkeepID: payloads[i].UpkeepID,
+			Trigger:  payloads[i].Trigger,
 		}
 	}
 
@@ -103,11 +173,6 @@ func TestRunnerBatching(t *testing.T) {
 
 	// all batches should be collected into a single result set
 	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
-
-	// sort the results for comparison
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Payload.WorkID < results[j].Payload.WorkID
-	})
 
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
@@ -148,7 +213,8 @@ func TestRunnerConcurrent(t *testing.T) {
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
 	for i := range payloads {
 		expected[i] = ocr2keepers.CheckResult{
-			Payload: payloads[i],
+			UpkeepID: payloads[i].UpkeepID,
+			Trigger:  payloads[i].Trigger,
 		}
 	}
 
@@ -256,7 +322,8 @@ func TestRunnerErr(t *testing.T) {
 		expected := make([]ocr2keepers.CheckResult, len(payloads))
 		for i := range payloads {
 			expected[i] = ocr2keepers.CheckResult{
-				Payload: payloads[i],
+				UpkeepID: payloads[i].UpkeepID,
+				Trigger:  payloads[i].Trigger,
 			}
 		}
 
