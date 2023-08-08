@@ -34,7 +34,7 @@ type ConditionalEligibility struct {
 func NewConditionalEligibility(
 	ratio Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
-	subscriber tickers.BlockSubscriber,
+	subscriber ocr2keepers.BlockSubscriber,
 	builder ocr2keepers.PayloadBuilder,
 	rs ResultStore,
 	ms MetadataStore,
@@ -115,7 +115,7 @@ func newSampleProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ratio Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
-	subscriber tickers.BlockSubscriber,
+	subscriber ocr2keepers.BlockSubscriber,
 	ms MetadataStore,
 	rn Runner,
 	logger *log.Logger,

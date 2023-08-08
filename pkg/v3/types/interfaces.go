@@ -1,6 +1,8 @@
 package types
 
-import "context"
+import (
+	"context"
+)
 
 type UpkeepTypeGetter func(uid UpkeepIdentifier) UpkeepType
 
@@ -40,4 +42,11 @@ type PayloadBuilder interface {
 type Runnable interface {
 	// Can get results for a subset of payloads along with an error
 	CheckUpkeeps(context.Context, ...UpkeepPayload) ([]CheckResult, error)
+}
+
+type BlockSubscriber interface {
+	// Subscribe provides an identifier integer, a new channel, and potentially an error
+	Subscribe() (int, chan BlockHistory, error)
+	// Unsubscribe requires an identifier integer and indicates the provided channel should be closed
+	Unsubscribe(int) error
 }

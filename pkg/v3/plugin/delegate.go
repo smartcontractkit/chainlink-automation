@@ -14,7 +14,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -60,7 +59,7 @@ type DelegateConfig struct {
 
 	// BlockSubscriber provides subscribe/unsubscribe methods for block source
 	// data
-	BlockSubscriber tickers.BlockSubscriber
+	BlockSubscriber ocr2keepers.BlockSubscriber
 
 	// RecoverableProvider provides recoverable payloads to be proposed to the
 	// network

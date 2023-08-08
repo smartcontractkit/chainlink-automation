@@ -29,7 +29,7 @@ func newPlugin(
 	digest types.ConfigDigest,
 	logProvider ocr2keepers.LogEventProvider,
 	events ocr2keepers.TransmitEventProvider,
-	blockSource tickers.BlockSubscriber,
+	blockSource ocr2keepers.BlockSubscriber,
 	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	ratio flows.Ratio,

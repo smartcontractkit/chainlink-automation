@@ -11,7 +11,6 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -35,7 +34,7 @@ const (
 type pluginFactory struct {
 	logProvider      ocr2keepers.LogEventProvider
 	events           ocr2keepers.TransmitEventProvider
-	blocks           tickers.BlockSubscriber
+	blocks           ocr2keepers.BlockSubscriber
 	rp               ocr2keepers.RecoverableProvider
 	builder          ocr2keepers.PayloadBuilder
 	getter           ocr2keepers.ConditionalUpkeepProvider
@@ -49,7 +48,7 @@ type pluginFactory struct {
 func NewReportingPluginFactory(
 	logProvider ocr2keepers.LogEventProvider,
 	events ocr2keepers.TransmitEventProvider,
-	blocks tickers.BlockSubscriber,
+	blocks ocr2keepers.BlockSubscriber,
 	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	getter ocr2keepers.ConditionalUpkeepProvider,

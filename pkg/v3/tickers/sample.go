@@ -120,7 +120,7 @@ func NewSampleTicker(
 	ratio ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	observer observer[[]ocr2keepers.UpkeepPayload],
-	subscriber BlockSubscriber,
+	subscriber ocr2keepers.BlockSubscriber,
 	logger *log.Logger,
 ) (*sampleTicker, error) {
 	block, err := NewBlockTicker(subscriber)
