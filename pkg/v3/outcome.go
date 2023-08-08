@@ -247,7 +247,7 @@ func (bo *BasicOutcome) UnmarshalJSON(b []byte) error {
 	}
 
 	metadata := make(map[OutcomeMetadataKey]interface{})
-	for key, _ := range rawOutcome.Metadata {
+	for key := range rawOutcome.Metadata {
 		switch OutcomeMetadataKey(key) {
 		case CoordinatedBlockOutcomeKey:
 			// value is a block history type
