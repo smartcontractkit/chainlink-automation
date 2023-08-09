@@ -94,8 +94,9 @@ func newRecoveryProposalFlow(
 		recoveryInterval,
 		recoveryObserver,
 		func(f func(string, ocr2keepers.UpkeepPayload) error) error {
+			ctx := context.Background()
 			// pull payloads from RecoverableProvider
-			recovers, err := rp.GetRecoveryProposals()
+			recovers, err := rp.GetRecoveryProposals(ctx)
 			if err != nil {
 				return err
 			}

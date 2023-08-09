@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	types "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,25 +14,25 @@ type MockRecoverableProvider struct {
 	mock.Mock
 }
 
-// GetRecoveryProposals provides a mock function with given fields:
-func (_m *MockRecoverableProvider) GetRecoveryProposals() ([]types.UpkeepPayload, error) {
-	ret := _m.Called()
+// GetRecoveryProposals provides a mock function with given fields: _a0
+func (_m *MockRecoverableProvider) GetRecoveryProposals(_a0 context.Context) ([]types.UpkeepPayload, error) {
+	ret := _m.Called(_a0)
 
 	var r0 []types.UpkeepPayload
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]types.UpkeepPayload, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(context.Context) ([]types.UpkeepPayload, error)); ok {
+		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func() []types.UpkeepPayload); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []types.UpkeepPayload); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]types.UpkeepPayload)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}

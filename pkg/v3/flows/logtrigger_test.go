@@ -46,7 +46,7 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoveryProposals").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
 	// metadata store should set the value twice with empty data
 	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(2)
@@ -123,7 +123,7 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoveryProposals").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(5)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(5)
 
 	// only test data will be added to result store, nil will not
 	rStore.On("Add", mock.Anything).Times(1)
@@ -202,7 +202,7 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoveryProposals").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
 
 	// within the standard happy path, check upkeeps is called and returns
 	// as retryable.
@@ -295,7 +295,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoveryProposals").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
 
 	// within the standard happy path, check upkeeps is called and returns
 	// as retryable.

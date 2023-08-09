@@ -19,7 +19,7 @@ type LogEventProvider interface {
 
 //go:generate mockery --name RecoverableProvider --structname MockRecoverableProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename recoverableprovider.generated.go
 type RecoverableProvider interface {
-	GetRecoveryProposals() ([]UpkeepPayload, error)
+	GetRecoveryProposals(context.Context) ([]UpkeepPayload, error)
 }
 
 //go:generate mockery --name TransmitEventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename transmit_event_provider.generated.go
@@ -52,5 +52,5 @@ type BlockSubscriber interface {
 }
 
 type UpkeepStateUpdater interface {
-	SetUpkeepState(CheckResult, UpkeepState) error
+	SetUpkeepState(context.Context, CheckResult, UpkeepState) error
 }

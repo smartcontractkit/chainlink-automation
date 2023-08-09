@@ -76,8 +76,8 @@ func TestRecoveryProposalFlow(t *testing.T) {
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 	ar := util.NewSyncedArray[ocr2keepers.UpkeepPayload]()
 
-	rec.On("GetRecoveryProposals").Return(testData, nil).Times(1)
-	rec.On("GetRecoveryProposals").Return(nil, nil).Times(3)
+	rec.On("GetRecoveryProposals", mock.Anything).Return(testData, nil).Times(1)
+	rec.On("GetRecoveryProposals", mock.Anything).Return(nil, nil).Times(3)
 
 	// metadata store should set the value
 	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(4)
