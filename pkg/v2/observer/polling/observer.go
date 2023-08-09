@@ -13,7 +13,7 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v2/observer"
 )
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
