@@ -16,20 +16,25 @@ const (
 type TransmitEventType int
 
 const (
+	// Exploratory AUTO 4335: add type for unknown
 	PerformEvent TransmitEventType = iota
 	StaleReportEvent
 	ReorgReportEvent
 	InsufficientFundsReportEvent
 )
 
+// UpkeepState is a final state of some unit of work.
 type UpkeepState uint8
 
 const (
+	// Exploratory AUTO 4335: add type for unknown
+	// Performed means the upkeep was performed
 	Performed UpkeepState = iota
+	// Ineligible means the upkeep was not eligible to be performed
 	Ineligible
 )
 
-// upkeepID is uint256 on contract
+// UpkeepIdentifier is a unique identifier for the upkeep, represented as uint256 in the contract.
 type UpkeepIdentifier [32]byte
 
 func (u UpkeepIdentifier) String() string {
@@ -40,6 +45,9 @@ func (u UpkeepIdentifier) BigInt() *big.Int {
 	return big.NewInt(0).SetBytes(u[:])
 }
 
+// FromBigInt sets the upkeep identifier from a big.Int,
+// returning true if the big.Int is valid and false otherwise.
+// in case of an invalid big.Int the upkeep identifier is set to 32 zeros.
 func (u *UpkeepIdentifier) FromBigInt(i *big.Int) bool {
 	*u = [32]byte{}
 	if i.Cmp(big.NewInt(0)) == -1 {
@@ -58,6 +66,7 @@ func (u *UpkeepIdentifier) FromBigInt(i *big.Int) bool {
 
 type BlockNumber uint64
 
+// BlockKey represent a block (number and hash)
 type BlockKey struct {
 	Number BlockNumber
 	Hash   [32]byte
@@ -103,6 +112,8 @@ type CheckResult struct {
 	WorkID string
 }
 
+// UniqueID returns a unique identifier for the check result.
+// It is used to deduplicate check results.
 func (r CheckResult) UniqueID() string {
 	var resultBytes []byte
 
@@ -120,6 +131,7 @@ func (r CheckResult) UniqueID() string {
 	return fmt.Sprintf("%x", resultBytes)
 }
 
+// Validate validates the check result fields
 func (r CheckResult) Validate() error {
 	if r.Eligible && r.Retryable {
 		return fmt.Errorf("check result cannot be both eligible and retryable")
@@ -132,6 +144,7 @@ func (r CheckResult) Validate() error {
 	return nil
 }
 
+// BlockHistory is a list of block keys
 type BlockHistory []BlockKey
 
 func (bh BlockHistory) Latest() (BlockKey, error) {
@@ -157,16 +170,18 @@ type UpkeepPayload struct {
 	CheckData []byte
 }
 
-// CoordinatedProposal contains all required values to construct a complete
-// UpkeepPayload for use in a runner
+// CoordinatedProposal is used to represent a unit of work that can be performed
+// after it has been coordinated between nodes.
 type CoordinatedProposal struct {
+	// UpkeepID is the id of the proposed upkeep
 	UpkeepID UpkeepIdentifier
-	Trigger  Trigger
+	// Trigger represents the event that triggered the upkeep to be checked
+	Trigger Trigger
 }
 
-// Details of an upkeep for which a report was generated
+// ReportedUpkeep contains details of an upkeep for which a report was generated.
 type ReportedUpkeep struct {
-	// UpkeepID is the value that identifies a configured upkeep
+	// UpkeepID id of the underlying upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger data for the upkeep
 	Trigger Trigger
