@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 )
@@ -38,12 +37,23 @@ func (u UpkeepIdentifier) String() string {
 }
 
 func (u UpkeepIdentifier) BigInt() *big.Int {
-	i, _ := big.NewInt(0).SetString(hex.EncodeToString(u[:]), 16)
-	return i
+	return big.NewInt(0).SetBytes(u[:])
 }
 
-func (u *UpkeepIdentifier) FromBigInt(i *big.Int) {
-	copy(u[:], i.Bytes())
+func (u *UpkeepIdentifier) FromBigInt(i *big.Int) bool {
+	*u = [32]byte{}
+	if i.Cmp(big.NewInt(0)) == -1 {
+		return false
+	}
+	b := i.Bytes()
+	if len(b) == 0 {
+		return true
+	}
+	if len(b) <= 32 {
+		copy(u[32-len(b):], i.Bytes())
+		return true
+	}
+	return false
 }
 
 type BlockNumber uint64
