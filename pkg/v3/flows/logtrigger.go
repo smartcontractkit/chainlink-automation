@@ -21,7 +21,7 @@ var (
 )
 
 //go:generate mockery --name Runner --structname MockRunner --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename runner.generated.go
-type Runners interface {
+type Runner interface {
 	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
 	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
