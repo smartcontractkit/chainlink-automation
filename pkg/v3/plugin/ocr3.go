@@ -84,6 +84,8 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 		}
 	}
 
+	plugin.Logger.Printf("encoding observation with %d performables", len(observation.Performable))
+
 	// Encode the observation to bytes
 	encoded, err := observation.Encode()
 	if err != nil {
