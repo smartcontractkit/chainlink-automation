@@ -54,7 +54,7 @@ func TestLogEventCoordinator(t *testing.T) {
 			{Type: ocr2keepers.ReorgReportEvent, Confirmations: 4},
 		}
 
-		logs.On("TransmitEvents", mock.Anything).Return(expectedEvents, nil).Once()
+		logs.On("GetLatestEvents", mock.Anything).Return(expectedEvents, nil).Once()
 
 		err := rc.checkEvents(ctx)
 

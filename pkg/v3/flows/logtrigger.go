@@ -161,7 +161,10 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 		payloads, err := flow.builder.BuildPayloads(ctx, proposal)
 		if err != nil {
 			flow.logger.Printf("error encountered when building payload")
-
+			continue
+		}
+		if len(payloads) == 0 {
+			flow.logger.Printf("did not get any results when building payload")
 			continue
 		}
 		payload := payloads[0]

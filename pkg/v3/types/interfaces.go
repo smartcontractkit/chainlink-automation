@@ -24,7 +24,7 @@ type RecoverableProvider interface {
 
 //go:generate mockery --name TransmitEventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename transmit_event_provider.generated.go
 type TransmitEventProvider interface {
-	TransmitEvents(context.Context) ([]TransmitEvent, error)
+	GetLatestEvents(context.Context) ([]TransmitEvent, error)
 }
 
 //go:generate mockery --name ConditionalUpkeepProvider --structname MockConditionalUpkeepProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename conditionalupkeepprovider.generated.go

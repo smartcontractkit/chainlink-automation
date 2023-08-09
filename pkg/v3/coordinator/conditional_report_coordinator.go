@@ -165,7 +165,7 @@ func (rc *conditionalReportCoordinator) checkEvents(ctx context.Context) error {
 		err    error
 	)
 
-	events, err = rc.events.TransmitEvents(ctx)
+	events, err = rc.events.GetLatestEvents(ctx)
 	if err != nil {
 		return err
 	}

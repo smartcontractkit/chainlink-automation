@@ -155,10 +155,6 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 	return bh[0], nil
 }
 
-func (bh BlockHistory) Keys() []BlockKey {
-	return bh
-}
-
 type UpkeepPayload struct {
 	// Upkeep is all the information that identifies the upkeep
 	UpkeepID UpkeepIdentifier

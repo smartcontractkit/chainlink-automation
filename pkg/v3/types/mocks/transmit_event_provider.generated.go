@@ -14,8 +14,8 @@ type TransmitEventProvider struct {
 	mock.Mock
 }
 
-// TransmitEvents provides a mock function with given fields: _a0
-func (_m *TransmitEventProvider) TransmitEvents(_a0 context.Context) ([]types.TransmitEvent, error) {
+// GetLatestEvents provides a mock function with given fields: _a0
+func (_m *TransmitEventProvider) GetLatestEvents(_a0 context.Context) ([]types.TransmitEvent, error) {
 	ret := _m.Called(_a0)
 
 	var r0 []types.TransmitEvent

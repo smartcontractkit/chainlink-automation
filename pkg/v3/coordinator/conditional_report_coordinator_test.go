@@ -33,7 +33,7 @@ type mockEvents struct {
 	TransmitEventsFn func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error)
 }
 
-func (e *mockEvents) TransmitEvents(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+func (e *mockEvents) GetLatestEvents(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 	return e.TransmitEventsFn(ctx)
 }
 

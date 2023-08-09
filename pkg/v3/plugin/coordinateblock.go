@@ -37,7 +37,7 @@ func (p *coordinateBlock) add(observation ocr2keepersv3.AutomationObservation) {
 		return
 	}
 
-	for _, key := range history.Keys() {
+	for _, key := range history {
 		// TODO: don't use values at index
 		height := heightHash{key.Number, key.Hash}
 

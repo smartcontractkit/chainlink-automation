@@ -46,7 +46,7 @@ func NewReportCoordinator(logs ocr2keepers.TransmitEventProvider, utg ocr2keeper
 
 func (rc *reportCoordinator) Accept(upkeep ocr2keepers.ReportedUpkeep) error {
 	if rc.upkeepTypeGetter(upkeep.UpkeepID) != ocr2keepers.LogTrigger {
-		return fmt.Errorf("Upkeep is not log event based, skipping: %s", upkeep.UpkeepID.String())
+		return fmt.Errorf("upkeep is not log event based, skipping: %s", upkeep.UpkeepID.String())
 	}
 
 	if _, ok := rc.activeKeys.Get(upkeep.WorkID); !ok {
@@ -69,7 +69,7 @@ func (rc *reportCoordinator) checkEvents(ctx context.Context) error {
 		err    error
 	)
 
-	events, err = rc.events.TransmitEvents(ctx)
+	events, err = rc.events.GetLatestEvents(ctx)
 	if err != nil {
 		return err
 	}

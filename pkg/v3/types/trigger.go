@@ -25,6 +25,14 @@ func NewTrigger(blockNumber BlockNumber, blockHash [32]byte) Trigger {
 	}
 }
 
+func NewLogTrigger(blockNumber BlockNumber, blockHash [32]byte, logTriggerExtension *LogTriggerExtension) Trigger {
+	return Trigger{
+		BlockNumber:         blockNumber,
+		BlockHash:           blockHash,
+		LogTriggerExtension: logTriggerExtension,
+	}
+}
+
 // Validate validates the trigger fields, and any extensions if present.
 func (t Trigger) Validate() error {
 	if t.BlockNumber == 0 {
