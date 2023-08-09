@@ -1,8 +1,6 @@
 package plugin
 
 import (
-	"fmt"
-
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -31,7 +29,6 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 		}
 
 		uid := result.UniqueID()
-		fmt.Printf("[automation-ocr3 | plugin] adding result %s to performables, %+v\n", uid, result)
 		payloadCount, ok := p.resultCount[uid]
 		if !ok {
 			payloadCount = resultAndCount[ocr2keepers.CheckResult]{

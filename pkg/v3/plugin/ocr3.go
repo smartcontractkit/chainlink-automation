@@ -84,7 +84,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 		}
 	}
 
-	plugin.Logger.Printf("encoding observation with %d performables", len(observation.Performable))
+	plugin.Logger.Printf("built an observation with %d performables", len(observation.Performable))
 
 	// Encode the observation to bytes
 	encoded, err := observation.Encode()
@@ -125,6 +125,9 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			// the observation and move to the next one
 			continue
 		}
+
+		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables",
+			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable))
 
 		p.add(observation)
 		c.add(observation)

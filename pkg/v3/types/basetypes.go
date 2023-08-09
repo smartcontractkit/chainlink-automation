@@ -101,7 +101,11 @@ func (r CheckResult) UniqueID() string {
 	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
 	resultBytes = append(resultBytes, r.PerformData[:]...)
 	resultBytes = append(resultBytes, r.UpkeepID[:]...)
-	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Trigger))...)
+	resultBytes = append(resultBytes, r.Trigger.BlockHash[:]...)
+	resultBytes = append(resultBytes, big.NewInt(int64(r.Trigger.BlockNumber)).Bytes()...)
+	if r.Trigger.LogTriggerExtension != nil {
+		resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Trigger.LogTriggerExtension))...)
+	}
 
 	return fmt.Sprintf("%x", resultBytes)
 }
