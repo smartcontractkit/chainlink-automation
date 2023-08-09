@@ -1,27 +1,26 @@
 package telemetry
 
 import (
+	"fmt"
 	"io"
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type ContractEventCollector struct {
-	Splitter KeySplitter
 	baseCollector
 	filePath string
 	nodes    map[string]*WrappedContractCollector
 }
 
-func NewContractEventCollector(path string, s KeySplitter) *ContractEventCollector {
+func NewContractEventCollector(path string) *ContractEventCollector {
 	return &ContractEventCollector{
 		baseCollector: baseCollector{
 			t:        NodeLogType,
 			io:       []io.WriteCloser{},
 			ioLookup: make(map[string]int),
 		},
-		Splitter: s,
 		filePath: path,
 		nodes:    make(map[string]*WrappedContractCollector),
 	}
@@ -80,7 +79,6 @@ func (c *ContractEventCollector) Data() (map[string]int, map[string][]string) {
 
 func (c *ContractEventCollector) AddNode(node string) error {
 	wc := &WrappedContractCollector{
-		Splitter:    c.Splitter,
 		keyChecks:   make(map[string]int),
 		keyIDLookup: make(map[string][]string),
 	}
@@ -90,13 +88,7 @@ func (c *ContractEventCollector) AddNode(node string) error {
 	return nil
 }
 
-type KeySplitter interface {
-	// SplitUpkeepKey ...
-	SplitUpkeepKey(ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error)
-}
-
 type WrappedContractCollector struct {
-	Splitter    KeySplitter
 	mu          sync.Mutex
 	keyChecks   map[string]int
 	keyIDLookup map[string][]string
@@ -114,17 +106,17 @@ func (wc *WrappedContractCollector) CheckID(id string, block ocr2keepers.BlockKe
 
 	val, ok := wc.keyIDLookup[id]
 	if !ok {
-		wc.keyIDLookup[id] = []string{string(block)}
+		wc.keyIDLookup[id] = []string{fmt.Sprintf("%d", block.Number)}
 	} else {
 		var found bool
 		for _, v := range val {
-			if v == string(block) {
+			if v == fmt.Sprintf("%d", block.Number) {
 				found = true
 			}
 		}
 
 		if !found {
-			wc.keyIDLookup[id] = append(val, string(block))
+			wc.keyIDLookup[id] = append(val, fmt.Sprintf("%d", block.Number))
 		}
 	}
 }

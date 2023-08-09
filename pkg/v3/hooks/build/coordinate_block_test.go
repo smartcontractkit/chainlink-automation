@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type mockInstructionStore struct {
@@ -89,9 +89,15 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 		mStore := store.NewMetadata(nil)
 		hook := build.NewCoordinateBlockHook(instructionStore, mStore)
 		blockHistory := ocr2keepers2.BlockHistory{
-			ocr2keepers2.BlockKey("3"),
-			ocr2keepers2.BlockKey("2"),
-			ocr2keepers2.BlockKey("1"),
+			ocr2keepers2.BlockKey{
+				Number: 3,
+			},
+			ocr2keepers2.BlockKey{
+				Number: 2,
+			},
+			ocr2keepers2.BlockKey{
+				Number: 1,
+			},
 		}
 
 		mStore.Set(store.BlockHistoryMetadata, blockHistory)

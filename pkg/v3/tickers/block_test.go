@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type mockSubscriber struct {
@@ -50,9 +50,24 @@ func TestBlockTicker(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 1"), ocr2keepers.BlockKey("key 2")}
-	secondBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 3")}
-	thirdBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 4")}
+	firstBlockHistory := ocr2keepers.BlockHistory{
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(1),
+		},
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(2),
+		},
+	}
+	secondBlockHistory := ocr2keepers.BlockHistory{
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(3),
+		},
+	}
+	thirdBlockHistory := ocr2keepers.BlockHistory{
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(4),
+		},
+	}
 
 	blockHistories := []ocr2keepers.BlockHistory{
 		firstBlockHistory,
@@ -118,9 +133,24 @@ func TestBlockTicker_buffered(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	firstBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 1"), ocr2keepers.BlockKey("key 2")}
-	secondBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 3")}
-	thirdBlockHistory := ocr2keepers.BlockHistory{ocr2keepers.BlockKey("key 4")}
+	firstBlockHistory := ocr2keepers.BlockHistory{
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(1),
+		},
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(2),
+		},
+	}
+	secondBlockHistory := ocr2keepers.BlockHistory{
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(3),
+		},
+	}
+	thirdBlockHistory := ocr2keepers.BlockHistory{
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(4),
+		},
+	}
 
 	blockHistories := []ocr2keepers.BlockHistory{
 		firstBlockHistory,

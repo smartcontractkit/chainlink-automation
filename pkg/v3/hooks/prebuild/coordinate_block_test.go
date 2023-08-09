@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type mockInstructionStore struct {
@@ -91,7 +91,9 @@ func TestNewCoordinateBlockHook(t *testing.T) {
 			},
 		}
 
-		blockKey := ocr2keepers2.BlockKey("testBlockKey")
+		blockKey := ocr2keepers2.BlockKey{
+			Number: 123,
+		}
 
 		outcome := ocr2keepers.AutomationOutcome{
 			BasicOutcome: ocr2keepers.BasicOutcome{

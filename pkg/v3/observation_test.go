@@ -6,39 +6,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestAutomationObservation(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationObservation{
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata: map[ObservationMetadataKey]interface{}{
-			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{("2")}),
-		},
+		Metadata:     map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
-				Payload: ocr2keepers.UpkeepPayload{
-					ID: "abc",
-					Upkeep: ocr2keepers.ConfiguredUpkeep{
-						ID:     []byte("111"),
-						Type:   1,
-						Config: "value",
-					},
-					CheckData: []byte("check data"),
-					Trigger: ocr2keepers.Trigger{
-						BlockNumber: 4,
-						BlockHash:   "hash",
-						Extension: struct {
-							Hash  string
-							Value int64
-						}{
-							Hash:  "0xhash",
-							Value: 18,
-						},
-					},
-				},
+				UpkeepID:    [32]byte{111},
 				Retryable:   true,
 				Eligible:    true,
 				PerformData: []byte("testing"),
@@ -48,25 +27,10 @@ func TestAutomationObservation(t *testing.T) {
 
 	expected := AutomationObservation{
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata: map[ObservationMetadataKey]interface{}{
-			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{("2")}),
-		},
+		Metadata:     map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
-				Payload: ocr2keepers.UpkeepPayload{
-					ID: "abc",
-					Upkeep: ocr2keepers.ConfiguredUpkeep{
-						ID:     []byte("111"),
-						Type:   1,
-						Config: []byte(`"value"`),
-					},
-					CheckData: []byte("check data"),
-					Trigger: ocr2keepers.Trigger{
-						BlockNumber: 4,
-						BlockHash:   "hash",
-						Extension:   []byte(`{"Hash":"0xhash","Value":18}`),
-					},
-				},
+				UpkeepID:    [32]byte{111},
 				Retryable:   true,
 				Eligible:    true,
 				PerformData: []byte("testing"),
@@ -137,23 +101,16 @@ func TestValidateAutomationObservation(t *testing.T) {
 				instructions.DoCoordinateBlock,
 			},
 			Metadata: map[ObservationMetadataKey]interface{}{
-				BlockHistoryObservationKey: ocr2keepers.BlockKey("3"),
+				BlockHistoryObservationKey: ocr2keepers.BlockKey{
+					Number: 3,
+				},
 			},
 			Performable: []ocr2keepers.CheckResult{
 				{
 					Eligible:     true,
 					Retryable:    false,
 					GasAllocated: 1,
-					Payload: ocr2keepers.UpkeepPayload{
-						ID: "test",
-						Upkeep: ocr2keepers.ConfiguredUpkeep{
-							ID: ocr2keepers.UpkeepIdentifier("test"),
-						},
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 10,
-							BlockHash:   "0x",
-						},
-					},
+					UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{123}),
 				},
 			},
 		}

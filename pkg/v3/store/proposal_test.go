@@ -3,8 +3,9 @@ package store
 import (
 	"testing"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -49,7 +50,7 @@ func TestSampleProposalsFromMetadata(t *testing.T) {
 		vg := new(mockValueGetter)
 
 		expected := []ocr2keepers.UpkeepIdentifier{
-			ocr2keepers.UpkeepIdentifier("1"),
+			ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		}
 
 		vg.On("Get", ProposalSampleMetadata).Return(expected, true)

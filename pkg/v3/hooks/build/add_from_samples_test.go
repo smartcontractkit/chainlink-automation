@@ -3,17 +3,18 @@ package build
 import (
 	"testing"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddFromSamplesHook(t *testing.T) {
 	mStore := store.NewMetadata(nil)
 	samples := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier("1"),
-		ocr2keepers.UpkeepIdentifier("2"),
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
 	}
 
 	mStore.Set(store.ProposalSampleMetadata, samples)

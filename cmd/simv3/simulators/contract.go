@@ -2,17 +2,19 @@ package simulators
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type BlockBroadcaster interface {
@@ -40,7 +42,7 @@ type RPCTelemetry interface {
 type SimulatedContract struct {
 	mu     sync.RWMutex
 	src    BlockBroadcaster
-	enc    plugin.Encoder
+	enc    ocr2keepers.Encoder
 	logger *log.Logger
 	dgst   Digester
 	// blocks come from a simulated block provider. this value is to store
@@ -78,7 +80,7 @@ func NewSimulatedContract(
 	src BlockBroadcaster,
 	d Digester,
 	sym []SimulatedUpkeep,
-	enc plugin.Encoder,
+	enc ocr2keepers.Encoder,
 	transmitter Transmitter,
 	avgLatency int,
 	account string,
@@ -130,6 +132,19 @@ func (ct *SimulatedContract) LatestBlockHeight(_ context.Context) (uint64, error
 	return ct.lastBlock.Uint64(), nil
 }
 
+// UpkeepWorkID returns the identifier using the given upkeepID and trigger extension(tx hash and log index).
+func UpkeepWorkID(id *big.Int, trigger ocr2keepers.Trigger) (string, error) {
+	extensionBytes, err := json.Marshal(trigger.LogTriggerExtension)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO (auto-4314): Ensure it works with conditionals and add unit tests
+	combined := fmt.Sprintf("%s%s", id, extensionBytes)
+	hash := crypto.Keccak256([]byte(combined))
+	return hex.EncodeToString(hash[:]), nil
+}
+
 func (ct *SimulatedContract) run() {
 	sub, chBlocks := ct.src.Subscribe(true)
 	ct.subscription = sub
@@ -162,23 +177,29 @@ func (ct *SimulatedContract) run() {
 
 					logs := make([]ocr2keepers.TransmitEvent, len(reported))
 					for i, result := range reported {
-						logs[i] = ocr2keepers.TransmitEvent{
-							Type:            ocr2keepers.PerformEvent,
-							TransmitBlock:   ocr2keepers.BlockKey(block.BlockNumber.String()),
-							Confirmations:   0,
-							TransactionHash: "",
-							ID:              result.ID,
-							UpkeepID:        result.UpkeepID,
-							CheckBlock:      ocr2keepers.BlockKey("1"), // TODO: need to get this from somewhere
+
+						workID, err := UpkeepWorkID(result.UpkeepID.BigInt(), result.Trigger)
+						if err != nil {
+							continue
 						}
 
-						up, ok := ct.upkeeps[string(result.UpkeepID)]
+						logs[i] = ocr2keepers.TransmitEvent{
+							Type:            ocr2keepers.PerformEvent,
+							TransmitBlock:   ocr2keepers.BlockNumber(block.BlockNumber.Uint64()),
+							Confirmations:   0,
+							TransactionHash: [32]byte{},
+							WorkID:          workID,
+							UpkeepID:        result.UpkeepID,
+							CheckBlock:      ocr2keepers.BlockNumber(1), // TODO: need to get this from somewhere
+						}
+
+						up, ok := ct.upkeeps[result.UpkeepID.String()]
 						if ok {
 							//result.PerformData
 							up.Performs[block.BlockNumber.String()] = logs[i]
 						}
 
-						ct.logger.Printf("log for key '%s' found in block '%s'", result.ID, block.BlockNumber)
+						ct.logger.Printf("log for key '%s' found in block '%s'", result.UpkeepID.String(), block.BlockNumber)
 					}
 
 					lgs, ok := ct.perLogs.Get(block.BlockNumber.String())

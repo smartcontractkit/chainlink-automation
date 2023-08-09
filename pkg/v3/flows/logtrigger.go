@@ -7,13 +7,13 @@ import (
 	"log"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 var (
@@ -53,22 +53,6 @@ type Retryer interface {
 	Retry(ocr2keepers.CheckResult) error
 }
 
-//go:generate mockery --name LogEventProvider --structname MockLogEventProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename logeventprovider.generated.go
-type LogEventProvider interface {
-	// GetLogs returns the latest logs
-	GetLogs(context.Context) ([]ocr2keepers.UpkeepPayload, error)
-}
-
-//go:generate mockery --name RecoverableProvider --structname MockRecoverableProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename recoverableprovider.generated.go
-type RecoverableProvider interface {
-	GetRecoverables() ([]ocr2keepers.UpkeepPayload, error)
-}
-
-//go:generate mockery --name PayloadBuilder --structname MockPayloadBuilder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename payloadbuilder.generated.go
-type PayloadBuilder interface {
-	BuildPayload(context.Context, ocr2keepers.CoordinatedProposal) (ocr2keepers.UpkeepPayload, error)
-}
-
 const (
 	LogCheckInterval        = 1 * time.Second
 	RecoveryCheckInterval   = 1 * time.Minute
@@ -78,7 +62,7 @@ const (
 // LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
 // with retry attempts.
 type LogTriggerEligibility struct {
-	builder   PayloadBuilder
+	builder   ocr2keepers.PayloadBuilder
 	mStore    MetadataStore
 	recoverer Retryer
 	logger    *log.Logger
@@ -89,10 +73,10 @@ func NewLogTriggerEligibility(
 	coord PreProcessor,
 	rStore ResultStore,
 	mStore MetadataStore,
-	runner Runner,
-	logProvider LogEventProvider,
-	rp RecoverableProvider,
-	builder PayloadBuilder,
+	runner ocr2keepersv3.Runner,
+	logProvider ocr2keepers.LogEventProvider,
+	rp ocr2keepers.RecoverableProvider,
+	builder ocr2keepers.PayloadBuilder,
 	logInterval time.Duration,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
@@ -161,16 +145,6 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 		return nil
 	}
 
-	// get latest coordinated block
-	// by checking latest outcome first and then looping through the history
-	block, err := outcome.LatestCoordinatedBlock()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
-			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {
-			return err
-		}
-	}
-
 	cachedProposals, err := store.RecoveryProposalCacheFromMetadata(flow.mStore)
 	if err != nil {
 		return err
@@ -181,21 +155,24 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 
 	// merge block number and recoverables
 	for _, proposal := range networkProposals {
-		proposal.Block = block
-
 		// remove from local metadata store
 		cachedProposals.Delete(fmt.Sprintf("%v", proposal))
 
-		payload, err := flow.builder.BuildPayload(ctx, proposal)
+		payloads, err := flow.builder.BuildPayloads(ctx, proposal)
 		if err != nil {
 			flow.logger.Printf("error encountered when building payload")
-
 			continue
 		}
+		if len(payloads) == 0 {
+			flow.logger.Printf("did not get any results when building payload")
+			continue
+		}
+		payload := payloads[0]
 
 		// pass to recoverer
 		if err := flow.recoverer.Retry(ocr2keepers.CheckResult{
-			Payload: payload,
+			UpkeepID: payload.UpkeepID,
+			Trigger:  payload.Trigger,
 		}); err != nil {
 			continue
 		}
@@ -219,12 +196,16 @@ type scheduledRetryer struct {
 func (s *scheduledRetryer) Retry(r ocr2keepers.CheckResult) error {
 	if !r.Retryable {
 		// exit condition for not retryable
-		return fmt.Errorf("%w: %s", ErrNotRetryable, r.Payload.ID)
+		return fmt.Errorf("%w: %s", ErrNotRetryable, r.WorkID)
 	}
 
 	// TODO: validate that block is still valid for retry; if not error
 
-	return s.scheduler.Schedule(r.Payload.ID, r.Payload)
+	return s.scheduler.Schedule(r.WorkID, ocr2keepers.UpkeepPayload{
+		UpkeepID: r.UpkeepID,
+		Trigger:  r.Trigger,
+		WorkID:   r.WorkID,
+	})
 }
 
 type BasicRetryer[T any] interface {
@@ -236,11 +217,15 @@ type basicRetryer struct {
 }
 
 func (s *basicRetryer) Retry(r ocr2keepers.CheckResult) error {
-	return s.ticker.Add(r.Payload.ID, r.Payload)
+	return s.ticker.Add(r.WorkID, ocr2keepers.UpkeepPayload{
+		UpkeepID: r.UpkeepID,
+		Trigger:  r.Trigger,
+		WorkID:   r.WorkID,
+	})
 }
 
 type logTick struct {
-	logProvider LogEventProvider
+	logProvider ocr2keepers.LogEventProvider
 	logger      *log.Logger
 }
 
@@ -249,7 +234,7 @@ func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 		return nil, nil
 	}
 
-	logs, err := et.logProvider.GetLogs(ctx)
+	logs, err := et.logProvider.GetLatestPayloads(ctx)
 
 	et.logger.Printf("%d logs returned by log provider", len(logs))
 
@@ -260,10 +245,10 @@ func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 func newLogTriggerFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	retryer Retryer,
 	recoverer Retryer,
-	logProvider LogEventProvider,
+	logProvider ocr2keepers.LogEventProvider,
 	logInterval time.Duration,
 	logger *log.Logger,
 ) service.Recoverable {

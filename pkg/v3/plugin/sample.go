@@ -4,8 +4,8 @@ import (
 	"math/rand"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type samples struct {
@@ -61,7 +61,7 @@ func dedupe(inputs []ocr2keepers.UpkeepIdentifier) []ocr2keepers.UpkeepIdentifie
 	matched := make(map[string]struct{})
 
 	for _, input := range inputs {
-		key := string(input)
+		key := input.String()
 		_, ok := matched[key]
 		if !ok {
 			matched[key] = struct{}{}

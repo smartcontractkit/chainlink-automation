@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 // TODO: make these configurable?
@@ -89,13 +89,12 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 
 	added := 0
 	for _, r := range results {
-		id := r.Payload.ID
-		_, ok := s.data[id]
+		_, ok := s.data[r.WorkID]
 		if !ok {
 			added++
-			s.data[id] = result{data: r, addedAt: time.Now()}
+			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
 
-			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", string(r.Payload.Upkeep.ID), r.Payload.ID)
+			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", r.UpkeepID.String(), r.WorkID)
 		}
 		// if the element is already exists, we do noting
 	}
@@ -171,7 +170,7 @@ resultLoop:
 
 		results = append(results, r.data)
 
-		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", string(r.data.Payload.Upkeep.ID), r.data.Payload.ID)
+		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", r.data.UpkeepID.String(), r.data.WorkID)
 
 		// if we reached the limit and there are no comparators, we can stop here
 		if len(results) == limit && len(comparators) == 0 {
@@ -192,7 +191,7 @@ func (s *resultStore) gc() {
 			delete(s.data, k)
 			s.notify(ocr2keepersv3.NotifyOpEvict, v.data)
 
-			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", string(v.data.Payload.Upkeep.ID), v.data.Payload.ID)
+			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", v.data.UpkeepID.String(), v.data.WorkID)
 		}
 	}
 }

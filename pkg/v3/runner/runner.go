@@ -9,23 +9,18 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 const WorkerBatchLimit int = 10
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
 
-//go:generate mockery --name Runnable --structname MockRunnable --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/runner" --case underscore --filename runnable.generated.go
-type Runnable interface {
-	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
-}
-
 // ensure that the runner implements the same interface it consumes to indicate
 // the runner simply wraps the underlying runnable with extra features
-var _ Runnable = &Runner{}
+var _ ocr2keepers.Runnable = &Runner{}
 
 // Runner is a component that parallelizes calls to the provided runnable both
 // by batching tasks to individual calls as well as using parallel threads to
@@ -38,7 +33,7 @@ var _ Runnable = &Runner{}
 type Runner struct {
 	// injected dependencies
 	logger   *log.Logger
-	runnable Runnable
+	runnable ocr2keepers.Runnable
 
 	// initialized by the constructor
 	workers      *pkgutil.WorkerGroup[[]ocr2keepers.CheckResult]        // parallelizer
@@ -65,7 +60,7 @@ type RunnerConfig struct {
 // NewRunner provides a new configured runner
 func NewRunner(
 	logger *log.Logger,
-	runnable Runnable,
+	runnable ocr2keepers.Runnable,
 	conf RunnerConfig,
 ) (*Runner, error) {
 	return &Runner{
@@ -135,7 +130,7 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 	for _, payload := range payloads {
 
 		// if in cache, add to result
-		if res, ok := o.cache.Get(payload.ID); ok {
+		if res, ok := o.cache.Get(payload.WorkID); ok {
 			result.Add(res)
 			continue
 		}
@@ -181,7 +176,7 @@ func (o *Runner) wrapWorkerFunc() func(context.Context, []ocr2keepers.UpkeepPayl
 
 		allPayloadKeys := make([]string, len(payloads))
 		for i := range payloads {
-			allPayloadKeys[i] = payloads[i].ID
+			allPayloadKeys[i] = payloads[i].WorkID
 		}
 
 		// perform check and update cache with result
@@ -204,7 +199,7 @@ func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2ke
 			for _, result := range results {
 				// only add to the cache if the result is not retryable
 				if !result.Retryable {
-					o.cache.Set(result.Payload.ID, result, pkgutil.DefaultCacheExpiration)
+					o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
 				}
 
 				r.Add(result)

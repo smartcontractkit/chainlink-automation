@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -13,8 +12,56 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner/mocks"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+)
+
+var (
+	result1 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 1,
+			BlockHash:   [32]byte{1},
+		},
+		WorkID: "workID1",
+	}
+	result2 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 2,
+			BlockHash:   [32]byte{2},
+		},
+		WorkID: "workID2",
+	}
+	result3 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{3}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 3,
+			BlockHash:   [32]byte{3},
+		},
+		WorkID: "workID3",
+	}
+	result4 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{4}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 4,
+			BlockHash:   [32]byte{4},
+		},
+		WorkID: "workID4",
+	}
+	result5 = ocr2keepers.CheckResult{
+		Retryable: false,
+		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{5}),
+		Trigger: ocr2keepers.Trigger{
+			BlockNumber: 5,
+			BlockHash:   [32]byte{5},
+		},
+		WorkID: "workID5",
+	}
 )
 
 func TestRunnerCache(t *testing.T) {
@@ -32,17 +79,39 @@ func TestRunnerCache(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
-		{ID: "a"},
-		{ID: "b"},
-		{ID: "c"},
-		{ID: "d"},
-		{ID: "e"},
+		{
+			UpkeepID: result1.UpkeepID,
+			Trigger:  result1.Trigger,
+			WorkID:   "workID1",
+		},
+		{
+			UpkeepID: result2.UpkeepID,
+			Trigger:  result2.Trigger,
+			WorkID:   "workID2",
+		},
+		{
+			UpkeepID: result3.UpkeepID,
+			Trigger:  result3.Trigger,
+			WorkID:   "workID3",
+		},
+		{
+			UpkeepID: result4.UpkeepID,
+			Trigger:  result4.Trigger,
+			WorkID:   "workID4",
+		},
+		{
+			UpkeepID: result5.UpkeepID,
+			Trigger:  result5.Trigger,
+			WorkID:   "workID5",
+		},
 	}
 
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
 	for i := range payloads {
 		expected[i] = ocr2keepers.CheckResult{
-			Payload: payloads[i],
+			UpkeepID: payloads[i].UpkeepID,
+			Trigger:  payloads[i].Trigger,
+			WorkID:   payloads[i].WorkID,
 		}
 	}
 
@@ -75,24 +144,25 @@ func TestRunnerBatching(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
-		{ID: "a"},
-		{ID: "b"},
-		{ID: "c"},
-		{ID: "d"},
-		{ID: "e"},
-		{ID: "f"},
-		{ID: "g"},
-		{ID: "h"},
-		{ID: "i"},
-		{ID: "j"},
-		{ID: "k"},
-		{ID: "l"},
+		{WorkID: "a"},
+		{WorkID: "b"},
+		{WorkID: "c"},
+		{WorkID: "d"},
+		{WorkID: "e"},
+		{WorkID: "f"},
+		{WorkID: "g"},
+		{WorkID: "h"},
+		{WorkID: "i"},
+		{WorkID: "j"},
+		{WorkID: "k"},
+		{WorkID: "l"},
 	}
 
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
 	for i := range payloads {
 		expected[i] = ocr2keepers.CheckResult{
-			Payload: payloads[i],
+			UpkeepID: payloads[i].UpkeepID,
+			Trigger:  payloads[i].Trigger,
 		}
 	}
 
@@ -103,11 +173,6 @@ func TestRunnerBatching(t *testing.T) {
 
 	// all batches should be collected into a single result set
 	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
-
-	// sort the results for comparison
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Payload.ID < results[j].Payload.ID
-	})
 
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
@@ -131,24 +196,25 @@ func TestRunnerConcurrent(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
-		{ID: "a"},
-		{ID: "b"},
-		{ID: "c"},
-		{ID: "d"},
-		{ID: "e"},
-		{ID: "f"},
-		{ID: "g"},
-		{ID: "h"},
-		{ID: "i"},
-		{ID: "j"},
-		{ID: "k"},
-		{ID: "l"},
+		{WorkID: "a"},
+		{WorkID: "b"},
+		{WorkID: "c"},
+		{WorkID: "d"},
+		{WorkID: "e"},
+		{WorkID: "f"},
+		{WorkID: "g"},
+		{WorkID: "h"},
+		{WorkID: "i"},
+		{WorkID: "j"},
+		{WorkID: "k"},
+		{WorkID: "l"},
 	}
 
 	expected := make([]ocr2keepers.CheckResult, len(payloads))
 	for i := range payloads {
 		expected[i] = ocr2keepers.CheckResult{
-			Payload: payloads[i],
+			UpkeepID: payloads[i].UpkeepID,
+			Trigger:  payloads[i].Trigger,
 		}
 	}
 
@@ -249,14 +315,15 @@ func TestRunnerErr(t *testing.T) {
 		payloads := make([]ocr2keepers.UpkeepPayload, 20)
 		for i := 0; i < 20; i++ {
 			payloads[i] = ocr2keepers.UpkeepPayload{
-				ID: fmt.Sprintf("id: %d", i),
+				WorkID: fmt.Sprintf("id: %d", i),
 			}
 		}
 
 		expected := make([]ocr2keepers.CheckResult, len(payloads))
 		for i := range payloads {
 			expected[i] = ocr2keepers.CheckResult{
-				Payload: payloads[i],
+				UpkeepID: payloads[i].UpkeepID,
+				Trigger:  payloads[i].Trigger,
 			}
 		}
 

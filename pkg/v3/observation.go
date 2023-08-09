@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type ObservationMetadataKey string
@@ -59,17 +59,26 @@ func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
 	}
 
 	metadata := make(map[ObservationMetadataKey]interface{})
-	for key, value := range rawObs.Metadata {
+	for key := range rawObs.Metadata {
 		switch ObservationMetadataKey(key) {
 		case BlockHistoryObservationKey:
 			// value is a block history type
-			var bh ocr2keepers.BlockHistory
+			// var tmp string
+			// var bh ocr2keepers.BlockKey
 
-			if err := json.Unmarshal(value, &bh); err != nil {
-				return obs, err
-			}
-
-			metadata[BlockHistoryObservationKey] = bh
+			// if err := json.Unmarshal(value, &tmp); err != nil {
+			// 	return obs, err
+			// }
+			// parts := strings.Split(tmp, "|")
+			// if len(parts) == 0 {
+			// 	return obs, fmt.Errorf("%w: %s", ErrWrongDataType, tmp)
+			// }
+			// if val, ok := big.NewInt(0).SetString(parts[0], 10); !ok {
+			// 	return obs, fmt.Errorf("%w: %s", ErrWrongDataType, tmp)
+			// } else {
+			// 	bh.Number = ocr2keepers.BlockNumber(val.Int64())
+			// }
+			// metadata[BlockHistoryObservationKey] = ocr2keepers.BlockHistory{bh}
 		}
 	}
 
@@ -94,7 +103,7 @@ func ValidateAutomationObservation(o AutomationObservation) error {
 	}
 
 	for _, res := range o.Performable {
-		if err := ocr2keepers.ValidateCheckResult(res); err != nil {
+		if err := res.Validate(); err != nil {
 			return err
 		}
 	}

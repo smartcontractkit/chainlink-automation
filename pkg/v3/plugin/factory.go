@@ -9,12 +9,9 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 const (
@@ -35,29 +32,29 @@ const (
 )
 
 type pluginFactory struct {
-	logProvider      flows.LogEventProvider
-	events           coordinator.EventProvider
-	blocks           tickers.BlockSubscriber
-	rp               flows.RecoverableProvider
-	builder          flows.PayloadBuilder
-	getter           flows.UpkeepProvider
-	runnable         runner.Runnable
+	logProvider      ocr2keepers.LogEventProvider
+	events           ocr2keepers.TransmitEventProvider
+	blocks           ocr2keepers.BlockSubscriber
+	rp               ocr2keepers.RecoverableProvider
+	builder          ocr2keepers.PayloadBuilder
+	getter           ocr2keepers.ConditionalUpkeepProvider
+	runnable         ocr2keepers.Runnable
 	runnerConf       runner.RunnerConfig
-	encoder          Encoder
+	encoder          ocr2keepers.Encoder
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 	logger           *log.Logger
 }
 
 func NewReportingPluginFactory(
-	logProvider flows.LogEventProvider,
-	events coordinator.EventProvider,
-	blocks tickers.BlockSubscriber,
-	rp flows.RecoverableProvider,
-	builder flows.PayloadBuilder,
-	getter flows.UpkeepProvider,
-	runnable runner.Runnable,
+	logProvider ocr2keepers.LogEventProvider,
+	events ocr2keepers.TransmitEventProvider,
+	blocks ocr2keepers.BlockSubscriber,
+	rp ocr2keepers.RecoverableProvider,
+	builder ocr2keepers.PayloadBuilder,
+	getter ocr2keepers.ConditionalUpkeepProvider,
+	runnable ocr2keepers.Runnable,
 	runnerConf runner.RunnerConfig,
-	encoder Encoder,
+	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {

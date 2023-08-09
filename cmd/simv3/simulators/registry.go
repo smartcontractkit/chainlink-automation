@@ -8,8 +8,7 @@ import (
 
 	"go.uber.org/multierr"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type SimulatedUpkeep struct {
@@ -27,7 +26,9 @@ func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]ocr2keep
 
 	// TODO: filter out cancelled upkeeps
 	for key := range ct.upkeeps {
-		keys = append(keys, ocr2keepers.UpkeepIdentifier(key))
+		b := [32]byte{}
+		copy(b[:], []byte(key))
+		keys = append(keys, ocr2keepers.UpkeepIdentifier(b))
 	}
 	ct.mu.RUnlock()
 
@@ -59,12 +60,12 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 
 	for i, payload := range payloads {
 		wg.Add(1)
-		go func(i int, key ocr2keepers.UpkeepPayload, en plugin.Encoder) {
+		go func(i int, key ocr2keepers.UpkeepPayload, en ocr2keepers.Encoder) {
 			defer wg.Done()
 
-			block := new(big.Int).SetInt64(key.Trigger.BlockNumber)
+			block := new(big.Int).SetInt64(int64(key.Trigger.BlockNumber))
 
-			up, ok := ct.upkeeps[string(key.Upkeep.ID)]
+			up, ok := ct.upkeeps[key.UpkeepID.String()]
 			if !ok {
 				mErr = multierr.Append(mErr, fmt.Errorf("upkeep not registered"))
 				return
@@ -74,9 +75,9 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 				Eligible:     false,
 				Retryable:    false,
 				GasAllocated: 5_000_000, // TODO: make this configurable
-				Payload:      key,
+				UpkeepID:     key.UpkeepID,
+				Trigger:      key.Trigger,
 				PerformData:  []byte{}, // TODO: add perform data from configuration
-				Extension:    "value",  // TODO: probably won't need this
 			}
 
 			// start at the highest blocks eligible. the first eligible will be a block

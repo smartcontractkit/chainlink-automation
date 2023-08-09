@@ -7,13 +7,13 @@ import (
 	"log"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 //go:generate mockery --name Ratio --structname MockRatio --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename ratio.generated.go
@@ -22,14 +22,9 @@ type Ratio interface {
 	OfInt(int) int
 }
 
-//go:generate mockery --name UpkeepProvider --structname MockUpkeepProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename upkeepprovider.generated.go
-type UpkeepProvider interface {
-	GetActiveUpkeeps(context.Context, ocr2keepers.BlockKey) ([]ocr2keepers.UpkeepPayload, error)
-}
-
 // ConditionalEligibility is a flow controller that surfaces conditional upkeeps
 type ConditionalEligibility struct {
-	builder PayloadBuilder
+	builder ocr2keepers.PayloadBuilder
 	mStore  MetadataStore
 	final   Retryer
 	logger  *log.Logger
@@ -38,12 +33,12 @@ type ConditionalEligibility struct {
 // NewConditionalEligibility ...
 func NewConditionalEligibility(
 	ratio Ratio,
-	getter UpkeepProvider,
-	subscriber tickers.BlockSubscriber,
-	builder PayloadBuilder,
+	getter ocr2keepers.ConditionalUpkeepProvider,
+	subscriber ocr2keepers.BlockSubscriber,
+	builder ocr2keepers.PayloadBuilder,
 	rs ResultStore,
 	ms MetadataStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
 	// TODO: add coordinator to preprocessor list
@@ -83,16 +78,6 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 		return nil
 	}
 
-	// get latest coordinated block
-	// by checking latest outcome first and then looping through the history
-	block, err := outcome.LatestCoordinatedBlock()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) ||
-			errors.Is(err, ocr2keepersv3.ErrBlockNotAvailable) {
-			return err
-		}
-	}
-
 	// limit timeout to get all proposal data
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -101,19 +86,23 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 	for _, sample := range samples {
 		proposal := ocr2keepers.CoordinatedProposal{
 			UpkeepID: sample,
-			Block:    block,
 		}
 
-		payload, err := flow.builder.BuildPayload(ctx, proposal)
+		payloads, err := flow.builder.BuildPayloads(ctx, proposal)
 		if err != nil {
 			flow.logger.Printf("error encountered when building payload")
-
 			continue
 		}
+		if len(payloads) == 0 {
+			flow.logger.Printf("did not get any results when building payload")
+			continue
+		}
+		payload := payloads[0]
 
 		// pass to recoverer
 		if err := flow.final.Retry(ocr2keepers.CheckResult{
-			Payload: payload,
+			UpkeepID: payload.UpkeepID,
+			Trigger:  payload.Trigger,
 		}); err != nil {
 			continue
 		}
@@ -128,10 +117,10 @@ func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.Automat
 func newSampleProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ratio Ratio,
-	getter UpkeepProvider,
-	subscriber tickers.BlockSubscriber,
+	getter ocr2keepers.ConditionalUpkeepProvider,
+	subscriber ocr2keepers.BlockSubscriber,
 	ms MetadataStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
 	// create a metadata store postprocessor
@@ -158,7 +147,7 @@ func newSampleProposalFlow(
 func newFinalConditionalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	interval time.Duration,
 	logger *log.Logger,
 ) (service.Recoverable, Retryer) {

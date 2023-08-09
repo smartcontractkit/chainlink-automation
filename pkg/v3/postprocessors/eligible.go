@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 // checkResultAdder is a general interface for a result store that accepts check results

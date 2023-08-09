@@ -5,15 +5,8 @@ import (
 	"log"
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
-
-type BlockSubscriber interface {
-	// Subscribe provides an identifier integer, a new channel, and potentially an error
-	Subscribe() (int, chan ocr2keepers.BlockHistory, error)
-	// Unsubscribe requires an identifier integer and indicates the provided channel should be closed
-	Unsubscribe(int) error
-}
 
 // BlockTicker is a struct that follows the same design paradigm as a time ticker but provides blocks
 // instead of time
@@ -21,14 +14,14 @@ type BlockTicker struct {
 	C             chan ocr2keepers.BlockHistory
 	chID          int
 	ch            chan ocr2keepers.BlockHistory
-	subscriber    BlockSubscriber
+	subscriber    ocr2keepers.BlockSubscriber
 	bufferedValue ocr2keepers.BlockHistory
 	nextCh        chan ocr2keepers.BlockHistory
 	closer        sync.Once
 	stopCh        chan int
 }
 
-func NewBlockTicker(subscriber BlockSubscriber) (*BlockTicker, error) {
+func NewBlockTicker(subscriber ocr2keepers.BlockSubscriber) (*BlockTicker, error) {
 	chID, ch, err := subscriber.Subscribe()
 	if err != nil {
 		return nil, err

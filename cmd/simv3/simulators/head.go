@@ -3,7 +3,7 @@ package simulators
 import (
 	"context"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func (ct *SimulatedContract) HeadTicker() chan ocr2keepers.BlockKey {
@@ -21,7 +21,9 @@ func (ct *SimulatedContract) forwardHeads(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case block := <-blocksCh:
-			send(ct.chHeads, ocr2keepers.BlockKey(block.BlockNumber.String()))
+			send(ct.chHeads, ocr2keepers.BlockKey{
+				Number: ocr2keepers.BlockNumber(block.BlockNumber.Uint64()),
+			})
 		}
 	}
 }

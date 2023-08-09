@@ -60,7 +60,7 @@ func SetupOutput(path string, simulate bool, runbook config.RunBook) (*Outputs, 
 		SimulationLog:           lgg,
 		RPCCollector:            telemetry.NewNodeRPCCollector(path),
 		LogCollector:            telemetry.NewNodeLogCollector(path),
-		EventCollector:          telemetry.NewContractEventCollector(path, nil),
+		EventCollector:          telemetry.NewContractEventCollector(path),
 		simulationLogFileHandle: lggF,
 	}, nil
 }

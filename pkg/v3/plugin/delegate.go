@@ -11,18 +11,11 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
-
-type UpkeepStateUpdater interface {
-	SetUpkeepState(ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepState) error
-}
 
 var (
 	newOracleFn = offchainreporting.NewOracle
@@ -49,31 +42,34 @@ type DelegateConfig struct {
 	LocalConfig                  types.LocalConfig
 
 	// LogProvider allows reads on the latest log events ready to be processed
-	LogProvider flows.LogEventProvider
+	LogProvider ocr2keepers.LogEventProvider
 
 	// EventProvider allows reads on latest transmit events
-	EventProvider coordinator.EventProvider
+	EventProvider ocr2keepers.TransmitEventProvider
 
 	// Runnable is a check pipeline runner
-	Runnable runner.Runnable
+	Runnable ocr2keepers.Runnable
 
 	// Encoder provides methods to encode/decode reports
-	Encoder Encoder
+	Encoder ocr2keepers.Encoder
 
 	// BlockSubscriber provides subscribe/unsubscribe methods for block source
 	// data
-	BlockSubscriber tickers.BlockSubscriber
+	BlockSubscriber ocr2keepers.BlockSubscriber
 
 	// RecoverableProvider provides recoverable payloads to be proposed to the
 	// network
-	RecoverableProvider flows.RecoverableProvider
+	RecoverableProvider ocr2keepers.RecoverableProvider
 
 	// PayloadBuilder provides a utility method to build an upkeep payload from
 	// a trigger id and block key
-	PayloadBuilder flows.PayloadBuilder
+	PayloadBuilder ocr2keepers.PayloadBuilder
 
 	// UpkeepProvider ...
-	UpkeepProvider flows.UpkeepProvider
+	UpkeepProvider ocr2keepers.ConditionalUpkeepProvider
+
+	// UpkeepStateUpdater
+	UpkeepStateUpdater ocr2keepers.UpkeepStateUpdater
 
 	// Methods passed from core
 	UpkeepTypeGetter ocr2keepers.UpkeepTypeGetter

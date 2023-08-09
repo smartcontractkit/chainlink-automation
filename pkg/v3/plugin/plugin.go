@@ -8,7 +8,6 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
@@ -23,20 +22,21 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func newPlugin(
 	digest types.ConfigDigest,
-	logProvider flows.LogEventProvider,
-	events coordinator.EventProvider,
-	blockSource tickers.BlockSubscriber,
-	rp flows.RecoverableProvider,
-	builder flows.PayloadBuilder,
+	logProvider ocr2keepers.LogEventProvider,
+	events ocr2keepers.TransmitEventProvider,
+	blockSource ocr2keepers.BlockSubscriber,
+	rp ocr2keepers.RecoverableProvider,
+	builder ocr2keepers.PayloadBuilder,
 	ratio flows.Ratio,
-	getter flows.UpkeepProvider,
-	encoder Encoder,
+	getter ocr2keepers.ConditionalUpkeepProvider,
+	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
-	runnable runner.Runnable,
+	runnable ocr2keepers.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	f int,

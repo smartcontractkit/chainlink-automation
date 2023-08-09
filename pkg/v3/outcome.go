@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type OutcomeMetadataKey string
@@ -74,7 +74,7 @@ func ValidateAutomationOutcome(o AutomationOutcome) error {
 	}
 
 	for _, res := range o.Performable {
-		if err := ocr2keepers.ValidateCheckResult(res); err != nil {
+		if err := res.Validate(); err != nil {
 			return err
 		}
 	}
@@ -91,7 +91,7 @@ func ValidateAutomationOutcome(o AutomationOutcome) error {
 		}
 
 		for _, res := range h.Performable {
-			if err := ocr2keepers.ValidateCheckResult(res); err != nil {
+			if err := res.Validate(); err != nil {
 				return err
 			}
 		}
@@ -247,17 +247,17 @@ func (bo *BasicOutcome) UnmarshalJSON(b []byte) error {
 	}
 
 	metadata := make(map[OutcomeMetadataKey]interface{})
-	for key, value := range rawOutcome.Metadata {
+	for key := range rawOutcome.Metadata {
 		switch OutcomeMetadataKey(key) {
 		case CoordinatedBlockOutcomeKey:
 			// value is a block history type
-			var bk ocr2keepers.BlockKey
+			// var bk ocr2keepers.BlockKey
 
-			if err := json.Unmarshal(value, &bk); err != nil {
-				return err
-			}
+			// if err := json.Unmarshal(value, &bk); err != nil {
+			// 	return err
+			// }
 
-			metadata[CoordinatedBlockOutcomeKey] = bk
+			// metadata[CoordinatedBlockOutcomeKey] = bk
 		}
 	}
 

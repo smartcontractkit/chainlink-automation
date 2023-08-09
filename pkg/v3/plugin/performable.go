@@ -1,10 +1,8 @@
 package plugin
 
 import (
-	"fmt"
-
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type resultAndCount[T any] struct {
@@ -30,9 +28,8 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 			continue
 		}
 
-		uid := fmt.Sprintf("%v", result)
+		uid := result.UniqueID()
 		payloadCount, ok := p.resultCount[uid]
-
 		if !ok {
 			payloadCount = resultAndCount[ocr2keepers.CheckResult]{
 				result: result,

@@ -11,10 +11,10 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"golang.org/x/crypto/sha3"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 const (
@@ -23,12 +23,6 @@ const (
 )
 
 type AutomationReportInfo struct{}
-
-//go:generate mockery --name Encoder --structname MockEncoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename encoder.generated.go
-type Encoder interface {
-	Encode(...ocr2keepers.CheckResult) ([]byte, error)
-	Extract([]byte) ([]ocr2keepers.ReportedUpkeep, error)
-}
 
 //go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename coordinator.generated.go
 type Coordinator interface {
@@ -40,7 +34,7 @@ type ocr3Plugin struct {
 	ConfigDigest  types.ConfigDigest
 	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
 	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
-	ReportEncoder Encoder
+	ReportEncoder ocr2keepers.Encoder
 	Coordinators  []Coordinator
 	Services      []service.Recoverable
 	Config        config.OffchainConfig
@@ -90,6 +84,8 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 		}
 	}
 
+	plugin.Logger.Printf("built an observation with %d performables", len(observation.Performable))
+
 	// Encode the observation to bytes
 	encoded, err := observation.Encode()
 	if err != nil {
@@ -129,6 +125,9 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			// the observation and move to the next one
 			continue
 		}
+
+		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables",
+			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable))
 
 		p.add(observation)
 		c.add(observation)

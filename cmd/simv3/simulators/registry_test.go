@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/encoding"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestCheckUpkeep(t *testing.T) {
@@ -38,9 +38,9 @@ func TestCheckUpkeep(t *testing.T) {
 				},
 				Performs: map[string]ocr2keepers.TransmitEvent{
 					"7": {
-						ID:         "4|20",
-						UpkeepID:   ocr2keepers.UpkeepIdentifier("20"),
-						CheckBlock: ocr2keepers.BlockKey("4"),
+						WorkID:     "4|20",
+						UpkeepID:   ocr2keepers.UpkeepIdentifier([32]byte{20}),
+						CheckBlock: ocr2keepers.BlockNumber(4),
 					},
 				},
 			},
@@ -58,10 +58,8 @@ func TestCheckUpkeep(t *testing.T) {
 	mct.On("CheckKey", mock.Anything)
 
 	payload1 := ocr2keepers.UpkeepPayload{
-		Upkeep: ocr2keepers.ConfiguredUpkeep{
-			ID: ocr2keepers.UpkeepIdentifier("201"),
-		},
-		Trigger: ocr2keepers.NewTrigger(8, "0x123", "conditional"),
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
+		Trigger:  ocr2keepers.NewTrigger(8, [32]byte{1, 2, 3}),
 	}
 	// generateID was deprecated; find new way to create id
 	// payload1.ID = payload1.GenerateID()
@@ -77,10 +75,8 @@ func TestCheckUpkeep(t *testing.T) {
 	tel.On("RegisterCall", "checkUpkeep", mock.Anything, nil)
 
 	payload2 := ocr2keepers.UpkeepPayload{
-		Upkeep: ocr2keepers.ConfiguredUpkeep{
-			ID: ocr2keepers.UpkeepIdentifier("201"),
-		},
-		Trigger: ocr2keepers.NewTrigger(11, "0x123", "conditional"),
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{201}),
+		Trigger:  ocr2keepers.NewTrigger(11, [32]byte{1, 2, 3}),
 	}
 	// generateID was deprecated; find new way to create id
 	// payload2.ID = payload2.GenerateID()

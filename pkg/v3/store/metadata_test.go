@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -82,9 +83,15 @@ func TestBlockSource(t *testing.T) {
 	}()
 
 	historyData := ocr2keepers.BlockHistory{
-		("3"),
-		("2"),
-		("1"),
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(3),
+		},
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(2),
+		},
+		ocr2keepers.BlockKey{
+			Number: ocr2keepers.BlockNumber(1),
+		},
 	}
 
 	ch <- historyData

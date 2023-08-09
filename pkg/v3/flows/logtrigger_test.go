@@ -11,13 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 type mockedRunner struct {
@@ -32,20 +33,20 @@ func TestLogTriggerFlow_EmptySet(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 0}
-	src := new(mocks.MockLogEventProvider)
-	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	src := new(mocks2.MockLogEventProvider)
+	rec := new(mocks2.MockRecoverableProvider)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	// get logs should run the same number of times as the happy path
 	// ticker
-	src.On("GetLogs", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
+	src.On("GetLatestPayloads", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoverables").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(2)
 
 	// metadata store should set the value twice with empty data
 	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(2)
@@ -105,24 +106,24 @@ func TestLogTriggerEligibilityFlow_SinglePayload(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 0}
-	src := new(mocks.MockLogEventProvider)
-	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	src := new(mocks2.MockLogEventProvider)
+	rec := new(mocks2.MockRecoverableProvider)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data, 4 times nil
-	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
-	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(4)
+	src.On("GetLatestPayloads", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLatestPayloads", mock.Anything).Return(nil, nil).Times(4)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoverables").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(5)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(5)
 
 	// only test data will be added to result store, nil will not
 	rStore.On("Add", mock.Anything).Times(1)
@@ -184,24 +185,24 @@ func TestLogTriggerEligibilityFlow_Retry(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 2}
-	src := new(mocks.MockLogEventProvider)
-	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	src := new(mocks2.MockLogEventProvider)
+	rec := new(mocks2.MockRecoverableProvider)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data, 2 times nil
-	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
-	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(2)
+	src.On("GetLatestPayloads", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLatestPayloads", mock.Anything).Return(nil, nil).Times(2)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoverables").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
 
 	// within the standard happy path, check upkeeps is called and returns
 	// as retryable.
@@ -277,24 +278,24 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 
 	coord := new(mockedPreprocessor)
 	runner := &mockedRunner{eligibleAfter: 2}
-	src := new(mocks.MockLogEventProvider)
-	rec := new(mocks.MockRecoverableProvider)
-	pb := new(mocks.MockPayloadBuilder)
+	src := new(mocks2.MockLogEventProvider)
+	rec := new(mocks2.MockRecoverableProvider)
+	pb := new(mocks2.MockPayloadBuilder)
 	rStore := new(mocks.MockResultStore)
 	mStore := new(mocks.MockMetadataStore)
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 
 	// 1 time with test data and 2 times nil
-	src.On("GetLogs", mock.Anything).Return(testData, nil).Times(1)
-	src.On("GetLogs", mock.Anything).Return(nil, nil).Times(2)
+	src.On("GetLatestPayloads", mock.Anything).Return(testData, nil).Times(1)
+	src.On("GetLatestPayloads", mock.Anything).Return(nil, nil).Times(2)
 
 	// get recoverable should run the same number of times as the happy path
 	// ticker
-	rec.On("GetRecoverables").Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
+	rec.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil).Times(3)
 
 	// within the standard happy path, check upkeeps is called and returns
 	// as retryable.
@@ -368,7 +369,7 @@ func TestLogTriggerEligibilityFlow_RecoverFromFailedRetry(t *testing.T) {
 
 func TestProcessOutcome(t *testing.T) {
 	t.Run("no values in outcome", func(t *testing.T) {
-		pb := new(mocks.MockPayloadBuilder)
+		pb := new(mocks2.MockPayloadBuilder)
 		flow := &LogTriggerEligibility{
 			builder: pb,
 			logger:  log.New(io.Discard, "", 0),
@@ -381,37 +382,9 @@ func TestProcessOutcome(t *testing.T) {
 		pb.AssertExpectations(t)
 	})
 
-	t.Run("proposals but no block in outcome", func(t *testing.T) {
-		pb := new(mocks.MockPayloadBuilder)
-		flow := &LogTriggerEligibility{
-			builder: pb,
-			logger:  log.New(io.Discard, "", 0),
-		}
-
-		testOutcome := ocr2keepersv3.AutomationOutcome{
-			BasicOutcome: ocr2keepersv3.BasicOutcome{
-				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
-						{
-							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
-							Trigger: ocr2keepers.Trigger{
-								BlockNumber: 10,
-								BlockHash:   "testhash",
-							},
-						},
-					},
-				},
-			},
-		}
-
-		assert.ErrorIs(t, flow.ProcessOutcome(testOutcome), ocr2keepersv3.ErrBlockNotAvailable, "error of expected type from processing outcome: %s")
-
-		pb.AssertExpectations(t)
-	})
-
 	t.Run("proposals are added to retryer", func(t *testing.T) {
 		recoverer := new(mocks.MockRetryer)
-		pb := new(mocks.MockPayloadBuilder)
+		pb := new(mocks2.MockPayloadBuilder)
 		ms := new(mocks.MockMetadataStore)
 
 		flow := &LogTriggerEligibility{
@@ -428,13 +401,15 @@ func TestProcessOutcome(t *testing.T) {
 		testOutcome := ocr2keepersv3.AutomationOutcome{
 			BasicOutcome: ocr2keepersv3.BasicOutcome{
 				Metadata: map[ocr2keepersv3.OutcomeMetadataKey]interface{}{
-					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey("4"),
+					ocr2keepersv3.CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
+						Number: 4,
+					},
 					ocr2keepersv3.CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
 						{
-							UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+							UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 							Trigger: ocr2keepers.Trigger{
 								BlockNumber: 10,
-								BlockHash:   "testhash",
+								BlockHash:   [32]byte{1},
 							},
 						},
 					},
@@ -443,16 +418,17 @@ func TestProcessOutcome(t *testing.T) {
 		}
 
 		expectedProposal := ocr2keepers.CoordinatedProposal{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([]byte("testid")),
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
 			Trigger: ocr2keepers.Trigger{
 				BlockNumber: 10,
-				BlockHash:   "testhash",
+				BlockHash:   [32]byte{1},
 			},
-			Block: ocr2keepers.BlockKey("4"),
 		}
 
-		pb.On("BuildPayload", mock.Anything, expectedProposal).Return(ocr2keepers.UpkeepPayload{
-			ID: "test",
+		pb.On("BuildPayloads", mock.Anything, expectedProposal).Return([]ocr2keepers.UpkeepPayload{
+			{
+				WorkID: "test",
+			},
 		}, nil)
 
 		recoverer.On("Retry", mock.Anything).Return(nil)
@@ -479,7 +455,8 @@ func (_m *mockedRunner) CheckUpkeeps(ctx context.Context, payloads ...ocr2keeper
 		}
 
 		results = append(results, ocr2keepers.CheckResult{
-			Payload:   payloads[i],
+			UpkeepID:  payloads[i].UpkeepID,
+			Trigger:   payloads[i].Trigger,
 			Eligible:  eligible,
 			Retryable: !eligible,
 		})

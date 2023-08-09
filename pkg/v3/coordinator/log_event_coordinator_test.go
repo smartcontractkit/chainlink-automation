@@ -10,14 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator/mocks"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 func TestLogEventCoordinator(t *testing.T) {
-	setup := func(t *testing.T, logger *log.Logger) (*reportCoordinator, *mocks.EventProvider) {
-		logs := new(mocks.EventProvider)
+	setup := func(t *testing.T, logger *log.Logger) (*reportCoordinator, *mocks2.TransmitEventProvider) {
+		logs := new(mocks2.TransmitEventProvider)
 
 		return &reportCoordinator{
 			logger:            logger,
@@ -54,7 +54,7 @@ func TestLogEventCoordinator(t *testing.T) {
 			{Type: ocr2keepers.ReorgReportEvent, Confirmations: 4},
 		}
 
-		logs.On("Events", mock.Anything).Return(expectedEvents, nil).Once()
+		logs.On("GetLatestEvents", mock.Anything).Return(expectedEvents, nil).Once()
 
 		err := rc.checkEvents(ctx)
 
@@ -65,12 +65,12 @@ func TestLogEventCoordinator(t *testing.T) {
 	t.Run("Perform Event", func(t *testing.T) {
 		rc, _ := setup(t, log.New(io.Discard, "nil", 0))
 		evt := ocr2keepers.TransmitEvent{
-			ID: "your-event-id",
+			WorkID: "your-event-id",
 		}
 
 		rc.performEvent(evt)
 
-		value, ok := rc.activeKeys.Get(evt.ID)
+		value, ok := rc.activeKeys.Get(evt.WorkID)
 		assert.True(t, ok, "expected active key to exist")
 		assert.Equal(t, true, value, "expected active key value to be true")
 	})
@@ -81,9 +81,9 @@ func TestLogEventCoordinator(t *testing.T) {
 
 		// Define some example payloads
 		payloads := []ocr2keepers.UpkeepPayload{
-			{ID: "payload1"},
-			{ID: "payload2"},
-			{ID: "payload3"},
+			{WorkID: "payload1"},
+			{WorkID: "payload2"},
+			{WorkID: "payload3"},
 		}
 
 		// Call the PreProcess git st
@@ -92,8 +92,8 @@ func TestLogEventCoordinator(t *testing.T) {
 
 		// Assert that only payload2 and payload3 are included in the filteredPayloads slice
 		expectedPayloads := []ocr2keepers.UpkeepPayload{
-			{ID: "payload2"},
-			{ID: "payload3"},
+			{WorkID: "payload2"},
+			{WorkID: "payload3"},
 		}
 		assert.Equal(t, expectedPayloads, filteredPayloads, "filteredPayloads should match the expected payloads")
 	})

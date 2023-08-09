@@ -6,18 +6,18 @@ import (
 	"log"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	recoverer Retryer,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
@@ -58,7 +58,7 @@ func newFinalRecoveryFlow(
 func newRecoveryProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ms MetadataStore,
-	rp RecoverableProvider,
+	rp ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
 	configFuncs ...tickers.ScheduleTickerConfigFunc,
@@ -94,14 +94,16 @@ func newRecoveryProposalFlow(
 		recoveryInterval,
 		recoveryObserver,
 		func(f func(string, ocr2keepers.UpkeepPayload) error) error {
+			// TODO: Pass in parent context to this function
+			ctx := context.Background()
 			// pull payloads from RecoverableProvider
-			recovers, err := rp.GetRecoverables()
+			recovers, err := rp.GetRecoveryProposals(ctx)
 			if err != nil {
 				return err
 			}
 
 			for _, rec := range recovers {
-				if err := f(rec.ID, rec); err != nil {
+				if err := f(rec.WorkID, rec); err != nil {
 					return err
 				}
 			}

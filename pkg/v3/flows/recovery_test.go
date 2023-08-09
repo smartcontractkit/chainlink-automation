@@ -12,12 +12,13 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 func TestRecoveryFlow(t *testing.T) {
@@ -40,9 +41,7 @@ func TestRecoveryFlow(t *testing.T) {
 	}(svc, context.Background())
 
 	retryable := ocr2keepers.CheckResult{
-		Payload: ocr2keepers.UpkeepPayload{
-			ID: "test",
-		},
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 	}
 
 	assert.NoError(t, recoverer.Retry(retryable), "no error from retrying")
@@ -62,7 +61,7 @@ func TestRecoveryProposalFlow(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
 	mStore := new(mocks.MockMetadataStore)
-	rec := new(mocks.MockRecoverableProvider)
+	rec := new(mocks2.MockRecoverableProvider)
 	configFuncs := []tickers.ScheduleTickerConfigFunc{ // retry configs
 		tickers.ScheduleTickerWithDefaults,
 		func(c *tickers.ScheduleTickerConfig) {
@@ -72,13 +71,13 @@ func TestRecoveryProposalFlow(t *testing.T) {
 	// preprocessor is just a pass through
 	coord := new(mockedPreprocessor)
 	testData := []ocr2keepers.UpkeepPayload{
-		{ID: "test"},
+		{WorkID: "test"},
 	}
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 	ar := util.NewSyncedArray[ocr2keepers.UpkeepPayload]()
 
-	rec.On("GetRecoverables").Return(testData, nil).Times(1)
-	rec.On("GetRecoverables").Return(nil, nil).Times(3)
+	rec.On("GetRecoveryProposals", mock.Anything).Return(testData, nil).Times(1)
+	rec.On("GetRecoveryProposals", mock.Anything).Return(nil, nil).Times(3)
 
 	// metadata store should set the value
 	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(4)
