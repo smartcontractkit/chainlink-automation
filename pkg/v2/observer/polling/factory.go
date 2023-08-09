@@ -10,8 +10,8 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	"github.com/smartcontractkit/ocr2keepers/pkg/config"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
 )
 
 // PollingObserverFactory ...

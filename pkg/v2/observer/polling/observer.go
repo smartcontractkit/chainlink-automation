@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v2/observer"
 )
 
