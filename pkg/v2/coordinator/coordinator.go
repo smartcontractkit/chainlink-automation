@@ -41,13 +41,13 @@ var (
 	IndefiniteBlockingKey = ocr2keepers.BlockKey("18446744073709551616") // Higher than possible block numbers (uint64), used to block keys indefintely
 )
 
-//go:generate mockery --name LogProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename log_provider.generated.go
+//go:generate mockery --name LogProvider --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v2/coordinator" --case underscore --filename log_provider.generated.go
 type LogProvider interface {
 	PerformLogs(context.Context) ([]ocr2keepers.PerformLog, error)
 	StaleReportLogs(context.Context) ([]ocr2keepers.StaleReportLog, error)
 }
 
-//go:generate mockery --name Encoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename encoder.generated.go
+//go:generate mockery --name Encoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v2/coordinator" --case underscore --filename encoder.generated.go
 type Encoder interface {
 	// SplitUpkeepKey ...
 	SplitUpkeepKey(ocr2keepers.UpkeepKey) (ocr2keepers.BlockKey, ocr2keepers.UpkeepIdentifier, error)

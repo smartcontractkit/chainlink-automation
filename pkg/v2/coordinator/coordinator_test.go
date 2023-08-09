@@ -9,8 +9,8 @@ import (
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v2/coordinator/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
