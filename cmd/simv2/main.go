@@ -22,7 +22,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/encoding"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v2/encoding"
 )
 
 var (
