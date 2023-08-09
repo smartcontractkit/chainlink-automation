@@ -44,8 +44,12 @@ type LogTriggerExtension struct {
 	// Index is the index of the log event in the transaction
 	Index uint32
 	// BlockHash is the block hash in which the event occurred
+	// NOTE: This field might be empty. If relying on this field check
+	// it is non empty, if it's empty derive from txHash
 	BlockHash [32]byte
 	// BlockNumber is the block number in which the event occurred
+	// NOTE: This field might be empty. If relying on this field check
+	// it is non empty, if it's empty derive from txHash
 	BlockNumber BlockNumber
 }
 
