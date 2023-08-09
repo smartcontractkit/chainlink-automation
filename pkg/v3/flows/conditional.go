@@ -38,7 +38,7 @@ func NewConditionalEligibility(
 	builder ocr2keepers.PayloadBuilder,
 	rs ResultStore,
 	ms MetadataStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
 	// TODO: add coordinator to preprocessor list
@@ -117,7 +117,7 @@ func newSampleProposalFlow(
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber ocr2keepers.BlockSubscriber,
 	ms MetadataStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
 	// create a metadata store postprocessor
@@ -144,7 +144,7 @@ func newSampleProposalFlow(
 func newFinalConditionalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	interval time.Duration,
 	logger *log.Logger,
 ) (service.Recoverable, Retryer) {

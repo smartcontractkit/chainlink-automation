@@ -17,7 +17,7 @@ import (
 func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	recoverer Retryer,
 	recoveryInterval time.Duration,
 	logger *log.Logger,

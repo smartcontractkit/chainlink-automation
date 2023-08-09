@@ -73,7 +73,7 @@ func NewLogTriggerEligibility(
 	coord PreProcessor,
 	rStore ResultStore,
 	mStore MetadataStore,
-	runner Runner,
+	runner ocr2keepersv3.Runner,
 	logProvider ocr2keepers.LogEventProvider,
 	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
@@ -242,7 +242,7 @@ func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 func newLogTriggerFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
-	rn Runner,
+	rn ocr2keepersv3.Runner,
 	retryer Retryer,
 	recoverer Retryer,
 	logProvider ocr2keepers.LogEventProvider,
