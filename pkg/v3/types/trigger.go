@@ -21,6 +21,17 @@ func NewTrigger(blockNumber BlockNumber, blockHash [32]byte) Trigger {
 	}
 }
 
+func NewLogTrigger(blockNumber BlockNumber, blockHash [32]byte, txHash [32]byte, index uint32) Trigger {
+	return Trigger{
+		BlockNumber: blockNumber,
+		BlockHash:   blockHash,
+		LogTriggerExtension: &LogTriggerExtension{
+			TxHash: txHash,
+			Index:  index,
+		},
+	}
+}
+
 func (t Trigger) Validate() error {
 	if t.BlockNumber == 0 {
 		return fmt.Errorf("block number cannot be zero")
