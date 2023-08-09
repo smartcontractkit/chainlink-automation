@@ -14,11 +14,7 @@ func TestAutomationObservation(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationObservation{
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata: map[ObservationMetadataKey]interface{}{
-			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{
-				{Number: 2},
-			}),
-		},
+		Metadata:     map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
 				UpkeepID:    [32]byte{111},
@@ -31,11 +27,7 @@ func TestAutomationObservation(t *testing.T) {
 
 	expected := AutomationObservation{
 		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata: map[ObservationMetadataKey]interface{}{
-			BlockHistoryObservationKey: ocr2keepers.BlockHistory([]ocr2keepers.BlockKey{
-				{Number: 2},
-			}),
-		},
+		Metadata:     map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
 				UpkeepID:    [32]byte{111},
