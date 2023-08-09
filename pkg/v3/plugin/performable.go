@@ -1,9 +1,6 @@
 package plugin
 
 import (
-	"encoding/json"
-	"fmt"
-
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -31,9 +28,7 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 			continue
 		}
 
-		// TODO: Handle error here, or probably find a better solution to get a uid
-		resultBytes, _ := json.Marshal(result)
-		uid := fmt.Sprintf("%v", resultBytes)
+		uid := result.UniqueID()
 		payloadCount, ok := p.resultCount[uid]
 
 		if !ok {

@@ -103,7 +103,7 @@ func ValidateAutomationObservation(o AutomationObservation) error {
 	}
 
 	for _, res := range o.Performable {
-		if err := ocr2keepers.ValidateCheckResult(res); err != nil {
+		if err := res.Validate(); err != nil {
 			return err
 		}
 	}

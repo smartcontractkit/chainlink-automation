@@ -93,7 +93,20 @@ type CheckResult struct {
 	WorkID string
 }
 
-func ValidateCheckResult(r CheckResult) error {
+func (r CheckResult) UniqueID() string {
+	var resultBytes []byte
+
+	resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
+	resultBytes = append(resultBytes, big.NewInt(int64(r.GasAllocated)).Bytes()...)
+	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
+	resultBytes = append(resultBytes, r.PerformData[:]...)
+	resultBytes = append(resultBytes, r.UpkeepID[:]...)
+	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Trigger))...)
+
+	return fmt.Sprintf("%x", resultBytes)
+}
+
+func (r CheckResult) Validate() error {
 	if r.Eligible && r.Retryable {
 		return fmt.Errorf("check result cannot be both eligible and retryable")
 	}
