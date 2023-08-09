@@ -46,6 +46,7 @@ func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeCon
 	return nil, nil
 }
 
+// TODO: Finalize this
 func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
 	// first round outcome will be nil or empty so no processing should be done
 	if outcome.PreviousOutcome != nil || len(outcome.PreviousOutcome) != 0 {
