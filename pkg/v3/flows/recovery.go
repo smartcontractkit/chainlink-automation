@@ -21,7 +21,7 @@ func newFinalRecoveryFlow(
 	retryQ ocr2keepers.RetryQueue,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
-) (service.Recoverable, Retryer) {
+) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
@@ -48,11 +48,7 @@ func newFinalRecoveryFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &basicRetryer{ticker: ticker}
-
-	return ticker, retryer
+	return ticker
 }
 
 func newRecoveryProposalFlow(
@@ -62,7 +58,7 @@ func newRecoveryProposalFlow(
 	recoveryInterval time.Duration,
 	logger *log.Logger,
 	configFuncs ...tickers.ScheduleTickerConfigFunc,
-) (service.Recoverable, Retryer) {
+) service.Recoverable {
 	// items come into the recovery path from multiple sources
 	// 1. [done] from the log provider as UpkeepPayload
 	// 2. [done] from retry ticker as CheckResult
@@ -123,9 +119,5 @@ func newRecoveryProposalFlow(
 		configFuncs...,
 	)
 
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &scheduledRetryer{scheduler: ticker}
-
-	return ticker, retryer
+	return ticker
 }

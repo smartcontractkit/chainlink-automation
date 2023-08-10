@@ -23,7 +23,6 @@ type Ratio interface {
 type ConditionalEligibility struct {
 	builder ocr2keepers.PayloadBuilder
 	mStore  MetadataStore
-	final   Retryer
 	logger  *log.Logger
 }
 
@@ -42,7 +41,7 @@ func NewConditionalEligibility(
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
-	svc0, point := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, logger)
+	svc0 := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, logger)
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
@@ -54,7 +53,6 @@ func NewConditionalEligibility(
 	return &ConditionalEligibility{
 		mStore:  ms,
 		builder: builder,
-		final:   point,
 		logger:  logger,
 	}, []service.Recoverable{svc0, svc1}, err
 }
@@ -149,7 +147,7 @@ func newFinalConditionalFlow(
 	rn ocr2keepersv3.Runner,
 	interval time.Duration,
 	logger *log.Logger,
-) (service.Recoverable, Retryer) {
+) service.Recoverable {
 	// create observer that only pushes results to result store. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
@@ -168,9 +166,5 @@ func newFinalConditionalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &basicRetryer{ticker: ticker}
-
-	return ticker, retryer
+	return ticker
 }

@@ -61,10 +61,9 @@ const (
 // LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
 // with retry attempts.
 type LogTriggerEligibility struct {
-	builder   ocr2keepers.PayloadBuilder
-	mStore    MetadataStore
-	recoverer Retryer
-	logger    *log.Logger
+	builder ocr2keepers.PayloadBuilder
+	mStore  MetadataStore
+	logger  *log.Logger
 }
 
 // NewLogTriggerEligibility ...
@@ -88,13 +87,13 @@ func NewLogTriggerEligibility(
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network
 	// votes on the proposed values
-	rcvProposal, _ := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger)
+	rcvProposal := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger)
 
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived
 	// from node coordination and it can be assumed that all values should be
 	// run.
-	rcvFinal, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, logger)
+	rcvFinal := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, logger)
 
 	// the log trigger flow is the happy path for log trigger payloads. all
 	// retryables that are encountered in this flow are elevated to the retry
@@ -112,10 +111,9 @@ func NewLogTriggerEligibility(
 	// the final return includes a struct that provides the ability for hooks
 	// to pass data to internal flows
 	return &LogTriggerEligibility{
-		builder:   builder,
-		mStore:    mStore,
-		recoverer: recoverer,
-		logger:    logger,
+		builder: builder,
+		mStore:  mStore,
+		logger:  logger,
 	}, svcs
 }
 
@@ -178,62 +176,6 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 	return nil
 }
 
-type Scheduler[T any] interface {
-	Schedule(string, T) error
-}
-
-type scheduledRetryer struct {
-	scheduler Scheduler[ocr2keepers.UpkeepPayload]
-}
-
-func (s *scheduledRetryer) Retry(r ocr2keepers.CheckResult) error {
-	if !r.Retryable {
-		// exit condition for not retryable
-		return fmt.Errorf("%w: %s", ErrNotRetryable, r.WorkID)
-	}
-
-	// TODO: validate that block is still valid for retry; if not error
-
-	return s.scheduler.Schedule(r.WorkID, ocr2keepers.UpkeepPayload{
-		UpkeepID: r.UpkeepID,
-		Trigger:  r.Trigger,
-		WorkID:   r.WorkID,
-	})
-}
-
-type BasicRetryer[T any] interface {
-	Add(string, T) error
-}
-
-type basicRetryer struct {
-	ticker BasicRetryer[ocr2keepers.UpkeepPayload]
-}
-
-func (s *basicRetryer) Retry(r ocr2keepers.CheckResult) error {
-	return s.ticker.Add(r.WorkID, ocr2keepers.UpkeepPayload{
-		UpkeepID: r.UpkeepID,
-		Trigger:  r.Trigger,
-		WorkID:   r.WorkID,
-	})
-}
-
-type logTick struct {
-	logProvider ocr2keepers.LogEventProvider
-	logger      *log.Logger
-}
-
-func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
-	if et.logProvider == nil {
-		return nil, nil
-	}
-
-	logs, err := et.logProvider.GetLatestPayloads(ctx)
-
-	et.logger.Printf("%d logs returned by log provider", len(logs))
-
-	return logs, err
-}
-
 // log trigger flow is the happy path entry point for log triggered upkeeps
 func newLogTriggerFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
@@ -267,4 +209,21 @@ func newLogTriggerFlow(
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return timeTick
+}
+
+type logTick struct {
+	logProvider ocr2keepers.LogEventProvider
+	logger      *log.Logger
+}
+
+func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	if et.logProvider == nil {
+		return nil, nil
+	}
+
+	logs, err := et.logProvider.GetLatestPayloads(ctx)
+
+	et.logger.Printf("%d logs returned by log provider", len(logs))
+
+	return logs, err
 }
