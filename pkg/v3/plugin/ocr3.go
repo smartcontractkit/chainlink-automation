@@ -221,15 +221,19 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 
 	plugin.Logger.Printf("%d upkeeps found in report for should accept attested for sequence number %d", len(upkeeps), seqNr)
 
+	accept := false
+	// If any upkeep should be accepted, then accept
+	// TODO: think through this logic
 	for _, upkeep := range upkeeps {
-		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
+		shouldAccept := plugin.Coordinator.ShouldAccept(upkeep)
+		plugin.Logger.Printf("checking shouldAccept of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldAccept)
 
-		if ok := plugin.Coordinator.ShouldAccept(upkeep); !ok {
-			plugin.Logger.Printf("failed to accept upkeep by id '%s'", upkeep.UpkeepID)
+		if shouldAccept {
+			accept = true
 		}
 	}
 
-	return true, nil
+	return accept, nil
 }
 
 func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
@@ -240,17 +244,15 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr 
 
 	plugin.Logger.Printf("%d upkeeps found in report for should transmit for sequence number %d", len(upkeeps), seqNr)
 
-	transmit := true
-
+	transmit := false
+	// If any upkeep should be transmitted, then transmit
 	for _, upkeep := range upkeeps {
-		// if any upkeep in the report does not have confirmations from all coordinators, attempt again
 		shouldTransmit := plugin.Coordinator.ShouldTransmit(upkeep)
-		if !shouldTransmit {
-			transmit = false
+		plugin.Logger.Printf("checking transmit of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldTransmit)
+
+		if shouldTransmit {
+			transmit = true
 		}
-
-		plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, shouldTransmit)
-
 	}
 
 	return transmit, nil
