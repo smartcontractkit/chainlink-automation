@@ -218,20 +218,20 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr 
 
 	plugin.Logger.Printf("%d upkeeps found in report for should transmit for sequence number %d", len(upkeeps), seqNr)
 
-	shouldRetry := false
+	transmit := true
 
 	for _, upkeep := range upkeeps {
 		// if any upkeep in the report does not have confirmations from all coordinators, attempt again
 		shouldTransmit := plugin.Coordinator.ShouldTransmit(upkeep)
 		if !shouldTransmit {
-			shouldRetry = true
+			transmit = false
 		}
 
 		plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, shouldTransmit)
 
 	}
 
-	return shouldRetry, nil
+	return transmit, nil
 }
 
 func (plugin *ocr3Plugin) Close() error {
