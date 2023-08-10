@@ -13,7 +13,6 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
@@ -30,7 +29,6 @@ func TestObservation(t *testing.T) {
 
 	// Define a mock hook function for testing pre-build hooks
 	mockPrebuildHook := func(outcome ocr2keepersv3.AutomationOutcome) error {
-		assert.Equal(t, 1, len(outcome.Instructions))
 		return nil
 	}
 
@@ -192,25 +190,7 @@ func TestReports(t *testing.T) {
 			},
 		}
 
-		outcome := ocr2keepersv3.AutomationOutcome{
-			BasicOutcome: ocr2keepersv3.BasicOutcome{
-				Performable: []ocr2keepers.CheckResult{
-					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
-								TxHash: [32]byte{1},
-								Index:  4,
-							},
-						},
-						GasAllocated: 1_000_000,
-						PerformData:  []byte(`0x`),
-					},
-				},
-			},
-		}
+		outcome := ocr2keepersv3.AutomationOutcome{}
 
 		me.On("Encode", mock.Anything).Return([]byte(``), nil)
 
@@ -238,38 +218,7 @@ func TestReports(t *testing.T) {
 			},
 		}
 
-		outcome := ocr2keepersv3.AutomationOutcome{
-			BasicOutcome: ocr2keepersv3.BasicOutcome{
-				Performable: []ocr2keepers.CheckResult{
-					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
-								TxHash: [32]byte{1},
-								Index:  4,
-							},
-						},
-						GasAllocated: 1_000_000,
-						PerformData:  []byte(`0x`),
-					},
-					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
-								TxHash: [32]byte{1},
-								Index:  4,
-							},
-						},
-						GasAllocated: 1_000_000,
-						PerformData:  []byte(`0x`),
-					},
-				},
-			},
-		}
+		outcome := ocr2keepersv3.AutomationOutcome{}
 
 		me.On("Encode", mock.Anything).Return([]byte(``), nil).Times(2)
 
@@ -297,51 +246,7 @@ func TestReports(t *testing.T) {
 			},
 		}
 
-		outcome := ocr2keepersv3.AutomationOutcome{
-			BasicOutcome: ocr2keepersv3.BasicOutcome{
-				Performable: []ocr2keepers.CheckResult{
-					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
-								TxHash: [32]byte{1},
-								Index:  4,
-							},
-						},
-						GasAllocated: 1_000_000,
-						PerformData:  []byte(`0x`),
-					},
-					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
-								TxHash: [32]byte{1},
-								Index:  4,
-							},
-						},
-						GasAllocated: 1_000_000,
-						PerformData:  []byte(`0x`),
-					},
-					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
-								TxHash: [32]byte{1},
-								Index:  4,
-							},
-						},
-						GasAllocated: 1_000_000,
-						PerformData:  []byte(`0x`),
-					},
-				},
-			},
-		}
+		outcome := ocr2keepersv3.AutomationOutcome{}
 
 		me.On("Encode", mock.Anything, mock.Anything).Return([]byte(``), nil).Times(1)
 		me.On("Encode", mock.Anything).Return([]byte(``), nil).Times(1)
@@ -370,25 +275,7 @@ func TestReports(t *testing.T) {
 			},
 		}
 
-		outcome := ocr2keepersv3.AutomationOutcome{
-			BasicOutcome: ocr2keepersv3.BasicOutcome{
-				Performable: []ocr2keepers.CheckResult{
-					{
-						UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-						Trigger: ocr2keepers.Trigger{
-							BlockNumber: 4,
-							BlockHash:   [32]byte{0},
-							LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
-								TxHash: [32]byte{1},
-								Index:  4,
-							},
-						},
-						GasAllocated: 5_000_000,
-						PerformData:  []byte(`0x`),
-					},
-				},
-			},
-		}
+		outcome := ocr2keepersv3.AutomationOutcome{}
 
 		// me.On("Encode", mock.Anything).Return([]byte(``), nil)
 

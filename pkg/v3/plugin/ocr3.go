@@ -134,13 +134,11 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 		c.add(observation)
 	}
 
-	outcome := ocr2keepersv3.AutomationOutcome{
-		BasicOutcome: ocr2keepersv3.BasicOutcome{},
-	}
+	outcome := ocr2keepersv3.AutomationOutcome{}
 	p.set(&outcome)
 	c.set(&outcome)
 
-	plugin.Logger.Printf("returning outcome with %d performables", len(outcome.Performable))
+	plugin.Logger.Printf("returning outcome with %d performables", len(outcome.AgreedPerformables))
 
 	return outcome.Encode()
 }
@@ -169,12 +167,12 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		return nil, err
 	}
 
-	plugin.Logger.Printf("creating report from outcome with %d results; max batch size: %d; report gas limit %d", len(outcome.Performable), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
+	plugin.Logger.Printf("creating report from outcome with %d results; max batch size: %d; report gas limit %d", len(outcome.AgreedPerformables), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
 
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
 
-	for i, result := range outcome.Performable {
+	for i, result := range outcome.AgreedPerformables {
 		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize || gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) {
 			if len(toPerform) > 0 {
 				// encode current collection
@@ -195,7 +193,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		}
 
 		gasUsed += result.GasAllocated + uint64(plugin.Config.GasOverheadPerUpkeep)
-		toPerform = append(toPerform, outcome.Performable[i])
+		toPerform = append(toPerform, outcome.AgreedPerformables[i])
 	}
 
 	// if there are still values to add

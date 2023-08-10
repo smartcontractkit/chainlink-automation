@@ -44,6 +44,7 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
+	// TODO: apply limit here with random seed shuffling
 	var performable []ocr2keepers.CheckResult
 
 	for _, payload := range p.resultCount {
@@ -52,5 +53,5 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 		}
 	}
 
-	outcome.Performable = performable
+	outcome.AgreedPerformables = performable
 }

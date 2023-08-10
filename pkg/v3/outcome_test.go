@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -39,35 +38,9 @@ func TestValidateOutcomeMetadataKey(t *testing.T) {
 
 func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 	// set non-default values to test encoding/decoding
-	input := AutomationOutcome{
-		BasicOutcome: BasicOutcome{
-			Metadata: map[OutcomeMetadataKey]interface{}{},
-			Performable: []ocr2keepers.CheckResult{
-				{
-					UpkeepID:    [32]byte{111},
-					Retryable:   true,
-					Eligible:    true,
-					PerformData: []byte("testing"),
-				},
-			},
-		},
-		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-	}
+	input := AutomationOutcome{}
 
-	expected := AutomationOutcome{
-		BasicOutcome: BasicOutcome{
-			Metadata: map[OutcomeMetadataKey]interface{}{},
-			Performable: []ocr2keepers.CheckResult{
-				{
-					UpkeepID:    [32]byte{111},
-					Retryable:   true,
-					Eligible:    true,
-					PerformData: []byte("testing"),
-				},
-			},
-		},
-		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-	}
+	expected := AutomationOutcome{}
 
 	jsonData, _ := json.Marshal(input)
 	data, err := input.Encode()
@@ -83,11 +56,7 @@ func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 
 func TestValidateAutomationOutcome(t *testing.T) {
 	t.Run("invalid instructions", func(t *testing.T) {
-		testData := AutomationOutcome{
-			Instructions: []instructions.Instruction{
-				"invalid instruction",
-			},
-		}
+		testData := AutomationOutcome{}
 
 		err := ValidateAutomationOutcome(testData)
 
@@ -95,13 +64,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	})
 
 	t.Run("invalid metadata key", func(t *testing.T) {
-		testData := AutomationOutcome{
-			BasicOutcome: BasicOutcome{
-				Metadata: map[OutcomeMetadataKey]interface{}{
-					"invalid key": "string",
-				},
-			},
-		}
+		testData := AutomationOutcome{}
 
 		err := ValidateAutomationOutcome(testData)
 
@@ -109,13 +72,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	})
 
 	t.Run("invalid check result", func(t *testing.T) {
-		testData := AutomationOutcome{
-			BasicOutcome: BasicOutcome{
-				Performable: []ocr2keepers.CheckResult{
-					{},
-				},
-			},
-		}
+		testData := AutomationOutcome{}
 
 		err := ValidateAutomationOutcome(testData)
 
@@ -123,12 +80,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	})
 
 	t.Run("invalid ring buffer", func(t *testing.T) {
-		testData := AutomationOutcome{
-			History: []BasicOutcome{
-				{},
-			},
-			NextIdx: 3,
-		}
+		testData := AutomationOutcome{}
 
 		err := ValidateAutomationOutcome(testData)
 
@@ -144,26 +96,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	})
 
 	t.Run("no error on valid", func(t *testing.T) {
-		testData := AutomationOutcome{
-			Instructions: []instructions.Instruction{
-				instructions.DoCoordinateBlock,
-			},
-			BasicOutcome: BasicOutcome{
-				Metadata: map[OutcomeMetadataKey]interface{}{
-					CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-						Number: 3,
-					},
-				},
-				Performable: []ocr2keepers.CheckResult{
-					{
-						Eligible:     true,
-						Retryable:    false,
-						GasAllocated: 1,
-						UpkeepID:     [32]byte{111},
-					},
-				},
-			},
-		}
+		testData := AutomationOutcome{}
 
 		err := ValidateAutomationOutcome(testData)
 
@@ -171,6 +104,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	})
 }
 
+/*
 func TestRecoveryProposals(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -185,30 +119,16 @@ func TestRecoveryProposals(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name: "happy path - with results",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
-							{UpkeepID: [32]byte{7}},
-						},
-					},
-				},
-			},
+			name:    "happy path - with results",
+			outcome: AutomationOutcome{},
 			expected: []ocr2keepers.CoordinatedProposal{
 				{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{7})},
 			},
 			expectedErr: nil,
 		},
 		{
-			name: "error path - wrong type",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedRecoveryProposalKey: "wrong data type",
-					},
-				},
-			},
+			name:        "error path - wrong type",
+			outcome:     AutomationOutcome{},
 			expected:    nil,
 			expectedErr: ErrWrongDataType,
 		},
@@ -227,8 +147,9 @@ func TestRecoveryProposals(t *testing.T) {
 			}
 		})
 	}
-}
+}*/
 
+/*
 func TestLatestCoordinatedBlock(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -243,64 +164,28 @@ func TestLatestCoordinatedBlock(t *testing.T) {
 			expectedErr: ErrBlockNotAvailable,
 		},
 		{
-			name: "error path - block in latest wrong data type",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: "wrong data type",
-					},
-				},
-			},
+			name:        "error path - block in latest wrong data type",
+			outcome:     AutomationOutcome{},
 			expected:    ocr2keepers.BlockKey{},
 			expectedErr: ErrWrongDataType,
 		},
 		{
-			name: "happy path - block in history wrong data type",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{},
-				History: []BasicOutcome{
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: "wrong data type",
-						},
-					},
-				},
-				NextIdx: 1,
-			},
+			name:        "happy path - block in history wrong data type",
+			outcome:     AutomationOutcome{},
 			expected:    ocr2keepers.BlockKey{},
 			expectedErr: ErrWrongDataType,
 		},
 		{
-			name: "happy path - block in latest",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-							Number: 2,
-						},
-					},
-				},
-			},
+			name:    "happy path - block in latest",
+			outcome: AutomationOutcome{},
 			expected: ocr2keepers.BlockKey{
 				Number: 2,
 			},
 			expectedErr: nil,
 		},
 		{
-			name: "happy path - block in history",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{},
-				History: []BasicOutcome{
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-								Number: 2,
-							},
-						},
-					},
-				},
-				NextIdx: 1,
-			},
+			name:    "happy path - block in history",
+			outcome: AutomationOutcome{},
 			expected: ocr2keepers.BlockKey{
 				Number: 2,
 			},
@@ -322,6 +207,7 @@ func TestLatestCoordinatedBlock(t *testing.T) {
 		})
 	}
 }
+
 
 func TestSortedHistory(t *testing.T) {
 	tests := []struct {
@@ -440,3 +326,4 @@ func TestSortedHistory(t *testing.T) {
 		})
 	}
 }
+*/

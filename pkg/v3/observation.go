@@ -30,15 +30,26 @@ func ValidateObservationMetadataKey(key ObservationMetadataKey) error {
 	}
 }
 
-// AutomationObservation models the proposed actionable decisions sent by a single node
+const (
+	ObservationPerformablesLimit = 100
+	ObservationProposalsLimit    = 5
+	ObservationBlockHistoryLimit = 256
+)
+
+// AutomationObservation models the local automation view sent by a single node
 // to the network upon which they later get agreement
 // NOTE: Any change to this structure should keep backwards compatibility in mind
 // as different nodes would upgrade at different times and would need to understand
-// each other's observations in the meantime
+// each others' observations meanwhile
 type AutomationObservation struct {
+	// These are the upkeeps that are eligible and should be performed
+	Performable []ocr2keepers.CheckResult
+	// These are the proposals for upkeeps that need a coordinated block to be checked on
+	// The expectation is that once bound to a coordinated block, this goes into performables
 	UpkeepProposals []ocr2keepers.CoordinatedProposal
-	BlockHistory    ocr2keepers.BlockHistory
-	Performable     []ocr2keepers.CheckResult
+	// This is the block history of the chain from this node's perspective. It sends a
+	// few latest blocks to help in block coordination
+	BlockHistory ocr2keepers.BlockHistory
 }
 
 func (observation AutomationObservation) Encode() ([]byte, error) {

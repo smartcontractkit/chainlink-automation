@@ -176,6 +176,8 @@ type CoordinatedProposal struct {
 	UpkeepID UpkeepIdentifier
 	// Trigger represents the event that triggered the upkeep to be checked
 	Trigger Trigger
+	// WorkID represents the unit of work for the reported upkeep
+	WorkID string
 }
 
 // ReportedUpkeep contains details of an upkeep for which a report was generated.

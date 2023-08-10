@@ -53,9 +53,7 @@ func TestRemoveFromStagingHook(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			ob := ocr2keepersv3.AutomationOutcome{
-				BasicOutcome: ocr2keepersv3.BasicOutcome{
-					Performable: test.Input,
-				},
+				AgreedPerformables: test.Input,
 			}
 
 			mr := new(mockRemover)
@@ -63,7 +61,7 @@ func TestRemoveFromStagingHook(t *testing.T) {
 			r := NewRemoveFromStaging(mr, log.New(io.Discard, "", 0))
 
 			assert.NoError(t, r.RunHook(ob))
-			assert.Equal(t, len(ob.Performable), len(mr.removed))
+			assert.Equal(t, len(ob.AgreedPerformables), len(mr.removed))
 		})
 	}
 }

@@ -27,6 +27,7 @@ func (c *coordinatedProposals) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	// Filter allProposals workID from existing outcome proposals
 	// Remove last outcome.CoordinatedProposals if over limit
 	// Append allProposals with latest agreed block to outcome.CoordinatedProposals
+	// Apply limit here with random seed shuffling
 }
 
 func dedupeShuffleObservations(upkeepIds []ocr2keepers.UpkeepIdentifier, keyRandSource [16]byte) []ocr2keepers.UpkeepIdentifier {

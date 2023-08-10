@@ -2,7 +2,6 @@ package flows
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -129,7 +128,8 @@ func NewLogTriggerEligibility(
 // ProcessOutcome functions as an observation pre-build hook to allow data from
 // outcomes to feed inputs in the eligibility flow
 func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	networkProposals, err := outcome.RecoveryProposals()
+	// TODO: Refactor into coordinatedProposals Flow
+	/*networkProposals, err := outcome.RecoveryProposals()
 	if err != nil {
 		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
 			return err
@@ -180,7 +180,7 @@ func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.Automati
 	cachedProposals.ClearExpired()
 
 	cancel()
-
+	*/
 	return nil
 }
 

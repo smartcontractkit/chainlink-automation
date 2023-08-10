@@ -1,8 +1,6 @@
 package plugin
 
 import (
-	"fmt"
-
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -51,7 +49,4 @@ func (p *coordinateBlock) set(outcome *ocr2keepersv3.AutomationOutcome) {
 			}
 		}
 	}
-
-	// TODO: use helper function for composing block key
-	outcome.Metadata[ocr2keepersv3.CoordinatedBlockOutcomeKey] = fmt.Sprintf("%d%s%s", mostRecent.number, "|", mostRecent.hash)
 }

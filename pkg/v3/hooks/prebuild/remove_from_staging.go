@@ -25,9 +25,9 @@ type RemoveFromStagingHook struct {
 }
 
 func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
-	toRemove := make([]string, 0, len(outcome.Performable))
+	toRemove := make([]string, 0, len(outcome.AgreedPerformables))
 
-	for _, result := range outcome.Performable {
+	for _, result := range outcome.AgreedPerformables {
 		toRemove = append(toRemove, result.WorkID)
 	}
 
