@@ -15,7 +15,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/prebuild"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/retryqueue"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
@@ -51,11 +50,6 @@ func newPlugin(
 	// create the value stores
 	rs := resultstore.New(logger)
 	ms := store.NewMetadata(blockTicker)
-	is := instructions.NewStore()
-
-	// on plugin startup, begin broadcasting that block coordination should
-	// happen immediately
-	is.Set(instructions.ShouldCoordinateBlock)
 
 	// add recovery cache to metadata store with 24hr timeout
 	ms.Set(store.ProposalRecoveryMetadata, util.NewCache[ocr2keepers.CoordinatedProposal](24*time.Hour))

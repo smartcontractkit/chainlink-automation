@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,9 +56,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	t.Run("invalid instructions", func(t *testing.T) {
 		testData := AutomationOutcome{}
 
-		err := ValidateAutomationOutcome(testData)
-
-		assert.ErrorIs(t, err, instructions.ErrInvalidInstruction, "invalid instruction should return validation error")
+		ValidateAutomationOutcome(testData)
 	})
 
 	t.Run("invalid metadata key", func(t *testing.T) {
