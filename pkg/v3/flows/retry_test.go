@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// TODO:
-
 func TestRetryFlow(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
@@ -33,12 +31,21 @@ func TestRetryFlow(t *testing.T) {
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			WorkID:   "0x1",
 		},
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:   "0x2",
+		},
 	}, nil).Times(times)
-	runner.On("CheckUpkeeps", mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			WorkID:   "0x1",
 			Eligible: true,
+		},
+		{
+			UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:    "0x2",
+			Retryable: true,
 		},
 	}, nil).Times(times)
 	// within the 3 ticks, it should retry twice and the third time it should be eligible and add to result store
@@ -55,6 +62,9 @@ func TestRetryFlow(t *testing.T) {
 	retryQ.Enqueue(ocr2keepers.UpkeepPayload{
 		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		WorkID:   "0x1",
+	}, ocr2keepers.UpkeepPayload{
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		WorkID:   "0x2",
 	})
 
 	go func(svc service.Recoverable, ctx context.Context) {
