@@ -3,56 +3,33 @@ package postprocessors
 import (
 	"context"
 	"errors"
+	"log"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type checkResultRetryer interface {
-	Retry(ocr2keepers.CheckResult) error
+func NewRetryablePostProcessor(q ocr2keepers.RetryQueue, logger *log.Logger) *retryablePostProcessor {
+	return &retryablePostProcessor{
+		logger: logger,
+		q:      q,
+	}
 }
 
-type retryPostProcessor struct {
-	retryer   checkResultRetryer
-	recoverer checkResultRetryer
+type retryablePostProcessor struct {
+	logger *log.Logger
+	q      ocr2keepers.RetryQueue
 }
 
-func (p *retryPostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
+var _ PostProcessor = (*retryablePostProcessor)(nil)
+
+func (p *retryablePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, payloads []ocr2keepers.UpkeepPayload) error {
 	var err error
 
-	for _, res := range results {
+	for i, res := range results {
 		if res.Retryable {
-			err = errors.Join(err, p.attemptRetry(res))
+			err = errors.Join(err, p.q.Enqueue(payloads[i]))
 		}
 	}
 
 	return err
-}
-
-func (p *retryPostProcessor) attemptRetry(res ocr2keepers.CheckResult) error {
-	var err error
-
-	if p.retryer != nil {
-		err = p.retryer.Retry(res)
-		if err == nil {
-			return nil
-		}
-	}
-
-	if err == nil || errors.Is(err, tickers.ErrSendDurationExceeded) {
-		if err = p.recoverer.Retry(res); err != nil {
-			return err
-		}
-	}
-
-	// if an item cannot be retried nor can it be recovered, it can be assumed
-	// that the item should no longer be processed
-	return err
-}
-
-func NewRetryPostProcessor(retryer checkResultRetryer, recoverer checkResultRetryer) *retryPostProcessor {
-	return &retryPostProcessor{
-		retryer:   retryer,
-		recoverer: recoverer,
-	}
 }

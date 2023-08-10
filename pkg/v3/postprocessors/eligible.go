@@ -17,7 +17,7 @@ type checkResultAdder interface {
 // status
 type PostProcessor interface {
 	// PostProcess takes a slice of results where eligibility status is known
-	PostProcess(context.Context, []ocr2keepers.CheckResult) error
+	PostProcess(context.Context, []ocr2keepers.CheckResult, []ocr2keepers.UpkeepPayload) error
 }
 
 type eligiblePostProcessor struct {
@@ -32,7 +32,7 @@ func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger)
 	}
 }
 
-func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
+func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	eligible := 0
 	for _, res := range results {
 		if res.Eligible {

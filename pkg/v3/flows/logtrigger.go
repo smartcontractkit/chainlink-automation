@@ -79,9 +79,8 @@ func NewLogTriggerEligibility(
 	builder ocr2keepers.PayloadBuilder,
 	logInterval time.Duration,
 	recoveryInterval time.Duration,
+	retryQ ocr2keepers.RetryQueue,
 	logger *log.Logger,
-	retryConfigs []tickers.ScheduleTickerConfigFunc,
-	recoverConfigs []tickers.ScheduleTickerConfigFunc,
 ) (*LogTriggerEligibility, []service.Recoverable) {
 	// all flows use the same preprocessor based on the coordinator
 	// each flow can add preprocessors to this provided slice
@@ -90,23 +89,23 @@ func NewLogTriggerEligibility(
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network
 	// votes on the proposed values
-	svc0, recoveryProposer := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger, recoverConfigs...)
+	svc0, _ := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger)
 
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived
 	// from node coordination and it can be assumed that all values should be
 	// run.
-	svc1, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, recoveryProposer, recoveryInterval, logger)
+	svc1, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, logger)
 
 	// the retry flow is for payloads where the block number is still within
 	// range of RPC data. this is a short range retry and failures here get
 	// elevated to the recovery proposal flow.
-	svc2, retryer := newRetryFlow(preprocessors, rStore, runner, recoveryProposer, recoveryInterval, logger, retryConfigs...)
+	svc2 := newRetryFlow(preprocessors, rStore, runner, retryQ, 5*time.Second, logger)
 
 	// the log trigger flow is the happy path for log trigger payloads. all
 	// retryables that are encountered in this flow are elevated to the retry
 	// flow
-	svc3 := newLogTriggerFlow(preprocessors, rStore, runner, retryer, recoveryProposer, logProvider, logInterval, logger)
+	svc3 := newLogTriggerFlow(preprocessors, rStore, runner, logProvider, logInterval, retryQ, logger)
 
 	// all above flows run internal time-keeper services. each is essential for
 	// running so the return is a slice of all above services as recoverables
@@ -246,18 +245,17 @@ func newLogTriggerFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
 	rn ocr2keepersv3.Runner,
-	retryer Retryer,
-	recoverer Retryer,
 	logProvider ocr2keepers.LogEventProvider,
 	logInterval time.Duration,
+	retryQ ocr2keepers.RetryQueue,
 	logger *log.Logger,
 ) service.Recoverable {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
+		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "log-trigger-eligible-postprocessor")),
 		// create retry postprocessor
-		postprocessors.NewRetryPostProcessor(retryer, recoverer),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
 	)
 
 	// create observer
@@ -266,13 +264,13 @@ func newLogTriggerFlow(
 		post,
 		rn,
 		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
 	// create time ticker
 	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
-	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-primary]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return timeTick
 }

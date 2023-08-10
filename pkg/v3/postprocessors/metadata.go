@@ -14,15 +14,15 @@ type MetadataStore interface {
 	Get(store.MetadataKey) (interface{}, bool)
 }
 
-type addPayloadToMetadataStorePostprocessor struct {
+type addToMetadataStorePostprocessor struct {
 	store MetadataStore
 }
 
-func NewAddPayloadToMetadataStorePostprocessor(store MetadataStore) *addPayloadToMetadataStorePostprocessor {
-	return &addPayloadToMetadataStorePostprocessor{store: store}
+func NewAddPayloadToMetadataStorePostprocessor(store MetadataStore) *addToMetadataStorePostprocessor {
+	return &addToMetadataStorePostprocessor{store: store}
 }
 
-func (a *addPayloadToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.UpkeepPayload) error {
+func (a *addToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	rawArray, ok := a.store.Get(store.ProposalRecoveryMetadata)
 	if !ok {
 		return fmt.Errorf("proposal recovery metadata unavailable")
@@ -54,7 +54,7 @@ func NewAddSamplesToMetadataStorePostprocessor(store MetadataStore) *addSamplesT
 	return &addSamplesToMetadataStorePostprocessor{store: store}
 }
 
-func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
+func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	// extract ids only
 	ids := make([]ocr2keepers.UpkeepIdentifier, 0, len(results))
 	for _, r := range results {

@@ -17,6 +17,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/prebuild"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/retryqueue"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
@@ -72,6 +73,8 @@ func newPlugin(
 	// create the event coordinator
 	coord := coordinator.NewReportCoordinator(events, upkeepTypeGetter, conf, logger)
 
+	retryQ := retryqueue.NewRetryQueue(logger)
+
 	// initialize the log trigger eligibility flow
 	ltFlow, svcs := flows.NewLogTriggerEligibility(
 		coord,
@@ -83,18 +86,8 @@ func newPlugin(
 		builder,
 		flows.LogCheckInterval,
 		flows.RecoveryCheckInterval,
+		retryQ,
 		logger,
-		[]tickers.ScheduleTickerConfigFunc{ // retry configs
-			// TODO: provide configuration inputs
-			tickers.ScheduleTickerWithDefaults,
-		},
-		[]tickers.ScheduleTickerConfigFunc{ // recovery configs
-			func(c *tickers.ScheduleTickerConfig) {
-				// TODO: provide configuration inputs
-				c.SendDelay = 5 * time.Minute
-				c.MaxSendDuration = 24 * time.Hour
-			},
-		},
 	)
 
 	// create service recoverers to provide panic recovery on dependent services

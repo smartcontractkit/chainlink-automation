@@ -14,7 +14,7 @@ var (
 	DefaultExpiration = 24 * time.Hour
 	RetryInterval     = 5 * time.Minute
 
-	ErrNonRetryable = fmt.Errorf("item is not retryable")
+	// ErrSendDurationExceeded = fmt.Errorf("scheduled value has exceed allowed send window")
 )
 
 type retryQueueRecord struct {

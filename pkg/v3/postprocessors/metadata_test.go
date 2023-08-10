@@ -69,7 +69,16 @@ func TestMetadataAddPayload(t *testing.T) {
 	ms.On("Get", store.ProposalRecoveryMetadata).Return(ar, true)
 
 	pp := NewAddPayloadToMetadataStorePostprocessor(ms)
-	err := pp.PostProcess(context.Background(), values)
+	err := pp.PostProcess(context.Background(), []ocr2keepers.CheckResult{
+		{
+			Eligible: true,
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		},
+		{
+			Eligible: true,
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		},
+	}, values)
 
 	assert.NoError(t, err, "no error expected from post processor")
 
@@ -109,7 +118,17 @@ func TestMetadataAddSamples(t *testing.T) {
 	ms.On("Set", store.ProposalSampleMetadata, expected)
 
 	pp := NewAddSamplesToMetadataStorePostprocessor(ms)
-	err := pp.PostProcess(context.Background(), values)
+	err := pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		},
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		},
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
+		},
+	})
 
 	assert.NoError(t, err, "no error expected from post processor")
 

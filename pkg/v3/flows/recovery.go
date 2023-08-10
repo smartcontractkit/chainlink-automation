@@ -18,16 +18,16 @@ func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
 	rn ocr2keepersv3.Runner,
-	recoverer Retryer,
+	retryQ ocr2keepers.RetryQueue,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
 ) (service.Recoverable, Retryer) {
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
+		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
 		// create retry postprocessor
-		postprocessors.NewRetryPostProcessor(nil, recoverer),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
 	)
 
 	// create observer that only pushes results to result store. everything at
@@ -38,14 +38,14 @@ func newFinalRecoveryFlow(
 		post,
 		rn,
 		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
 	// create schedule ticker to manage retry interval
 	ticker := tickers.NewBasicTicker[ocr2keepers.UpkeepPayload](
 		recoveryInterval,
 		recoveryObserver,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-final-recovery]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
 	// wrap schedule ticker as a Retryer
@@ -72,15 +72,24 @@ func newRecoveryProposalFlow(
 
 	// the recovery observer doesn't do any processing on the identifiers
 	// so this function is just a pass-through
-	f := func(_ context.Context, ids ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
-		return ids, nil
+	// TODO: align
+	f := func(_ context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+		results := make([]ocr2keepers.CheckResult, len(payloads))
+		for i, id := range payloads {
+			results[i] = ocr2keepers.CheckResult{
+				WorkID:   id.WorkID,
+				UpkeepID: id.UpkeepID,
+				Trigger:  id.Trigger,
+			}
+		}
+		return results, nil
 	}
 
 	// the recovery observer is just a pass-through to the metadata store
 	// add postprocessor for metatdata store
 	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms)
 
-	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepPayload](
+	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult](
 		preprocessors,
 		post,
 		f,

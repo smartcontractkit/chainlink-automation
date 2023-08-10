@@ -12,84 +12,35 @@ import (
 )
 
 func TestCombinedPostprocessor(t *testing.T) {
-	t.Run("no error returned from any processors", func(t *testing.T) {
-		one := new(MockPostProcessor)
-		two := new(MockPostProcessor)
-		tre := new(MockPostProcessor)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-		ctx := context.Background()
-		rst := []ocr2keepers.CheckResult{}
+	one := new(MockPostProcessor)
+	two := new(MockPostProcessor)
+	tre := new(MockPostProcessor)
 
-		one.On("PostProcess", ctx, rst).Return(nil)
-		two.On("PostProcess", ctx, rst).Return(nil)
-		tre.On("PostProcess", ctx, rst).Return(nil)
+	cmb := NewCombinedPostprocessor(one, two, tre)
 
-		cmb := NewCombinedPostprocessor(one, two, tre)
+	t.Run("no errors", func(t *testing.T) {
+		rst := []ocr2keepers.CheckResult{ocr2keepers.CheckResult{Retryable: true}}
+		p := []ocr2keepers.UpkeepPayload{ocr2keepers.UpkeepPayload{WorkID: "1"}}
 
-		err := cmb.PostProcess(ctx, rst)
+		one.On("PostProcess", ctx, rst, p).Return(nil)
+		two.On("PostProcess", ctx, rst, p).Return(nil)
+		tre.On("PostProcess", ctx, rst, p).Return(nil)
 
-		assert.NoError(t, err, "no error expected from combined post processing")
-
-		one.AssertExpectations(t)
-		two.AssertExpectations(t)
-		tre.AssertExpectations(t)
+		assert.NoError(t, cmb.PostProcess(ctx, rst, p), "no error expected from combined post processing")
 	})
 
-	t.Run("error returned from single processor and all processors run", func(t *testing.T) {
-		one := new(MockPostProcessor)
-		two := new(MockPostProcessor)
-		tre := new(MockPostProcessor)
+	t.Run("with errors", func(t *testing.T) {
+		rst := []ocr2keepers.CheckResult{{Retryable: true}}
+		p := []ocr2keepers.UpkeepPayload{{WorkID: "1"}}
 
-		ctx := context.Background()
-		rst := []ocr2keepers.CheckResult{}
-		tst := fmt.Errorf("test")
+		one.On("PostProcess", ctx, rst, p).Return(nil)
+		two.On("PostProcess", ctx, rst, p).Return(fmt.Errorf("error"))
+		tre.On("PostProcess", ctx, rst, p).Return(nil)
 
-		one.On("PostProcess", ctx, rst).Return(nil)
-		two.On("PostProcess", ctx, rst).Return(tst)
-		tre.On("PostProcess", ctx, rst).Return(nil)
-
-		cmb := NewCombinedPostprocessor(one, two, tre)
-
-		err := cmb.PostProcess(ctx, rst)
-
-		// expect one error to be surfaced
-		assert.ErrorIs(t, err, tst, "single error expected from combined post processing")
-
-		// all post processors should still run
-		one.AssertExpectations(t)
-		two.AssertExpectations(t)
-		tre.AssertExpectations(t)
-	})
-
-	t.Run("error returned from all processors", func(t *testing.T) {
-		one := new(MockPostProcessor)
-		two := new(MockPostProcessor)
-		tre := new(MockPostProcessor)
-
-		ctx := context.Background()
-		rst := []ocr2keepers.CheckResult{}
-
-		err1 := fmt.Errorf("test")
-		err2 := fmt.Errorf("test")
-		err3 := fmt.Errorf("test")
-
-		one.On("PostProcess", ctx, rst).Return(err1)
-		two.On("PostProcess", ctx, rst).Return(err2)
-		tre.On("PostProcess", ctx, rst).Return(err3)
-
-		cmb := NewCombinedPostprocessor(one, two, tre)
-
-		err := cmb.PostProcess(ctx, rst)
-
-		// expect one error to be surfaced
-		assert.ErrorIs(t, err, err1, "joined error expected from combined postprocessor")
-		assert.ErrorIs(t, err, err2, "joined error expected from combined postprocessor")
-		assert.ErrorIs(t, err, err3, "joined error expected from combined postprocessor")
-
-		// all post processors should still run
-		one.AssertExpectations(t)
-		two.AssertExpectations(t)
-		tre.AssertExpectations(t)
+		assert.Error(t, cmb.PostProcess(ctx, rst, p), "error expected from combined post processing")
 	})
 }
 
@@ -97,7 +48,7 @@ type MockPostProcessor struct {
 	mock.Mock
 }
 
-func (_m *MockPostProcessor) PostProcess(ctx context.Context, r []ocr2keepers.CheckResult) error {
+func (_m *MockPostProcessor) PostProcess(ctx context.Context, r []ocr2keepers.CheckResult, p []ocr2keepers.UpkeepPayload) error {
 	ret := _m.Called(ctx, r)
 	return ret.Error(0)
 }
