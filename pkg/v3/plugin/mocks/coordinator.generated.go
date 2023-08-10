@@ -27,8 +27,8 @@ func (_m *MockCoordinator) Accept(_a0 types.ReportedUpkeep) error {
 	return r0
 }
 
-// IsTransmissionConfirmed provides a mock function with given fields: _a0
-func (_m *MockCoordinator) IsTransmissionConfirmed(_a0 types.ReportedUpkeep) bool {
+// IsTransmissionPending provides a mock function with given fields: _a0
+func (_m *MockCoordinator) IsTransmissionPending(_a0 types.ReportedUpkeep) bool {
 	ret := _m.Called(_a0)
 
 	var r0 bool

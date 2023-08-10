@@ -65,7 +65,7 @@ func newPlugin(
 	}
 
 	// create the event coordinator
-	coord := coordinator.NewReportCoordinator(events, upkeepTypeGetter, conf, logger)
+	coord := coordinator.NewCoordinator(events, upkeepTypeGetter, conf, logger)
 
 	retryQ := retryqueue.NewRetryQueue(logger)
 
@@ -119,7 +119,7 @@ func newPlugin(
 			//build.NewAddFromSamplesHook(ms).RunHook,
 		},
 		ReportEncoder: encoder,
-		Coordinators:  []Coordinator{coord},
+		Coordinator:   coord,
 		Services:      recoverSvcs,
 		Config:        conf,
 		F:             f,

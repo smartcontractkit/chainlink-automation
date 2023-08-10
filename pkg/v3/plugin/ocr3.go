@@ -21,8 +21,8 @@ type AutomationReportInfo struct{}
 
 //go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename coordinator.generated.go
 type Coordinator interface {
-	Accept(ocr2keepers.ReportedUpkeep) error
-	IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep) bool
+	ShouldAccept(ocr2keepers.ReportedUpkeep) bool
+	ShouldTransmit(ocr2keepers.ReportedUpkeep) bool
 }
 
 type ocr3Plugin struct {
@@ -30,7 +30,7 @@ type ocr3Plugin struct {
 	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
 	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
 	ReportEncoder ocr2keepers.Encoder
-	Coordinators  []Coordinator
+	Coordinator   Coordinator
 	Services      []service.Recoverable
 	Config        config.OffchainConfig
 	F             int
@@ -202,10 +202,8 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 	for _, upkeep := range upkeeps {
 		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
 
-		for _, coord := range plugin.Coordinators {
-			if err := coord.Accept(upkeep); err != nil {
-				plugin.Logger.Printf("failed to accept upkeep by id '%s', error is %v", upkeep.UpkeepID, err)
-			}
+		if ok := plugin.Coordinator.ShouldAccept(upkeep); !ok {
+			plugin.Logger.Printf("failed to accept upkeep by id '%s'", upkeep.UpkeepID)
 		}
 	}
 
@@ -220,24 +218,20 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr 
 
 	plugin.Logger.Printf("%d upkeeps found in report for should transmit for sequence number %d", len(upkeeps), seqNr)
 
+	shouldRetry := false
+
 	for _, upkeep := range upkeeps {
 		// if any upkeep in the report does not have confirmations from all coordinators, attempt again
-		allConfirmationsFalse := true
-		for _, coord := range plugin.Coordinators {
-			if coord.IsTransmissionConfirmed(upkeep) {
-				allConfirmationsFalse = false
-			}
-
-			plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, coord.IsTransmissionConfirmed(upkeep))
+		shouldTransmit := plugin.Coordinator.ShouldTransmit(upkeep)
+		if !shouldTransmit {
+			shouldRetry = true
 		}
 
-		if allConfirmationsFalse {
-			return true, nil
-		}
+		plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, shouldTransmit)
 
 	}
 
-	return false, nil
+	return shouldRetry, nil
 }
 
 func (plugin *ocr3Plugin) Close() error {
