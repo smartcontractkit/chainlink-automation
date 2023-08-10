@@ -9,12 +9,9 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/prebuild"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/retryqueue"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
@@ -105,20 +102,7 @@ func newPlugin(
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
 	plugin := &ocr3Plugin{
-		ConfigDigest: digest,
-		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
-			// TODO: Condense these two flow hooks into a single coordinatedOutcome flow hook
-			//ltFlow.ProcessOutcome,
-			//cFlow.ProcessOutcome,
-			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
-		},
-		// TODO: add coordinator in build hook, pass limit and randSrc
-		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
-			build.NewAddFromStaging(rs, logger).RunHook,
-			// TODO: AUTO-4243 Finalize build hooks
-			//build.NewAddFromRecoveryHook(ms).RunHook,
-			//build.NewAddFromSamplesHook(ms).RunHook,
-		},
+		ConfigDigest:  digest,
 		ReportEncoder: encoder,
 		Coordinator:   coord,
 		Services:      recoverSvcs,

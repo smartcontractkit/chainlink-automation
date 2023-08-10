@@ -27,8 +27,6 @@ type Coordinator interface {
 
 type ocr3Plugin struct {
 	ConfigDigest  types.ConfigDigest
-	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
-	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
 	ReportEncoder ocr2keepers.Encoder
 	Coordinator   Coordinator
 	Services      []service.Recoverable
@@ -56,26 +54,16 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		}
 
 		// Execute pre-build hooks
-		plugin.Logger.Printf("running pre-build hooks in sequence nr %d", outctx.SeqNr)
-		for _, hook := range plugin.PrebuildHooks {
-			err = errors.Join(err, hook(automationOutcome))
-		}
-		if err != nil {
-			return nil, err
-		}
+		// TODO: prebuild.NewRemoveFromStaging(rs, logger).RunHook,
+		// TODO coordinateFlow.ProcessOutcome
 	}
-
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
 
-	// Execute build hooks
-	plugin.Logger.Printf("running build hooks in sequence nr %d", outctx.SeqNr)
-	for _, hook := range plugin.BuildHooks {
-		err := hook(&observation)
-		if err != nil {
-			return nil, err
-		}
-	}
+	// TODO: add coordinator in build hook, pass limit and randSrc
+	//build.NewAddFromStaging(rs, logger).RunHook,
+	//build.NewAddFromRecoveryHook(ms).RunHook,
+	//build.NewAddFromSamplesHook(ms).RunHook,
 
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 

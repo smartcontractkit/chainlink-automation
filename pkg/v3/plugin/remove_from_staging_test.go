@@ -1,4 +1,4 @@
-package prebuild
+package plugin
 
 import (
 	"io"

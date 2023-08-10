@@ -27,22 +27,6 @@ func TestObservation(t *testing.T) {
 		PreviousOutcome: []byte(`{"Instructions":["do coordinate block"],"Metadata":{"blockHistory":["4"]},"Performable":[]}`),
 	}
 
-	// Define a mock hook function for testing pre-build hooks
-	mockPrebuildHook := func(outcome ocr2keepersv3.AutomationOutcome) error {
-		return nil
-	}
-
-	// Add the mock pre-build hook to the plugin's PrebuildHooks
-	plugin.PrebuildHooks = append(plugin.PrebuildHooks, mockPrebuildHook)
-
-	// Define a mock build hook function for testing build hooks
-	mockBuildHook := func(observation *ocr2keepersv3.AutomationObservation) error {
-		return nil
-	}
-
-	// Add the mock build hook to the plugin's BuildHooks
-	plugin.BuildHooks = append(plugin.BuildHooks, mockBuildHook)
-
 	// Create a sample query for testing
 	query := types.Query{}
 

@@ -1,4 +1,4 @@
-package build
+package plugin
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/mocks"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
