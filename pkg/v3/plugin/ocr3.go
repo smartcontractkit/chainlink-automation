@@ -99,8 +99,8 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	p := newPerformables(plugin.F + 1)
-	c := newCoordinatedProposals()
+	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	c := newCoordinatedProposals(ocr2keepersv3.OutcomeAgreedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {

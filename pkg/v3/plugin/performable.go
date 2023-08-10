@@ -1,6 +1,9 @@
 package plugin
 
 import (
+	"math/rand"
+
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -11,11 +14,13 @@ type resultAndCount[T any] struct {
 }
 
 type performables struct {
-	threshold   int
-	resultCount map[string]resultAndCount[ocr2keepers.CheckResult]
+	limit         int
+	keyRandSource [16]byte
+	threshold     int
+	resultCount   map[string]resultAndCount[ocr2keepers.CheckResult]
 }
 
-func newPerformables(threshold int) *performables {
+func newPerformables(threshold int, limit int, rSrc [16]byte) *performables {
 	return &performables{
 		threshold:   threshold,
 		resultCount: make(map[string]resultAndCount[ocr2keepers.CheckResult]),
@@ -44,7 +49,6 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
-	// TODO: apply limit here with random seed shuffling
 	var performable []ocr2keepers.CheckResult
 
 	for _, payload := range p.resultCount {
@@ -53,5 +57,9 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 		}
 	}
 
-	outcome.AgreedPerformables = performable
+	rand.New(util.NewKeyedCryptoRandSource(p.keyRandSource)).Shuffle(len(performable), func(i, j int) {
+		performable[i], performable[j] = performable[j], performable[i]
+	})
+
+	outcome.AgreedPerformables = performable[:p.limit]
 }

@@ -9,12 +9,19 @@ import (
 )
 
 type coordinatedProposals struct {
-	allProposals    []ocr2keepers.CoordinatedProposal
-	allBlockHistory []ocr2keepers.BlockHistory
+	roundHistoryLimit int
+	perRoundLimit     int
+	keyRandSource     [16]byte
+	allProposals      []ocr2keepers.CoordinatedProposal
+	allBlockHistory   []ocr2keepers.BlockHistory
 }
 
-func newCoordinatedProposals() *coordinatedProposals {
-	return &coordinatedProposals{}
+func newCoordinatedProposals(roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedProposals {
+	return &coordinatedProposals{
+		roundHistoryLimit: roundHistoryLimit,
+		perRoundLimit:     perRoundLimit,
+		keyRandSource:     rSrc,
+	}
 }
 
 func (c *coordinatedProposals) add(ao ocr2keepersv3.AutomationObservation) {
