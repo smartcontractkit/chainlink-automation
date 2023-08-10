@@ -14,24 +14,26 @@ type ResultViewer interface {
 	View(...ocr2keepersv3.ViewOpt) ([]ocr2keepers.CheckResult, error)
 }
 
-func NewAddFromStaging(store ResultViewer, logger *log.Logger) *AddFromStaging {
-	return &AddFromStaging{
+func NewAddFromStaging(store ResultViewer, logger *log.Logger, coord Coordinator) AddFromStagingHook {
+	return AddFromStagingHook{
 		store:  store,
+		coord:  coord,
 		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 }
 
-type AddFromStaging struct {
+type AddFromStagingHook struct {
 	store  ResultViewer
 	logger *log.Logger
+	coord  Coordinator
 }
 
-func (hook *AddFromStaging) RunHook(obs *ocr2keepersv3.AutomationObservation) error {
+func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	results, err := hook.store.View()
 	if err != nil {
 		return err
 	}
-
+	// TODO: filter results using coordinator, shuffle and limit
 	if len(results) > 0 {
 		hook.logger.Printf("adding %d results to observation", len(results))
 

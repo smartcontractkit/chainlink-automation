@@ -12,8 +12,8 @@ type resultRemover interface {
 	Remove(...string)
 }
 
-func NewRemoveFromStaging(remover resultRemover, logger *log.Logger) *RemoveFromStagingHook {
-	return &RemoveFromStagingHook{
+func NewRemoveFromStaging(remover resultRemover, logger *log.Logger) RemoveFromStagingHook {
+	return RemoveFromStagingHook{
 		remover: remover,
 		logger:  log.New(logger.Writer(), fmt.Sprintf("[%s | pre-build hook:remove-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
@@ -22,6 +22,7 @@ func NewRemoveFromStaging(remover resultRemover, logger *log.Logger) *RemoveFrom
 type RemoveFromStagingHook struct {
 	remover resultRemover
 	logger  *log.Logger
+	coord   Coordinator
 }
 
 func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {

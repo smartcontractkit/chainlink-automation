@@ -26,13 +26,17 @@ type Coordinator interface {
 }
 
 type ocr3Plugin struct {
-	ConfigDigest  types.ConfigDigest
-	ReportEncoder ocr2keepers.Encoder
-	Coordinator   Coordinator
-	Services      []service.Recoverable
-	Config        config.OffchainConfig
-	F             int
-	Logger        *log.Logger
+	ConfigDigest          types.ConfigDigest
+	ReportEncoder         ocr2keepers.Encoder
+	Coordinator           Coordinator
+	RemoveFromStagingHook RemoveFromStagingHook
+	AddFromStagingHook    AddFromStagingHook
+	AddFromSamplesHook    AddFromSamplesHook
+	AddFromRecoveryHook   AddFromRecoveryHook
+	Services              []service.Recoverable
+	Config                config.OffchainConfig
+	F                     int
+	Logger                *log.Logger
 }
 
 const (
@@ -68,16 +72,15 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		}
 
 		// Execute pre-build hooks
-		// TODO: prebuild.NewRemoveFromStaging(rs, logger).RunHook,
-		// TODO coordinateFlow.ProcessOutcome
+		plugin.RemoveFromStagingHook.RunHook(automationOutcome)
+		// TODO Remove agreedSamples and logRecoveryProposals from store
+		// TODO Add coordinateFlow.ProcessOutcome
 	}
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
-
-	// TODO: add coordinator in build hook, pass limit and randSrc
-	//build.NewAddFromStaging(rs, logger).RunHook,
-	//build.NewAddFromRecoveryHook(ms).RunHook,
-	//build.NewAddFromSamplesHook(ms).RunHook,
+	plugin.AddFromStagingHook.RunHook(&observation, ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	plugin.AddFromRecoveryHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	plugin.AddFromSamplesHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 

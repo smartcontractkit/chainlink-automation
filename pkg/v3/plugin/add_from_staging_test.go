@@ -16,7 +16,8 @@ import (
 func TestAddFromStaging(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		ms := new(mocks.MockResultViewer)
-		hook := NewAddFromStaging(ms, log.New(io.Discard, "", 0))
+		coord := new(mocks.MockCoordinator)
+		hook := NewAddFromStaging(ms, log.New(io.Discard, "", 0), coord)
 		observation := &ocr2keepersv3.AutomationObservation{}
 		expected := []ocr2keepers.CheckResult{
 			{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1})},
@@ -25,7 +26,7 @@ func TestAddFromStaging(t *testing.T) {
 
 		ms.On("View").Return(expected, nil)
 
-		err := hook.RunHook(observation)
+		err := hook.RunHook(observation, 10, [16]byte{})
 
 		assert.NoError(t, err, "no error from run hook")
 		assert.Len(t, observation.Performable, len(expected), "all check results should be in observation")
@@ -33,12 +34,13 @@ func TestAddFromStaging(t *testing.T) {
 
 	t.Run("result store error", func(t *testing.T) {
 		ms := new(mocks.MockResultViewer)
-		hook := NewAddFromStaging(ms, log.New(io.Discard, "", 0))
+		coord := new(mocks.MockCoordinator)
+		hook := NewAddFromStaging(ms, log.New(io.Discard, "", 0), coord)
 		observation := &ocr2keepersv3.AutomationObservation{}
 
 		ms.On("View").Return(nil, fmt.Errorf("test error"))
 
-		err := hook.RunHook(observation)
+		err := hook.RunHook(observation, 10, [16]byte{})
 
 		assert.NotNil(t, err, "error expected from run hook")
 	})

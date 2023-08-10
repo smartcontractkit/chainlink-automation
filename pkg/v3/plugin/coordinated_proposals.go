@@ -17,6 +17,7 @@ type coordinatedProposals struct {
 	allNewProposals   []ocr2keepers.CoordinatedProposal
 }
 
+// TODO: add test for this
 func newCoordinatedProposals(threshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedProposals {
 	return &coordinatedProposals{
 		threshold:         threshold,

@@ -102,13 +102,17 @@ func newPlugin(
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
 	plugin := &ocr3Plugin{
-		ConfigDigest:  digest,
-		ReportEncoder: encoder,
-		Coordinator:   coord,
-		Services:      recoverSvcs,
-		Config:        conf,
-		F:             f,
-		Logger:        log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		ConfigDigest:          digest,
+		ReportEncoder:         encoder,
+		Coordinator:           coord,
+		RemoveFromStagingHook: NewRemoveFromStaging(rs, logger),
+		AddFromStagingHook:    NewAddFromStaging(rs, logger, coord),
+		AddFromSamplesHook:    NewAddFromSamplesHook(ms, coord),
+		AddFromRecoveryHook:   NewAddFromRecoveryHook(ms, coord),
+		Services:              recoverSvcs,
+		Config:                conf,
+		F:                     f,
+		Logger:                log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 
 	plugin.startServices()

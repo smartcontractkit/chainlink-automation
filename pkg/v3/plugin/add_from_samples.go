@@ -5,16 +5,17 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 )
 
-type addFromSamplesHook struct {
+type AddFromSamplesHook struct {
 	metadata *store.Metadata
+	coord    Coordinator
 }
 
-func NewAddFromSamplesHook(ms *store.Metadata) *addFromSamplesHook {
-	return &addFromSamplesHook{metadata: ms}
+func NewAddFromSamplesHook(ms *store.Metadata, coord Coordinator) AddFromSamplesHook {
+	return AddFromSamplesHook{metadata: ms, coord: coord}
 }
 
-func (h *addFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation) error {
-	// TODO: add limit and random seed here
+func (h *AddFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
+	// TODO: filter using coordinator, add limit and random seed here
 	_, err := store.SampleProposalsFromMetadata(h.metadata)
 	if err != nil {
 		return err
