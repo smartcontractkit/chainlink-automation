@@ -54,3 +54,10 @@ type BlockSubscriber interface {
 type UpkeepStateUpdater interface {
 	SetUpkeepState(context.Context, CheckResult, UpkeepState) error
 }
+
+type RetryQueue interface {
+	// Enqueue adds new items to the queue
+	Enqueue(items ...UpkeepPayload) error
+	// Dequeue returns the next n items in the queue, considering retry time schedules
+	Dequeue(n int) ([]UpkeepPayload, error)
+}
