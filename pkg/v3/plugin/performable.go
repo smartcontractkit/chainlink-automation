@@ -61,5 +61,8 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 		performable[i], performable[j] = performable[j], performable[i]
 	})
 
-	outcome.AgreedPerformables = performable[:p.limit]
+	if len(performable) > p.limit {
+		performable = performable[:p.limit]
+	}
+	outcome.AgreedPerformables = performable
 }

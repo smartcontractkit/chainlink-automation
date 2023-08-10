@@ -41,11 +41,11 @@ func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeCon
 	return nil, nil
 }
 
-func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
+func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
 	// first round outcome will be nil or empty so no processing should be done
-	if outcome.PreviousOutcome != nil || len(outcome.PreviousOutcome) != 0 {
+	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
 		// Decode the outcome to AutomationOutcome
-		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outcome.PreviousOutcome)
+		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 		}
 
 		// Execute pre-build hooks
-		plugin.Logger.Printf("running pre-build hooks in sequence nr %d", outcome.SeqNr)
+		plugin.Logger.Printf("running pre-build hooks in sequence nr %d", outctx.SeqNr)
 		for _, hook := range plugin.PrebuildHooks {
 			err = errors.Join(err, hook(automationOutcome))
 		}
@@ -69,15 +69,16 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 	observation := ocr2keepersv3.AutomationObservation{}
 
 	// Execute build hooks
-	plugin.Logger.Printf("running build hooks in sequence nr %d", outcome.SeqNr)
+	plugin.Logger.Printf("running build hooks in sequence nr %d", outctx.SeqNr)
 	for _, hook := range plugin.BuildHooks {
+		// TODO: Filter via coordinator here
 		err := hook(&observation)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outcome.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
+	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 
 	// Encode the observation to bytes
 	encoded, err := observation.Encode()
@@ -100,7 +101,7 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
 	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	c := newCoordinatedProposals(ocr2keepersv3.OutcomeAgreedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	c := newCoordinatedProposals(plugin.F+1, ocr2keepersv3.OutcomeAgreedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
@@ -129,8 +130,24 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	}
 
 	outcome := ocr2keepersv3.AutomationOutcome{}
+	// Copy coordinated proposals from previous outcome if present
+	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
+		// Decode the outcome to AutomationOutcome
+		prevOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
+		if err != nil {
+			return nil, err
+		}
+		// validate outcome (even though it is a signed outcome)
+		if err := ocr2keepersv3.ValidateAutomationOutcome(prevOutcome); err != nil {
+			return nil, err
+		}
+		// TODO: do a deep copy here
+		outcome.AgreedProposals = prevOutcome.AgreedProposals
+	}
+
 	p.set(&outcome)
 	c.set(&outcome)
+	// TODO Remove performables from proposals
 
 	plugin.Logger.Printf("returning outcome with %d performables", len(outcome.AgreedPerformables))
 

@@ -9,56 +9,108 @@ import (
 )
 
 type coordinatedProposals struct {
+	threshold         int
 	roundHistoryLimit int
 	perRoundLimit     int
 	keyRandSource     [16]byte
+	recentBlocks      map[ocr2keepers.BlockKey]int
 	allProposals      []ocr2keepers.CoordinatedProposal
-	allBlockHistory   []ocr2keepers.BlockHistory
 }
 
-func newCoordinatedProposals(roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedProposals {
+func newCoordinatedProposals(threshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedProposals {
 	return &coordinatedProposals{
+		threshold:         threshold,
 		roundHistoryLimit: roundHistoryLimit,
 		perRoundLimit:     perRoundLimit,
 		keyRandSource:     rSrc,
+		recentBlocks:      make(map[ocr2keepers.BlockKey]int),
 	}
 }
 
 func (c *coordinatedProposals) add(ao ocr2keepersv3.AutomationObservation) {
 	c.allProposals = append(c.allProposals, ao.UpkeepProposals...)
-	c.allBlockHistory = append(c.allBlockHistory, ao.BlockHistory)
+	for _, val := range ao.BlockHistory {
+		_, present := c.recentBlocks[val]
+		if present {
+			c.recentBlocks[val]++
+		} else {
+			c.recentBlocks[val] = 1
+		}
+	}
 }
 
 func (c *coordinatedProposals) set(outcome *ocr2keepersv3.AutomationOutcome) {
-	// Find latest agreed block from allBlockHistory (with reportBlockLag applied)
-	// Filter allProposals workID from existing outcome proposals
-	// Remove last outcome.CoordinatedProposals if over limit
-	// Append allProposals with latest agreed block to outcome.CoordinatedProposals
-	// Apply limit here with random seed shuffling
-}
-
-func dedupeShuffleObservations(upkeepIds []ocr2keepers.UpkeepIdentifier, keyRandSource [16]byte) []ocr2keepers.UpkeepIdentifier {
-	uniqueKeys := dedupe(upkeepIds)
-
-	rand.New(util.NewKeyedCryptoRandSource(keyRandSource)).Shuffle(len(uniqueKeys), func(i, j int) {
-		uniqueKeys[i], uniqueKeys[j] = uniqueKeys[j], uniqueKeys[i]
-	})
-
-	return uniqueKeys
-}
-
-func dedupe(inputs []ocr2keepers.UpkeepIdentifier) []ocr2keepers.UpkeepIdentifier {
-	output := make([]ocr2keepers.UpkeepIdentifier, 0, len(inputs))
-	matched := make(map[string]struct{})
-
-	for _, input := range inputs {
-		key := input.String()
-		_, ok := matched[key]
-		if !ok {
-			matched[key] = struct{}{}
-			output = append(output, input)
+	latestQuorumBlock, ok := c.getLatestQuorumBlock()
+	if !ok {
+		// Can't coordinate new proposals without a quorum block, return with existing proposals
+		return
+	}
+	// TODO: Make the code more elegant if possible
+	// If existing outcome has more than roundHistoryLimit proposals, remove oldest ones
+	// and make room to add one more
+	if len(outcome.AgreedProposals) >= c.roundHistoryLimit {
+		outcome.AgreedProposals = outcome.AgreedProposals[:c.roundHistoryLimit-1]
+	}
+	latestProposals := []ocr2keepers.CoordinatedProposal{}
+	added := make(map[string]bool)
+	for _, proposal := range c.allProposals {
+		if proposalExists(outcome.AgreedProposals, proposal) {
+			// proposal already exists in history
+			continue
 		}
+		if added[proposal.WorkID] {
+			// proposal already added in this round
+			continue
+		}
+
+		// Coordinate the proposal on latest quorum block
+		newProposal := proposal
+		newProposal.Trigger.BlockNumber = latestQuorumBlock.Number
+		newProposal.Trigger.BlockHash = latestQuorumBlock.Hash
+
+		latestProposals = append(latestProposals, newProposal)
+		added[proposal.WorkID] = true
 	}
 
-	return output
+	// Apply limit here on new proposals with random seed shuffling
+	rand.New(util.NewKeyedCryptoRandSource(c.keyRandSource)).Shuffle(len(latestProposals), func(i, j int) {
+		latestProposals[i], latestProposals[j] = latestProposals[j], latestProposals[i]
+	})
+	if len(latestProposals) > c.perRoundLimit {
+		latestProposals = latestProposals[:c.perRoundLimit]
+	}
+
+	outcome.AgreedProposals = append([][]ocr2keepers.CoordinatedProposal{latestProposals}, outcome.AgreedProposals...)
+}
+
+func (c *coordinatedProposals) getLatestQuorumBlock() (ocr2keepers.BlockKey, bool) {
+	var (
+		mostRecent ocr2keepers.BlockKey
+		zeroHash   [32]byte
+	)
+
+	for block, count := range c.recentBlocks {
+		// Perhaps an honest node could be tricked into seeing an illegitimate
+		// blockhash by an eclipse attack?
+		if count > int(c.threshold) {
+			if (mostRecent.Hash == zeroHash) || // First consensus hash
+				(block.Number > mostRecent.Number) || // later height
+				(block.Number == mostRecent.Number && // Matching heights
+					string(block.Hash[:]) > string(mostRecent.Hash[:])) { // Just need a defined ordered here
+				mostRecent = block
+			}
+		}
+	}
+	return mostRecent, mostRecent.Hash != zeroHash
+}
+
+func proposalExists(existing [][]ocr2keepers.CoordinatedProposal, new ocr2keepers.CoordinatedProposal) bool {
+	for _, round := range existing {
+		for _, proposal := range round {
+			if proposal.WorkID == new.WorkID {
+				return true
+			}
+		}
+	}
+	return false
 }

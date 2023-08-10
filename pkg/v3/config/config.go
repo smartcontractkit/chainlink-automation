@@ -83,6 +83,7 @@ type OffchainConfig struct {
 	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
 	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
 
+	// TODO: Discuss if we still need it, if so pass to coorindated_proposals.go
 	// ReportBlockLag is the number to subtract from median block number during report phase.
 	ReportBlockLag int `json:"reportBlockLag"`
 
