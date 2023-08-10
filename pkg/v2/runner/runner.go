@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
 	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
 )
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")

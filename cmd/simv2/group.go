@@ -18,11 +18,11 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv2/telemetry"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
-	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/config"
-	"github.com/smartcontractkit/ocr2keepers/pkg/coordinator"
-	"github.com/smartcontractkit/ocr2keepers/pkg/observer/polling"
-	"github.com/smartcontractkit/ocr2keepers/pkg/runner"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
+	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/v2/config"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v2/coordinator"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v2/observer/polling"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v2/runner"
 )
 
 type Closable interface {

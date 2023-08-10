@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/config"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )

@@ -42,7 +42,7 @@ var (
 	cadence               = time.Second
 )
 
-//go:generate mockery --name Encoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/coordinator" --case underscore --filename encoder.generated.go
+//go:generate mockery --name Encoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator" --case underscore --filename encoder.generated.go
 type Encoder interface {
 	// After a is after b
 	After(ocr2keepers.BlockNumber, ocr2keepers.BlockNumber) (bool, error)

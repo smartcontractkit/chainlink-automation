@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/multierr"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
 )
 
 type SimulatedUpkeep struct {

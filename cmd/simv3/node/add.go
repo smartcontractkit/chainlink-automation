@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	simio "github.com/smartcontractkit/ocr2keepers/cmd/simv3/io"
-	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/config"
+	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 
