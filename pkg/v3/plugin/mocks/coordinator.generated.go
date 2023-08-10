@@ -13,22 +13,22 @@ type MockCoordinator struct {
 	mock.Mock
 }
 
-// Accept provides a mock function with given fields: _a0
-func (_m *MockCoordinator) Accept(_a0 types.ReportedUpkeep) error {
+// ShouldAccept provides a mock function with given fields: _a0
+func (_m *MockCoordinator) ShouldAccept(_a0 types.ReportedUpkeep) bool {
 	ret := _m.Called(_a0)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(types.ReportedUpkeep) error); ok {
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(types.ReportedUpkeep) bool); ok {
 		r0 = rf(_a0)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
 	return r0
 }
 
-// IsTransmissionPending provides a mock function with given fields: _a0
-func (_m *MockCoordinator) IsTransmissionPending(_a0 types.ReportedUpkeep) bool {
+// ShouldTransmit provides a mock function with given fields: _a0
+func (_m *MockCoordinator) ShouldTransmit(_a0 types.ReportedUpkeep) bool {
 	ret := _m.Called(_a0)
 
 	var r0 bool
