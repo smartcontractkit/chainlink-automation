@@ -14,7 +14,7 @@ type coordinatedProposals struct {
 	perRoundLimit     int
 	keyRandSource     [16]byte
 	recentBlocks      map[ocr2keepers.BlockKey]int
-	allProposals      []ocr2keepers.CoordinatedProposal
+	allNewProposals   []ocr2keepers.CoordinatedProposal
 }
 
 func newCoordinatedProposals(threshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedProposals {
@@ -28,7 +28,7 @@ func newCoordinatedProposals(threshold int, roundHistoryLimit int, perRoundLimit
 }
 
 func (c *coordinatedProposals) add(ao ocr2keepersv3.AutomationObservation) {
-	c.allProposals = append(c.allProposals, ao.UpkeepProposals...)
+	c.allNewProposals = append(c.allNewProposals, ao.UpkeepProposals...)
 	for _, val := range ao.BlockHistory {
 		_, present := c.recentBlocks[val]
 		if present {
@@ -39,13 +39,24 @@ func (c *coordinatedProposals) add(ao ocr2keepersv3.AutomationObservation) {
 	}
 }
 
-func (c *coordinatedProposals) set(outcome *ocr2keepersv3.AutomationOutcome) {
+// TODO: Make the code more elegant if possible
+func (c *coordinatedProposals) set(outcome *ocr2keepersv3.AutomationOutcome, prevOutcome ocr2keepersv3.AutomationOutcome) {
+	// Keep proposals from previous outcome that haven't achieved quorum performable
+	outcome.AgreedProposals = [][]ocr2keepers.CoordinatedProposal{}
+	for _, round := range prevOutcome.AgreedProposals {
+		roundProposals := []ocr2keepers.CoordinatedProposal{}
+		for _, proposal := range round {
+			if !performableExists(outcome.AgreedPerformables, proposal) {
+				roundProposals = append(roundProposals, proposal)
+			}
+		}
+		outcome.AgreedProposals = append(outcome.AgreedProposals, roundProposals)
+	}
 	latestQuorumBlock, ok := c.getLatestQuorumBlock()
 	if !ok {
 		// Can't coordinate new proposals without a quorum block, return with existing proposals
 		return
 	}
-	// TODO: Make the code more elegant if possible
 	// If existing outcome has more than roundHistoryLimit proposals, remove oldest ones
 	// and make room to add one more
 	if len(outcome.AgreedProposals) >= c.roundHistoryLimit {
@@ -53,9 +64,13 @@ func (c *coordinatedProposals) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	}
 	latestProposals := []ocr2keepers.CoordinatedProposal{}
 	added := make(map[string]bool)
-	for _, proposal := range c.allProposals {
+	for _, proposal := range c.allNewProposals {
 		if proposalExists(outcome.AgreedProposals, proposal) {
 			// proposal already exists in history
+			continue
+		}
+		if performableExists(outcome.AgreedPerformables, proposal) {
+			// already being performed in this round, no need to propose
 			continue
 		}
 		if added[proposal.WorkID] {
@@ -110,6 +125,15 @@ func proposalExists(existing [][]ocr2keepers.CoordinatedProposal, new ocr2keeper
 			if proposal.WorkID == new.WorkID {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func performableExists(performables []ocr2keepers.CheckResult, proposal ocr2keepers.CoordinatedProposal) bool {
+	for _, performable := range performables {
+		if proposal.WorkID == performable.WorkID {
+			return true
 		}
 	}
 	return false

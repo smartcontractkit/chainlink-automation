@@ -72,7 +72,7 @@ func newPlugin(
 	retrySvc := flows.NewRetryFlow(coord, rs, rn, retryQ, 5*time.Second, logger)
 
 	// initialize the log trigger eligibility flow
-	ltFlow, svcs := flows.NewLogTriggerEligibility(
+	_, svcs := flows.NewLogTriggerEligibility(
 		coord,
 		rs,
 		ms,
@@ -89,7 +89,7 @@ func newPlugin(
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{retrySvc, rs, ms, coord, rn, blockTicker}...)
 
-	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
+	_, svcs, err = flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +108,11 @@ func newPlugin(
 		ConfigDigest: digest,
 		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
 			// TODO: Condense these two flow hooks into a single coordinatedOutcome flow hook
-			ltFlow.ProcessOutcome,
-			cFlow.ProcessOutcome,
+			//ltFlow.ProcessOutcome,
+			//cFlow.ProcessOutcome,
 			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
 		},
+		// TODO: add coordinator in build hook, pass limit and randSrc
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
 			build.NewAddFromStaging(rs, logger).RunHook,
 			// TODO: AUTO-4243 Finalize build hooks
