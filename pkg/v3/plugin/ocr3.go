@@ -35,6 +35,20 @@ type ocr3Plugin struct {
 	Logger        *log.Logger
 }
 
+const (
+	ObservationPerformablesLimit          = 100
+	ObservationLogRecoveryProposalsLimit  = 2
+	ObservationConditionalsProposalsLimit = 2
+	ObservationBlockHistoryLimit          = 256
+)
+
+const (
+	OutcomeAgreedPerformablesLimit = 100
+	OutcomeAgreedProposalsLimit    = 50
+	// TODO: Derive this limit from max checkPipelineTime and deltaRound
+	OutcomeAgreedProposalsRoundHistoryLimit = 10
+)
+
 func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
 	return nil, nil
 }
@@ -87,8 +101,8 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	c := newCoordinatedProposals(plugin.F+1, ocr2keepersv3.OutcomeAgreedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	p := newPerformables(plugin.F+1, OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	c := newCoordinatedProposals(plugin.F+1, OutcomeAgreedProposalsRoundHistoryLimit, OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {

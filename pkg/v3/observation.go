@@ -30,13 +30,6 @@ func ValidateObservationMetadataKey(key ObservationMetadataKey) error {
 	}
 }
 
-const (
-	ObservationPerformablesLimit          = 100
-	ObservationLogRecoveryProposalsLimit  = 2
-	ObservationConditionalsProposalsLimit = 2
-	ObservationBlockHistoryLimit          = 256
-)
-
 // AutomationObservation models the local automation view sent by a single node
 // to the network upon which they later get agreement
 // NOTE: Any change to this structure should keep backwards compatibility in mind

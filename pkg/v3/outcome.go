@@ -24,13 +24,6 @@ func ValidateOutcomeMetadataKey(key OutcomeMetadataKey) error {
 	}
 }
 
-const (
-	OutcomeAgreedPerformablesLimit = 100
-	OutcomeAgreedProposalsLimit    = 50
-	// TODO: Derive this limit from max checkPipelineTime and deltaRound
-	OutcomeAgreedProposalsRoundHistoryLimit = 10
-)
-
 // AutomationOutcome represents agreed upon state by the network, derived from
 // a collection of AutomationObservations with applied quorum thresholds
 // NOTE: Any change to this structure should keep backwards compatibility in mind
