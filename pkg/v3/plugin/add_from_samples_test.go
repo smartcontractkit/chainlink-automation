@@ -20,7 +20,7 @@ func TestAddFromSamplesHook(t *testing.T) {
 		ocr2keepers.UpkeepIdentifier([32]byte{1}),
 	}
 
-	mStore.Set(store.ProposalSampleMetadata, samples)
+	mStore.Set(store.ProposalConditionalMetadata, samples)
 
 	hook := NewAddFromSamplesHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}

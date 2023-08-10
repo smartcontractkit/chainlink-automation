@@ -26,17 +26,18 @@ type Coordinator interface {
 }
 
 type ocr3Plugin struct {
-	ConfigDigest          types.ConfigDigest
-	ReportEncoder         ocr2keepers.Encoder
-	Coordinator           Coordinator
-	RemoveFromStagingHook RemoveFromStagingHook
-	AddFromStagingHook    AddFromStagingHook
-	AddFromSamplesHook    AddFromSamplesHook
-	AddFromRecoveryHook   AddFromRecoveryHook
-	Services              []service.Recoverable
-	Config                config.OffchainConfig
-	F                     int
-	Logger                *log.Logger
+	ConfigDigest                types.ConfigDigest
+	ReportEncoder               ocr2keepers.Encoder
+	Coordinator                 Coordinator
+	RemoveFromStagingHook       RemoveFromStagingHook
+	AddBlockHistoryHook         AddBlockHistoryHook
+	AddFromStagingHook          AddFromStagingHook
+	AddFromSamplesHook          AddFromSamplesHook
+	AddLogRecoveryProposalsHook AddLogRecoveryProposalsHook
+	Services                    []service.Recoverable
+	Config                      config.OffchainConfig
+	F                           int
+	Logger                      *log.Logger
 }
 
 const (
@@ -78,9 +79,9 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	}
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
-	// TODO add block history from store
+	plugin.AddBlockHistoryHook.RunHook(&observation, ObservationBlockHistoryLimit)
 	plugin.AddFromStagingHook.RunHook(&observation, ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	plugin.AddFromRecoveryHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	plugin.AddLogRecoveryProposalsHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 	plugin.AddFromSamplesHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))

@@ -49,7 +49,7 @@ func newPlugin(
 	ms := store.NewMetadata(blockTicker)
 
 	// add recovery cache to metadata store with 24hr timeout
-	ms.Set(store.ProposalRecoveryMetadata, util.NewCache[ocr2keepers.CoordinatedProposal](24*time.Hour))
+	ms.Set(store.ProposalLogRecoveryMetadata, util.NewCache[ocr2keepers.CoordinatedProposal](24*time.Hour))
 
 	// create a new runner instance
 	rn, err := runner.NewRunner(
@@ -102,17 +102,18 @@ func newPlugin(
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
 	plugin := &ocr3Plugin{
-		ConfigDigest:          digest,
-		ReportEncoder:         encoder,
-		Coordinator:           coord,
-		RemoveFromStagingHook: NewRemoveFromStaging(rs, logger),
-		AddFromStagingHook:    NewAddFromStaging(rs, logger, coord),
-		AddFromSamplesHook:    NewAddFromSamplesHook(ms, coord),
-		AddFromRecoveryHook:   NewAddFromRecoveryHook(ms, coord),
-		Services:              recoverSvcs,
-		Config:                conf,
-		F:                     f,
-		Logger:                log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		ConfigDigest:                digest,
+		ReportEncoder:               encoder,
+		Coordinator:                 coord,
+		RemoveFromStagingHook:       NewRemoveFromStaging(rs, logger),
+		AddFromStagingHook:          NewAddFromStaging(rs, logger, coord),
+		AddFromSamplesHook:          NewAddFromSamplesHook(ms, coord),
+		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(ms, coord),
+		AddBlockHistoryHook:         NewAddBlockHistoryHook(ms),
+		Services:                    recoverSvcs,
+		Config:                      conf,
+		F:                           f,
+		Logger:                      log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 
 	plugin.startServices()

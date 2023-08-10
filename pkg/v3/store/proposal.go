@@ -17,7 +17,7 @@ type KeyValueGetter interface {
 }
 
 func RecoveryProposalCacheFromMetadata(m KeyValueGetter) (*util.Cache[ocr2keepers.CoordinatedProposal], error) {
-	rawArray, ok := m.Get(ProposalRecoveryMetadata)
+	rawArray, ok := m.Get(ProposalLogRecoveryMetadata)
 	if !ok {
 		return nil, ErrMetadataUnavailable
 	}
@@ -31,7 +31,7 @@ func RecoveryProposalCacheFromMetadata(m KeyValueGetter) (*util.Cache[ocr2keeper
 }
 
 func SampleProposalsFromMetadata(m KeyValueGetter) ([]ocr2keepers.UpkeepIdentifier, error) {
-	rawArray, ok := m.Get(ProposalSampleMetadata)
+	rawArray, ok := m.Get(ProposalConditionalMetadata)
 	if !ok {
 		return nil, ErrMetadataUnavailable
 	}

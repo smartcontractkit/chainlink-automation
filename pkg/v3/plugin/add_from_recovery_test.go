@@ -38,9 +38,9 @@ func TestAddFromRecoveryHook(t *testing.T) {
 		cache.Set(fmt.Sprintf("%v", p), p, util.DefaultCacheExpiration)
 	}
 
-	mStore.Set(store.ProposalRecoveryMetadata, cache)
+	mStore.Set(store.ProposalLogRecoveryMetadata, cache)
 
-	hook := NewAddFromRecoveryHook(mStore, coord)
+	hook := NewAddLogRecoveryProposalsHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}
 
 	assert.NoError(t, hook.RunHook(observation, 10, [16]byte{}), "no error from running hook")
@@ -49,7 +49,7 @@ func TestAddFromRecoveryHook(t *testing.T) {
 func TestAddFromRecoveryHook_Error(t *testing.T) {
 	mStore := store.NewMetadata(nil)
 	coord := new(mocks.MockCoordinator)
-	hook := NewAddFromRecoveryHook(mStore, coord)
+	hook := NewAddLogRecoveryProposalsHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}
 
 	assert.ErrorIs(t, hook.RunHook(observation, 10, [16]byte{}), store.ErrMetadataUnavailable, "error from running hook")

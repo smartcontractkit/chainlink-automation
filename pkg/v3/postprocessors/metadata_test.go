@@ -66,7 +66,7 @@ func TestMetadataAddPayload(t *testing.T) {
 
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
-	ms.On("Get", store.ProposalRecoveryMetadata).Return(ar, true)
+	ms.On("Get", store.ProposalLogRecoveryMetadata).Return(ar, true)
 
 	pp := NewAddPayloadToMetadataStorePostprocessor(ms)
 	err := pp.PostProcess(context.Background(), []ocr2keepers.CheckResult{
@@ -115,7 +115,7 @@ func TestMetadataAddSamples(t *testing.T) {
 		ocr2keepers.UpkeepIdentifier([32]byte{2}),
 	}
 
-	ms.On("Set", store.ProposalSampleMetadata, expected)
+	ms.On("Set", store.ProposalConditionalMetadata, expected)
 
 	pp := NewAddSamplesToMetadataStorePostprocessor(ms)
 	err := pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{

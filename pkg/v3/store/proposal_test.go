@@ -16,7 +16,7 @@ func TestRecoveryProposalCacheFromMetadata(t *testing.T) {
 
 		cache := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
-		vg.On("Get", ProposalRecoveryMetadata).Return(cache, true)
+		vg.On("Get", ProposalLogRecoveryMetadata).Return(cache, true)
 
 		value, err := RecoveryProposalCacheFromMetadata(vg)
 
@@ -27,7 +27,7 @@ func TestRecoveryProposalCacheFromMetadata(t *testing.T) {
 	t.Run("unavailable error", func(t *testing.T) {
 		vg := new(mockValueGetter)
 
-		vg.On("Get", ProposalRecoveryMetadata).Return(nil, false)
+		vg.On("Get", ProposalLogRecoveryMetadata).Return(nil, false)
 
 		_, err := RecoveryProposalCacheFromMetadata(vg)
 
@@ -37,7 +37,7 @@ func TestRecoveryProposalCacheFromMetadata(t *testing.T) {
 	t.Run("unavailable error", func(t *testing.T) {
 		vg := new(mockValueGetter)
 
-		vg.On("Get", ProposalRecoveryMetadata).Return("test", true)
+		vg.On("Get", ProposalLogRecoveryMetadata).Return("test", true)
 
 		_, err := RecoveryProposalCacheFromMetadata(vg)
 
@@ -53,7 +53,7 @@ func TestSampleProposalsFromMetadata(t *testing.T) {
 			ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		}
 
-		vg.On("Get", ProposalSampleMetadata).Return(expected, true)
+		vg.On("Get", ProposalConditionalMetadata).Return(expected, true)
 
 		value, err := SampleProposalsFromMetadata(vg)
 
@@ -64,7 +64,7 @@ func TestSampleProposalsFromMetadata(t *testing.T) {
 	t.Run("unavailable error", func(t *testing.T) {
 		vg := new(mockValueGetter)
 
-		vg.On("Get", ProposalSampleMetadata).Return(nil, false)
+		vg.On("Get", ProposalConditionalMetadata).Return(nil, false)
 
 		_, err := SampleProposalsFromMetadata(vg)
 
@@ -74,7 +74,7 @@ func TestSampleProposalsFromMetadata(t *testing.T) {
 	t.Run("unavailable error", func(t *testing.T) {
 		vg := new(mockValueGetter)
 
-		vg.On("Get", ProposalSampleMetadata).Return("test", true)
+		vg.On("Get", ProposalConditionalMetadata).Return("test", true)
 
 		_, err := SampleProposalsFromMetadata(vg)
 

@@ -12,9 +12,9 @@ import (
 type MetadataKey string
 
 const (
-	BlockHistoryMetadata     MetadataKey = "block history"
-	ProposalRecoveryMetadata MetadataKey = "proposed for recovery"
-	ProposalSampleMetadata   MetadataKey = "proposed samples"
+	BlockHistoryMetadata        MetadataKey = "block history"
+	ProposalLogRecoveryMetadata MetadataKey = "proposed log for recovery"
+	ProposalConditionalMetadata MetadataKey = "proposed conditional"
 )
 
 type Metadata struct {

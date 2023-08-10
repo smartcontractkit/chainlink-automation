@@ -6,16 +6,16 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type AddFromRecoveryHook struct {
+type AddLogRecoveryProposalsHook struct {
 	metadata *store.Metadata
 	coord    Coordinator
 }
 
-func NewAddFromRecoveryHook(ms *store.Metadata, coord Coordinator) AddFromRecoveryHook {
-	return AddFromRecoveryHook{metadata: ms, coord: coord}
+func NewAddLogRecoveryProposalsHook(ms *store.Metadata, coord Coordinator) AddLogRecoveryProposalsHook {
+	return AddLogRecoveryProposalsHook{metadata: ms, coord: coord}
 }
 
-func (h *AddFromRecoveryHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
+func (h *AddLogRecoveryProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	// TODO: filter using coordinator, add limit and random seed here
 	cache, err := store.RecoveryProposalCacheFromMetadata(h.metadata)
 	if err != nil {

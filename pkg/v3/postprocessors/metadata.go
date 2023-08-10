@@ -23,7 +23,7 @@ func NewAddPayloadToMetadataStorePostprocessor(store MetadataStore) *addToMetada
 }
 
 func (a *addToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
-	rawArray, ok := a.store.Get(store.ProposalRecoveryMetadata)
+	rawArray, ok := a.store.Get(store.ProposalLogRecoveryMetadata)
 	if !ok {
 		return fmt.Errorf("proposal recovery metadata unavailable")
 	}
@@ -66,7 +66,7 @@ func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, 
 	}
 
 	// should always reset values every time sampling runs
-	a.store.Set(store.ProposalSampleMetadata, ids)
+	a.store.Set(store.ProposalConditionalMetadata, ids)
 
 	return nil
 }
