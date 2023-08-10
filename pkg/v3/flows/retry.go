@@ -18,15 +18,15 @@ var (
 	RetryBatchSize = 5
 )
 
-// log trigger flow is the happy path entry point for log triggered upkeeps
-func newRetryFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+func NewRetryFlow(
+	coord PreProcessor,
 	rs ResultStore,
 	rn ocr2keepersv3.Runner,
 	retryQ ocr2keepers.RetryQueue,
 	retryTickerInterval time.Duration,
 	logger *log.Logger,
 ) service.Recoverable {
+	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
 		// create eligibility postprocessor with result store
@@ -34,7 +34,6 @@ func newRetryFlow(
 		// create retry postprocessor
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
 	)
-
 	// create observer
 	obs := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,

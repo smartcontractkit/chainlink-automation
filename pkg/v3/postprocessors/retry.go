@@ -26,6 +26,7 @@ func (p *retryablePostProcessor) PostProcess(_ context.Context, results []ocr2ke
 	var err error
 
 	for i, res := range results {
+		// TODO: TBD ensure this is not recoverable
 		if res.Retryable {
 			err = errors.Join(err, p.q.Enqueue(payloads[i]))
 		}

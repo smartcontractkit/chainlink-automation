@@ -75,6 +75,8 @@ func newPlugin(
 
 	retryQ := retryqueue.NewRetryQueue(logger)
 
+	retrySvc := flows.NewRetryFlow(coord, rs, rn, retryQ, 5*time.Second, logger)
+
 	// initialize the log trigger eligibility flow
 	ltFlow, svcs := flows.NewLogTriggerEligibility(
 		coord,
@@ -91,7 +93,7 @@ func newPlugin(
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
+	allSvcs := append(svcs, []service.Recoverable{retrySvc, rs, ms, coord, rn, blockTicker}...)
 
 	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
 	if err != nil {

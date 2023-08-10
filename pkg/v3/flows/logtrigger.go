@@ -88,31 +88,25 @@ func NewLogTriggerEligibility(
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network
 	// votes on the proposed values
-	svc0, _ := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger)
+	rcvProposal, _ := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger)
 
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived
 	// from node coordination and it can be assumed that all values should be
 	// run.
-	svc1, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, logger)
-
-	// the retry flow is for payloads where the block number is still within
-	// range of RPC data. this is a short range retry and failures here get
-	// elevated to the recovery proposal flow.
-	svc2 := newRetryFlow(preprocessors, rStore, runner, retryQ, 5*time.Second, logger)
+	rcvFinal, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, logger)
 
 	// the log trigger flow is the happy path for log trigger payloads. all
 	// retryables that are encountered in this flow are elevated to the retry
 	// flow
-	svc3 := newLogTriggerFlow(preprocessors, rStore, runner, logProvider, logInterval, retryQ, logger)
+	logTrigger := newLogTriggerFlow(preprocessors, rStore, runner, logProvider, logInterval, retryQ, logger)
 
 	// all above flows run internal time-keeper services. each is essential for
 	// running so the return is a slice of all above services as recoverables
 	svcs := []service.Recoverable{
-		svc0,
-		svc1,
-		svc2,
-		svc3,
+		rcvProposal,
+		rcvFinal,
+		logTrigger,
 	}
 
 	// the final return includes a struct that provides the ability for hooks
