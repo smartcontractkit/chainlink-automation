@@ -2,27 +2,9 @@ package ocr2keepers
 
 import (
 	"encoding/json"
-	"fmt"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
-
-type OutcomeMetadataKey string
-
-const (
-	CoordinatedBlockOutcomeKey     OutcomeMetadataKey = "coordinatedBlock"
-	CoordinatedRecoveryProposalKey OutcomeMetadataKey = "coordinatedRecoveryProposals"
-	CoordinatedSamplesProposalKey  OutcomeMetadataKey = "coordinatedSampleProposals"
-)
-
-func ValidateOutcomeMetadataKey(key OutcomeMetadataKey) error {
-	switch key {
-	case CoordinatedBlockOutcomeKey, CoordinatedRecoveryProposalKey, CoordinatedSamplesProposalKey:
-		return nil
-	default:
-		return fmt.Errorf("%w: %s", ErrInvalidMetadataKey, key)
-	}
-}
 
 // AutomationOutcome represents agreed upon state by the network, derived from
 // a collection of AutomationObservations with applied quorum thresholds

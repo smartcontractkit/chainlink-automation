@@ -7,33 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateOutcomeMetadataKey(t *testing.T) {
-	tests := []struct {
-		key OutcomeMetadataKey
-		err error
-	}{
-		{key: CoordinatedBlockOutcomeKey},
-		{key: CoordinatedRecoveryProposalKey},
-		{key: CoordinatedSamplesProposalKey},
-		{
-			key: "invalid key",
-			err: ErrInvalidMetadataKey,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(string(test.key), func(t *testing.T) {
-			err := ValidateOutcomeMetadataKey(test.key)
-
-			if test.err == nil {
-				assert.NoError(t, err, "no error expected")
-			} else {
-				assert.ErrorIs(t, err, test.err, "error should be of expected type")
-			}
-		})
-	}
-}
-
 func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationOutcome{}
