@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	// TODO: Calculate these properly, add MaxOutcomeLength
 	// MaxObservationLength applies a limit to the total length of bytes in an
 	// observation. Observations can become quite large due to multiple
 	// CheckResult objects and block coordination data. This is set to 1MB for

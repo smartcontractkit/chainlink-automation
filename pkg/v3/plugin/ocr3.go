@@ -17,11 +17,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-const (
-	OutcomeHistoryLimit = 10
-	OutcomeSamplesLimit = 100
-)
-
 type AutomationReportInfo struct{}
 
 //go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename coordinator.generated.go
@@ -46,7 +41,6 @@ func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeCon
 	return nil, nil
 }
 
-// TODO: Finalize this
 func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
 	// first round outcome will be nil or empty so no processing should be done
 	if outcome.PreviousOutcome != nil || len(outcome.PreviousOutcome) != 0 {
@@ -62,7 +56,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 		}
 
 		// Execute pre-build hooks
-		plugin.Logger.Printf("running pre-build hooks")
+		plugin.Logger.Printf("running pre-build hooks in sequence nr %d", outcome.SeqNr)
 		for _, hook := range plugin.PrebuildHooks {
 			err = errors.Join(err, hook(automationOutcome))
 		}
@@ -75,7 +69,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 	observation := ocr2keepersv3.AutomationObservation{}
 
 	// Execute build hooks
-	plugin.Logger.Printf("running build hooks")
+	plugin.Logger.Printf("running build hooks in sequence nr %d", outcome.SeqNr)
 	for _, hook := range plugin.BuildHooks {
 		err := hook(&observation)
 		if err != nil {
@@ -83,7 +77,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 		}
 	}
 
-	plugin.Logger.Printf("built an observation in sequence %d with %d performables, %d upkeep proposals and %d block history", outcome.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
+	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outcome.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 
 	// Encode the observation to bytes
 	encoded, err := observation.Encode()
@@ -150,10 +144,11 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		err     error
 	)
 
+	// TODO: Move these validations to config
 	if plugin.Config.MaxUpkeepBatchSize <= 0 {
 		return nil, fmt.Errorf("invalid max upkeep batch size: %d", plugin.Config.MaxUpkeepBatchSize)
 	}
-
+	// TODO: Move these validations to config
 	if plugin.Config.GasLimitPerReport == 0 {
 		return nil, fmt.Errorf("invalid gas limit per report: %d", plugin.Config.GasLimitPerReport)
 	}
@@ -167,56 +162,40 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		return nil, err
 	}
 
-	plugin.Logger.Printf("creating report from outcome with %d results; max batch size: %d; report gas limit %d", len(outcome.AgreedPerformables), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
+	plugin.Logger.Printf("creating report from outcome with %d agreed performables; max batch size: %d; report gas limit %d", len(outcome.AgreedPerformables), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
 
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
 
 	for i, result := range outcome.AgreedPerformables {
-		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize || gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) {
-			if len(toPerform) > 0 {
-				// encode current collection
-				encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
-				err = errors.Join(err, encodeErr)
-
-				if encodeErr == nil {
-					// add encoded data to reports
-					reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
-						Report: types.Report(encoded),
-					})
-
-					// reset collection
-					toPerform = []ocr2keepers.CheckResult{}
-					gasUsed = 0
-				}
+		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
+			gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) {
+			// If report has reached capacity, encode and append this report
+			report, err := plugin.getReportFromPerformables(toPerform)
+			if err != nil {
+				return reports, fmt.Errorf("error encountered while encoding: %w", err)
 			}
+			// append to reports and reset collection
+			reports = append(reports, report)
+			toPerform = []ocr2keepers.CheckResult{}
+			gasUsed = 0
 		}
 
+		// Add the result to current report
 		gasUsed += result.GasAllocated + uint64(plugin.Config.GasOverheadPerUpkeep)
 		toPerform = append(toPerform, outcome.AgreedPerformables[i])
 	}
 
 	// if there are still values to add
-	if len(toPerform) > 0 && gasUsed <= uint64(plugin.Config.GasLimitPerReport) {
-		// encode current collection
-		encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
-		err = errors.Join(err, encodeErr)
-
-		if encodeErr == nil {
-			// add encoded data to reports
-			reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
-				Report: types.Report(encoded),
-				Info:   AutomationReportInfo{},
-			})
+	if len(toPerform) > 0 {
+		report, err := plugin.getReportFromPerformables(toPerform)
+		if err != nil {
+			return reports, fmt.Errorf("error encountered while encoding: %w", err)
 		}
+		reports = append(reports, report)
 	}
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
-
-	if err != nil {
-		plugin.Logger.Printf("error encountered while encoding: %s", err)
-	}
-
 	return reports, nil
 }
 
@@ -289,6 +268,13 @@ func (plugin *ocr3Plugin) startServices() {
 			}
 		}(plugin.Services[i])
 	}
+}
+
+func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
+	return ocr3types.ReportWithInfo[AutomationReportInfo]{
+		Report: types.Report(encoded),
+	}, err
 }
 
 // Generates a randomness source derived from the config and seq # so
