@@ -76,7 +76,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 
 		// Execute pre-build hooks
 		plugin.RemoveFromStagingHook.RunHook(automationOutcome)
-		// TODO Remove agreedSamples and logRecoveryProposals from store
+		// TODO Remove agreedSamples and logRecoveryProposals from metadata store
 		// TODO Add coordinateFlow.ProcessOutcome
 	}
 	// Create new AutomationObservation

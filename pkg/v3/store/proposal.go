@@ -16,6 +16,7 @@ type KeyValueGetter interface {
 	Get(MetadataKey) (interface{}, bool)
 }
 
+// TODO clean this up into metadata.go getter
 func RecoveryProposalCacheFromMetadata(m KeyValueGetter) (*util.Cache[ocr2keepers.CoordinatedProposal], error) {
 	rawArray, ok := m.Get(ProposalLogRecoveryMetadata)
 	if !ok {
@@ -30,6 +31,7 @@ func RecoveryProposalCacheFromMetadata(m KeyValueGetter) (*util.Cache[ocr2keeper
 	return cache, nil
 }
 
+// TODO clean this up into metadata.go getter
 func SampleProposalsFromMetadata(m KeyValueGetter) ([]ocr2keepers.UpkeepIdentifier, error) {
 	rawArray, ok := m.Get(ProposalConditionalMetadata)
 	if !ok {

@@ -24,8 +24,6 @@ type ResultStore interface {
 	Notifications() <-chan Notification
 }
 
-type InstructionStore interface{}
-
 type MetadataStore interface {
 	// Set should replace any existing values
 	Set(store.MetadataKey, interface{})

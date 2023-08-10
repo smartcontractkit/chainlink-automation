@@ -15,13 +15,14 @@ func NewAddFromSamplesHook(ms *store.Metadata, coord Coordinator) AddFromSamples
 }
 
 func (h *AddFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	// TODO: filter using coordinator, add limit and random seed here
-	_, err := store.SampleProposalsFromMetadata(h.metadata)
-	if err != nil {
-		return err
-	}
-
-	// TODO: Append obs.CoordinatedProposals
+	// TODO: Read conditional samples from metadata store
+	// TODO: filter proposals using coordinator
+	// Shuffle using random seed
+	/*rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(performable), func(i, j int) {
+		performable[i], performable[j] = performable[j], performable[i]
+	})*/
+	// take first limit
+	// TODO: Append to obs.CoordinatedProposals
 
 	return nil
 }

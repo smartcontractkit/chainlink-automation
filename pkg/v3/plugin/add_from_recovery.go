@@ -3,7 +3,6 @@ package plugin
 import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type AddLogRecoveryProposalsHook struct {
@@ -16,25 +15,14 @@ func NewAddLogRecoveryProposalsHook(ms *store.Metadata, coord Coordinator) AddLo
 }
 
 func (h *AddLogRecoveryProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	// TODO: filter using coordinator, add limit and random seed here
-	cache, err := store.RecoveryProposalCacheFromMetadata(h.metadata)
-	if err != nil {
-		return err
-	}
-
-	proposals := make([]ocr2keepers.CoordinatedProposal, 0)
-	for _, key := range cache.Keys() {
-		v, ok := cache.Get(key)
-		if !ok {
-			cache.Delete(key)
-
-			continue
-		}
-
-		proposals = append(proposals, v)
-	}
-
-	// TODO: Append obs.CoordinatedProposals
+	// TODO: Read log recovery proposals from metadata store
+	// TODO: filter proposals using coordinator
+	// Shuffle using random seed
+	/*rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(performable), func(i, j int) {
+		performable[i], performable[j] = performable[j], performable[i]
+	})*/
+	// take first limit
+	// TODO: Append to obs.CoordinatedProposals
 
 	return nil
 }

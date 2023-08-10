@@ -71,6 +71,7 @@ func (m *Metadata) Start(_ context.Context) error {
 	for {
 		select {
 		case h := <-m.blocks.C:
+			// TODO use typed setter
 			m.Set(BlockHistoryMetadata, h)
 		case <-m.stopCh:
 			return nil
@@ -88,3 +89,8 @@ func (m *Metadata) Close() error {
 
 	return nil
 }
+
+// Time expiry for items added
+// Setter (inside metadata.go)/Getter(add_block_history.go) for BlockHistoryMetadata () BlockHistory
+// Append (inside postProcessor)/Getter(add_from_recovery.go) / Remove([]CoordinatedProposal) for ProposalLogRecoveryMetadata CoordinatedProposal
+// Append (inside postProcessor)/Getter(add_from_samples.go) / Remove([]CoordinatedProposal) for ProposalConditionalMetadata CoordinatedProposal

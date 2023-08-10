@@ -33,7 +33,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	if err != nil {
 		return err
 	}
-	// TODO: filter results using coordinator, shuffle and limit
+	// TODO: filter results using coordinator (filterResults), shuffle and limit
 	if len(results) > 0 {
 		hook.logger.Printf("adding %d results to observation", len(results))
 
