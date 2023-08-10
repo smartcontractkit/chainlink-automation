@@ -104,8 +104,11 @@ jobs:
       with:
         go-version-file: "go.mod"
 
-    - name: Run Keepers Package Fuzz Tests
-      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/pkg
+    - name: Run Keepers Package v2 Fuzz Tests
+      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/pkg/v2
+
+    - name: Run Keepers Package v3 Fuzz Tests
+      run: go test --fuzz=Fuzz --fuzztime=10s -run=^# github.com/smartcontractkit/ocr2keepers/pkg/v3
 
   sonar-scan:
     name: SonarQube

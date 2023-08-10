@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/encoding"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -21,7 +20,6 @@ func TestCheckUpkeep(t *testing.T) {
 
 	type enc struct {
 		SimulatedReportEncoder
-		encoding.BasicEncoder
 	}
 
 	rpc := NewSimulatedRPC(0, 1000, 0, tel)
