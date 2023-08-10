@@ -144,15 +144,6 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		err     error
 	)
 
-	// TODO: Move these validations to config
-	if plugin.Config.MaxUpkeepBatchSize <= 0 {
-		return nil, fmt.Errorf("invalid max upkeep batch size: %d", plugin.Config.MaxUpkeepBatchSize)
-	}
-	// TODO: Move these validations to config
-	if plugin.Config.GasLimitPerReport == 0 {
-		return nil, fmt.Errorf("invalid gas limit per report: %d", plugin.Config.GasLimitPerReport)
-	}
-
 	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw); err != nil {
 		return nil, err
 	}
