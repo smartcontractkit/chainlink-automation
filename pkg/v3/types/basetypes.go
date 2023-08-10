@@ -136,10 +136,13 @@ func (r CheckResult) Validate() error {
 	if r.Eligible && r.Retryable {
 		return fmt.Errorf("check result cannot be both eligible and retryable")
 	}
-
+	// TODO: This should be checked only if eligible
 	if r.GasAllocated == 0 {
 		return fmt.Errorf("gas allocated cannot be zero")
 	}
+
+	// TODO: add validation for upkeepType and presence of trigger extension
+	// TODO: add range validation on linkNative and fasGas (uint256)
 
 	return nil
 }

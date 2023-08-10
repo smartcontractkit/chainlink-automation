@@ -121,7 +121,6 @@ func newPlugin(
 			ltFlow.ProcessOutcome,
 			cFlow.ProcessOutcome,
 			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
-			prebuild.NewCoordinateBlockHook(is, ms).RunHook,
 		},
 		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
 			build.NewAddFromStaging(rs, logger).RunHook,

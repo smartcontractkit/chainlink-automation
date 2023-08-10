@@ -6,15 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestAutomationObservation(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationObservation{
-		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata:     map[ObservationMetadataKey]interface{}{},
+		Metadata: map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
 				UpkeepID:    [32]byte{111},
@@ -26,8 +24,7 @@ func TestAutomationObservation(t *testing.T) {
 	}
 
 	expected := AutomationObservation{
-		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
-		Metadata:     map[ObservationMetadataKey]interface{}{},
+		Metadata: map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
 				UpkeepID:    [32]byte{111},
@@ -51,18 +48,6 @@ func TestAutomationObservation(t *testing.T) {
 }
 
 func TestValidateAutomationObservation(t *testing.T) {
-	t.Run("invalid instructions", func(t *testing.T) {
-		testData := AutomationObservation{
-			Instructions: []instructions.Instruction{
-				"invalid instruction",
-			},
-		}
-
-		err := ValidateAutomationObservation(testData)
-
-		assert.ErrorIs(t, err, instructions.ErrInvalidInstruction, "invalid instruction should return validation error")
-	})
-
 	t.Run("invalid metadata key", func(t *testing.T) {
 		testData := AutomationObservation{
 			Metadata: map[ObservationMetadataKey]interface{}{
@@ -97,9 +82,6 @@ func TestValidateAutomationObservation(t *testing.T) {
 
 	t.Run("no error on valid", func(t *testing.T) {
 		testData := AutomationObservation{
-			Instructions: []instructions.Instruction{
-				instructions.DoCoordinateBlock,
-			},
 			Metadata: map[ObservationMetadataKey]interface{}{
 				BlockHistoryObservationKey: ocr2keepers.BlockKey{
 					Number: 3,

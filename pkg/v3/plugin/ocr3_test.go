@@ -39,7 +39,6 @@ func TestObservation(t *testing.T) {
 
 	// Define a mock build hook function for testing build hooks
 	mockBuildHook := func(observation *ocr2keepersv3.AutomationObservation) error {
-		assert.Equal(t, 0, len(observation.Instructions))
 		return nil
 	}
 
@@ -54,7 +53,7 @@ func TestObservation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert that the returned observation matches the expected encoded outcome
-	expectedEncodedOutcome := []byte(`{"Instructions":null,"Metadata":{},"Performable":null}`)
+	expectedEncodedOutcome := []byte(`{"Metadata":{},"Performable":null}`)
 	assert.Equal(t, types.Observation(expectedEncodedOutcome), observation)
 }
 
