@@ -72,9 +72,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 	}
 
 	// Create new AutomationObservation
-	observation := ocr2keepersv3.AutomationObservation{
-		Metadata: make(map[ocr2keepersv3.ObservationMetadataKey]interface{}),
-	}
+	observation := ocr2keepersv3.AutomationObservation{}
 
 	// Execute build hooks
 	plugin.Logger.Printf("running build hooks")
@@ -85,7 +83,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.Out
 		}
 	}
 
-	plugin.Logger.Printf("built an observation with %d performables", len(observation.Performable))
+	plugin.Logger.Printf("built an observation in sequence %d with %d performables, %d upkeep proposals and %d block history", outcome.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 
 	// Encode the observation to bytes
 	encoded, err := observation.Encode()
@@ -108,64 +106,41 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
 	p := newPerformables(plugin.F + 1)
-	c := newCoordinateBlock(len(attributedObservations) / 2)
-	s := newSamples(OutcomeSamplesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	r := newRecoverables(plugin.F + 1)
+	c := newCoordinatedProposals()
 
 	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
 		if err != nil {
-			return nil, err
+			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
+
+			// Ignore this observation and continue with further observations. It is expected we will get
+			// atleast f+1 valid observations
+			continue
 		}
 
 		if err := ocr2keepersv3.ValidateAutomationObservation(observation); err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
 
-			// if the validation for an observation fails at this point, discard
-			// the observation and move to the next one
+			// Ignore this observation and continue with further observations. It is expected we will get
+			// atleast f+1 valid observations
 			continue
 		}
 
-		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables",
-			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable))
+		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables, %d upkeep proposals and %d block history",
+			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 
 		p.add(observation)
 		c.add(observation)
-		s.add(observation)
-		r.add(observation)
 	}
 
 	outcome := ocr2keepersv3.AutomationOutcome{
-		BasicOutcome: ocr2keepersv3.BasicOutcome{
-			Metadata: make(map[ocr2keepersv3.OutcomeMetadataKey]interface{}),
-		},
+		BasicOutcome: ocr2keepersv3.BasicOutcome{},
 	}
-
 	p.set(&outcome)
 	c.set(&outcome)
-	s.set(&outcome)
-	r.set(&outcome)
 
-	var previous *ocr2keepersv3.AutomationOutcome
-	if outctx.SeqNr != 1 {
-		prev, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
-		if err != nil {
-			return nil, err
-		}
-
-		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(prev); err != nil {
-			return nil, err
-		}
-
-		previous = &prev
-	}
-
-	// set the latest value in the history
-	UpdateHistory(previous, &outcome, OutcomeHistoryLimit)
-
-	plugin.Logger.Printf("returning outcome with %d results", len(outcome.Performable))
+	plugin.Logger.Printf("returning outcome with %d performables", len(outcome.Performable))
 
 	return outcome.Encode()
 }

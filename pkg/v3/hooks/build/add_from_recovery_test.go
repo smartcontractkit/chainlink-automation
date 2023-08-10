@@ -38,24 +38,15 @@ func TestAddFromRecoveryHook(t *testing.T) {
 	mStore.Set(store.ProposalRecoveryMetadata, cache)
 
 	hook := NewAddFromRecoveryHook(mStore)
-	observation := &ocr2keepersv3.AutomationObservation{
-		Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{},
-	}
+	observation := &ocr2keepersv3.AutomationObservation{}
 
 	assert.NoError(t, hook.RunHook(observation), "no error from running hook")
-	assert.Len(
-		t,
-		observation.Metadata[ocr2keepersv3.RecoveryProposalObservationKey].([]ocr2keepers.CoordinatedProposal),
-		2,
-		"observation proposals should match expected length")
 }
 
 func TestAddFromRecoveryHook_Error(t *testing.T) {
 	mStore := store.NewMetadata(nil)
 	hook := NewAddFromRecoveryHook(mStore)
-	observation := &ocr2keepersv3.AutomationObservation{
-		Metadata: map[ocr2keepersv3.ObservationMetadataKey]interface{}{},
-	}
+	observation := &ocr2keepersv3.AutomationObservation{}
 
 	assert.ErrorIs(t, hook.RunHook(observation), store.ErrMetadataUnavailable, "error from running hook")
 }

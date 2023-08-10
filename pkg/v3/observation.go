@@ -36,8 +36,9 @@ func ValidateObservationMetadataKey(key ObservationMetadataKey) error {
 // as different nodes would upgrade at different times and would need to understand
 // each other's observations in the meantime
 type AutomationObservation struct {
-	Metadata    map[ObservationMetadataKey]interface{}
-	Performable []ocr2keepers.CheckResult
+	UpkeepProposals []ocr2keepers.CoordinatedProposal
+	BlockHistory    ocr2keepers.BlockHistory
+	Performable     []ocr2keepers.CheckResult
 }
 
 func (observation AutomationObservation) Encode() ([]byte, error) {
@@ -45,39 +46,19 @@ func (observation AutomationObservation) Encode() ([]byte, error) {
 }
 
 func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
-	type raw struct {
-		Metadata    map[string]json.RawMessage
-		Performable []ocr2keepers.CheckResult
-	}
-
-	var (
-		obs    AutomationObservation
-		rawObs raw
-	)
-
-	if err := json.Unmarshal(data, &rawObs); err != nil {
-		return obs, err
-	}
-
-	metadata := make(map[ObservationMetadataKey]interface{})
-	obs.Metadata = metadata
-	obs.Performable = rawObs.Performable
-
-	return obs, nil
+	ao := AutomationObservation{}
+	err := json.Unmarshal(data, &ao)
+	return ao, err
 }
 
 func ValidateAutomationObservation(o AutomationObservation) error {
-	for key := range o.Metadata {
-		if err := ValidateObservationMetadataKey(key); err != nil {
-			return err
-		}
-	}
-
+	// TODO: Validate sizes of upkeepProposals, BlockHistory, Performables
 	for _, res := range o.Performable {
 		if err := res.Validate(); err != nil {
 			return err
 		}
 	}
+	// TODO: Validate upkeepProposals and blockHistory
 
 	return nil
 }

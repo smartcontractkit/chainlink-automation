@@ -12,7 +12,6 @@ import (
 func TestAutomationObservation(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationObservation{
-		Metadata: map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
 				UpkeepID:    [32]byte{111},
@@ -24,7 +23,6 @@ func TestAutomationObservation(t *testing.T) {
 	}
 
 	expected := AutomationObservation{
-		Metadata: map[ObservationMetadataKey]interface{}{},
 		Performable: []ocr2keepers.CheckResult{
 			{
 				UpkeepID:    [32]byte{111},
@@ -49,11 +47,7 @@ func TestAutomationObservation(t *testing.T) {
 
 func TestValidateAutomationObservation(t *testing.T) {
 	t.Run("invalid metadata key", func(t *testing.T) {
-		testData := AutomationObservation{
-			Metadata: map[ObservationMetadataKey]interface{}{
-				"invalid key": "string",
-			},
-		}
+		testData := AutomationObservation{}
 
 		err := ValidateAutomationObservation(testData)
 
@@ -82,11 +76,6 @@ func TestValidateAutomationObservation(t *testing.T) {
 
 	t.Run("no error on valid", func(t *testing.T) {
 		testData := AutomationObservation{
-			Metadata: map[ObservationMetadataKey]interface{}{
-				BlockHistoryObservationKey: ocr2keepers.BlockKey{
-					Number: 3,
-				},
-			},
 			Performable: []ocr2keepers.CheckResult{
 				{
 					Eligible:     true,

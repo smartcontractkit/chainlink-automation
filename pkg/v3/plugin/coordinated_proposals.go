@@ -8,42 +8,25 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type samples struct {
-	limit        int
-	allValues    []ocr2keepers.UpkeepIdentifier
-	randomSource [16]byte
+type coordinatedProposals struct {
+	allProposals    []ocr2keepers.CoordinatedProposal
+	allBlockHistory []ocr2keepers.BlockHistory
 }
 
-func newSamples(limit int, rSrc [16]byte) *samples {
-	return &samples{
-		limit:        limit,
-		allValues:    []ocr2keepers.UpkeepIdentifier{},
-		randomSource: rSrc,
-	}
+func newCoordinatedProposals() *coordinatedProposals {
+	return &coordinatedProposals{}
 }
 
-func (s *samples) add(observation ocr2keepersv3.AutomationObservation) {
-	rawValues, ok := observation.Metadata[ocr2keepersv3.SampleProposalObservationKey]
-	if !ok {
-		return
-	}
-
-	samples, ok := rawValues.([]ocr2keepers.UpkeepIdentifier)
-	if !ok {
-		return
-	}
-
-	s.allValues = append(s.allValues, samples...)
+func (c *coordinatedProposals) add(ao ocr2keepersv3.AutomationObservation) {
+	c.allProposals = append(c.allProposals, ao.UpkeepProposals...)
+	c.allBlockHistory = append(c.allBlockHistory, ao.BlockHistory)
 }
 
-func (s *samples) set(outcome *ocr2keepersv3.AutomationOutcome) {
-	final := dedupeShuffleObservations(s.allValues, s.randomSource)
-
-	if len(final) > s.limit {
-		final = final[:s.limit]
-	}
-
-	outcome.Metadata[ocr2keepersv3.CoordinatedSamplesProposalKey] = final
+func (c *coordinatedProposals) set(outcome *ocr2keepersv3.AutomationOutcome) {
+	// Find latest agreed block from allBlockHistory (with reportBlockLag applied)
+	// Filter allProposals workID from existing outcome proposals
+	// Remove last outcome.CoordinatedProposals if over limit
+	// Append allProposals with latest agreed block to outcome.CoordinatedProposals
 }
 
 func dedupeShuffleObservations(upkeepIds []ocr2keepers.UpkeepIdentifier, keyRandSource [16]byte) []ocr2keepers.UpkeepIdentifier {

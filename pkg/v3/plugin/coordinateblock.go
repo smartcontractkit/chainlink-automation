@@ -26,28 +26,7 @@ type heightHash struct {
 	hash   [32]byte
 }
 
-func (p *coordinateBlock) add(observation ocr2keepersv3.AutomationObservation) {
-	rawHistory, ok := observation.Metadata[ocr2keepersv3.BlockHistoryObservationKey]
-	if !ok {
-		return
-	}
-
-	history, ok := rawHistory.(ocr2keepers.BlockHistory)
-	if !ok {
-		return
-	}
-
-	for _, key := range history {
-		// TODO: don't use values at index
-		height := heightHash{key.Number, key.Hash}
-
-		if _, present := p.seen[height]; !present {
-			p.seen[height] = struct{}{}
-			p.recent[height]++
-		}
-	}
-}
-
+// TODO: Use this logic within cootdinated_proposal
 func (p *coordinateBlock) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	var (
 		mostRecent heightHash

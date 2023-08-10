@@ -15,6 +15,7 @@ func NewAddFromRecoveryHook(ms *store.Metadata) *addFromRecoveryHook {
 }
 
 func (h *addFromRecoveryHook) RunHook(obs *ocr2keepersv3.AutomationObservation) error {
+	// TODO: add limit and random seed here
 	cache, err := store.RecoveryProposalCacheFromMetadata(h.metadata)
 	if err != nil {
 		return err
@@ -32,7 +33,7 @@ func (h *addFromRecoveryHook) RunHook(obs *ocr2keepersv3.AutomationObservation) 
 		proposals = append(proposals, v)
 	}
 
-	obs.Metadata[ocr2keepersv3.RecoveryProposalObservationKey] = proposals
+	// TODO: Append obs.CoordinatedProposals
 
 	return nil
 }

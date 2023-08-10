@@ -14,12 +14,13 @@ func NewAddFromSamplesHook(ms *store.Metadata) *addFromSamplesHook {
 }
 
 func (h *addFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation) error {
-	ids, err := store.SampleProposalsFromMetadata(h.metadata)
+	// TODO: add limit and random seed here
+	_, err := store.SampleProposalsFromMetadata(h.metadata)
 	if err != nil {
 		return err
 	}
 
-	obs.Metadata[ocr2keepersv3.SampleProposalObservationKey] = ids
+	// TODO: Append obs.CoordinatedProposals
 
 	return nil
 }
