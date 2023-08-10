@@ -249,7 +249,7 @@ func newLogTriggerFlow(
 		// create eligibility postprocessor with result store
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "log-trigger-eligible-postprocessor")),
 		// create retry postprocessor
-		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "log-trigger-retryable-postprocessor")),
 	)
 
 	// create observer
