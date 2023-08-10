@@ -23,6 +23,8 @@ type AutomationReportInfo struct{}
 type Coordinator interface {
 	ShouldAccept(ocr2keepers.ReportedUpkeep) bool
 	ShouldTransmit(ocr2keepers.ReportedUpkeep) bool
+	FilterResults([]ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error)
+	FilterProposals([]ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error)
 }
 
 type ocr3Plugin struct {

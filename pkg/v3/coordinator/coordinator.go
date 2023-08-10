@@ -85,20 +85,49 @@ func (c *coordinator) ShouldTransmit(reportedUpkeep ocr2keepers.ReportedUpkeep) 
 func (c *coordinator) PreProcess(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
 	res := make([]ocr2keepers.UpkeepPayload, 0)
 	for _, payload := range payloads {
-		if c.ShouldProcess(payload) {
+		if c.ShouldProcess(payload.WorkID, payload.UpkeepID, payload.Trigger) {
 			res = append(res, payload)
 		}
 	}
 	return res, nil
 }
 
-func (c *coordinator) ShouldProcess(payload ocr2keepers.UpkeepPayload) bool {
-	if v, ok := c.cache.Get(payload.WorkID); ok {
+func (c *coordinator) FilterResults(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+	res := make([]ocr2keepers.CheckResult, 0)
+	for _, result := range results {
+		if c.ShouldProcess(result.WorkID, result.UpkeepID, result.Trigger) {
+			res = append(res, result)
+		}
+	}
+	return res, nil
+}
+
+// TODO: Think through logic and simplify if possible
+func (c *coordinator) FilterProposals(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+	res := make([]ocr2keepers.CoordinatedProposal, 0)
+	for _, proposal := range proposals {
+		if v, ok := c.cache.Get(proposal.WorkID); ok {
+			if v.isTransmissionPending {
+				// This workID has a pending transmit, should not process it
+				continue
+			} else if c.upkeepTypeGetter(proposal.UpkeepID) == ocr2keepers.LogTrigger && v.transmitType == ocr2keepers.PerformEvent {
+				// For log triggers if workID was performed then skip
+				// However for conditional triggers, allow proposals to be made for newer check block numbers
+				continue
+			}
+		}
+		res = append(res, proposal)
+	}
+	return res, nil
+}
+
+func (c *coordinator) ShouldProcess(workID string, upkeepID ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) bool {
+	if v, ok := c.cache.Get(workID); ok {
 		if v.isTransmissionPending {
 			// This workID has a pending transmit, should not process it
 			return false
 		} else {
-			switch c.upkeepTypeGetter(payload.UpkeepID) {
+			switch c.upkeepTypeGetter(upkeepID) {
 			case ocr2keepers.LogTrigger:
 				switch v.transmitType {
 				case ocr2keepers.PerformEvent:
@@ -112,7 +141,7 @@ func (c *coordinator) ShouldProcess(payload ocr2keepers.UpkeepPayload) bool {
 				switch v.transmitType {
 				case ocr2keepers.PerformEvent:
 					// For conditionals, a particular workID should only be checked after its last perform
-					return payload.Trigger.BlockNumber > v.transmitBlockNumber
+					return trigger.BlockNumber > v.transmitBlockNumber
 				default:
 					// There was an attempt to check this workID, but it failed, so should be processed again
 					return true

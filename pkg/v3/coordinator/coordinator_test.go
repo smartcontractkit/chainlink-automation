@@ -637,7 +637,7 @@ func TestCoordinator_ShouldProcess(t *testing.T) {
 			for k, v := range tc.cacheInit {
 				c.cache.Set(k, v, util.DefaultCacheExpiration)
 			}
-			shouldProcess := c.ShouldProcess(tc.payload)
+			shouldProcess := c.ShouldProcess(tc.payload.WorkID, tc.payload.UpkeepID, tc.payload.Trigger)
 			assert.Equal(t, tc.shouldProcess, shouldProcess)
 		})
 	}
