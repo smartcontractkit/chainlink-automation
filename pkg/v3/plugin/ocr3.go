@@ -78,6 +78,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	}
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
+	// TODO add block history from store
 	plugin.AddFromStagingHook.RunHook(&observation, ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 	plugin.AddFromRecoveryHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 	plugin.AddFromSamplesHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
@@ -135,7 +136,6 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 
 	outcome := ocr2keepersv3.AutomationOutcome{}
 	prevOutcome := ocr2keepersv3.AutomationOutcome{}
-	// Copy coordinated proposals from previous outcome if present
 	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
 		// Decode the outcome to AutomationOutcome
 		ao, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
