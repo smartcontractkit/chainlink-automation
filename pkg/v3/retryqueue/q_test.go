@@ -2,6 +2,8 @@ package retryqueue
 
 import (
 	"context"
+	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -29,7 +31,7 @@ func TestRetryQueue_Sanity(t *testing.T) {
 	revert := overrideDefaults(defaultExpiration, retryInterval)
 	defer revert()
 
-	q := NewRetryQueue()
+	q := NewRetryQueue(log.New(io.Discard, "", 0))
 
 	err := q.Enqueue(
 		ocr2keepers.UpkeepPayload{WorkID: "1"},
@@ -71,7 +73,7 @@ func TestRetryQueue_Expiration(t *testing.T) {
 	revert := overrideDefaults(defaultExpiration, retryInterval)
 	defer revert()
 
-	q := NewRetryQueue()
+	q := NewRetryQueue(log.New(io.Discard, "", 0))
 
 	t.Run("dequeue before expiration", func(t *testing.T) {
 		err := q.Enqueue(
@@ -88,17 +90,17 @@ func TestRetryQueue_Expiration(t *testing.T) {
 	t.Run("dequeue after expiration", func(t *testing.T) {
 		<-time.After(defaultExpiration * 2)
 		require.Equal(t, 0, q.Size())
-		q.lock.Lock()
-		n := len(q.payloads)
-		q.lock.Unlock()
+		q.lock.RLock()
+		n := len(q.records)
+		q.lock.RUnlock()
 		require.Equal(t, 2, n)
 		items, err := q.Dequeue(2)
 		require.NoError(t, err)
 		require.Len(t, items, 0)
 		// ensure all expired payloads were removed during dequeue
-		q.lock.Lock()
-		n = len(q.payloads)
-		q.lock.Unlock()
+		q.lock.RLock()
+		n = len(q.records)
+		q.lock.RUnlock()
 		require.Equal(t, 0, n)
 	})
 }
