@@ -34,7 +34,7 @@ func TestNewMetadataStore(t *testing.T) {
 		assert.NoError(t, err)
 		go blockTicker.Start(context.Background())
 
-		store := NewMetadataStore(blockTicker)
+		store := NewMetadataStore(blockTicker, nil)
 
 		go func() {
 			err = store.Start(context.Background())
@@ -82,7 +82,7 @@ func TestNewMetadataStore(t *testing.T) {
 		assert.NoError(t, err)
 		go blockTicker.Start(context.Background())
 
-		store := NewMetadataStore(blockTicker)
+		store := NewMetadataStore(blockTicker, nil)
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		go func() {
@@ -109,14 +109,14 @@ func TestNewMetadataStore(t *testing.T) {
 	})
 
 	t.Run("starting an already started metadata store returns an error", func(t *testing.T) {
-		store := NewMetadataStore(nil)
+		store := NewMetadataStore(nil, nil)
 		store.running.Store(true)
 		err := store.Start(context.Background())
 		assert.Error(t, err)
 	})
 
 	t.Run("closing an already closed metadata store returns an error", func(t *testing.T) {
-		store := NewMetadataStore(nil)
+		store := NewMetadataStore(nil, nil)
 		store.running.Store(false)
 		err := store.Close()
 		assert.Error(t, err)
@@ -259,7 +259,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 				timeFn = oldTimeFn
 			}()
 
-			store := NewMetadataStore(nil)
+			store := NewMetadataStore(nil, nil)
 			for _, proposal := range tc.addProposals {
 				store.AddConditionalProposal(proposal...)
 			}
@@ -409,7 +409,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 				timeFn = oldTimeFn
 			}()
 
-			store := NewMetadataStore(nil)
+			store := NewMetadataStore(nil, nil)
 			for _, proposal := range tc.addProposals {
 				store.AddLogRecoveryProposal(proposal...)
 			}

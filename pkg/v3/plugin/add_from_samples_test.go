@@ -12,7 +12,7 @@ import (
 )
 
 func TestAddFromSamplesHook(t *testing.T) {
-	mStore := store.NewMetadataStore(nil)
+	mStore := store.NewMetadataStore(nil, nil)
 	coord := new(mocks.MockCoordinator)
 
 	samples := []ocr2keepers.CoordinatedProposal{
@@ -33,7 +33,7 @@ func TestAddFromSamplesHook(t *testing.T) {
 }
 
 func TestAddFromSamplesHook_Error(t *testing.T) {
-	mStore := store.NewMetadataStore(nil)
+	mStore := store.NewMetadataStore(nil, nil)
 	coord := new(mocks.MockCoordinator)
 
 	hook := NewAddFromSamplesHook(mStore, coord)

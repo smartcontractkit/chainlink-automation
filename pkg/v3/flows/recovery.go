@@ -91,7 +91,7 @@ func newRecoveryProposalFlow(
 	// 2. [done] from retry ticker as CheckResult
 	// 3. [done] from primary flow as CheckResult if retry fails
 	// 4. [todo] from timeouts of the result store
-	// TODO: add preprocessor to check that recoverable is already in metadata
+	preprocessors = append(preprocessors, &proposalFilterer{ms, ocr2keepers.LogTrigger})
 
 	// the recovery observer doesn't do any processing on the identifiers
 	// so this function is just a pass-through

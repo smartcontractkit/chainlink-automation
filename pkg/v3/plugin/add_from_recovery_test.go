@@ -12,7 +12,7 @@ import (
 )
 
 func TestAddFromRecoveryHook(t *testing.T) {
-	mStore := store.NewMetadataStore(nil)
+	mStore := store.NewMetadataStore(nil, nil)
 	coord := new(mocks.MockCoordinator)
 
 	expectedProps := []ocr2keepers.CoordinatedProposal{

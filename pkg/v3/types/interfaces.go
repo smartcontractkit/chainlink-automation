@@ -83,3 +83,24 @@ type Coordinator interface {
 	FilterResults([]CheckResult) ([]CheckResult, error)
 	FilterProposals([]CoordinatedProposal) ([]CoordinatedProposal, error)
 }
+
+//go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename metadatastore.generated.go
+type MetadataStore interface {
+	SetBlockHistory(BlockHistory)
+	GetBlockHistory() BlockHistory
+
+	// AddProposals(proposals ...CoordinatedProposal)
+	ViewProposals(utype UpkeepType) []CoordinatedProposal
+	// RemoveProposals(proposals ...CoordinatedProposal)
+
+	AddLogRecoveryProposal(...CoordinatedProposal)
+	ViewLogRecoveryProposal() []CoordinatedProposal
+	RemoveLogRecoveryProposal(...CoordinatedProposal)
+
+	AddConditionalProposal(...CoordinatedProposal)
+	ViewConditionalProposal() []CoordinatedProposal
+	RemoveConditionalProposal(...CoordinatedProposal)
+
+	Start(context.Context) error
+	Close() error
+}

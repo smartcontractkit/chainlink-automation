@@ -71,6 +71,7 @@ func newSampleProposalFlow(
 	rn ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
+	preprocessors = append(preprocessors, &proposalFilterer{ms, ocr2keepers.LogTrigger})
 	// create a metadata store postprocessor
 	// TODO: align postProcessor with metadata API
 	pp := postprocessors.NewAddSamplesToMetadataStorePostprocessor(ms)

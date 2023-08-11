@@ -26,6 +26,10 @@ type MetadataStore interface {
 	SetBlockHistory(types.BlockHistory)
 	GetBlockHistory() types.BlockHistory
 
+	AddProposals(proposals ...types.CoordinatedProposal)
+	ViewProposals(utype types.UpkeepType) []types.CoordinatedProposal
+	RemoveProposals(proposals ...types.CoordinatedProposal)
+
 	AddLogRecoveryProposal(...types.CoordinatedProposal)
 	ViewLogRecoveryProposal() []types.CoordinatedProposal
 	RemoveLogRecoveryProposal(...types.CoordinatedProposal)
@@ -57,15 +61,18 @@ type metadataStore struct {
 	logRecoveryMutex     sync.RWMutex
 	running              atomic.Bool
 	stopCh               chan struct{}
+
+	typeGetter types.UpkeepTypeGetter
 }
 
-func NewMetadataStore(blocks *tickers.BlockTicker) *metadataStore {
+func NewMetadataStore(blocks *tickers.BlockTicker, typeGetter types.UpkeepTypeGetter) *metadataStore {
 	return &metadataStore{
 		blocks:               blocks,
 		blockHistory:         types.BlockHistory{},
 		conditionalProposals: newOrderedMap(),
 		logRecoveryProposals: newOrderedMap(),
 		stopCh:               make(chan struct{}, 1),
+		typeGetter:           typeGetter,
 	}
 }
 
@@ -81,6 +88,39 @@ func (m *metadataStore) GetBlockHistory() types.BlockHistory {
 	defer m.blockHistoryMutex.RUnlock()
 
 	return m.blockHistory
+}
+
+func (m *metadataStore) AddProposals(proposals ...types.CoordinatedProposal) {
+	for _, proposal := range proposals {
+		switch m.typeGetter(proposal.UpkeepID) {
+		case types.LogTrigger:
+			m.AddLogRecoveryProposal(proposal)
+		case types.ConditionTrigger:
+			m.AddConditionalProposal(proposal)
+		}
+	}
+}
+
+func (m *metadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedProposal {
+	switch utype {
+	case types.LogTrigger:
+		return m.ViewLogRecoveryProposal()
+	case types.ConditionTrigger:
+		return m.ViewConditionalProposal()
+	default:
+		return nil
+	}
+}
+
+func (m *metadataStore) RemoveProposals(proposals ...types.CoordinatedProposal) {
+	for _, proposal := range proposals {
+		switch m.typeGetter(proposal.UpkeepID) {
+		case types.LogTrigger:
+			m.RemoveLogRecoveryProposal(proposal)
+		case types.ConditionTrigger:
+			m.RemoveConditionalProposal(proposal)
+		}
+	}
 }
 
 func (m *metadataStore) AddLogRecoveryProposal(proposals ...types.CoordinatedProposal) {

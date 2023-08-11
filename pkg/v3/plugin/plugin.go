@@ -47,7 +47,7 @@ func newPlugin(
 
 	// create the value stores
 	rs := resultstore.New(logger)
-	ms := store.NewMetadataStore(blockTicker)
+	ms := store.NewMetadataStore(blockTicker, upkeepTypeGetter)
 
 	// create a new runner instance
 	rn, err := runner.NewRunner(
