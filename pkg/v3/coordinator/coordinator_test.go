@@ -94,7 +94,7 @@ func TestNewCoordinator(t *testing.T) {
 		err := c.Close()
 		assert.NoError(t, err)
 
-		assert.True(t, strings.Contains(memLog.String(), "failed to check events"))
+		assert.True(t, strings.Contains(memLog.String(), "failed to check for transmit events"))
 	})
 
 	t.Run("if checking events takes longer than the loop cadence, a message is logged", func(t *testing.T) {
@@ -240,7 +240,7 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 				"workID1": {
 					checkBlockNumber:      ocr2keepers.BlockNumber(100),
 					transmitType:          ocr2keepers.PerformEvent,
-					isTransmissionPending: true,
+					isTransmissionPending: false,
 					transmitBlockNumber:   ocr2keepers.BlockNumber(99),
 				},
 			},
@@ -331,7 +331,8 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 			shouldAccept: true,
 			wantCache: map[string]record{
 				"workID1": {
-					checkBlockNumber: 200,
+					checkBlockNumber:      200,
+					isTransmissionPending: true,
 				},
 			},
 		},
@@ -356,8 +357,6 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 				"workID1": {
 					checkBlockNumber:      200,
 					isTransmissionPending: true,
-					transmitType:          ocr2keepers.PerformEvent,
-					transmitBlockNumber:   99,
 				},
 			},
 		},
@@ -414,24 +413,26 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 			},
 		},
 	} {
-		c := NewCoordinator(nil, nil, config.OffchainConfig{}, nil)
-		// initialise the cache
-		for k, v := range tc.cacheInit {
-			c.cache.Set(k, v, util.DefaultCacheExpiration)
-		}
-
-		shouldAccept := c.ShouldAccept(tc.reportedUpkeep)
-
-		assert.Equal(t, tc.shouldAccept, shouldAccept)
-
-		if len(tc.wantCache) > 0 {
-			assert.Equal(t, len(tc.wantCache), len(c.cache.Keys()))
-			for k, v := range tc.wantCache {
-				cachedValue, ok := c.cache.Get(k)
-				assert.True(t, ok)
-				assert.Equal(t, v, cachedValue)
+		t.Run(tc.name, func(t *testing.T) {
+			c := NewCoordinator(nil, nil, config.OffchainConfig{}, nil)
+			// initialise the cache
+			for k, v := range tc.cacheInit {
+				c.cache.Set(k, v, util.DefaultCacheExpiration)
 			}
-		}
+
+			shouldAccept := c.ShouldAccept(tc.reportedUpkeep)
+
+			assert.Equal(t, tc.shouldAccept, shouldAccept)
+
+			if len(tc.wantCache) > 0 {
+				assert.Equal(t, len(tc.wantCache), len(c.cache.Keys()))
+				for k, v := range tc.wantCache {
+					cachedValue, ok := c.cache.Get(k)
+					assert.True(t, ok)
+					assert.Equal(t, v, cachedValue)
+				}
+			}
+		})
 	}
 }
 func TestCoordinator_ShouldTransmit(t *testing.T) {
@@ -481,7 +482,7 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 			shouldTransmit: true,
 		},
 		{
-			name: "if the given work ID does exist in the cache, and the reported upkeep's check block is greater than the cached check block, we should log a message and not transmit",
+			name: "if the given work ID does exist in the cache, and the reported upkeep's check block is greater than the cached check block, we should not transmit",
 			cacheInit: map[string]record{
 				"workID1": {
 					checkBlockNumber: 100,
@@ -493,25 +494,25 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 					BlockNumber: 200,
 				},
 			},
-			expectsMessage: true,
-			wantMessage:    "libocr should call shouldAccept before shouldTransmit",
 			shouldTransmit: false,
 		},
 	} {
-		logger := log.New(io.Discard, "coordinator_test", 0)
-		var memLog bytes.Buffer
-		logger.SetOutput(&memLog)
+		t.Run(tc.name, func(t *testing.T) {
+			logger := log.New(io.Discard, "coordinator_test", 0)
+			var memLog bytes.Buffer
+			logger.SetOutput(&memLog)
 
-		c := NewCoordinator(nil, nil, config.OffchainConfig{}, logger)
-		// initialise the cache
-		for k, v := range tc.cacheInit {
-			c.cache.Set(k, v, util.DefaultCacheExpiration)
-		}
-		shouldTransmit := c.ShouldTransmit(tc.reportedUpkeep)
-		assert.Equal(t, tc.shouldTransmit, shouldTransmit)
-		if tc.expectsMessage {
-			assert.True(t, strings.Contains(memLog.String(), tc.wantMessage))
-		}
+			c := NewCoordinator(nil, nil, config.OffchainConfig{}, logger)
+			// initialise the cache
+			for k, v := range tc.cacheInit {
+				c.cache.Set(k, v, util.DefaultCacheExpiration)
+			}
+			shouldTransmit := c.ShouldTransmit(tc.reportedUpkeep)
+			assert.Equal(t, tc.shouldTransmit, shouldTransmit)
+			if tc.expectsMessage {
+				assert.True(t, strings.Contains(memLog.String(), tc.wantMessage))
+			}
+		})
 	}
 }
 
