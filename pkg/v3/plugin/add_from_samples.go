@@ -18,19 +18,23 @@ func NewAddFromSamplesHook(ms store.MetadataStore, coord Coordinator) AddFromSam
 }
 
 func (h *AddFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	// TODO: Read conditional samples from metadata store
 	conditionals := h.metadata.ViewConditionalProposal()
+	var err error
+	conditionals, err = h.coord.FilterProposals(conditionals)
+	if err != nil {
+		return err
+	}
 
-	// TODO: filter proposals using coordinator
 	// Shuffle using random seed
 	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(conditionals), func(i, j int) {
 		conditionals[i], conditionals[j] = conditionals[j], conditionals[i]
 	})
 
 	// take first limit
-	conditionals = conditionals[:limit]
+	if len(conditionals) > limit {
+		conditionals = conditionals[:limit]
+	}
 
-	// TODO: Append to obs.CoordinatedProposals
 	obs.UpkeepProposals = append(obs.UpkeepProposals, conditionals...)
 	return nil
 }

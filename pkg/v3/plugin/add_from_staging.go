@@ -3,7 +3,9 @@ package plugin
 import (
 	"fmt"
 	"log"
+	"math/rand"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -33,12 +35,22 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	if err != nil {
 		return err
 	}
-	// TODO: filter results using coordinator (filterResults), shuffle and limit
-	if len(results) > 0 {
-		hook.logger.Printf("adding %d results to observation", len(results))
-
-		obs.Performable = append(obs.Performable, results...)
+	results, err = hook.coord.FilterResults(results)
+	if err != nil {
+		return err
 	}
+	// Shuffle using random seed
+	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(results), func(i, j int) {
+		results[i], results[j] = results[j], results[i]
+	})
+
+	// take first limit
+	if len(results) > limit {
+		results = results[:limit]
+	}
+
+	hook.logger.Printf("adding %d results to observation", len(results))
+	obs.Performable = append(obs.Performable, results...)
 
 	return nil
 }

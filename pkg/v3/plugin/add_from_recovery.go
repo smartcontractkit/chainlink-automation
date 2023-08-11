@@ -18,9 +18,7 @@ func NewAddLogRecoveryProposalsHook(ms store.MetadataStore, coord Coordinator) A
 }
 
 func (h *AddLogRecoveryProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	// TODO: Read log recovery proposals from metadata store
 	proposals := h.metadata.ViewLogRecoveryProposal()
-	// TODO: filter proposals using coordinator
 	var err error
 	proposals, err = h.coord.FilterProposals(proposals)
 	if err != nil {
@@ -33,10 +31,10 @@ func (h *AddLogRecoveryProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObser
 	})
 
 	// take first limit
-	proposals = proposals[:limit]
+	if len(proposals) > limit {
+		proposals = proposals[:limit]
+	}
 
-	// TODO: Append to obs.CoordinatedProposals
 	obs.UpkeepProposals = append(obs.UpkeepProposals, proposals...)
-
 	return nil
 }
