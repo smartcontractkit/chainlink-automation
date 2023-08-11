@@ -37,18 +37,18 @@ type ocr3Plugin struct {
 	Logger                      *log.Logger
 }
 
+// NOTE: Any change to these values should keep backwards compatibility in mind
+// as different nodes would upgrade at different times and would need to
+// adhere to each others' limits
 const (
 	ObservationPerformablesLimit          = 100
 	ObservationLogRecoveryProposalsLimit  = 2
 	ObservationConditionalsProposalsLimit = 2
 	ObservationBlockHistoryLimit          = 256
-)
-
-const (
-	OutcomeAgreedPerformablesLimit = 100
-	OutcomeAgreedProposalsLimit    = 50
+	OutcomeAgreedPerformablesLimit        = 100
+	OutcomeAgreedProposalsLimit           = 50
 	// TODO: Derive this limit from max checkPipelineTime and deltaRound
-	OutcomeAgreedProposalsRoundHistoryLimit = 10
+	OutcomeAgreedProposalsRoundHistoryLimit = 20
 )
 
 func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
