@@ -114,20 +114,16 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	p := newPerformables(plugin.F+1, OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 	c := newCoordinatedProposals(plugin.F+1, OutcomeAgreedProposalsRoundHistoryLimit, OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
-	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
 		if err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
-
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations
 			continue
 		}
-
 		if err := ocr2keepersv3.ValidateAutomationObservation(observation); err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
-
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations
 			continue
@@ -159,7 +155,11 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	// Important to maintain the order here. Performables should be set before creating new proposals
 	c.set(&outcome, prevOutcome)
 
-	plugin.Logger.Printf("returning outcome with %d performables", len(outcome.AgreedPerformables))
+	newProposals := 0
+	if len(outcome.AgreedProposals) > 0 {
+		newProposals = len(outcome.AgreedProposals[0])
+	}
+	plugin.Logger.Printf("returning outcome with %d performables and %d new proposals", len(outcome.AgreedPerformables), newProposals)
 
 	return outcome.Encode()
 }
