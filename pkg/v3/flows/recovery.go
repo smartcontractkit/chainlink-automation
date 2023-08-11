@@ -79,8 +79,9 @@ func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.Upke
 
 func newRecoveryProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ms ocr2keepers.MetadataStore,
-	rp ocr2keepers.RecoverableProvider,
+	runner ocr2keepersv3.Runner,
+	metadataStore ocr2keepers.MetadataStore,
+	recoverableProvider ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
 	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
@@ -90,36 +91,21 @@ func newRecoveryProposalFlow(
 	// 2. [done] from retry ticker as CheckResult
 	// 3. [done] from primary flow as CheckResult if retry fails
 	// 4. [todo] from timeouts of the result store
-	preprocessors = append(preprocessors, &proposalFilterer{ms, ocr2keepers.LogTrigger})
-
-	// the recovery observer doesn't do any processing on the identifiers
-	// so this function is just a pass-through
-	// TODO: align
-	f := func(_ context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-		results := make([]ocr2keepers.CheckResult, len(payloads))
-		for i, id := range payloads {
-			results[i] = ocr2keepers.CheckResult{
-				WorkID:   id.WorkID,
-				UpkeepID: id.UpkeepID,
-				Trigger:  id.Trigger,
-			}
-		}
-		return results, nil
-	}
+	preprocessors = append(preprocessors, &proposalFilterer{metadataStore, ocr2keepers.LogTrigger})
 
 	// the recovery observer is just a pass-through to the metadata store
-	post := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms, typeGetter)
+	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(metadataStore, typeGetter)
 
-	obs := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult](
+	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		post,
-		f,
+		postprocessors,
+		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
-		return logRecoveryTick{logger: logger, logRecoverer: rp}, nil
+	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return logRecoveryTick{logger: logger, logRecoverer: recoverableProvider}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return timeTick

@@ -68,18 +68,18 @@ func newSampleProposalFlow(
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber ocr2keepers.BlockSubscriber,
 	ms ocr2keepers.MetadataStore,
-	rn ocr2keepersv3.Runner,
+	runner ocr2keepersv3.Runner,
 	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
 	preprocessors = append(preprocessors, &proposalFilterer{ms, ocr2keepers.LogTrigger})
-	pp := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms, typeGetter)
+	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms, typeGetter)
 
 	// create observer
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		pp,
-		rn,
+		postprocessors,
+		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
