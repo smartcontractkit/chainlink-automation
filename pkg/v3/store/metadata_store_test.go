@@ -54,8 +54,8 @@ func TestNewMetadataStore(t *testing.T) {
 
 		<-canClose
 
-		err = store.Close()
-		assert.NoError(t, err)
+		closeErr := store.Close()
+		assert.NoError(t, closeErr)
 
 		<-finished
 	})
