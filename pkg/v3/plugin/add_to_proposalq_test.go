@@ -63,7 +63,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 			logger := log.New(&logBuf, "", 0)
 
 			// Create the hook with the proposal queue and logger
-			addToProposalQHook := NewAddToProposalQ(proposalQ, logger)
+			addToProposalQHook := NewAddToProposalQHook(proposalQ, logger)
 
 			// Run the hook
 			err := addToProposalQHook.RunHook(tt.automationOutcome)
