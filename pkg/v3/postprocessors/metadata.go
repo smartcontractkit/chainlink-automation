@@ -13,7 +13,10 @@ type addToMetadataStorePostprocessor struct {
 }
 
 func NewAddPayloadToMetadataStorePostprocessor(store store.MetadataStore, typeGetter ocr2keepers.UpkeepTypeGetter) *addToMetadataStorePostprocessor {
-	return &addToMetadataStorePostprocessor{store: store}
+	return &addToMetadataStorePostprocessor{
+		store:      store,
+		typeGetter: typeGetter,
+	}
 }
 
 func (a *addToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {

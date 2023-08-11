@@ -4,9 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/mock"
-
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store/mocks"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 
@@ -14,7 +12,9 @@ import (
 )
 
 func TestMetadataAddPayload(t *testing.T) {
-	ms := new(mocks.MockMetadataStore)
+	metadataStore := store.NewMetadataStore(nil, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+		return ocr2keepers.LogTrigger
+	})
 	values := []ocr2keepers.UpkeepPayload{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
@@ -26,17 +26,19 @@ func TestMetadataAddPayload(t *testing.T) {
 					Index:  4,
 				},
 			},
+			WorkID: "workID1",
 		},
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 4,
+				BlockNumber: 5,
 				BlockHash:   [32]byte{0},
 				LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
 					TxHash: [32]byte{1},
-					Index:  4,
+					Index:  5,
 				},
 			},
+			WorkID: "workID2",
 		},
 	}
 
@@ -51,50 +53,42 @@ func TestMetadataAddPayload(t *testing.T) {
 					Index:  4,
 				},
 			},
+			WorkID: "workID1",
 		},
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 			Trigger: ocr2keepers.Trigger{
-				BlockNumber: 4,
+				BlockNumber: 5,
 				BlockHash:   [32]byte{0},
 				LogTriggerExtension: &ocr2keepers.LogTriggerExtension{
 					TxHash: [32]byte{1},
-					Index:  4,
+					Index:  5,
 				},
 			},
+			WorkID: "workID2",
 		},
 	}
 
-	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
-
-	ms.On("SetProposalLogRecovery", "{452312848583266388373324160190187140051835877600158453279131187530910662656 {0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] <nil>} }", mock.Anything, mock.Anything).Once()
-	ms.On("SetProposalLogRecovery", "{904625697166532776746648320380374280103671755200316906558262375061821325312 {0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] <nil>} }", mock.Anything, mock.Anything).Once()
-
-	pp := NewAddPayloadToMetadataStorePostprocessor(ms, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+	postprocessor := NewAddPayloadToMetadataStorePostprocessor(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 		return ocr2keepers.LogTrigger
 	})
-	err := pp.PostProcess(context.Background(), []ocr2keepers.CheckResult{
+
+	err := postprocessor.PostProcess(context.Background(), []ocr2keepers.CheckResult{
 		{
 			Eligible: true,
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			WorkID:   "workID1",
 		},
 		{
 			Eligible: true,
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:   "workID2",
 		},
 	}, values)
 
 	assert.NoError(t, err, "no error expected from post processor")
 
-	ms.AssertExpectations(t)
-
-	result := make([]ocr2keepers.CoordinatedProposal, 0)
-	for _, key := range ar.Keys() {
-		v, _ := ar.Get(key)
-		result = append(result, v)
-	}
-
-	assert.Len(t, result, len(expected), "values in synced array should match input")
+	assert.Equal(t, len(metadataStore.ViewLogRecoveryProposal()), len(expected), "values in synced array should match input")
 }
 
 func TestMetadataAddSamples(t *testing.T) {
