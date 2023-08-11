@@ -75,16 +75,16 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	added := 0
 	for _, r := range results {
-		_, ok := s.data[r.WorkID]
+		v, ok := s.data[r.WorkID]
 		if !ok {
-			added++
 			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
-
-			s.lggr.Printf("result added for upkeep id '%s' and trigger '%s'", r.UpkeepID.String(), r.WorkID)
+			s.lggr.Printf("result added for upkeep id '%s' and trigger '%+v'", r.UpkeepID.String(), r.Trigger)
+		} else if v.data.Trigger.BlockNumber < r.Trigger.BlockNumber {
+			// result is newer -> replace existing data
+			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
+			s.lggr.Printf("result updated for upkeep id '%s' to higher check block from (%d) to trigger '%+v'", r.UpkeepID.String(), v.data.Trigger.BlockNumber, r.Trigger)
 		}
-		// if the element is already exists, we do noting
 	}
 }
 
