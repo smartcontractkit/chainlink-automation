@@ -798,6 +798,305 @@ func TestNewCoordinator_Preprocess(t *testing.T) {
 	}
 }
 
+func TestCoordinator_FilterResults(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+		cacheInit        map[string]record
+		results          []ocr2keepers.CheckResult
+		wantResults      []ocr2keepers.CheckResult
+		shouldProcess    bool
+	}{
+		{
+			name: "if the given work ID does not exist in the cache, results are included",
+			results: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+				},
+			},
+			wantResults: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+				},
+			},
+		},
+		{
+			name: "if the given work ID does exist in the cache, and is pending transmission, results are not included",
+			results: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+				},
+			},
+			cacheInit: map[string]record{
+				"workID1": {
+					isTransmissionPending: true,
+				},
+			},
+			wantResults: []ocr2keepers.CheckResult{},
+		},
+		{
+			name: "work ID exists, is not pending transmission, transmit type is perform, and upkeep is log trigger, results are not included",
+			results: []ocr2keepers.CheckResult{
+				{WorkID: "workID1"},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.LogTrigger
+			},
+			cacheInit: map[string]record{
+				"workID1": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.PerformEvent,
+				},
+			},
+			wantResults: []ocr2keepers.CheckResult{},
+		},
+		{
+			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is log trigger, results are included",
+			results: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+				},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.LogTrigger
+			},
+			cacheInit: map[string]record{
+				"workID1": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.StaleReportEvent,
+				},
+			},
+			wantResults: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+				},
+			},
+		},
+		{
+			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is greater than the cache transmit block, and upkeep is conditional, results are included",
+			results: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 200,
+					},
+				},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			cacheInit: map[string]record{
+				"workID1": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.PerformEvent,
+					transmitBlockNumber:   100,
+				},
+			},
+			wantResults: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 200,
+					},
+				},
+			},
+		},
+		{
+			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is less than the cache transmit block, and upkeep is conditional, results are not included",
+			results: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+					Trigger: ocr2keepers.Trigger{
+						BlockNumber: 100,
+					},
+				},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			cacheInit: map[string]record{
+				"workID1": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.PerformEvent,
+					transmitBlockNumber:   200,
+				},
+			},
+			wantResults: []ocr2keepers.CheckResult{},
+		},
+		{
+			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is conditional, results are included",
+			results: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+				},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			cacheInit: map[string]record{
+				"workID1": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.StaleReportEvent,
+				},
+			},
+			wantResults: []ocr2keepers.CheckResult{
+				{
+					WorkID: "workID1",
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := NewCoordinator(nil, tc.upkeepTypeGetter, config.OffchainConfig{}, nil)
+			// initialise the cache
+			for k, v := range tc.cacheInit {
+				c.cache.Set(k, v, util.DefaultCacheExpiration)
+			}
+			results, err := c.FilterResults(tc.results)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantResults, results)
+		})
+	}
+}
+
+func TestCoordinator_FilterProposals(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+		cacheInit        map[string]record
+		results          []ocr2keepers.CoordinatedProposal
+		wantResults      []ocr2keepers.CoordinatedProposal
+		shouldProcess    bool
+	}{
+		{
+			name: "all proposals are included",
+			results: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+			},
+			wantResults: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+			},
+		},
+		{
+			name: "proposals with pending transmission are excluded",
+			results: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+				{
+					WorkID: "workID2",
+				},
+			},
+			cacheInit: map[string]record{
+				"workID2": {
+					isTransmissionPending: true,
+				},
+			},
+			wantResults: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+			},
+		},
+		{
+			name: "log proposals with a non pending transmission with a perform transmit type are excluded",
+			results: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+				{
+					WorkID: "workID2",
+				},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.LogTrigger
+			},
+			cacheInit: map[string]record{
+				"workID2": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.PerformEvent,
+				},
+			},
+			wantResults: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+			},
+		},
+		{
+			name: "condition trigger proposals with a non pending transmission with a perform transmit type are included",
+			results: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+				{
+					WorkID: "workID2",
+				},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			cacheInit: map[string]record{
+				"workID2": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.PerformEvent,
+				},
+			},
+			wantResults: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+				{
+					WorkID: "workID2",
+				},
+			},
+		},
+		{
+			name: "log proposals with a non pending transmission with a stale report transmit type are included",
+			results: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+				{
+					WorkID: "workID2",
+				},
+			},
+			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.LogTrigger
+			},
+			cacheInit: map[string]record{
+				"workID2": {
+					isTransmissionPending: false,
+					transmitType:          ocr2keepers.StaleReportEvent,
+				},
+			},
+			wantResults: []ocr2keepers.CoordinatedProposal{
+				{
+					WorkID: "workID1",
+				},
+				{
+					WorkID: "workID2",
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := NewCoordinator(nil, tc.upkeepTypeGetter, config.OffchainConfig{}, nil)
+			// initialise the cache
+			for k, v := range tc.cacheInit {
+				c.cache.Set(k, v, util.DefaultCacheExpiration)
+			}
+			results, err := c.FilterProposals(tc.results)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantResults, results)
+		})
+	}
+}
+
 type mockEventProvider struct {
 	GetLatestEventsFn func(context.Context) ([]ocr2keepers.TransmitEvent, error)
 }
