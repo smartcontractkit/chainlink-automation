@@ -1,4 +1,4 @@
-package plugin_test
+package hooks
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +71,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 			logger := log.New(&logBuf, "", 0)
 
 			// Create the hook with mock MetadataStore, mock UpkeepTypeGetter, and logger
-			removeFromMetadataHook := plugin.NewRemoveFromMetadataHook(mockMetadataStore, mockUpkeepTypeGetter, logger)
+			removeFromMetadataHook := NewRemoveFromMetadataHook(mockMetadataStore, mockUpkeepTypeGetter, logger)
 
 			// Prepare automation outcome with agreed proposals
 			automationOutcome := ocr2keepersv3.AutomationOutcome{

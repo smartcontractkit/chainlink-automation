@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
@@ -119,13 +120,13 @@ func newPlugin(
 		ConfigDigest:                digest,
 		ReportEncoder:               encoder,
 		Coordinator:                 coord,
-		RemoveFromStagingHook:       NewRemoveFromStagingHook(resultStore, logger),
-		RemoveFromMetadataHook:      NewRemoveFromMetadataHook(metadataStore, upkeepTypeGetter, logger),
-		AddToProposalQHook:          NewAddToProposalQHook(proposalQ, logger),
-		AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore, logger),
-		AddFromStagingHook:          NewAddFromStagingHook(resultStore, coord, logger),
-		AddConditionalSamplesHook:   NewAddConditionalSamplesHook(metadataStore, coord, logger),
-		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coord, logger),
+		RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+		RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, upkeepTypeGetter, logger),
+		AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQ, logger),
+		AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+		AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coord, logger),
+		AddConditionalSamplesHook:   hooks.NewAddConditionalSamplesHook(metadataStore, coord, logger),
+		AddLogRecoveryProposalsHook: hooks.NewAddLogRecoveryProposalsHook(metadataStore, coord, logger),
 		Services:                    recoverSvcs,
 		Config:                      conf,
 		F:                           f,

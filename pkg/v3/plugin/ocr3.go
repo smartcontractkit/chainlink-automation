@@ -13,6 +13,7 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -23,13 +24,13 @@ type ocr3Plugin struct {
 	ConfigDigest                types.ConfigDigest
 	ReportEncoder               ocr2keepers.Encoder
 	Coordinator                 ocr2keepers.Coordinator
-	RemoveFromStagingHook       RemoveFromStagingHook
-	RemoveFromMetadataHook      RemoveFromMetadataHook
-	AddToProposalQHook          AddToProposalQHook
-	AddBlockHistoryHook         AddBlockHistoryHook
-	AddFromStagingHook          AddFromStagingHook
-	AddConditionalSamplesHook   AddConditionalSamplesHook
-	AddLogRecoveryProposalsHook AddLogRecoveryProposalsHook
+	RemoveFromStagingHook       hooks.RemoveFromStagingHook
+	RemoveFromMetadataHook      hooks.RemoveFromMetadataHook
+	AddToProposalQHook          hooks.AddToProposalQHook
+	AddBlockHistoryHook         hooks.AddBlockHistoryHook
+	AddFromStagingHook          hooks.AddFromStagingHook
+	AddConditionalSamplesHook   hooks.AddConditionalSamplesHook
+	AddLogRecoveryProposalsHook hooks.AddLogRecoveryProposalsHook
 	Services                    []service.Recoverable
 	Config                      config.OffchainConfig
 	F                           int

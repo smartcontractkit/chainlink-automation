@@ -1,4 +1,4 @@
-package plugin
+package hooks
 
 import (
 	"io"
