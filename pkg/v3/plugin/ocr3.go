@@ -33,6 +33,7 @@ type ocr3Plugin struct {
 	Coordinator                 Coordinator
 	RemoveFromStagingHook       RemoveFromStagingHook
 	RemoveFromMetadataHook      RemoveFromMetadataHook
+	AddToProposalQHook          AddToProposalQHook
 	AddBlockHistoryHook         AddBlockHistoryHook
 	AddFromStagingHook          AddFromStagingHook
 	AddFromSamplesHook          AddFromSamplesHook
@@ -78,7 +79,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		// Execute pre-build hooks
 		plugin.RemoveFromStagingHook.RunHook(automationOutcome)
 		plugin.RemoveFromMetadataHook.RunHook(automationOutcome)
-		// TODO Add coordinateFlow.ProcessOutcome
+		plugin.AddToProposalQHook.RunHook(automationOutcome)
 	}
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}

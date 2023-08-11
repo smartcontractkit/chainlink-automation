@@ -110,6 +110,7 @@ func newPlugin(
 		AddFromStagingHook:          NewAddFromStaging(rs, logger, coord),
 		AddFromSamplesHook:          NewAddFromSamplesHook(ms, coord),
 		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(ms, coord),
+		AddToProposalQHook:          NewAddToProposalQ(proposalQ, logger),
 		AddBlockHistoryHook:         NewAddBlockHistoryHook(ms),
 		Services:                    recoverSvcs,
 		Config:                      conf,
