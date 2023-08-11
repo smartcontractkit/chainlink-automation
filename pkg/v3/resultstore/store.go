@@ -32,6 +32,8 @@ type resultStore struct {
 	lock sync.RWMutex
 }
 
+var _ ocr2keepers.ResultStore = (*resultStore)(nil)
+
 func New(lggr *log.Logger) *resultStore {
 	return &resultStore{
 		lggr:  log.New(lggr.Writer(), fmt.Sprintf("[%s | result-store]", telemetry.ServiceName), telemetry.LogPkgStdFlags),

@@ -28,6 +28,8 @@ type coordinator struct {
 	chStop               chan struct{}
 }
 
+var _ ocr2keepers.Coordinator = (*coordinator)(nil)
+
 type record struct {
 	checkBlockNumber      ocr2keepers.BlockNumber
 	isTransmissionPending bool // false = transmitted
