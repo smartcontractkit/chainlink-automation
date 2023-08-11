@@ -15,6 +15,9 @@ func NewAddBlockHistoryHook(ms store.MetadataStore) AddBlockHistoryHook {
 
 func (h *AddBlockHistoryHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int) error {
 	blockHistory := h.metadata.GetBlockHistory()
-	obs.BlockHistory = blockHistory[:limit]
+	if len(blockHistory) > limit {
+		blockHistory = blockHistory[:limit]
+	}
+	obs.BlockHistory = blockHistory
 	return nil
 }
