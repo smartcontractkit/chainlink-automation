@@ -75,3 +75,11 @@ type ResultStore interface {
 	Remove(...string)
 	View() ([]CheckResult, error)
 }
+
+//go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename coordinator.generated.go
+type Coordinator interface {
+	ShouldAccept(ReportedUpkeep) bool
+	ShouldTransmit(ReportedUpkeep) bool
+	FilterResults([]CheckResult) ([]CheckResult, error)
+	FilterProposals([]CoordinatedProposal) ([]CoordinatedProposal, error)
+}

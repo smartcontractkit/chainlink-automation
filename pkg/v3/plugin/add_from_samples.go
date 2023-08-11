@@ -6,14 +6,15 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type AddFromSamplesHook struct {
 	metadata store.MetadataStore
-	coord    Coordinator
+	coord    types.Coordinator
 }
 
-func NewAddFromSamplesHook(ms store.MetadataStore, coord Coordinator) AddFromSamplesHook {
+func NewAddFromSamplesHook(ms store.MetadataStore, coord types.Coordinator) AddFromSamplesHook {
 	return AddFromSamplesHook{metadata: ms, coord: coord}
 }
 

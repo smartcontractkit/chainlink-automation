@@ -19,18 +19,10 @@ import (
 
 type AutomationReportInfo struct{}
 
-//go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename coordinator.generated.go
-type Coordinator interface {
-	ShouldAccept(ocr2keepers.ReportedUpkeep) bool
-	ShouldTransmit(ocr2keepers.ReportedUpkeep) bool
-	FilterResults([]ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error)
-	FilterProposals([]ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error)
-}
-
 type ocr3Plugin struct {
 	ConfigDigest                types.ConfigDigest
 	ReportEncoder               ocr2keepers.Encoder
-	Coordinator                 Coordinator
+	Coordinator                 ocr2keepers.Coordinator
 	RemoveFromStagingHook       RemoveFromStagingHook
 	RemoveFromMetadataHook      RemoveFromMetadataHook
 	AddToProposalQHook          AddToProposalQHook

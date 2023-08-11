@@ -8,10 +8,11 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func NewAddFromStagingHook(store ocr2keepers.ResultStore, logger *log.Logger, coord Coordinator) AddFromStagingHook {
+func NewAddFromStagingHook(store ocr2keepers.ResultStore, logger *log.Logger, coord types.Coordinator) AddFromStagingHook {
 	return AddFromStagingHook{
 		store:  store,
 		coord:  coord,
@@ -22,7 +23,7 @@ func NewAddFromStagingHook(store ocr2keepers.ResultStore, logger *log.Logger, co
 type AddFromStagingHook struct {
 	store  ocr2keepers.ResultStore
 	logger *log.Logger
-	coord  Coordinator
+	coord  types.Coordinator
 }
 
 func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
