@@ -3,6 +3,7 @@ package stores
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -138,7 +139,8 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 				return ocr2keepers.UpkeepType(uid[15])
 			})
 			for _, p := range tc.toEnqueue {
-				q.Enqueue(p)
+				err := q.Enqueue(p)
+				assert.NoError(t, err)
 			}
 			results, err := q.Dequeue(tc.dequeueType, tc.dequeueCount)
 			require.NoError(t, err)

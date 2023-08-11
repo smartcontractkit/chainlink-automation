@@ -29,7 +29,8 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	t.Run("invalid instructions", func(t *testing.T) {
 		testData := AutomationOutcome{}
 
-		ValidateAutomationOutcome(testData)
+		err := ValidateAutomationOutcome(testData)
+		assert.NoError(t, err)
 	})
 
 	//t.Run("invalid check result", func(t *testing.T) {

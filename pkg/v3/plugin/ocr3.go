@@ -70,16 +70,30 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		}
 
 		// Execute pre-build hooks
-		plugin.RemoveFromStagingHook.RunHook(automationOutcome)
-		plugin.RemoveFromMetadataHook.RunHook(automationOutcome)
-		plugin.AddToProposalQHook.RunHook(automationOutcome)
+		if err := plugin.RemoveFromStagingHook.RunHook(automationOutcome); err != nil {
+			return nil, err
+		}
+		if err := plugin.RemoveFromMetadataHook.RunHook(automationOutcome); err != nil {
+			return nil, err
+		}
+		if err := plugin.AddToProposalQHook.RunHook(automationOutcome); err != nil {
+			return nil, err
+		}
 	}
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
-	plugin.AddBlockHistoryHook.RunHook(&observation, ObservationBlockHistoryLimit)
-	plugin.AddFromStagingHook.RunHook(&observation, ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	plugin.AddLogProposalsHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	plugin.AddConditionalProposalsHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	if err := plugin.AddBlockHistoryHook.RunHook(&observation, ObservationBlockHistoryLimit); err != nil {
+		return nil, err
+	}
+	if err := plugin.AddFromStagingHook.RunHook(&observation, ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+		return nil, err
+	}
+	if err := plugin.AddLogProposalsHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+		return nil, err
+	}
+	if err := plugin.AddConditionalProposalsHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+		return nil, err
+	}
 
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 

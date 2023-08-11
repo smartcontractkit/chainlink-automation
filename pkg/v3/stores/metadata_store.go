@@ -27,7 +27,7 @@ type expiringRecord struct {
 }
 
 func (r expiringRecord) expired(expr time.Duration) bool {
-	return time.Now().Sub(r.createdAt) > expr
+	return time.Since(r.createdAt) > expr
 }
 
 type metadataStore struct {

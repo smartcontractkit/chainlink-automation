@@ -746,10 +746,7 @@ func TestOcr3Plugin_ShouldAcceptAttestedReport(t *testing.T) {
 			},
 			coordinator: &mockCoordinator{
 				ShouldAcceptFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
-					if upkeep.WorkID == "workID3" {
-						return true
-					}
-					return false
+					return upkeep.WorkID == "workID3"
 				},
 			},
 			wantOK: true,
@@ -844,10 +841,7 @@ func TestOcr3Plugin_ShouldTransmitAcceptedReport(t *testing.T) {
 			},
 			coordinator: &mockCoordinator{
 				ShouldTransmitFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
-					if upkeep.WorkID == "workID3" {
-						return true
-					}
-					return false
+					return upkeep.WorkID == "workID3"
 				},
 			},
 			wantOK: true,

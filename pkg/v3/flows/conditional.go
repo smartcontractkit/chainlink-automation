@@ -14,13 +14,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-// ConditionalEligibility is a flow controller that surfaces conditional upkeeps
-type ConditionalEligibility struct {
-	builder ocr2keepers.PayloadBuilder
-	mStore  ocr2keepers.MetadataStore
-	logger  *log.Logger
-}
-
 func newSampleProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ratio ocr2keepers.Ratio,

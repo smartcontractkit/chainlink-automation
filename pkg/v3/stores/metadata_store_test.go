@@ -32,7 +32,10 @@ func TestNewMetadataStore(t *testing.T) {
 
 		blockTicker, err := tickers.NewBlockTicker(blockSubscriber)
 		assert.NoError(t, err)
-		go blockTicker.Start(context.Background())
+		go func() {
+			err2 := blockTicker.Start(context.Background())
+			assert.NoError(t, err2)
+		}()
 
 		store := NewMetadataStore(blockTicker, nil)
 
@@ -80,7 +83,11 @@ func TestNewMetadataStore(t *testing.T) {
 
 		blockTicker, err := tickers.NewBlockTicker(blockSubscriber)
 		assert.NoError(t, err)
-		go blockTicker.Start(context.Background())
+
+		go func() {
+			err2 := blockTicker.Start(context.Background())
+			assert.NoError(t, err2)
+		}()
 
 		store := NewMetadataStore(blockTicker, nil)
 

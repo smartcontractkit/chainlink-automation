@@ -61,13 +61,14 @@ func TestRetryFlow(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	retryQ.Enqueue(ocr2keepers.UpkeepPayload{
+	err := retryQ.Enqueue(ocr2keepers.UpkeepPayload{
 		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 		WorkID:   "0x1",
 	}, ocr2keepers.UpkeepPayload{
 		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
 		WorkID:   "0x2",
 	})
+	assert.NoError(t, err)
 
 	go func(svc service.Recoverable, ctx context.Context) {
 		assert.NoError(t, svc.Start(ctx))
