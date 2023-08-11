@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +15,10 @@ import (
 const (
 	logRecoveryExpiry = 24 * time.Hour
 	conditionalExpiry = 24 * time.Hour
+)
+
+var (
+	timeFn = time.Now
 )
 
 //go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/store" --case underscore --filename metadatastore.generated.go
@@ -46,9 +51,9 @@ type metadataStore struct {
 	blocks               *tickers.BlockTicker
 	blockHistory         types.BlockHistory
 	blockHistoryMutex    sync.RWMutex
-	conditionalProposals map[string]expiringRecord
+	conditionalProposals orderedMap
 	conditionalMutex     sync.RWMutex
-	logRecoveryProposals map[string]expiringRecord
+	logRecoveryProposals orderedMap
 	logRecoveryMutex     sync.RWMutex
 	running              atomic.Bool
 	stopCh               chan struct{}
@@ -58,8 +63,8 @@ func NewMetadataStore(blocks *tickers.BlockTicker) *metadataStore {
 	return &metadataStore{
 		blocks:               blocks,
 		blockHistory:         types.BlockHistory{},
-		conditionalProposals: map[string]expiringRecord{},
-		logRecoveryProposals: map[string]expiringRecord{},
+		conditionalProposals: newOrderedMap(),
+		logRecoveryProposals: newOrderedMap(),
 		stopCh:               make(chan struct{}, 1),
 	}
 }
@@ -83,10 +88,10 @@ func (m *metadataStore) AddLogRecoveryProposal(proposals ...types.CoordinatedPro
 	defer m.logRecoveryMutex.Unlock()
 
 	for _, proposal := range proposals {
-		m.logRecoveryProposals[proposal.WorkID] = expiringRecord{
-			createdAt: time.Now(),
+		m.logRecoveryProposals.Add(proposal.WorkID, expiringRecord{
+			createdAt: timeFn(),
 			proposal:  proposal,
-		}
+		})
 	}
 }
 
@@ -96,16 +101,16 @@ func (m *metadataStore) ViewLogRecoveryProposal() []types.CoordinatedProposal {
 
 	res := make([]types.CoordinatedProposal, 0)
 
-	for key, record := range m.logRecoveryProposals {
+	for _, key := range m.logRecoveryProposals.Keys() {
+		record := m.logRecoveryProposals.Get(key)
 		if record.expired(logRecoveryExpiry) {
-			delete(m.logRecoveryProposals, key)
+			m.logRecoveryProposals.Delete(key)
 		} else {
 			res = append(res, record.proposal)
 		}
 	}
 
 	return res
-
 }
 
 func (m *metadataStore) RemoveLogRecoveryProposal(proposals ...types.CoordinatedProposal) {
@@ -113,7 +118,7 @@ func (m *metadataStore) RemoveLogRecoveryProposal(proposals ...types.Coordinated
 	defer m.logRecoveryMutex.Unlock()
 
 	for _, proposal := range proposals {
-		delete(m.logRecoveryProposals, proposal.WorkID)
+		m.logRecoveryProposals.Delete(proposal.WorkID)
 	}
 }
 
@@ -122,10 +127,10 @@ func (m *metadataStore) AddConditionalProposal(proposals ...types.CoordinatedPro
 	defer m.conditionalMutex.Unlock()
 
 	for _, proposal := range proposals {
-		m.conditionalProposals[proposal.WorkID] = expiringRecord{
-			createdAt: time.Now(),
+		m.conditionalProposals.Add(proposal.WorkID, expiringRecord{
+			createdAt: timeFn(),
 			proposal:  proposal,
-		}
+		})
 	}
 }
 
@@ -135,9 +140,10 @@ func (m *metadataStore) ViewConditionalProposal() []types.CoordinatedProposal {
 
 	res := make([]types.CoordinatedProposal, 0)
 
-	for key, record := range m.conditionalProposals {
+	for _, key := range m.conditionalProposals.Keys() {
+		record := m.conditionalProposals.Get(key)
 		if record.expired(conditionalExpiry) {
-			delete(m.conditionalProposals, key)
+			m.conditionalProposals.Delete(key)
 		} else {
 			res = append(res, record.proposal)
 		}
@@ -152,11 +158,11 @@ func (m *metadataStore) RemoveConditionalProposal(proposals ...types.Coordinated
 	defer m.conditionalMutex.Unlock()
 
 	for _, proposal := range proposals {
-		delete(m.conditionalProposals, proposal.WorkID)
+		m.conditionalProposals.Delete(proposal.WorkID)
 	}
 }
 
-func (m *metadataStore) Start(_ context.Context) error {
+func (m *metadataStore) Start(ctx context.Context) error {
 	if m.running.Load() {
 		return fmt.Errorf("service already running")
 	}
@@ -167,6 +173,8 @@ func (m *metadataStore) Start(_ context.Context) error {
 		select {
 		case h := <-m.blocks.C:
 			m.SetBlockHistory(h)
+		case <-ctx.Done():
+			return m.Close()
 		case <-m.stopCh:
 			return nil
 		}
@@ -182,4 +190,44 @@ func (m *metadataStore) Close() error {
 	m.running.Store(false)
 
 	return nil
+}
+
+func newOrderedMap() orderedMap {
+	return orderedMap{
+		keys:   []string{},
+		values: map[string]expiringRecord{},
+	}
+}
+
+type orderedMap struct {
+	keys   []string
+	values map[string]expiringRecord
+}
+
+func (m *orderedMap) Add(key string, value expiringRecord) {
+	if _, ok := m.values[key]; ok {
+		m.values[key] = value
+	} else {
+		m.keys = append(m.keys, key)
+		m.values[key] = value
+	}
+}
+
+func (m *orderedMap) Get(key string) expiringRecord {
+	return m.values[key]
+}
+
+func (m *orderedMap) Keys() []string {
+	sort.Strings(m.keys)
+	return m.keys
+}
+
+func (m *orderedMap) Delete(key string) {
+	delete(m.values, key)
+	for i, v := range m.keys {
+		if v == key {
+			m.keys = append(m.keys[:i], m.keys[i+1:]...)
+			break
+		}
+	}
 }
