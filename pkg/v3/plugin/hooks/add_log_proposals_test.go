@@ -154,6 +154,7 @@ type mockMetadataStore struct {
 	types.MetadataStore
 	ViewLogRecoveryProposalFn func() []types.CoordinatedProposal
 	ViewConditionalProposalFn func() []types.CoordinatedProposal
+	GetBlockHistoryFn         func() types.BlockHistory
 }
 
 func (s *mockMetadataStore) ViewLogRecoveryProposal() []types.CoordinatedProposal {
@@ -164,11 +165,20 @@ func (s *mockMetadataStore) ViewConditionalProposal() []types.CoordinatedProposa
 	return s.ViewConditionalProposalFn()
 }
 
+func (s *mockMetadataStore) GetBlockHistory() types.BlockHistory {
+	return s.GetBlockHistoryFn()
+}
+
 type mockCoordinator struct {
 	types.Coordinator
 	FilterProposalsFn func([]types.CoordinatedProposal) ([]types.CoordinatedProposal, error)
+	FilterResultsFn   func([]types.CheckResult) ([]types.CheckResult, error)
 }
 
 func (s *mockCoordinator) FilterProposals(p []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
 	return s.FilterProposalsFn(p)
+}
+
+func (s *mockCoordinator) FilterResults(res []types.CheckResult) ([]types.CheckResult, error) {
+	return s.FilterResultsFn(res)
 }

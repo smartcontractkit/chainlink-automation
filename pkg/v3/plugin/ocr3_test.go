@@ -1,275 +1,260 @@
 package plugin
 
 import (
+	"bytes"
 	"context"
-	"io"
 	"log"
+	"strings"
 	"testing"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
-	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func TestObservation(t *testing.T) {
-	// Create an instance of ocr3 plugin
-	plugin := &ocr3Plugin{
-		Logger: log.New(io.Discard, "", 0),
-	}
-
-	// Create a sample outcome for decoding
-	outcome := ocr3types.OutcomeContext{
-		PreviousOutcome: []byte(`{"Instructions":["do coordinate block"],"Metadata":{"blockHistory":["4"]},"Performable":[]}`),
-	}
-
-	// Create a sample query for testing
-	query := types.Query{}
-
-	// Call the Observation function
-	observation, err := plugin.Observation(context.Background(), outcome, query)
-	assert.NoError(t, err)
-
-	// Assert that the returned observation matches the expected encoded outcome
-	expectedEncodedOutcome := []byte(`{"Metadata":{},"Performable":null}`)
-	assert.Equal(t, types.Observation(expectedEncodedOutcome), observation)
+func TestOcr3Plugin_Query(t *testing.T) {
+	plugin := &ocr3Plugin{}
+	query, err := plugin.Query(context.Background(), ocr3types.OutcomeContext{})
+	assert.Nil(t, query)
+	assert.Nil(t, err)
 }
 
 func TestOcr3Plugin_Outcome(t *testing.T) {
-	t.Run("malformed observations returns an error", func(t *testing.T) {
-		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin{
-			Logger: log.New(io.Discard, "", 0),
-		}
+	t.Run("first round processing, previous outcome will be nil, creates an observation with 2 performables, 2 proposals and 2 block history", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		logger := log.New(&logBuf, "ocr3-test-observation", 0)
 
-		// Create a sample outcome for decoding
-		outcomeContext := ocr3types.OutcomeContext{
-			PreviousOutcome: []byte(`{"Instructions":["instruction1"],"Metadata":{"key":"value"},"Performable":[]}`),
-		}
-
-		observations := []types.AttributedObservation{
-			{
-				Observation: []byte("malformed"),
+		metadataStore := &mockMetadataStore{
+			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
+				return ocr2keepers.BlockHistory{
+					{
+						Number: 1,
+					},
+					{
+						Number: 2,
+					},
+				}
+			},
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
+				return []ocr2keepers.CoordinatedProposal{
+					{
+						WorkID: "workID1",
+					},
+				}
+			},
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
+				return []ocr2keepers.CoordinatedProposal{
+					{
+						WorkID: "workID2",
+					},
+				}
 			},
 		}
 
-		outcome, err := plugin.Outcome(outcomeContext, nil, observations)
-		assert.Nil(t, outcome)
-		assert.Error(t, err)
+		resultStore := &mockResultStore{
+			ViewFn: func() ([]ocr2keepers.CheckResult, error) {
+				return []ocr2keepers.CheckResult{
+					{
+						WorkID:   "workID1",
+						Eligible: false,
+					},
+					{
+						WorkID:   "workID2",
+						Eligible: false,
+					},
+				}, nil
+			},
+		}
+
+		coordinator := &mockCoordinator{
+			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+				return results, nil
+			},
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+				return proposals, nil
+			},
+		}
+
+		plugin := &ocr3Plugin{
+			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
+			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
+			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
+			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			Logger:                      logger,
+		}
+
+		outcomeCtx := ocr3types.OutcomeContext{
+			PreviousOutcome: nil,
+		}
+
+		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
+		assert.Nil(t, err)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 2 performables, 2 upkeep proposals and 2 block history"))
 	})
 
-	// TODO disable this for now as outcomes will be reworked
-	//t.Run("given three observations, in which two are identical, one observations is added to the outcome", func(t *testing.T) {
-	//	// Create an instance of ocr3 plugin
-	//	plugin := &ocr3Plugin{
-	//		Logger: log.New(io.Discard, "", 0),
-	//	}
-	//
-	//	// Create a sample outcome for decoding
-	//	outcomeContext := ocr3types.OutcomeContext{
-	//		PreviousOutcome: []byte(`{"Instructions":["should coordinate block"],"Metadata":{"blockHistory":[]},"Performable":[]}`),
-	//	}
-	//
-	//	automationObservation1 := ocr2keepersv3.AutomationObservation{
-	//		Performable: []ocr2keepers.CheckResult{
-	//			{
-	//				Eligible:     true,
-	//				Retryable:    false,
-	//				GasAllocated: 10,
-	//				UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{4}),
-	//				Trigger: ocr2keepers.Trigger{
-	//					BlockNumber: 4,
-	//					BlockHash:   [32]byte{0},
-	//					LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-	//						LogTxHash: [32]byte{1},
-	//						Index:     4,
-	//					},
-	//				},
-	//			},
-	//		},
-	//	}
-	//	automationObservation2 := ocr2keepersv3.AutomationObservation{
-	//		Performable: []ocr2keepers.CheckResult{
-	//			{
-	//				Eligible:     true,
-	//				Retryable:    false,
-	//				GasAllocated: 10,
-	//				UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{4}),
-	//				Trigger: ocr2keepers.Trigger{
-	//					BlockNumber: 4,
-	//					BlockHash:   [32]byte{0},
-	//					LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-	//						LogTxHash: [32]byte{1},
-	//						Index:     4,
-	//					},
-	//				},
-	//			},
-	//		},
-	//	}
-	//	automationObservation3 := ocr2keepersv3.AutomationObservation{
-	//		Performable: []ocr2keepers.CheckResult{
-	//			{
-	//				Eligible:     true,
-	//				Retryable:    false,
-	//				GasAllocated: 10,
-	//				UpkeepID:     ocr2keepers.UpkeepIdentifier([32]byte{4}),
-	//				Trigger: ocr2keepers.Trigger{
-	//					BlockNumber: 4,
-	//					BlockHash:   [32]byte{0},
-	//					LogTriggerExtension: &ocr2keepers.LogTriggerExtenstion{
-	//						LogTxHash: [32]byte{1},
-	//						Index:     4,
-	//					},
-	//				},
-	//			},
-	//		},
-	//	}
-	//
-	//	obs1, err := automationObservation1.Encode()
-	//	assert.NoError(t, err)
-	//	obs2, err := automationObservation2.Encode()
-	//	assert.NoError(t, err)
-	//	obs3, err := automationObservation3.Encode()
-	//	assert.NoError(t, err)
-	//
-	//	observations := []types.AttributedObservation{
-	//		{
-	//			Observation: obs1,
-	//		},
-	//		{
-	//			Observation: obs2, // payload matches obs1, giving 2 counts of the same payload
-	//		},
-	//		{
-	//			Observation: obs3, // this single report instance won't reach the quorum threshold
-	//		},
-	//	}
-	//
-	//	outcome, err := plugin.Outcome(outcomeContext, nil, observations)
-	//	assert.NoError(t, err)
-	//
-	//	automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outcome)
-	//	assert.NoError(t, err)
-	//
-	//	// obs1 and obs2 are identical, so they will be considered the same result. obs3 doesn't reach the quorum threshold
-	//	assert.Len(t, automationOutcome.Performable, 1)
-	//})
+	t.Run("first round processing, previous outcome will be nil, creates an observation with 3 performables, 2 upkeep proposals and 3 block history", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+
+		metadataStore := &mockMetadataStore{
+			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
+				return ocr2keepers.BlockHistory{
+					{
+						Number: 1,
+					},
+					{
+						Number: 2,
+					},
+					{
+						Number: 3,
+					},
+				}
+			},
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
+				return []ocr2keepers.CoordinatedProposal{
+					{
+						WorkID: "workID1",
+					},
+				}
+			},
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
+				return []ocr2keepers.CoordinatedProposal{
+					{
+						WorkID: "workID2",
+					},
+				}
+			},
+		}
+
+		resultStore := &mockResultStore{
+			ViewFn: func() ([]ocr2keepers.CheckResult, error) {
+				return []ocr2keepers.CheckResult{
+					{
+						WorkID:   "workID1",
+						Eligible: false,
+					},
+					{
+						WorkID:   "workID2",
+						Eligible: false,
+					},
+					{
+						WorkID:   "workID3",
+						Eligible: false,
+					},
+				}, nil
+			},
+		}
+
+		coordinator := &mockCoordinator{
+			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+				return results, nil
+			},
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+				return proposals, nil
+			},
+		}
+
+		plugin := &ocr3Plugin{
+			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
+			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
+			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
+			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			Logger:                      logger,
+		}
+
+		outcomeCtx := ocr3types.OutcomeContext{
+			PreviousOutcome: nil,
+		}
+
+		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
+		assert.Nil(t, err)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 3 performables, 2 upkeep proposals and 3 block history"))
+	})
+
+	t.Run("first round processing, previous outcome will be nil, creates an observation with 3 performables, 0 upkeep proposals and 3 block history", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+
+		metadataStore := &mockMetadataStore{
+			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
+				return ocr2keepers.BlockHistory{
+					{
+						Number: 1,
+					},
+					{
+						Number: 2,
+					},
+					{
+						Number: 3,
+					},
+				}
+			},
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
+				return []ocr2keepers.CoordinatedProposal{}
+			},
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
+				return []ocr2keepers.CoordinatedProposal{}
+			},
+		}
+
+		resultStore := &mockResultStore{
+			ViewFn: func() ([]ocr2keepers.CheckResult, error) {
+				return []ocr2keepers.CheckResult{
+					{
+						WorkID:              "workID1",
+						IneligibilityReason: 1,
+						Eligible:            false,
+					},
+					{
+						WorkID:   "workID2",
+						Eligible: false,
+					},
+					{
+						WorkID:   "workID3",
+						Eligible: false,
+					},
+				}, nil
+			},
+		}
+
+		coordinator := &mockCoordinator{
+			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+				return results, nil
+			},
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+				return proposals, nil
+			},
+		}
+
+		plugin := &ocr3Plugin{
+			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
+			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
+			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
+			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			Logger:                      logger,
+		}
+
+		outcomeCtx := ocr3types.OutcomeContext{
+			PreviousOutcome: nil,
+		}
+
+		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
+		assert.Nil(t, err)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":1,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 3 performables, 0 upkeep proposals and 3 block history"))
+	})
+
 }
 
-func TestReports(t *testing.T) {
-	t.Run("1 report less than limit; 1 report per batch", func(t *testing.T) {
-		me := new(mocks2.MockEncoder)
+type mockResultStore struct {
+	ocr2keepers.ResultStore
+	ViewFn func() ([]ocr2keepers.CheckResult, error)
+}
 
-		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin{
-			Logger:        log.New(io.Discard, "", 0),
-			ReportEncoder: me,
-			Config: config.OffchainConfig{
-				GasOverheadPerUpkeep: 100_000,
-				GasLimitPerReport:    5_000_000,
-				MaxUpkeepBatchSize:   1,
-			},
-		}
-
-		outcome := ocr2keepersv3.AutomationOutcome{}
-
-		me.On("Encode", mock.Anything).Return([]byte(``), nil)
-
-		rawOutcome, err := outcome.Encode()
-		assert.NoError(t, err, "no error during encoding")
-
-		reports, err := plugin.Reports(2, rawOutcome)
-		assert.NoError(t, err, "no error from generating reports")
-		assert.Len(t, reports, 1, "report length should be 1")
-
-		me.AssertExpectations(t)
-	})
-
-	t.Run("2 reports less than limit; 1 report per batch", func(t *testing.T) {
-		me := new(mocks2.MockEncoder)
-
-		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin{
-			Logger:        log.New(io.Discard, "", 0),
-			ReportEncoder: me,
-			Config: config.OffchainConfig{
-				GasOverheadPerUpkeep: 100_000,
-				GasLimitPerReport:    5_000_000,
-				MaxUpkeepBatchSize:   1,
-			},
-		}
-
-		outcome := ocr2keepersv3.AutomationOutcome{}
-
-		me.On("Encode", mock.Anything).Return([]byte(``), nil).Times(2)
-
-		rawOutcome, err := outcome.Encode()
-		assert.NoError(t, err, "no error during encoding")
-
-		reports, err := plugin.Reports(2, rawOutcome)
-		assert.NoError(t, err, "no error from generating reports")
-		assert.Len(t, reports, 2, "report length should be 2")
-
-		me.AssertExpectations(t)
-	})
-
-	t.Run("3 reports less than limit; 2 report per batch", func(t *testing.T) {
-		me := new(mocks2.MockEncoder)
-
-		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin{
-			Logger:        log.New(io.Discard, "", 0),
-			ReportEncoder: me,
-			Config: config.OffchainConfig{
-				GasOverheadPerUpkeep: 100_000,
-				GasLimitPerReport:    5_000_000,
-				MaxUpkeepBatchSize:   2,
-			},
-		}
-
-		outcome := ocr2keepersv3.AutomationOutcome{}
-
-		me.On("Encode", mock.Anything, mock.Anything).Return([]byte(``), nil).Times(1)
-		me.On("Encode", mock.Anything).Return([]byte(``), nil).Times(1)
-
-		rawOutcome, err := outcome.Encode()
-		assert.NoError(t, err, "no error during encoding")
-
-		reports, err := plugin.Reports(2, rawOutcome)
-		assert.NoError(t, err, "no error from generating reports")
-		assert.Len(t, reports, 2, "report length should be 2")
-
-		me.AssertExpectations(t)
-	})
-
-	t.Run("gas allocated larger than report limit", func(t *testing.T) {
-		me := new(mocks2.MockEncoder)
-
-		// Create an instance of ocr3 plugin
-		plugin := &ocr3Plugin{
-			Logger:        log.New(io.Discard, "", 0),
-			ReportEncoder: me,
-			Config: config.OffchainConfig{
-				GasOverheadPerUpkeep: 100_000,
-				GasLimitPerReport:    5_000_000,
-				MaxUpkeepBatchSize:   1,
-			},
-		}
-
-		outcome := ocr2keepersv3.AutomationOutcome{}
-
-		// me.On("Encode", mock.Anything).Return([]byte(``), nil)
-
-		rawOutcome, err := outcome.Encode()
-		assert.NoError(t, err, "no error during encoding")
-
-		reports, err := plugin.Reports(2, rawOutcome)
-		assert.NoError(t, err, "no error from generating reports")
-		assert.Len(t, reports, 0, "report length should be 0")
-
-		me.AssertExpectations(t)
-	})
+func (s *mockResultStore) View() ([]ocr2keepers.CheckResult, error) {
+	return s.ViewFn()
 }

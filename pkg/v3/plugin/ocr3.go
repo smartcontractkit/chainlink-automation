@@ -84,13 +84,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 
 	// Encode the observation to bytes
-	encoded, err := observation.Encode()
-	if err != nil {
-		return nil, err
-	}
-
-	// Return the encoded bytes as ocr3 observation
-	return types.Observation(encoded), nil
+	return observation.Encode()
 }
 
 func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
