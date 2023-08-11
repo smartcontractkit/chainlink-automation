@@ -7,13 +7,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestRetryPostProcessor_PostProcess(t *testing.T) {
 	lggr := log.Default()
-	q := store.NewRetryQueue(lggr)
+	q := stores.NewRetryQueue(lggr)
 	processor := NewRetryablePostProcessor(q, lggr)
 
 	results := []ocr2keepers.CheckResult{

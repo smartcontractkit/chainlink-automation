@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMetadataAddPayload(t *testing.T) {
-	metadataStore := store.NewMetadataStore(nil, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+	metadataStore := stores.NewMetadataStore(nil, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 		return ocr2keepers.LogTrigger
 	})
 	values := []ocr2keepers.UpkeepPayload{

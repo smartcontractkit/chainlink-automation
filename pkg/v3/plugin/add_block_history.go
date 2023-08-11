@@ -2,14 +2,14 @@ package plugin
 
 import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type AddBlockHistoryHook struct {
-	metadata store.MetadataStore
+	metadata ocr2keepers.MetadataStore
 }
 
-func NewAddBlockHistoryHook(ms store.MetadataStore) AddBlockHistoryHook {
+func NewAddBlockHistoryHook(ms ocr2keepers.MetadataStore) AddBlockHistoryHook {
 	return AddBlockHistoryHook{metadata: ms}
 }
 

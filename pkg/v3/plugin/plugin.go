@@ -13,7 +13,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -43,8 +43,8 @@ func newPlugin(
 	}
 
 	// create the value stores
-	resultStore := store.New(logger)
-	metadataStore := store.NewMetadataStore(blockTicker, upkeepTypeGetter)
+	resultStore := stores.New(logger)
+	metadataStore := stores.NewMetadataStore(blockTicker, upkeepTypeGetter)
 
 	// create a new runner instance
 	runner, err := runner.NewRunner(
@@ -59,11 +59,11 @@ func newPlugin(
 	// create the event coordinator
 	coord := coordinator.NewCoordinator(events, upkeepTypeGetter, conf, logger)
 
-	retryQ := store.NewRetryQueue(logger)
+	retryQ := stores.NewRetryQueue(logger)
 
 	retrySvc := flows.NewRetryFlow(coord, resultStore, runner, retryQ, 5*time.Second, upkeepStateUpdater, logger)
 
-	proposalQ := store.NewProposalQueue(upkeepTypeGetter)
+	proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 
 	// initialize the log trigger eligibility flow
 	_, svcs := flows.NewLogTriggerEligibility(

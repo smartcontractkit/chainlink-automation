@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -57,7 +57,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 			upkeepTypeGetter := func(uid types.UpkeepIdentifier) types.UpkeepType {
 				return types.UpkeepType(uid[15])
 			}
-			proposalQ := store.NewProposalQueue(upkeepTypeGetter)
+			proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 
 			// Prepare mock logger
 			var logBuf bytes.Buffer

@@ -9,7 +9,6 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -31,7 +30,7 @@ func newFinalRecoveryFlow(
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
-	// create observer that only pushes results to result store. everything at
+	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
 	recoveryObserver := ocr2keepersv3.NewRunnableObserver(
@@ -80,7 +79,7 @@ func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.Upke
 
 func newRecoveryProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ms store.MetadataStore,
+	ms ocr2keepers.MetadataStore,
 	rp ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
 	typeGetter ocr2keepers.UpkeepTypeGetter,

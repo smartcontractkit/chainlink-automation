@@ -1,4 +1,4 @@
-package store
+package stores
 
 import (
 	"context"
@@ -20,27 +20,6 @@ const (
 var (
 	timeFn = time.Now
 )
-
-//go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/store" --case underscore --filename metadatastore.generated.go
-type MetadataStore interface {
-	SetBlockHistory(types.BlockHistory)
-	GetBlockHistory() types.BlockHistory
-
-	AddProposals(proposals ...types.CoordinatedProposal)
-	ViewProposals(utype types.UpkeepType) []types.CoordinatedProposal
-	RemoveProposals(proposals ...types.CoordinatedProposal)
-
-	AddLogRecoveryProposal(...types.CoordinatedProposal)
-	ViewLogRecoveryProposal() []types.CoordinatedProposal
-	RemoveLogRecoveryProposal(...types.CoordinatedProposal)
-
-	AddConditionalProposal(...types.CoordinatedProposal)
-	ViewConditionalProposal() []types.CoordinatedProposal
-	RemoveConditionalProposal(...types.CoordinatedProposal)
-
-	Start(context.Context) error
-	Close() error
-}
 
 type expiringRecord struct {
 	createdAt time.Time

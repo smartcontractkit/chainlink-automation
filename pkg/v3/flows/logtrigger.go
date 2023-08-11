@@ -9,7 +9,6 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -25,7 +24,7 @@ type Runner interface {
 	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
 
-//go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename resultstore.generated.go
+//go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename resultstores.generated.go
 type ResultStore interface {
 	Add(...ocr2keepers.CheckResult)
 }
@@ -48,7 +47,7 @@ const (
 // with retry attempts.
 type LogTriggerEligibility struct {
 	builder ocr2keepers.PayloadBuilder
-	mStore  store.MetadataStore
+	mStore  ocr2keepers.MetadataStore
 	logger  *log.Logger
 }
 
@@ -56,7 +55,7 @@ type LogTriggerEligibility struct {
 func NewLogTriggerEligibility(
 	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rStore ResultStore,
-	mStore store.MetadataStore,
+	mStore ocr2keepers.MetadataStore,
 	runner ocr2keepersv3.Runner,
 	logProvider ocr2keepers.LogEventProvider,
 	rp ocr2keepers.RecoverableProvider,

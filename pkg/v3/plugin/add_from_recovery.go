@@ -5,16 +5,15 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type AddLogRecoveryProposalsHook struct {
-	metadata store.MetadataStore
+	metadata types.MetadataStore
 	coord    types.Coordinator
 }
 
-func NewAddLogRecoveryProposalsHook(ms store.MetadataStore, coord types.Coordinator) AddLogRecoveryProposalsHook {
+func NewAddLogRecoveryProposalsHook(ms types.MetadataStore, coord types.Coordinator) AddLogRecoveryProposalsHook {
 	return AddLogRecoveryProposalsHook{metadata: ms, coord: coord}
 }
 

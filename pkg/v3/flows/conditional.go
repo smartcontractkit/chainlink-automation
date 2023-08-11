@@ -9,7 +9,6 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -24,7 +23,7 @@ type Ratio interface {
 // ConditionalEligibility is a flow controller that surfaces conditional upkeeps
 type ConditionalEligibility struct {
 	builder ocr2keepers.PayloadBuilder
-	mStore  store.MetadataStore
+	mStore  ocr2keepers.MetadataStore
 	logger  *log.Logger
 }
 
@@ -35,7 +34,7 @@ func NewConditionalEligibility(
 	subscriber ocr2keepers.BlockSubscriber,
 	builder ocr2keepers.PayloadBuilder,
 	rs ResultStore,
-	ms store.MetadataStore,
+	ms ocr2keepers.MetadataStore,
 	rn ocr2keepersv3.Runner,
 	proposalQ ocr2keepers.ProposalQueue,
 	retryQ ocr2keepers.RetryQueue,
@@ -68,7 +67,7 @@ func newSampleProposalFlow(
 	ratio Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber ocr2keepers.BlockSubscriber,
-	ms store.MetadataStore,
+	ms ocr2keepers.MetadataStore,
 	rn ocr2keepersv3.Runner,
 	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
@@ -110,7 +109,7 @@ func newFinalConditionalFlow(
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "conditional-final-retryable-postprocessor")),
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "conditional-final-ineligible-postprocessor")),
 	)
-	// create observer that only pushes results to result store. everything at
+	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
 	observer := ocr2keepersv3.NewRunnableObserver(

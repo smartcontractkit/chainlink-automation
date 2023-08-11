@@ -1,26 +1,5 @@
 package flows
 
-// import (
-// 	"context"
-// 	"io"
-// 	"log"
-// 	"sync"
-// 	"testing"
-// 	"time"
-
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/mock"
-
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-// 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
-// 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-// 	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-// )
-
 import (
 	"context"
 	"io"
@@ -35,7 +14,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	ocr2keepersmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 	typesmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
@@ -49,7 +28,7 @@ func TestLogTriggerFlow(t *testing.T) {
 	runner := new(mocks.MockRunner)
 	rStore := new(mocks.MockResultStore)
 	coord := new(ocr2keepersmocks.MockCoordinator)
-	retryQ := store.NewRetryQueue(logger)
+	retryQ := stores.NewRetryQueue(logger)
 	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
 	lp := new(typesmocks.MockLogEventProvider)
 

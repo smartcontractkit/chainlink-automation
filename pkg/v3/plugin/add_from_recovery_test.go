@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 
@@ -12,7 +12,7 @@ import (
 )
 
 func TestAddFromRecoveryHook(t *testing.T) {
-	mStore := store.NewMetadataStore(nil, nil)
+	mStore := stores.NewMetadataStore(nil, nil)
 	coord := new(mocks.MockCoordinator)
 
 	expectedProps := []ocr2keepers.CoordinatedProposal{
@@ -39,7 +39,7 @@ func TestAddFromRecoveryHook(t *testing.T) {
 }
 
 func TestAddFromRecoveryHook_Error(t *testing.T) {
-	mStore := store.NewMetadataStore(nil, nil)
+	mStore := stores.NewMetadataStore(nil, nil)
 	coord := new(mocks.MockCoordinator)
 	hook := NewAddLogRecoveryProposalsHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}
