@@ -149,10 +149,15 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 type mockMetadataStore struct {
 	types.MetadataStore
 	ViewLogRecoveryProposalFn func() []types.CoordinatedProposal
+	ViewConditionalProposalFn func() []types.CoordinatedProposal
 }
 
 func (s *mockMetadataStore) ViewLogRecoveryProposal() []types.CoordinatedProposal {
 	return s.ViewLogRecoveryProposalFn()
+}
+
+func (s *mockMetadataStore) ViewConditionalProposal() []types.CoordinatedProposal {
+	return s.ViewConditionalProposalFn()
 }
 
 type mockCoordinator struct {

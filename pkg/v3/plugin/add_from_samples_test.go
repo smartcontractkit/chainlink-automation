@@ -1,43 +1,147 @@
 package plugin
 
 import (
+	"errors"
 	"testing"
 
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-
 	"github.com/stretchr/testify/assert"
+
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func TestAddFromSamplesHook(t *testing.T) {
-	mStore := stores.NewMetadataStore(nil, nil)
-	coord := new(mocks.MockCoordinator)
-
-	samples := []ocr2keepers.CoordinatedProposal{
-		ocr2keepers.CoordinatedProposal{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+func TestAddFromSamplesHook_RunHook(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		metadata         types.MetadataStore
+		coordinator      types.Coordinator
+		proposals        []types.CoordinatedProposal
+		limit            int
+		src              [16]byte
+		wantNumProposals int
+		expectErr        bool
+		wantErr          error
+	}{
+		{
+			name: "proposals aren't filtered and are added to the observation",
+			metadata: &mockMetadataStore{
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
+					return []types.CoordinatedProposal{
+						{
+							WorkID: "workID1",
+						},
+					}
+				},
+			},
+			coordinator: &mockCoordinator{
+				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+					assert.Equal(t, 1, len(proposals))
+					return proposals, nil
+				},
+			},
+			limit:            5,
+			src:              [16]byte{1},
+			wantNumProposals: 1,
 		},
-		ocr2keepers.CoordinatedProposal{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		{
+			name: "proposals are filtered and are added to the observation",
+			metadata: &mockMetadataStore{
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
+					return []types.CoordinatedProposal{
+						{
+							WorkID: "workID1",
+						},
+						{
+							WorkID: "workID2",
+						},
+					}
+				},
+			},
+			coordinator: &mockCoordinator{
+				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+					assert.Equal(t, 2, len(proposals))
+					return proposals[:1], nil
+				},
+			},
+			limit:            5,
+			src:              [16]byte{1},
+			wantNumProposals: 1,
 		},
+		{
+			name: "proposals aren't filtered but are limited and are added to the observation",
+			metadata: &mockMetadataStore{
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
+					return []types.CoordinatedProposal{
+						{
+							WorkID: "workID1",
+						},
+						{
+							WorkID: "workID2",
+						},
+						{
+							WorkID: "workID3",
+						},
+						{
+							WorkID: "workID4",
+						},
+					}
+				},
+			},
+			coordinator: &mockCoordinator{
+				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+					assert.Equal(t, 4, len(proposals))
+					return proposals, nil
+				},
+			},
+			limit:            2,
+			src:              [16]byte{0},
+			wantNumProposals: 2,
+		},
+		{
+			name: "if an error is encountered filtering proposals, an error is returned",
+			metadata: &mockMetadataStore{
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
+					return []types.CoordinatedProposal{
+						{
+							WorkID: "workID1",
+						},
+						{
+							WorkID: "workID2",
+						},
+						{
+							WorkID: "workID3",
+						},
+						{
+							WorkID: "workID4",
+						},
+					}
+				},
+			},
+			coordinator: &mockCoordinator{
+				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+					return nil, errors.New("filter proposals boom")
+				},
+			},
+			limit:            2,
+			src:              [16]byte{0},
+			wantNumProposals: 0,
+			expectErr:        true,
+			wantErr:          errors.New("filter proposals boom"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			processor := NewAddFromSamplesHook(tc.metadata, tc.coordinator)
+			observation := &ocr2keepers.AutomationObservation{
+				UpkeepProposals: tc.proposals,
+			}
+			err := processor.RunHook(observation, tc.limit, tc.src)
+			if tc.expectErr {
+				assert.Error(t, err)
+				assert.Equal(t, tc.wantErr.Error(), err.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.wantNumProposals, len(observation.UpkeepProposals))
+		})
 	}
-
-	mStore.AddConditionalProposal(samples...)
-
-	hook := NewAddFromSamplesHook(mStore, coord)
-	observation := &ocr2keepersv3.AutomationObservation{}
-
-	assert.NoError(t, hook.RunHook(observation, 10, [16]byte{}), "no error from running hook")
-}
-
-func TestAddFromSamplesHook_Error(t *testing.T) {
-	mStore := stores.NewMetadataStore(nil, nil)
-	coord := new(mocks.MockCoordinator)
-
-	hook := NewAddFromSamplesHook(mStore, coord)
-	observation := &ocr2keepersv3.AutomationObservation{}
-
-	assert.ErrorIs(t, hook.RunHook(observation, 10, [16]byte{}), nil, "error from running hook")
 }
