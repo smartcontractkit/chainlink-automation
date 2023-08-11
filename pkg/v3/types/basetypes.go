@@ -125,7 +125,7 @@ type CheckResult struct {
 // UniqueID returns a unique identifier for the check result.
 // It is used to achieve quorum on results before being sent within a report.
 // It contains all information that agreement should be achieved on.
-// TODO: Think through if it should contain all fields of the result
+// TODO: Think if it should just simply contain all fields of the result by json marshalling
 func (r CheckResult) UniqueID() string {
 	var resultBytes []byte
 
@@ -166,7 +166,7 @@ type UpkeepPayload struct {
 }
 
 // CoordinatedProposal is used to represent a unit of work that can be performed
-// after it has been coordinated between nodes.
+// after a check block has been coordinated between nodes.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
 // quorum requirements in mind
