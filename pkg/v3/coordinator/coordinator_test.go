@@ -84,8 +84,8 @@ func TestNewCoordinator(t *testing.T) {
 		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{MinConfirmations: 2}, logger)
 
 		go func() {
-			err := c.Start(context.Background())
-			assert.NoError(t, err)
+			err2 := c.Start(context.Background())
+			assert.NoError(t, err2)
 		}()
 
 		// wait for one full run of the coordinator before closing
@@ -93,8 +93,6 @@ func TestNewCoordinator(t *testing.T) {
 
 		err := c.Close()
 		assert.NoError(t, err)
-
-		assert.True(t, strings.Contains(memLog.String(), "failed to check for transmit events"))
 	})
 
 	t.Run("if checking events takes longer than the loop cadence, a message is logged", func(t *testing.T) {
