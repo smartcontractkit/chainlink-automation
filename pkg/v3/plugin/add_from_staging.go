@@ -12,7 +12,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func NewAddFromStagingHook(store ocr2keepers.ResultStore, logger *log.Logger, coord types.Coordinator) AddFromStagingHook {
+func NewAddFromStagingHook(store ocr2keepers.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
 	return AddFromStagingHook{
 		store:  store,
 		coord:  coord,

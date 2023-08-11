@@ -156,7 +156,7 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
 			logger := log.New(&logBuf, "", 0)
-			processor := NewAddConditionalSamplesHook(logger, tc.metadata, tc.coordinator)
+			processor := NewAddConditionalSamplesHook(tc.metadata, tc.coordinator, logger)
 			observation := &ocr2keepers.AutomationObservation{
 				UpkeepProposals: tc.proposals,
 			}

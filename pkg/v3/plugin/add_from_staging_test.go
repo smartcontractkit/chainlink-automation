@@ -119,7 +119,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			obs := &tt.initialObservation
 
 			// Create the hook with mock result store, coordinator, and logger
-			addFromStagingHook := NewAddFromStagingHook(mockResultStore, logger, mockCoordinator)
+			addFromStagingHook := NewAddFromStagingHook(mockResultStore, mockCoordinator, logger)
 
 			// Run the hook
 			err := addFromStagingHook.RunHook(obs, tt.limit, [16]byte{})

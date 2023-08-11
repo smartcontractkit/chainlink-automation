@@ -17,7 +17,7 @@ type AddConditionalSamplesHook struct {
 	coord    types.Coordinator
 }
 
-func NewAddConditionalSamplesHook(logger *log.Logger, ms types.MetadataStore, coord types.Coordinator) AddConditionalSamplesHook {
+func NewAddConditionalSamplesHook(ms types.MetadataStore, coord types.Coordinator, logger *log.Logger) AddConditionalSamplesHook {
 	return AddConditionalSamplesHook{
 		metadata: ms,
 		coord:    coord,
