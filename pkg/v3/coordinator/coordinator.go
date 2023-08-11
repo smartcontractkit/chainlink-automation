@@ -82,6 +82,7 @@ func (c *coordinator) ShouldTransmit(reportedUpkeep ocr2keepers.ReportedUpkeep) 
 	}
 }
 
+// FilterPayloads?
 func (c *coordinator) PreProcess(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
 	res := make([]ocr2keepers.UpkeepPayload, 0)
 	for _, payload := range payloads {
@@ -102,7 +103,6 @@ func (c *coordinator) FilterResults(results []ocr2keepers.CheckResult) ([]ocr2ke
 	return res, nil
 }
 
-// TODO: Think through logic and simplify if possible
 func (c *coordinator) FilterProposals(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
 	res := make([]ocr2keepers.CoordinatedProposal, 0)
 	for _, proposal := range proposals {

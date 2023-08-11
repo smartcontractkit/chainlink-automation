@@ -22,7 +22,6 @@ func NewRemoveFromStaging(remover resultRemover, logger *log.Logger) RemoveFromS
 type RemoveFromStagingHook struct {
 	remover resultRemover
 	logger  *log.Logger
-	coord   Coordinator
 }
 
 func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {

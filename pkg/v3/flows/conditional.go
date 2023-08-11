@@ -122,6 +122,7 @@ func newSampleProposalFlow(
 	logger *log.Logger,
 ) (service.Recoverable, error) {
 	// create a metadata store postprocessor
+	// TODO: align postProcessor with metadata API
 	pp := postprocessors.NewAddSamplesToMetadataStorePostprocessor(ms)
 
 	// create observer

@@ -81,6 +81,7 @@ func newRecoveryProposalFlow(
 
 	// the recovery observer is just a pass-through to the metadata store
 	// add postprocessor for metatdata store
+	// TODO: align with new metadata store API
 	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms)
 
 	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult](
@@ -93,6 +94,7 @@ func newRecoveryProposalFlow(
 
 	// create a schedule ticker that pulls recoverable items from an outside
 	// source and provides point for recoverables to be pushed to the ticker
+	// TODO: time ticker, fetches from RecoverableProvider
 	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
 		recoveryInterval,
 		recoveryObserver,

@@ -32,6 +32,7 @@ type ocr3Plugin struct {
 	ReportEncoder               ocr2keepers.Encoder
 	Coordinator                 Coordinator
 	RemoveFromStagingHook       RemoveFromStagingHook
+	RemoveFromMetadataHook      RemoveFromMetadataHook
 	AddBlockHistoryHook         AddBlockHistoryHook
 	AddFromStagingHook          AddFromStagingHook
 	AddFromSamplesHook          AddFromSamplesHook
@@ -76,7 +77,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 
 		// Execute pre-build hooks
 		plugin.RemoveFromStagingHook.RunHook(automationOutcome)
-		// TODO Remove agreedSamples and logRecoveryProposals from metadata store
+		plugin.RemoveFromMetadataHook.RunHook(automationOutcome)
 		// TODO Add coordinateFlow.ProcessOutcome
 	}
 	// Create new AutomationObservation

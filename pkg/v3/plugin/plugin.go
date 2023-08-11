@@ -102,6 +102,7 @@ func newPlugin(
 		ReportEncoder:               encoder,
 		Coordinator:                 coord,
 		RemoveFromStagingHook:       NewRemoveFromStaging(rs, logger),
+		RemoveFromMetadataHook:      NewRemoveFromMetadataHook(rs, logger),
 		AddFromStagingHook:          NewAddFromStaging(rs, logger, coord),
 		AddFromSamplesHook:          NewAddFromSamplesHook(ms, coord),
 		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(ms, coord),

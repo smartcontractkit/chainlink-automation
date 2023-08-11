@@ -175,6 +175,7 @@ func newLogTriggerFlow(
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "log-trigger-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "log-trigger-retryable-postprocessor")),
+		// TODO: ineligible : writes to upkeep state
 	)
 
 	obs := ocr2keepersv3.NewRunnableObserver(
