@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMetadataAddPayload(t *testing.T) {
@@ -92,28 +91,27 @@ func TestMetadataAddPayload(t *testing.T) {
 }
 
 func TestMetadataAddSamples(t *testing.T) {
-	ms := new(mocks.MockMetadataStore)
+	ms := stores.NewMetadataStore(nil, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+		return ocr2keepers.ConditionTrigger
+	})
+
 	values := []ocr2keepers.CheckResult{
 		{
 			Eligible: true,
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			WorkID:   "workID1",
 		},
 		{
 			Eligible: true,
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:   "workID2",
 		},
 		{
 			Eligible: false,
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
+			WorkID:   "workID3",
 		},
 	}
-
-	//expected := []ocr2keepers.UpkeepIdentifier{
-	//	ocr2keepers.UpkeepIdentifier([32]byte{1}),
-	//	ocr2keepers.UpkeepIdentifier([32]byte{2}),
-	//}
-
-	//ms.On("Set", store.ProposalConditionalMetadata, expected)
 
 	pp := NewAddProposalToMetadataStorePostprocessor(ms, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 		return ocr2keepers.ConditionTrigger
@@ -121,16 +119,19 @@ func TestMetadataAddSamples(t *testing.T) {
 	err := pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			WorkID:   "workID1",
 		},
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:   "workID2",
 		},
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
+			WorkID:   "workID3",
 		},
 	})
 
 	assert.NoError(t, err, "no error expected from post processor")
 
-	ms.AssertExpectations(t)
+	assert.Equal(t, 3, len(ms.ViewConditionalProposal()))
 }
