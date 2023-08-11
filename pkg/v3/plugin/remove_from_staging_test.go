@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -25,6 +26,7 @@ func TestRemoveFromStagingHook(t *testing.T) {
 			Input: []ocr2keepers.CheckResult{
 				{
 					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+					WorkID:   "1",
 				},
 			},
 		},
@@ -33,18 +35,23 @@ func TestRemoveFromStagingHook(t *testing.T) {
 			Input: []ocr2keepers.CheckResult{
 				{
 					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+					WorkID:   "2",
 				},
 				{
 					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+					WorkID:   "3",
 				},
 				{
 					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
+					WorkID:   "4",
 				},
 				{
 					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
+					WorkID:   "5",
 				},
 				{
 					UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{5}),
+					WorkID:   "6",
 				},
 			},
 		},
@@ -56,20 +63,28 @@ func TestRemoveFromStagingHook(t *testing.T) {
 				AgreedPerformables: test.Input,
 			}
 
-			mr := new(mockRemover)
+			mr := &mockResultStore{}
 
-			r := NewRemoveFromStaging(mr, log.New(io.Discard, "", 0))
+			r := NewRemoveFromStagingHook(mr, log.New(io.Discard, "", 0))
 
 			assert.NoError(t, r.RunHook(ob))
-			assert.Equal(t, len(ob.AgreedPerformables), len(mr.removed))
+			assert.Equal(t, len(ob.AgreedPerformables), len(mr.removedIDs))
 		})
 	}
 }
 
-type mockRemover struct {
-	removed []string
+// MockResultStore is a mock implementation of types.ResultStore for testing
+type mockResultStore struct {
+	removedIDs []string
 }
 
-func (_m *mockRemover) Remove(toRemove ...string) {
-	_m.removed = append(_m.removed, toRemove...)
+func (m *mockResultStore) Remove(ids ...string) {
+	m.removedIDs = append(m.removedIDs, ids...)
+}
+
+func (m *mockResultStore) Add(...types.CheckResult) {
+}
+
+func (m *mockResultStore) View() ([]types.CheckResult, error) {
+	return nil, nil
 }
