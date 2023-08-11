@@ -11,21 +11,21 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type AddConditionalSamplesHook struct {
+type AddConditionalProposalsHook struct {
 	metadata types.MetadataStore
 	logger   *log.Logger
 	coord    types.Coordinator
 }
 
-func NewAddConditionalSamplesHook(ms types.MetadataStore, coord types.Coordinator, logger *log.Logger) AddConditionalSamplesHook {
-	return AddConditionalSamplesHook{
+func NewAddConditionalProposalsHook(ms types.MetadataStore, coord types.Coordinator, logger *log.Logger) AddConditionalProposalsHook {
+	return AddConditionalProposalsHook{
 		metadata: ms,
 		coord:    coord,
 		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-conditional-samples]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 }
 
-func (h *AddConditionalSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
+func (h *AddConditionalProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	conditionals := h.metadata.ViewConditionalProposal()
 
 	var err error

@@ -11,21 +11,21 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type AddLogRecoveryProposalsHook struct {
+type AddLogProposalsHook struct {
 	metadata    types.MetadataStore
 	coordinator types.Coordinator
 	logger      *log.Logger
 }
 
-func NewAddLogRecoveryProposalsHook(metadataStore types.MetadataStore, coordinator types.Coordinator, logger *log.Logger) AddLogRecoveryProposalsHook {
-	return AddLogRecoveryProposalsHook{
+func NewAddLogProposalsHook(metadataStore types.MetadataStore, coordinator types.Coordinator, logger *log.Logger) AddLogProposalsHook {
+	return AddLogProposalsHook{
 		metadata:    metadataStore,
 		coordinator: coordinator,
 		logger:      log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-log-recovery-proposals]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 }
 
-func (h *AddLogRecoveryProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
+func (h *AddLogProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	proposals := h.metadata.ViewLogRecoveryProposal()
 
 	var err error

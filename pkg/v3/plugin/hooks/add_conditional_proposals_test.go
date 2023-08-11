@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
+func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		metadata         types.MetadataStore
@@ -27,7 +27,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals aren't filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
 					return []types.CoordinatedProposal{
 						{
 							WorkID: "workID1",
@@ -48,7 +48,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals are filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
 					return []types.CoordinatedProposal{
 						{
 							WorkID: "workID1",
@@ -70,9 +70,31 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 			wantNumProposals: 1,
 		},
 		{
+			name: "proposals are appended to the existing proposals in observation",
+			metadata: &mockMetadataStore{
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
+					return []types.CoordinatedProposal{
+						{
+							WorkID: "workID1",
+						},
+					}
+				},
+			},
+			coordinator: &mockCoordinator{
+				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+					assert.Equal(t, 1, len(proposals))
+					return proposals, nil
+				},
+			},
+			proposals:        []types.CoordinatedProposal{{WorkID: "workID2"}},
+			limit:            5,
+			src:              [16]byte{1},
+			wantNumProposals: 2,
+		},
+		{
 			name: "proposals aren't filtered but are limited and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
 					return []types.CoordinatedProposal{
 						{
 							WorkID: "workID1",
@@ -102,7 +124,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "if an error is encountered filtering proposals, an error is returned",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
 					return []types.CoordinatedProposal{
 						{
 							WorkID: "workID1",
@@ -134,7 +156,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
 			logger := log.New(&logBuf, "", 0)
-			processor := NewAddLogRecoveryProposalsHook(tc.metadata, tc.coordinator, logger)
+			processor := NewAddConditionalProposalsHook(tc.metadata, tc.coordinator, logger)
 			observation := &ocr2keepers.AutomationObservation{
 				UpkeepProposals: tc.proposals,
 			}
@@ -148,27 +170,4 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 			assert.Equal(t, tc.wantNumProposals, len(observation.UpkeepProposals))
 		})
 	}
-}
-
-type mockMetadataStore struct {
-	types.MetadataStore
-	ViewLogRecoveryProposalFn func() []types.CoordinatedProposal
-	ViewConditionalProposalFn func() []types.CoordinatedProposal
-}
-
-func (s *mockMetadataStore) ViewLogRecoveryProposal() []types.CoordinatedProposal {
-	return s.ViewLogRecoveryProposalFn()
-}
-
-func (s *mockMetadataStore) ViewConditionalProposal() []types.CoordinatedProposal {
-	return s.ViewConditionalProposalFn()
-}
-
-type mockCoordinator struct {
-	types.Coordinator
-	FilterProposalsFn func([]types.CoordinatedProposal) ([]types.CoordinatedProposal, error)
-}
-
-func (s *mockCoordinator) FilterProposals(p []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
-	return s.FilterProposalsFn(p)
 }
