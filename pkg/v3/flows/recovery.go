@@ -23,12 +23,13 @@ func newFinalRecoveryFlow(
 	recoveryInterval time.Duration,
 	proposalQ ocr2keepers.ProposalQueue,
 	builder ocr2keepers.PayloadBuilder,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
-		// TODO: ineligibilty postprocessor
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
 	// create observer that only pushes results to result store. everything at
 	// this point can be dropped. this process is only responsible for running
@@ -42,7 +43,13 @@ func newFinalRecoveryFlow(
 	)
 
 	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
-		return coordinatedProposalsTick{logger: logger, builder: builder, q: proposalQ, batchSize: RetryBatchSize}, nil
+		return coordinatedProposalsTick{
+			logger:    logger,
+			builder:   builder,
+			q:         proposalQ,
+			utype:     ocr2keepers.LogTrigger,
+			batchSize: RetryBatchSize,
+		}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return ticker

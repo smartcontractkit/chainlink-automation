@@ -33,17 +33,18 @@ const (
 )
 
 type pluginFactory struct {
-	logProvider      ocr2keepers.LogEventProvider
-	events           ocr2keepers.TransmitEventProvider
-	blocks           ocr2keepers.BlockSubscriber
-	rp               ocr2keepers.RecoverableProvider
-	builder          ocr2keepers.PayloadBuilder
-	getter           ocr2keepers.ConditionalUpkeepProvider
-	runnable         ocr2keepers.Runnable
-	runnerConf       runner.RunnerConfig
-	encoder          ocr2keepers.Encoder
-	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
-	logger           *log.Logger
+	logProvider        ocr2keepers.LogEventProvider
+	events             ocr2keepers.TransmitEventProvider
+	blocks             ocr2keepers.BlockSubscriber
+	rp                 ocr2keepers.RecoverableProvider
+	builder            ocr2keepers.PayloadBuilder
+	getter             ocr2keepers.ConditionalUpkeepProvider
+	runnable           ocr2keepers.Runnable
+	runnerConf         runner.RunnerConfig
+	encoder            ocr2keepers.Encoder
+	upkeepTypeGetter   ocr2keepers.UpkeepTypeGetter
+	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater
+	logger             *log.Logger
 }
 
 func NewReportingPluginFactory(
@@ -57,20 +58,22 @@ func NewReportingPluginFactory(
 	runnerConf runner.RunnerConfig,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
+	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
 	return &pluginFactory{
-		logProvider:      logProvider,
-		events:           events,
-		blocks:           blocks,
-		rp:               rp,
-		builder:          builder,
-		getter:           getter,
-		runnable:         runnable,
-		runnerConf:       runnerConf,
-		encoder:          encoder,
-		upkeepTypeGetter: upkeepTypeGetter,
-		logger:           logger,
+		logProvider:        logProvider,
+		events:             events,
+		blocks:             blocks,
+		rp:                 rp,
+		builder:            builder,
+		getter:             getter,
+		runnable:           runnable,
+		runnerConf:         runnerConf,
+		encoder:            encoder,
+		upkeepTypeGetter:   upkeepTypeGetter,
+		upkeepStateUpdater: upkeepStateUpdater,
+		logger:             logger,
 	}
 }
 

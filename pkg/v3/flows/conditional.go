@@ -38,13 +38,15 @@ func NewConditionalEligibility(
 	ms store.MetadataStore,
 	rn ocr2keepersv3.Runner,
 	proposalQ ocr2keepers.ProposalQueue,
+	retryQ ocr2keepers.RetryQueue,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
 	// TODO: add coordinator to preprocessor list
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
-	svc0 := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, proposalQ, builder, logger)
+	svc0 := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, proposalQ, builder, retryQ, stateUpdater, logger)
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
@@ -98,21 +100,34 @@ func newFinalConditionalFlow(
 	interval time.Duration,
 	proposalQ ocr2keepers.ProposalQueue,
 	builder ocr2keepers.PayloadBuilder,
+	retryQ ocr2keepers.RetryQueue,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
+	post := postprocessors.NewCombinedPostprocessor(
+		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "conditional-final-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "conditional-final-retryable-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "conditional-ineligible-postprocessor")),
+	)
 	// create observer that only pushes results to result store. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
+		post,
 		rn,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
 	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
-		return coordinatedProposalsTick{logger: logger, builder: builder, q: proposalQ, batchSize: RetryBatchSize}, nil
+		return coordinatedProposalsTick{
+			logger:    logger,
+			builder:   builder,
+			q:         proposalQ,
+			utype:     ocr2keepers.ConditionTrigger,
+			batchSize: RetryBatchSize,
+		}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return ticker

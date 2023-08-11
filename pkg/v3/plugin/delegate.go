@@ -174,6 +174,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			},
 			c.Encoder,
 			c.UpkeepTypeGetter,
+			c.UpkeepStateUpdater,
 			l,
 		),
 	})

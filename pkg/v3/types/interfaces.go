@@ -51,6 +51,7 @@ type BlockSubscriber interface {
 	Unsubscribe(int) error
 }
 
+//go:generate mockery --name UpkeepStateUpdater --structname MockUpkeepStateUpdater --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename upkeep_state_updater.generated.go
 type UpkeepStateUpdater interface {
 	SetUpkeepState(context.Context, CheckResult, UpkeepState) error
 }

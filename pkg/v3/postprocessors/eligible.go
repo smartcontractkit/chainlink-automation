@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -28,7 +27,7 @@ type eligiblePostProcessor struct {
 
 func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger) *eligiblePostProcessor {
 	return &eligiblePostProcessor{
-		lggr:         telemetry.WrapLogger(logger, "InEligiblePostProcessor"),
+		lggr:         logger,
 		resultsAdder: resultsAdder,
 	}
 }

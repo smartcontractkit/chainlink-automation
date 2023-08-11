@@ -34,6 +34,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/retryqueue"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	ocr2keepersmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 	typesmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -48,6 +49,7 @@ func TestLogTriggerFlow(t *testing.T) {
 	rStore := new(mocks.MockResultStore)
 	coord := new(mocks.MockPreProcessor)
 	retryQ := retryqueue.NewRetryQueue(logger)
+	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
 	lp := new(typesmocks.MockLogEventProvider)
 
 	lp.On("GetLatestPayloads", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
@@ -89,7 +91,7 @@ func TestLogTriggerFlow(t *testing.T) {
 	logInterval := 50 * time.Millisecond
 
 	svc := newLogTriggerFlow([]ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord},
-		rStore, runner, lp, logInterval, retryQ, logger)
+		rStore, runner, lp, logInterval, retryQ, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

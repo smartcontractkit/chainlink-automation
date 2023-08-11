@@ -33,6 +33,7 @@ func newPlugin(
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
+	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater,
 	runnable ocr2keepers.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
@@ -63,7 +64,7 @@ func newPlugin(
 
 	retryQ := retryqueue.NewRetryQueue(logger)
 
-	retrySvc := flows.NewRetryFlow(coord, rs, rn, retryQ, 5*time.Second, logger)
+	retrySvc := flows.NewRetryFlow(coord, rs, rn, retryQ, 5*time.Second, upkeepStateUpdater, logger)
 
 	proposalQ := proposalqueue.New(upkeepTypeGetter)
 
@@ -80,13 +81,14 @@ func newPlugin(
 		flows.RecoveryCheckInterval,
 		retryQ,
 		proposalQ,
+		upkeepStateUpdater,
 		logger,
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{retrySvc, rs, ms, coord, rn, blockTicker}...)
 
-	_, svcs, err = flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, proposalQ, logger)
+	_, svcs, err = flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, proposalQ, retryQ, upkeepStateUpdater, logger)
 	if err != nil {
 		return nil, err
 	}

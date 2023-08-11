@@ -65,6 +65,7 @@ func NewLogTriggerEligibility(
 	recoveryInterval time.Duration,
 	retryQ ocr2keepers.RetryQueue,
 	proposals ocr2keepers.ProposalQueue,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) (*LogTriggerEligibility, []service.Recoverable) {
 	// all flows use the same preprocessor based on the coordinator
@@ -80,12 +81,12 @@ func NewLogTriggerEligibility(
 	// blocks and runs the pipeline for them. these values to run are derived
 	// from node coordination and it can be assumed that all values should be
 	// run.
-	rcvFinal := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, proposals, builder, logger)
+	rcvFinal := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, proposals, builder, stateUpdater, logger)
 
 	// the log trigger flow is the happy path for log trigger payloads. all
 	// retryables that are encountered in this flow are elevated to the retry
 	// flow
-	logTrigger := newLogTriggerFlow(preprocessors, rStore, runner, logProvider, logInterval, retryQ, logger)
+	logTrigger := newLogTriggerFlow(preprocessors, rStore, runner, logProvider, logInterval, retryQ, stateUpdater, logger)
 
 	// all above flows run internal time-keeper services. each is essential for
 	// running so the return is a slice of all above services as recoverables
@@ -112,12 +113,13 @@ func newLogTriggerFlow(
 	logProvider ocr2keepers.LogEventProvider,
 	logInterval time.Duration,
 	retryQ ocr2keepers.RetryQueue,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "log-trigger-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "log-trigger-retryable-postprocessor")),
-		// TODO: ineligible : writes to upkeep state
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
 
 	obs := ocr2keepersv3.NewRunnableObserver(

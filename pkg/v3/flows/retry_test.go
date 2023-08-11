@@ -12,6 +12,8 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/retryqueue"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	ocr2keepersmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -24,6 +26,7 @@ func TestRetryFlow(t *testing.T) {
 	runner := new(mocks.MockRunner)
 	rStore := new(mocks.MockResultStore)
 	coord := new(mocks.MockPreProcessor)
+	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
 	retryQ := retryqueue.NewRetryQueue(logger)
 
 	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
@@ -54,7 +57,7 @@ func TestRetryFlow(t *testing.T) {
 	// set the ticker time lower to reduce the test time
 	retryInterval := 50 * time.Millisecond
 
-	svc := NewRetryFlow(coord, rStore, runner, retryQ, retryInterval, logger)
+	svc := NewRetryFlow(coord, rStore, runner, retryQ, retryInterval, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
