@@ -25,6 +25,8 @@ type ConditionalEligibility struct {
 	builder ocr2keepers.PayloadBuilder
 	mStore  store.MetadataStore
 	logger  *log.Logger
+
+	proposals ocr2keepers.ProposalQueue
 }
 
 // NewConditionalEligibility ...
@@ -36,6 +38,7 @@ func NewConditionalEligibility(
 	rs ResultStore,
 	ms store.MetadataStore,
 	rn ocr2keepersv3.Runner,
+	proposals ocr2keepers.ProposalQueue,
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
 	// TODO: add coordinator to preprocessor list

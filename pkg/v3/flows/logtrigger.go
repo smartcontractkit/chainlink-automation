@@ -50,6 +50,8 @@ type LogTriggerEligibility struct {
 	builder ocr2keepers.PayloadBuilder
 	mStore  store.MetadataStore
 	logger  *log.Logger
+
+	proposals ocr2keepers.ProposalQueue
 }
 
 // NewLogTriggerEligibility ...
@@ -64,6 +66,7 @@ func NewLogTriggerEligibility(
 	logInterval time.Duration,
 	recoveryInterval time.Duration,
 	retryQ ocr2keepers.RetryQueue,
+	proposals ocr2keepers.ProposalQueue,
 	logger *log.Logger,
 ) (*LogTriggerEligibility, []service.Recoverable) {
 	// all flows use the same preprocessor based on the coordinator
@@ -97,9 +100,10 @@ func NewLogTriggerEligibility(
 	// the final return includes a struct that provides the ability for hooks
 	// to pass data to internal flows
 	return &LogTriggerEligibility{
-		builder: builder,
-		mStore:  mStore,
-		logger:  logger,
+		builder:   builder,
+		mStore:    mStore,
+		logger:    logger,
+		proposals: proposals,
 	}, svcs
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/proposalqueue"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/retryqueue"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
@@ -64,6 +65,8 @@ func newPlugin(
 
 	retrySvc := flows.NewRetryFlow(coord, rs, rn, retryQ, 5*time.Second, logger)
 
+	proposalQ := proposalqueue.New(upkeepTypeGetter)
+
 	// initialize the log trigger eligibility flow
 	_, svcs := flows.NewLogTriggerEligibility(
 		coord,
@@ -76,13 +79,14 @@ func newPlugin(
 		flows.LogCheckInterval,
 		flows.RecoveryCheckInterval,
 		retryQ,
+		proposalQ,
 		logger,
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{retrySvc, rs, ms, coord, rn, blockTicker}...)
 
-	_, svcs, err = flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
+	_, svcs, err = flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, proposalQ, logger)
 	if err != nil {
 		return nil, err
 	}
