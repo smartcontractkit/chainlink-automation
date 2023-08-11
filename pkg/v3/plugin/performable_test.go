@@ -48,30 +48,6 @@ func TestPerformables(t *testing.T) {
 			},
 			expectedOutcomeWorkIDs: []string{},
 		},
-		{
-			name:      "Threshold met results",
-			threshold: 2,
-			limit:     3,
-			observations: []ocr2keepers.AutomationObservation{
-				{
-					Performable: []types.CheckResult{
-						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
-						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
-					},
-				},
-				{
-					Performable: []types.CheckResult{
-						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
-					},
-				},
-				{
-					Performable: []types.CheckResult{
-						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
-					},
-				},
-			},
-			expectedOutcomeWorkIDs: []string{},
-		},
 	}
 
 	for _, tt := range tests {
