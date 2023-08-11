@@ -227,8 +227,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 	plugin.Logger.Printf("%d upkeeps found in report for should accept attested for sequence number %d", len(upkeeps), seqNr)
 
 	accept := false
-	// If any upkeep should be accepted, then accept
-	// TODO: think through this logic
+	// If any upkeep can be accepted, then accept
 	for _, upkeep := range upkeeps {
 		shouldAccept := plugin.Coordinator.ShouldAccept(upkeep)
 		plugin.Logger.Printf("checking shouldAccept of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldAccept)
@@ -242,6 +241,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 }
 
 func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+	plugin.Logger.Printf("inside should trasmit accepted report for sequence number %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
