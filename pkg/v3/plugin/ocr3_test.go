@@ -748,6 +748,9 @@ func TestOcr3Plugin_ShouldAcceptAttestedReport(t *testing.T) {
 				ShouldAcceptFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
 					return upkeep.WorkID == "workID3"
 				},
+				AcceptFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
+					return true
+				},
 			},
 			wantOK: true,
 		},
@@ -771,6 +774,9 @@ func TestOcr3Plugin_ShouldAcceptAttestedReport(t *testing.T) {
 			},
 			coordinator: &mockCoordinator{
 				ShouldAcceptFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
+					return false
+				},
+				AcceptFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
 					return false
 				},
 			},
@@ -1025,6 +1031,7 @@ type mockCoordinator struct {
 	FilterResultsFn   func([]ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error)
 	ShouldAcceptFn    func(ocr2keepers.ReportedUpkeep) bool
 	ShouldTransmitFn  func(ocr2keepers.ReportedUpkeep) bool
+	AcceptFn          func(ocr2keepers.ReportedUpkeep) bool
 }
 
 func (s *mockCoordinator) FilterProposals(p []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
@@ -1041,4 +1048,8 @@ func (s *mockCoordinator) ShouldAccept(upkeep ocr2keepers.ReportedUpkeep) bool {
 
 func (s *mockCoordinator) ShouldTransmit(upkeep ocr2keepers.ReportedUpkeep) bool {
 	return s.ShouldTransmitFn(upkeep)
+}
+
+func (s *mockCoordinator) Accept(r ocr2keepers.ReportedUpkeep) bool {
+	return s.AcceptFn(r)
 }

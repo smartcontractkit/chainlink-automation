@@ -4,9 +4,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPerformables(t *testing.T) {
@@ -69,7 +70,7 @@ func TestPerformables(t *testing.T) {
 					},
 				},
 			},
-			expectedOutcomeWorkIDs: []string{"1", "2"},
+			expectedOutcomeWorkIDs: []string{},
 		},
 	}
 
