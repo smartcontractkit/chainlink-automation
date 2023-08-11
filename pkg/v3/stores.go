@@ -19,7 +19,7 @@ const (
 type ResultStore interface {
 	Add(...ocr2keepers.CheckResult)
 	Remove(...string)
-	View(...ViewOpt) ([]ocr2keepers.CheckResult, error)
+	View() ([]ocr2keepers.CheckResult, error)
 	Notifications() <-chan Notification
 }
 

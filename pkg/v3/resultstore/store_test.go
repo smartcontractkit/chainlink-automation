@@ -303,91 +303,13 @@ func TestResultStore_View(t *testing.T) {
 		assert.Len(t, v, int(atomic.LoadInt32(&nitems)))
 	})
 
-	t.Run("filter 1/2 of items with limit of 1/4", func(t *testing.T) {
-		i := 0
-		limit := int(atomic.LoadInt32(&nitems)) / 4
-		v, err := store.View(ocr2keepersv3.WithFilter(func(res ocr2keepers.CheckResult) bool {
-			even := i%2 == 0
-			i++
-			return even
-		}), ocr2keepersv3.WithLimit(limit))
-		assert.NoError(t, err)
-		assert.Len(t, v, limit)
-	})
-
-	t.Run("filter all items", func(t *testing.T) {
-		v, err := store.View(ocr2keepersv3.WithFilter(func(cr ocr2keepers.CheckResult) bool {
-			return false
-		}))
-		assert.NoError(t, err)
-		assert.Len(t, v, 0)
-	})
-
-	t.Run("combined filters", func(t *testing.T) {
-		i := 0
-		beforeLast := int(atomic.LoadInt32(&nitems)) - 1
-		v, err := store.View(ocr2keepersv3.WithFilter(func(res ocr2keepers.CheckResult) bool {
-			i++
-			return i > 2
-		}, func(res ocr2keepers.CheckResult) bool {
-			return i > beforeLast
-		}))
-		assert.NoError(t, err)
-		assert.Len(t, v, 1)
-	})
-
-	t.Run("filter half of items concurrently", func(t *testing.T) {
-		workers := 2
-
-		var wg sync.WaitGroup
-		for w := 0; w < workers; w++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				i := 0
-				v, err := store.View(ocr2keepersv3.WithFilter(func(res ocr2keepers.CheckResult) bool {
-					even := i%2 == 0
-					i++
-					return even
-				}))
-				assert.NoError(t, err)
-				assert.Len(t, v, int(atomic.LoadInt32(&nitems))/2)
-			}()
-		}
-		wg.Wait()
-	})
-
-	t.Run("sort items by id desc", func(t *testing.T) {
-		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			return a.WorkID > b.WorkID
-		}))
-		assert.NoError(t, err)
-		assert.Len(t, v, 4)
-
-		assert.Equal(t, "workID4", v[0].WorkID)
-	})
-
-	t.Run("sort items by id desc with limit", func(t *testing.T) {
-		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			return a.WorkID > b.WorkID
-		}), ocr2keepersv3.WithLimit(3))
-		assert.NoError(t, err)
-		assert.Len(t, v, 3)
-
-		assert.Equal(t, "workID4", v[0].WorkID)
-		assert.Equal(t, "workID3", v[1].WorkID)
-		assert.Equal(t, "workID2", v[2].WorkID)
-	})
-
 	t.Run("ignore expired items", func(t *testing.T) {
 		store.lock.Lock()
 		el := store.data["test-id-0"]
 		el.addedAt = time.Now().Add(-2 * storeTTL)
 		store.data["test-id-0"] = el
 		store.lock.Unlock()
-		v, err := store.View(ocr2keepersv3.WithOrder(func(a, b ocr2keepers.CheckResult) bool {
-			return a.WorkID < b.WorkID
-		}), ocr2keepersv3.WithLimit(3))
+		v, err := store.View()
 		assert.NoError(t, err)
 		assert.Len(t, v, 3)
 

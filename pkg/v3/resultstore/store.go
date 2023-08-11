@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sort"
 	"sync"
 	"time"
 
@@ -113,71 +112,28 @@ func (s *resultStore) Remove(ids ...string) {
 }
 
 // View returns a copy of the data in the store.
-// It accepts filters that can be used to prepare the results view.
-// NOTE: we apply filters while holding the read lock, these functions must not block.
-func (s *resultStore) View(opts ...ocr2keepersv3.ViewOpt) ([]ocr2keepers.CheckResult, error) {
-	filters, comparators, limit := ocr2keepersv3.ViewOpts(opts).Apply()
-
-	results, limit := s.viewResults(limit, filters, comparators)
-	s.orderResults(results, comparators)
-
-	if limit > len(results) {
-		limit = len(results)
-	}
-
-	return results[:limit], nil
+func (s *resultStore) View() ([]ocr2keepers.CheckResult, error) {
+	return s.viewResults(), nil
 }
 
-func (s *resultStore) orderResults(results []ocr2keepers.CheckResult, comparators []ocr2keepersv3.ResultComparator) {
-	if len(comparators) > 0 {
-		sort.SliceStable(results, func(i, j int) bool {
-			for _, comparator := range comparators {
-				if !comparator(results[i], results[j]) {
-					return false
-				}
-			}
-			return true
-		})
-	}
-}
-
-func (s *resultStore) viewResults(
-	limit int,
-	filters []ocr2keepersv3.ResultFilter,
-	comparators []ocr2keepersv3.ResultComparator,
-) ([]ocr2keepers.CheckResult, int) {
+func (s *resultStore) viewResults() []ocr2keepers.CheckResult {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	var results []ocr2keepers.CheckResult
-	if limit == 0 {
-		limit = len(s.data)
-	}
 
-resultLoop:
 	for _, r := range s.data {
 		if time.Since(r.addedAt) > storeTTL {
 			// expired, we don't want to remove the element here
 			// as it requires to acquire a write lock, which slows down the View method
 			continue
 		}
-		// apply filters
-		for _, filter := range filters {
-			if !filter(r.data) {
-				continue resultLoop
-			}
-		}
 
 		results = append(results, r.data)
 
 		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", r.data.UpkeepID.String(), r.data.WorkID)
-
-		// if we reached the limit and there are no comparators, we can stop here
-		if len(results) == limit && len(comparators) == 0 {
-			break
-		}
 	}
-	return results, limit
+	return results
 }
 
 func (s *resultStore) gc() {

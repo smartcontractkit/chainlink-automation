@@ -68,3 +68,9 @@ type ProposalQueue interface {
 	// Dequeue returns the next n items in the queue, considering retry time schedules
 	Dequeue(t UpkeepType, n int) ([]CoordinatedProposal, error)
 }
+
+type ResultStore interface {
+	Add(...CheckResult)
+	Remove(...string)
+	View() ([]CheckResult, error)
+}

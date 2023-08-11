@@ -16,7 +16,7 @@ type ResultViewer interface {
 	View(...ocr2keepersv3.ViewOpt) ([]ocr2keepers.CheckResult, error)
 }
 
-func NewAddFromStaging(store ResultViewer, logger *log.Logger, coord Coordinator) AddFromStagingHook {
+func NewAddFromStagingHook(store ocr2keepers.ResultStore, logger *log.Logger, coord Coordinator) AddFromStagingHook {
 	return AddFromStagingHook{
 		store:  store,
 		coord:  coord,
@@ -25,7 +25,7 @@ func NewAddFromStaging(store ResultViewer, logger *log.Logger, coord Coordinator
 }
 
 type AddFromStagingHook struct {
-	store  ResultViewer
+	store  ocr2keepers.ResultStore
 	logger *log.Logger
 	coord  Coordinator
 }
