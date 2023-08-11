@@ -14,10 +14,8 @@ import (
 )
 
 func TestAddFromRecoveryHook(t *testing.T) {
-	mStore := store.NewMetadata(nil)
+	mStore := store.NewMetadataStore(nil)
 	coord := new(mocks.MockCoordinator)
-
-	cache := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
 	expectedProps := []ocr2keepers.CoordinatedProposal{
 		{
@@ -35,10 +33,8 @@ func TestAddFromRecoveryHook(t *testing.T) {
 	}
 
 	for _, p := range expectedProps {
-		cache.Set(fmt.Sprintf("%v", p), p, util.DefaultCacheExpiration)
+		mStore.SetProposalLogRecovery(fmt.Sprintf("%v", p), p, util.DefaultCacheExpiration)
 	}
-
-	mStore.Set(store.ProposalLogRecoveryMetadata, cache)
 
 	hook := NewAddLogRecoveryProposalsHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}
@@ -47,10 +43,10 @@ func TestAddFromRecoveryHook(t *testing.T) {
 }
 
 func TestAddFromRecoveryHook_Error(t *testing.T) {
-	mStore := store.NewMetadata(nil)
+	mStore := store.NewMetadataStore(nil)
 	coord := new(mocks.MockCoordinator)
 	hook := NewAddLogRecoveryProposalsHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}
 
-	assert.ErrorIs(t, hook.RunHook(observation, 10, [16]byte{}), store.ErrMetadataUnavailable, "error from running hook")
+	assert.ErrorIs(t, hook.RunHook(observation, 10, [16]byte{}), nil, "error from running hook")
 }

@@ -27,9 +27,9 @@ type MetadataStore interface {
 	RemoveProposalLogRecovery(key string)
 	ClearAllProposalLogRecovery()
 	ClearExpiredProposalLogRecovery()
-	AppendProposalConditional(...types.UpkeepIdentifier)
-	GetProposalConditional() []types.UpkeepIdentifier
-	RemoveProposalConditional(...types.UpkeepIdentifier) []types.UpkeepIdentifier
+	AppendProposalConditional(...types.CoordinatedProposal)
+	GetProposalConditional() []types.CoordinatedProposal
+	RemoveProposalConditional(...types.CoordinatedProposal) []types.CoordinatedProposal
 	Start(context.Context) error
 	Close() error
 }
@@ -40,7 +40,7 @@ type metadataStore struct {
 	blockHistoryMutex          sync.RWMutex
 	proposalLogRecovery        *util.Cache[types.CoordinatedProposal]
 	proposalLogRecoveryCleaner *util.IntervalCacheCleaner[types.CoordinatedProposal]
-	proposalConditional        []types.UpkeepIdentifier
+	proposalConditional        []types.CoordinatedProposal
 	conditionalMutex           sync.RWMutex
 	running                    atomic.Bool
 	stopCh                     chan struct{}
@@ -52,7 +52,7 @@ func NewMetadataStore(blocks *tickers.BlockTicker) *metadataStore {
 		blockHistory:               types.BlockHistory{},
 		proposalLogRecovery:        util.NewCache[types.CoordinatedProposal](proposalLogExpiry),
 		proposalLogRecoveryCleaner: util.NewIntervalCacheCleaner[types.CoordinatedProposal](proposalLogCleanupInterval),
-		proposalConditional:        []types.UpkeepIdentifier{},
+		proposalConditional:        []types.CoordinatedProposal{},
 		stopCh:                     make(chan struct{}, 1),
 	}
 }
@@ -95,31 +95,31 @@ func (m *metadataStore) ClearExpiredProposalLogRecovery() {
 	m.proposalLogRecovery.ClearExpired()
 }
 
-func (m *metadataStore) AppendProposalConditional(proposals ...types.UpkeepIdentifier) {
+func (m *metadataStore) AppendProposalConditional(proposals ...types.CoordinatedProposal) {
 	m.conditionalMutex.Lock()
 	defer m.conditionalMutex.Unlock()
 
 	m.proposalConditional = append(m.proposalConditional, proposals...)
 }
 
-func (m *metadataStore) GetProposalConditional() []types.UpkeepIdentifier {
+func (m *metadataStore) GetProposalConditional() []types.CoordinatedProposal {
 	m.conditionalMutex.RLock()
 	defer m.conditionalMutex.RUnlock()
 
 	return m.proposalConditional
 }
 
-func (m *metadataStore) RemoveProposalConditional(proposals ...types.UpkeepIdentifier) []types.UpkeepIdentifier {
+func (m *metadataStore) RemoveProposalConditional(proposals ...types.CoordinatedProposal) []types.CoordinatedProposal {
 	m.conditionalMutex.Lock()
 	defer m.conditionalMutex.Unlock()
 
-	proposalsToRemove := make(map[types.UpkeepIdentifier]bool)
+	proposalsToRemove := make(map[types.CoordinatedProposal]bool)
 
 	for _, proposal := range proposals {
 		proposalsToRemove[proposal] = true
 	}
 
-	var updatedProposals []types.UpkeepIdentifier
+	var updatedProposals []types.CoordinatedProposal
 	for _, proposal := range m.proposalConditional {
 		if !proposalsToRemove[proposal] {
 			updatedProposals = append(updatedProposals, proposal)

@@ -41,13 +41,16 @@ func NewAddSamplesToMetadataStorePostprocessor(store store.MetadataStore) *addSa
 
 func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	// extract ids only
-	ids := make([]ocr2keepers.UpkeepIdentifier, 0, len(results))
+	ids := make([]ocr2keepers.CoordinatedProposal, 0, len(results))
 	for _, r := range results {
 		if !r.Eligible {
 			continue
 		}
-
-		ids = append(ids, r.UpkeepID)
+		ids = append(ids, ocr2keepers.CoordinatedProposal{
+			UpkeepID: r.UpkeepID,
+			Trigger:  r.Trigger,
+			WorkID:   r.WorkID,
+		})
 	}
 
 	// should always reset values every time sampling runs

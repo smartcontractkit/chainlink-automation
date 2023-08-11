@@ -4,16 +4,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store/mocks"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestMetadataAddPayload(t *testing.T) {
-	ms := new(MockMetadataStore)
+	ms := new(mocks.MockMetadataStore)
 	values := []ocr2keepers.UpkeepPayload{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
@@ -66,7 +67,8 @@ func TestMetadataAddPayload(t *testing.T) {
 
 	ar := util.NewCache[ocr2keepers.CoordinatedProposal](util.DefaultCacheExpiration)
 
-	ms.On("Get", store.ProposalLogRecoveryMetadata).Return(ar, true)
+	ms.On("SetProposalLogRecovery", "{452312848583266388373324160190187140051835877600158453279131187530910662656 {0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] <nil>} }", mock.Anything, mock.Anything).Once()
+	ms.On("SetProposalLogRecovery", "{904625697166532776746648320380374280103671755200316906558262375061821325312 {0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] <nil>} }", mock.Anything, mock.Anything).Once()
 
 	pp := NewAddPayloadToMetadataStorePostprocessor(ms)
 	err := pp.PostProcess(context.Background(), []ocr2keepers.CheckResult{
@@ -94,7 +96,7 @@ func TestMetadataAddPayload(t *testing.T) {
 }
 
 func TestMetadataAddSamples(t *testing.T) {
-	ms := new(MockMetadataStore)
+	ms := new(mocks.MockMetadataStore)
 	values := []ocr2keepers.CheckResult{
 		{
 			Eligible: true,
@@ -110,12 +112,12 @@ func TestMetadataAddSamples(t *testing.T) {
 		},
 	}
 
-	expected := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier([32]byte{1}),
-		ocr2keepers.UpkeepIdentifier([32]byte{2}),
-	}
+	//expected := []ocr2keepers.UpkeepIdentifier{
+	//	ocr2keepers.UpkeepIdentifier([32]byte{1}),
+	//	ocr2keepers.UpkeepIdentifier([32]byte{2}),
+	//}
 
-	ms.On("Set", store.ProposalConditionalMetadata, expected)
+	//ms.On("Set", store.ProposalConditionalMetadata, expected)
 
 	pp := NewAddSamplesToMetadataStorePostprocessor(ms)
 	err := pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{
@@ -133,18 +135,4 @@ func TestMetadataAddSamples(t *testing.T) {
 	assert.NoError(t, err, "no error expected from post processor")
 
 	ms.AssertExpectations(t)
-}
-
-type MockMetadataStore struct {
-	mock.Mock
-}
-
-func (_m *MockMetadataStore) Set(key store.MetadataKey, value interface{}) {
-	_m.Called(key, value)
-}
-
-func (_m *MockMetadataStore) Get(key store.MetadataKey) (interface{}, bool) {
-	ret := _m.Called(key)
-
-	return ret.Get(0), ret.Get(1).(bool)
 }

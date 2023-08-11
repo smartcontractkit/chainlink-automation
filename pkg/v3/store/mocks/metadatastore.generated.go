@@ -18,7 +18,7 @@ type MockMetadataStore struct {
 }
 
 // AppendProposalConditional provides a mock function with given fields: _a0
-func (_m *MockMetadataStore) AppendProposalConditional(_a0 ...types.UpkeepIdentifier) {
+func (_m *MockMetadataStore) AppendProposalConditional(_a0 ...types.CoordinatedProposal) {
 	_va := make([]interface{}, len(_a0))
 	for _i := range _a0 {
 		_va[_i] = _a0[_i]
@@ -69,15 +69,15 @@ func (_m *MockMetadataStore) GetBlockHistory() types.BlockHistory {
 }
 
 // GetProposalConditional provides a mock function with given fields:
-func (_m *MockMetadataStore) GetProposalConditional() []types.UpkeepIdentifier {
+func (_m *MockMetadataStore) GetProposalConditional() []types.CoordinatedProposal {
 	ret := _m.Called()
 
-	var r0 []types.UpkeepIdentifier
-	if rf, ok := ret.Get(0).(func() []types.UpkeepIdentifier); ok {
+	var r0 []types.CoordinatedProposal
+	if rf, ok := ret.Get(0).(func() []types.CoordinatedProposal); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.UpkeepIdentifier)
+			r0 = ret.Get(0).([]types.CoordinatedProposal)
 		}
 	}
 
@@ -125,7 +125,7 @@ func (_m *MockMetadataStore) GetProposalLogRecoveryKeys() []string {
 }
 
 // RemoveProposalConditional provides a mock function with given fields: _a0
-func (_m *MockMetadataStore) RemoveProposalConditional(_a0 ...types.UpkeepIdentifier) []types.UpkeepIdentifier {
+func (_m *MockMetadataStore) RemoveProposalConditional(_a0 ...types.CoordinatedProposal) []types.CoordinatedProposal {
 	_va := make([]interface{}, len(_a0))
 	for _i := range _a0 {
 		_va[_i] = _a0[_i]
@@ -134,12 +134,12 @@ func (_m *MockMetadataStore) RemoveProposalConditional(_a0 ...types.UpkeepIdenti
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 []types.UpkeepIdentifier
-	if rf, ok := ret.Get(0).(func(...types.UpkeepIdentifier) []types.UpkeepIdentifier); ok {
+	var r0 []types.CoordinatedProposal
+	if rf, ok := ret.Get(0).(func(...types.CoordinatedProposal) []types.CoordinatedProposal); ok {
 		r0 = rf(_a0...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.UpkeepIdentifier)
+			r0 = ret.Get(0).([]types.CoordinatedProposal)
 		}
 	}
 

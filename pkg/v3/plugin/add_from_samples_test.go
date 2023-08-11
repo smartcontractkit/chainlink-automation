@@ -12,15 +12,19 @@ import (
 )
 
 func TestAddFromSamplesHook(t *testing.T) {
-	mStore := store.NewMetadata(nil)
+	mStore := store.NewMetadataStore(nil)
 	coord := new(mocks.MockCoordinator)
 
-	samples := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier([32]byte{1}),
-		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+	samples := []ocr2keepers.CoordinatedProposal{
+		ocr2keepers.CoordinatedProposal{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		},
+		ocr2keepers.CoordinatedProposal{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		},
 	}
 
-	mStore.Set(store.ProposalConditionalMetadata, samples)
+	mStore.AppendProposalConditional(samples...)
 
 	hook := NewAddFromSamplesHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}
@@ -29,11 +33,11 @@ func TestAddFromSamplesHook(t *testing.T) {
 }
 
 func TestAddFromSamplesHook_Error(t *testing.T) {
-	mStore := store.NewMetadata(nil)
+	mStore := store.NewMetadataStore(nil)
 	coord := new(mocks.MockCoordinator)
 
 	hook := NewAddFromSamplesHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}
 
-	assert.ErrorIs(t, hook.RunHook(observation, 10, [16]byte{}), store.ErrMetadataUnavailable, "error from running hook")
+	assert.ErrorIs(t, hook.RunHook(observation, 10, [16]byte{}), nil, "error from running hook")
 }
