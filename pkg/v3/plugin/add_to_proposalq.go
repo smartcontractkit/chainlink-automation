@@ -9,7 +9,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func NewAddToProposalQ(proposalQ ocr2keepers.ProposalQueue, logger *log.Logger) AddToProposalQHook {
+func NewAddToProposalQHook(proposalQ ocr2keepers.ProposalQueue, logger *log.Logger) AddToProposalQHook {
 	return AddToProposalQHook{
 		proposalQ: proposalQ,
 		logger:    log.New(logger.Writer(), fmt.Sprintf("[%s | pre-build hook:add-to-proposalq]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
