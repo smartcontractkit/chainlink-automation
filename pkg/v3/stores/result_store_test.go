@@ -169,10 +169,7 @@ func TestResultStore_Start(t *testing.T) {
 	store := New(lggr)
 	origGcInterval := gcInterval
 	origStoreTTL := storeTTL
-	defer func() {
-		gcInterval = origGcInterval
-		storeTTL = origStoreTTL
-	}()
+
 	storeTTL = time.Millisecond * 2
 	gcInterval = time.Millisecond * 5
 
@@ -194,6 +191,9 @@ func TestResultStore_Start(t *testing.T) {
 	view, err = store.View()
 	assert.NoError(t, err)
 	assert.Len(t, view, 0)
+
+	gcInterval = origGcInterval
+	storeTTL = origStoreTTL
 }
 
 //func TestResultStore_Concurrency(t *testing.T) {
