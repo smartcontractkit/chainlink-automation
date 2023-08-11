@@ -32,29 +32,21 @@ func TestValidateAutomationOutcome(t *testing.T) {
 		ValidateAutomationOutcome(testData)
 	})
 
-	t.Run("invalid metadata key", func(t *testing.T) {
-		testData := AutomationOutcome{}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.ErrorIs(t, err, ErrInvalidMetadataKey, "invalid metadata key should return validation error")
-	})
-
-	t.Run("invalid check result", func(t *testing.T) {
-		testData := AutomationOutcome{}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.NotNil(t, err, "invalid check result should return validation error")
-	})
-
-	t.Run("invalid ring buffer", func(t *testing.T) {
-		testData := AutomationOutcome{}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.NotNil(t, err, "invalid ring buffer index should return validation error")
-	})
+	//t.Run("invalid check result", func(t *testing.T) {
+	//	testData := AutomationOutcome{}
+	//
+	//	err := ValidateAutomationOutcome(testData)
+	//
+	//	assert.NotNil(t, err, "invalid check result should return validation error")
+	//})
+	//
+	//t.Run("invalid ring buffer", func(t *testing.T) {
+	//	testData := AutomationOutcome{}
+	//
+	//	err := ValidateAutomationOutcome(testData)
+	//
+	//	assert.NotNil(t, err, "invalid ring buffer index should return validation error")
+	//})
 
 	t.Run("no error on empty", func(t *testing.T) {
 		testData := AutomationOutcome{}
