@@ -24,7 +24,7 @@ func TestOcr3Plugin_Query(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestOcr3Plugin_Outcome(t *testing.T) {
+func TestOcr3Plugin_Observation(t *testing.T) {
 	t.Run("first round processing, previous outcome will be nil, creates an observation with 2 performables, 2 proposals and 2 block history", func(t *testing.T) {
 		var logBuf bytes.Buffer
 		logger := log.New(&logBuf, "ocr3-test-observation", 0)
@@ -464,26 +464,26 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 	for _, tc := range []struct {
-		name       string
-		ao         types.AttributedObservation
-		expectsErr bool
-		wantErr    error
+		name        string
+		observation types.AttributedObservation
+		expectsErr  bool
+		wantErr     error
 	}{
 		{
-			name:       "validating an empty observation returns an error",
-			ao:         types.AttributedObservation{},
-			expectsErr: true,
-			wantErr:    errors.New("unexpected end of JSON input"),
+			name:        "validating an empty observation returns an error",
+			observation: types.AttributedObservation{},
+			expectsErr:  true,
+			wantErr:     errors.New("unexpected end of JSON input"),
 		},
 		{
 			name: "successfully validates a well formed observation",
-			ao: types.AttributedObservation{
+			observation: types.AttributedObservation{
 				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 			},
 		},
 		{
 			name: "gas allocated cannot be zero",
-			ao: types.AttributedObservation{
+			observation: types.AttributedObservation{
 				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 			},
 			expectsErr: true,
@@ -491,7 +491,7 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 		},
 		{
 			name: "check result cannot be ineligible and have no ineligibility reason",
-			ao: types.AttributedObservation{
+			observation: types.AttributedObservation{
 				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 			},
 			expectsErr: true,
@@ -500,12 +500,202 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			plugin := &ocr3Plugin{}
-			err := plugin.ValidateObservation(ocr3types.OutcomeContext{}, nil, tc.ao)
+			err := plugin.ValidateObservation(ocr3types.OutcomeContext{}, nil, tc.observation)
 			if tc.expectsErr {
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), tc.wantErr.Error())
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestOcr3Plugin_Outcome(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		observations []types.AttributedObservation
+		prevOutcome  ocr3types.Outcome
+		wantOutcome  ocr3types.Outcome
+		expectsErr   bool
+		wantErr      error
+	}{
+		{
+			name:         "processing an empty list of observations generates an empty outcome",
+			observations: []types.AttributedObservation{},
+			wantOutcome:  ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[]}`)),
+		},
+		{
+			name: "processing a well formed observation with a previous outcome generates an new outcome",
+			observations: []types.AttributedObservation{
+				{
+					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+				},
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+		},
+		{
+			name: "processing a malformed observation with a previous outcome generates an new outcome",
+			observations: []types.AttributedObservation{
+				{
+					Observation: []byte(`invalid`),
+				},
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+		},
+		{
+			name: "processing an invalid observation with a previous outcome generates an new outcome",
+			observations: []types.AttributedObservation{
+				{
+					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+				},
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+		},
+		{
+			name: "processing an valid observation with a malformed previous outcome returns an error",
+			observations: []types.AttributedObservation{
+				{
+					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+				},
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`invalid`)),
+			expectsErr:  true,
+			wantErr:     errors.New("invalid character 'i' looking for beginning of value"),
+		},
+		// TODO when ValidateAutomationOutcome is implemented
+		//{
+		//	name: "processing an valid observation with an invalid previous outcome returns an error",
+		//	observations: []types.AttributedObservation{
+		//		{
+		//			Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+		//		},
+		//	},
+		//	outcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1","GasAllocated":0}]]}`)),
+		//	expectsErr:  true,
+		//	wantErr:     errors.New(""),
+		//},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var logBuf bytes.Buffer
+			logger := log.New(&logBuf, "ocr3-test-outcome", 0)
+
+			plugin := &ocr3Plugin{
+				Logger: logger,
+			}
+			outcome, err := plugin.Outcome(ocr3types.OutcomeContext{
+				PreviousOutcome: tc.prevOutcome,
+			}, nil, tc.observations)
+			if tc.expectsErr {
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), tc.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantOutcome, outcome)
+			}
+		})
+	}
+}
+
+func TestOcr3Plugin_Reports(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		sequenceNumber      uint64
+		outcome             ocr3types.Outcome
+		wantReportsWithInfo []ocr3types.ReportWithInfo[AutomationReportInfo]
+		encoder             ocr2keepers.Encoder
+		expectsErr          bool
+		wantErr             error
+	}{
+		{
+			name:           "an empty outcome returns an error",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte{}),
+			expectsErr:     true,
+			wantErr:        errors.New("unexpected end of JSON input"),
+		},
+		{
+			name:                "an empty json object generates a nil report",
+			sequenceNumber:      5,
+			outcome:             ocr3types.Outcome([]byte(`{}`)),
+			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo](nil),
+		},
+		{
+			name:           "a well formed outcome gets encoded as a report",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					return json.Marshal(result)
+				},
+			},
+			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo]{
+				{
+					Report: []byte(`[]`),
+				},
+				{
+					Report: []byte(`[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}]`),
+				},
+			},
+		},
+		{
+			name:           "an error is returned when the encoder errors",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					return nil, errors.New("encode boom")
+				},
+			},
+			expectsErr: true,
+			wantErr:    errors.New("error encountered while encoding: encode boom"),
+		},
+		{
+			name:           "an error is returned when the encoder errors",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					return nil, errors.New("encode boom")
+				},
+			},
+			expectsErr: true,
+			wantErr:    errors.New("error encountered while encoding: encode boom"),
+		},
+		{
+			name:           "an error is returned when the encoder errors when there are stillv values to add",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					if len(result) == 0 { // the first call to encode with this test passes 0 check results, so we want to error on the second call, which gets non-zero results
+						return json.Marshal(result)
+					}
+					return nil, errors.New("encode boom")
+				},
+			},
+			expectsErr: true,
+			wantErr:    errors.New("error encountered while encoding: encode boom"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var logBuf bytes.Buffer
+			logger := log.New(&logBuf, "ocr3-test-reports", 0)
+
+			plugin := &ocr3Plugin{
+				Logger:        logger,
+				ReportEncoder: tc.encoder,
+			}
+			reportsWithInfo, err := plugin.Reports(tc.sequenceNumber, tc.outcome)
+			if tc.expectsErr {
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), tc.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantReportsWithInfo, reportsWithInfo)
 			}
 		})
 	}
@@ -531,4 +721,17 @@ func (s *mockProposalQueue) Enqueue(items ...ocr2keepers.CoordinatedProposal) er
 
 func (s *mockProposalQueue) Dequeue(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedProposal, error) {
 	return s.DequeueFn(t, n)
+}
+
+type mockEncoder struct {
+	EncodeFn  func(...ocr2keepers.CheckResult) ([]byte, error)
+	ExtractFn func([]byte) ([]ocr2keepers.ReportedUpkeep, error)
+}
+
+func (e *mockEncoder) Encode(res ...ocr2keepers.CheckResult) ([]byte, error) {
+	return e.EncodeFn(res...)
+}
+
+func (e *mockEncoder) Extract(b []byte) ([]ocr2keepers.ReportedUpkeep, error) {
+	return e.ExtractFn(b)
 }
