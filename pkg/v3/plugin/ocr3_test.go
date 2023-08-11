@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -82,10 +83,10 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
-			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
-			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
-			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
-			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
 			Logger:                      logger,
 		}
 
@@ -162,10 +163,10 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
-			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
-			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
-			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
-			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
 			Logger:                      logger,
 		}
 
@@ -235,10 +236,10 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
-			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
-			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
-			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
-			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
 			Logger:                      logger,
 		}
 
@@ -276,6 +277,9 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
 				return []ocr2keepers.CoordinatedProposal{}
 			},
+			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedProposal) {
+				// no op
+			},
 		}
 
 		resultStore := &mockResultStore{
@@ -291,6 +295,9 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 						Eligible: false,
 					},
 				}, nil
+			},
+			RemoveFn: func(s ...string) {
+				// no op
 			},
 		}
 
@@ -312,16 +319,16 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			},
 		}
 
-		remover := &mockRemover{}
-
 		plugin := &ocr3Plugin{
-			RemoveFromStagingHook:       NewRemoveFromStaging(remover, logger),
-			RemoveFromMetadataHook:      NewRemoveFromMetadataHook(remover, logger),
-			AddToProposalQHook:          NewAddToProposalQHook(proposalQueue, logger),
-			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
-			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
-			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
-			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			RemoveFromStagingHook: hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.LogTrigger
+			}, logger),
+			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
 			Logger:                      logger,
 		}
 
@@ -375,6 +382,9 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
 				return []ocr2keepers.CoordinatedProposal{}
 			},
+			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedProposal) {
+				// no op
+			},
 		}
 
 		resultStore := &mockResultStore{
@@ -390,6 +400,9 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 						Eligible: false,
 					},
 				}, nil
+			},
+			RemoveFn: func(s ...string) {
+				// no op
 			},
 		}
 
@@ -411,16 +424,16 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			},
 		}
 
-		remover := &mockRemover{}
-
 		plugin := &ocr3Plugin{
-			RemoveFromStagingHook:       NewRemoveFromStaging(remover, logger),
-			RemoveFromMetadataHook:      NewRemoveFromMetadataHook(remover, logger),
-			AddToProposalQHook:          NewAddToProposalQHook(proposalQueue, logger),
-			AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
-			AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coordinator),
-			AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coordinator),
-			AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coordinator),
+			RemoveFromStagingHook: hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.LogTrigger
+			}, logger),
+			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
 			Logger:                      logger,
 		}
 
@@ -937,11 +950,16 @@ func TestOcr3Plugin_startServices(t *testing.T) {
 
 type mockResultStore struct {
 	ocr2keepers.ResultStore
-	ViewFn func() ([]ocr2keepers.CheckResult, error)
+	ViewFn   func() ([]ocr2keepers.CheckResult, error)
+	RemoveFn func(...string)
 }
 
 func (s *mockResultStore) View() ([]ocr2keepers.CheckResult, error) {
 	return s.ViewFn()
+}
+
+func (s *mockResultStore) Remove(r ...string) {
+	s.RemoveFn(r...)
 }
 
 type mockProposalQueue struct {
@@ -981,4 +999,52 @@ func (e *mockRecoverable) Start(ctx context.Context) error {
 
 func (e *mockRecoverable) Close() error {
 	return e.CloseFn()
+}
+
+type mockMetadataStore struct {
+	ocr2keepers.MetadataStore
+	ViewLogRecoveryProposalFn   func() []ocr2keepers.CoordinatedProposal
+	ViewConditionalProposalFn   func() []ocr2keepers.CoordinatedProposal
+	GetBlockHistoryFn           func() ocr2keepers.BlockHistory
+	RemoveLogRecoveryProposalFn func(...ocr2keepers.CoordinatedProposal)
+}
+
+func (s *mockMetadataStore) ViewLogRecoveryProposal() []ocr2keepers.CoordinatedProposal {
+	return s.ViewLogRecoveryProposalFn()
+}
+
+func (s *mockMetadataStore) ViewConditionalProposal() []ocr2keepers.CoordinatedProposal {
+	return s.ViewConditionalProposalFn()
+}
+
+func (s *mockMetadataStore) GetBlockHistory() ocr2keepers.BlockHistory {
+	return s.GetBlockHistoryFn()
+}
+
+func (s *mockMetadataStore) RemoveLogRecoveryProposal(p ...ocr2keepers.CoordinatedProposal) {
+	s.RemoveLogRecoveryProposalFn(p...)
+}
+
+type mockCoordinator struct {
+	ocr2keepers.Coordinator
+	FilterProposalsFn func([]ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error)
+	FilterResultsFn   func([]ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error)
+	ShouldAcceptFn    func(ocr2keepers.ReportedUpkeep) bool
+	ShouldTransmitFn  func(ocr2keepers.ReportedUpkeep) bool
+}
+
+func (s *mockCoordinator) FilterProposals(p []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+	return s.FilterProposalsFn(p)
+}
+
+func (s *mockCoordinator) FilterResults(res []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+	return s.FilterResultsFn(res)
+}
+
+func (s *mockCoordinator) ShouldAccept(upkeep ocr2keepers.ReportedUpkeep) bool {
+	return s.ShouldAcceptFn(upkeep)
+}
+
+func (s *mockCoordinator) ShouldTransmit(upkeep ocr2keepers.ReportedUpkeep) bool {
+	return s.ShouldTransmitFn(upkeep)
 }
