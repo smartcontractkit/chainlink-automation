@@ -1,24 +1,33 @@
 package plugin
 
 import (
+	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type AddFromSamplesHook struct {
+type AddConditionalSamplesHook struct {
 	metadata types.MetadataStore
+	logger   *log.Logger
 	coord    types.Coordinator
 }
 
-func NewAddFromSamplesHook(ms types.MetadataStore, coord types.Coordinator) AddFromSamplesHook {
-	return AddFromSamplesHook{metadata: ms, coord: coord}
+func NewAddConditionalSamplesHook(logger *log.Logger, ms types.MetadataStore, coord types.Coordinator) AddConditionalSamplesHook {
+	return AddConditionalSamplesHook{
+		metadata: ms,
+		coord:    coord,
+		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-conditional-samples]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+	}
 }
 
-func (h *AddFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
+func (h *AddConditionalSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	conditionals := h.metadata.ViewConditionalProposal()
+
 	var err error
 	conditionals, err = h.coord.FilterProposals(conditionals)
 	if err != nil {
@@ -35,6 +44,7 @@ func (h *AddFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, l
 		conditionals = conditionals[:limit]
 	}
 
+	h.logger.Printf("adding %d conditional proposals to observation", len(conditionals))
 	obs.UpkeepProposals = append(obs.UpkeepProposals, conditionals...)
 	return nil
 }

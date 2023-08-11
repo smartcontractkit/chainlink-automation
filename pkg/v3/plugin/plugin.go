@@ -122,7 +122,7 @@ func newPlugin(
 		RemoveFromStagingHook:       NewRemoveFromStaging(resultStore, logger),
 		RemoveFromMetadataHook:      NewRemoveFromMetadataHook(resultStore, logger),
 		AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coord),
-		AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coord),
+		AddConditionalSamplesHook:   NewAddConditionalSamplesHook(logger, metadataStore, coord),
 		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coord),
 		AddToProposalQHook:          NewAddToProposalQHook(proposalQ, logger),
 		AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),

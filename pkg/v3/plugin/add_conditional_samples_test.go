@@ -1,7 +1,9 @@
 package plugin
 
 import (
+	"bytes"
 	"errors"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +12,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func TestAddFromSamplesHook_RunHook(t *testing.T) {
+func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		metadata         types.MetadataStore
@@ -66,6 +68,28 @@ func TestAddFromSamplesHook_RunHook(t *testing.T) {
 			limit:            5,
 			src:              [16]byte{1},
 			wantNumProposals: 1,
+		},
+		{
+			name: "proposals are appended to the existing proposals in observation",
+			metadata: &mockMetadataStore{
+				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
+					return []types.CoordinatedProposal{
+						{
+							WorkID: "workID1",
+						},
+					}
+				},
+			},
+			coordinator: &mockCoordinator{
+				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+					assert.Equal(t, 1, len(proposals))
+					return proposals, nil
+				},
+			},
+			proposals:        []types.CoordinatedProposal{{WorkID: "workID2"}},
+			limit:            5,
+			src:              [16]byte{1},
+			wantNumProposals: 2,
 		},
 		{
 			name: "proposals aren't filtered but are limited and are added to the observation",
@@ -130,7 +154,9 @@ func TestAddFromSamplesHook_RunHook(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			processor := NewAddFromSamplesHook(tc.metadata, tc.coordinator)
+			var logBuf bytes.Buffer
+			logger := log.New(&logBuf, "", 0)
+			processor := NewAddConditionalSamplesHook(logger, tc.metadata, tc.coordinator)
 			observation := &ocr2keepers.AutomationObservation{
 				UpkeepProposals: tc.proposals,
 			}

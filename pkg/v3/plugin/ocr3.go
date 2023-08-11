@@ -28,7 +28,7 @@ type ocr3Plugin struct {
 	AddToProposalQHook          AddToProposalQHook
 	AddBlockHistoryHook         AddBlockHistoryHook
 	AddFromStagingHook          AddFromStagingHook
-	AddFromSamplesHook          AddFromSamplesHook
+	AddConditionalSamplesHook   AddConditionalSamplesHook
 	AddLogRecoveryProposalsHook AddLogRecoveryProposalsHook
 	Services                    []service.Recoverable
 	Config                      config.OffchainConfig
@@ -78,7 +78,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	plugin.AddBlockHistoryHook.RunHook(&observation, ObservationBlockHistoryLimit)
 	plugin.AddFromStagingHook.RunHook(&observation, ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 	plugin.AddLogRecoveryProposalsHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	plugin.AddFromSamplesHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	plugin.AddConditionalSamplesHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 
