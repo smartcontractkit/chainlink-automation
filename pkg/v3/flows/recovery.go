@@ -23,11 +23,8 @@ func newFinalRecoveryFlow(
 	recoveryInterval time.Duration,
 	logger *log.Logger,
 ) service.Recoverable {
-	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
-		// create eligibility postprocessor with result store
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
-		// create retry postprocessor
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
 	)
 

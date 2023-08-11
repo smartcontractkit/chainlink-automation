@@ -19,7 +19,7 @@ var (
 )
 
 func NewRetryFlow(
-	coord PreProcessor,
+	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ResultStore,
 	rn ocr2keepersv3.Runner,
 	retryQ ocr2keepers.RetryQueue,
@@ -27,14 +27,11 @@ func NewRetryFlow(
 	logger *log.Logger,
 ) service.Recoverable {
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
-	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
-		// create eligibility postprocessor with result store
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "retry-eligible-postprocessor")),
-		// create retry postprocessor
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
 	)
-	// create observer
+
 	obs := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
@@ -43,7 +40,6 @@ func NewRetryFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | retry-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create time ticker
 	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](retryTickerInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
 		return retryTick{logger: logger, q: retryQ, batchSize: RetryBatchSize}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | retry-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))

@@ -25,14 +25,6 @@ type Runner interface {
 	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
 
-// TODO cleanup, this one is not used, ocr2keepersv3.PreProcessor is used instead
-//
-//go:generate mockery --name PreProcessor --structname MockPreProcessor --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename preprocessor.generated.go
-type PreProcessor interface {
-	// PreProcess takes a slice of payloads and returns a new slice
-	PreProcess(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error)
-}
-
 //go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename resultstore.generated.go
 type ResultStore interface {
 	Add(...ocr2keepers.CheckResult)
@@ -62,7 +54,7 @@ type LogTriggerEligibility struct {
 
 // NewLogTriggerEligibility ...
 func NewLogTriggerEligibility(
-	coord PreProcessor,
+	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rStore ResultStore,
 	mStore store.MetadataStore,
 	runner ocr2keepersv3.Runner,
@@ -180,15 +172,11 @@ func newLogTriggerFlow(
 	retryQ ocr2keepers.RetryQueue,
 	logger *log.Logger,
 ) service.Recoverable {
-	// postprocessing is a combination of multiple smaller postprocessors
 	post := postprocessors.NewCombinedPostprocessor(
-		// create eligibility postprocessor with result store
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "log-trigger-eligible-postprocessor")),
-		// create retry postprocessor
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "log-trigger-retryable-postprocessor")),
 	)
 
-	// create observer
 	obs := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
@@ -197,7 +185,6 @@ func newLogTriggerFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create time ticker
 	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
