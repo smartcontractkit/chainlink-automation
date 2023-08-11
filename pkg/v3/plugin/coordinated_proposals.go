@@ -9,22 +9,22 @@ import (
 )
 
 type coordinatedProposals struct {
-	threshold         int
-	roundHistoryLimit int
-	perRoundLimit     int
-	keyRandSource     [16]byte
-	recentBlocks      map[ocr2keepers.BlockKey]int
-	allNewProposals   []ocr2keepers.CoordinatedProposal
+	quorumBlockthreshold int
+	roundHistoryLimit    int
+	perRoundLimit        int
+	keyRandSource        [16]byte
+	recentBlocks         map[ocr2keepers.BlockKey]int
+	allNewProposals      []ocr2keepers.CoordinatedProposal
 }
 
 // TODO: add test for this
-func newCoordinatedProposals(threshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedProposals {
+func newCoordinatedProposals(quorumBlockthreshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedProposals {
 	return &coordinatedProposals{
-		threshold:         threshold,
-		roundHistoryLimit: roundHistoryLimit,
-		perRoundLimit:     perRoundLimit,
-		keyRandSource:     rSrc,
-		recentBlocks:      make(map[ocr2keepers.BlockKey]int),
+		quorumBlockthreshold: quorumBlockthreshold,
+		roundHistoryLimit:    roundHistoryLimit,
+		perRoundLimit:        perRoundLimit,
+		keyRandSource:        rSrc,
+		recentBlocks:         make(map[ocr2keepers.BlockKey]int),
 	}
 }
 
@@ -108,7 +108,7 @@ func (c *coordinatedProposals) getLatestQuorumBlock() (ocr2keepers.BlockKey, boo
 	for block, count := range c.recentBlocks {
 		// Perhaps an honest node could be tricked into seeing an illegitimate
 		// blockhash by an eclipse attack?
-		if count > int(c.threshold) {
+		if count > int(c.quorumBlockthreshold) {
 			if (mostRecent.Hash == zeroHash) || // First consensus hash
 				(block.Number > mostRecent.Number) || // later height
 				(block.Number == mostRecent.Number && // Matching heights
