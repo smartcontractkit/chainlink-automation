@@ -55,3 +55,12 @@ func (bt *basicTicker[T]) getterFn(_ context.Context, t time.Time) (Tick[[]T], e
 		value: allValues,
 	}, nil
 }
+
+type staticTick[V any] struct {
+	value V
+}
+
+// Values returns the values contained in the Tick.
+func (t staticTick[V]) Value(ctx context.Context) (V, error) {
+	return t.value, nil
+}

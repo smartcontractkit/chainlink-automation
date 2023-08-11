@@ -66,6 +66,7 @@ func NewLogTriggerEligibility(
 	retryQ ocr2keepers.RetryQueue,
 	proposals ocr2keepers.ProposalQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) (*LogTriggerEligibility, []service.Recoverable) {
 	// all flows use the same preprocessor based on the coordinator
@@ -75,7 +76,7 @@ func NewLogTriggerEligibility(
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network
 	// votes on the proposed values
-	rcvProposal := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, logger)
+	rcvProposal := newRecoveryProposalFlow(preprocessors, mStore, rp, recoveryInterval, typeGetter, logger)
 
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived

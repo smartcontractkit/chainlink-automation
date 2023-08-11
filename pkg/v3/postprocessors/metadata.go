@@ -8,10 +8,11 @@ import (
 )
 
 type addToMetadataStorePostprocessor struct {
-	store store.MetadataStore
+	store      store.MetadataStore
+	typeGetter ocr2keepers.UpkeepTypeGetter
 }
 
-func NewAddPayloadToMetadataStorePostprocessor(store store.MetadataStore) *addToMetadataStorePostprocessor {
+func NewAddPayloadToMetadataStorePostprocessor(store store.MetadataStore, typeGetter ocr2keepers.UpkeepTypeGetter) *addToMetadataStorePostprocessor {
 	return &addToMetadataStorePostprocessor{store: store}
 }
 
@@ -21,9 +22,15 @@ func (a *addToMetadataStorePostprocessor) PostProcess(_ context.Context, results
 		proposal := ocr2keepers.CoordinatedProposal{
 			UpkeepID: r.UpkeepID,
 			Trigger:  r.Trigger,
+			WorkID:   r.WorkID,
 		}
-
-		a.store.AddLogRecoveryProposal(proposal)
+		switch a.typeGetter(r.UpkeepID) {
+		case ocr2keepers.LogTrigger:
+			a.store.AddLogRecoveryProposal(proposal)
+		case ocr2keepers.ConditionTrigger:
+			a.store.AddConditionalProposal(proposal)
+		default:
+		}
 	}
 
 	return nil
@@ -50,8 +57,6 @@ func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, 
 			WorkID:   r.WorkID,
 		})
 	}
-
-	// should always reset values every time sampling runs
 	a.store.AddConditionalProposal(ids...)
 	return nil
 }

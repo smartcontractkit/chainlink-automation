@@ -83,8 +83,8 @@ func newRecoveryProposalFlow(
 	ms store.MetadataStore,
 	rp ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
+	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
-	configFuncs ...tickers.ScheduleTickerConfigFunc,
 ) service.Recoverable {
 	// items come into the recovery path from multiple sources
 	// 1. [done] from the log provider as UpkeepPayload
@@ -111,9 +111,9 @@ func newRecoveryProposalFlow(
 	// the recovery observer is just a pass-through to the metadata store
 	// add postprocessor for metatdata store
 	// TODO: align with new metadata store API
-	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms)
+	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms, typeGetter)
 
-	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult](
+	obs := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult](
 		preprocessors,
 		post,
 		f,
@@ -121,32 +121,26 @@ func newRecoveryProposalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create a schedule ticker that pulls recoverable items from an outside
-	// source and provides point for recoverables to be pushed to the ticker
-	// TODO: time ticker, fetches from RecoverableProvider
-	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
-		recoveryInterval,
-		recoveryObserver,
-		func(f func(string, ocr2keepers.UpkeepPayload) error) error {
-			// TODO: Pass in parent context to this function
-			ctx := context.Background()
-			// pull payloads from RecoverableProvider
-			recovers, err := rp.GetRecoveryProposals(ctx)
-			if err != nil {
-				return err
-			}
+	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return logRecoveryTick{logger: logger, logRecoverer: rp}, nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
-			for _, rec := range recovers {
-				if err := f(rec.WorkID, rec); err != nil {
-					return err
-				}
-			}
+	return timeTick
+}
 
-			return nil
-		},
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-recovery-proposal]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		configFuncs...,
-	)
+type logRecoveryTick struct {
+	logRecoverer ocr2keepers.RecoverableProvider
+	logger       *log.Logger
+}
 
-	return ticker
+func (et logRecoveryTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	if et.logRecoverer == nil {
+		return nil, nil
+	}
+
+	logs, err := et.logRecoverer.GetRecoveryProposals(ctx)
+
+	et.logger.Printf("%d logs returned by log recoverer", len(logs))
+
+	return logs, err
 }

@@ -70,7 +70,9 @@ func TestMetadataAddPayload(t *testing.T) {
 	ms.On("SetProposalLogRecovery", "{452312848583266388373324160190187140051835877600158453279131187530910662656 {0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] <nil>} }", mock.Anything, mock.Anything).Once()
 	ms.On("SetProposalLogRecovery", "{904625697166532776746648320380374280103671755200316906558262375061821325312 {0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] <nil>} }", mock.Anything, mock.Anything).Once()
 
-	pp := NewAddPayloadToMetadataStorePostprocessor(ms)
+	pp := NewAddPayloadToMetadataStorePostprocessor(ms, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+		return ocr2keepers.LogTrigger
+	})
 	err := pp.PostProcess(context.Background(), []ocr2keepers.CheckResult{
 		{
 			Eligible: true,

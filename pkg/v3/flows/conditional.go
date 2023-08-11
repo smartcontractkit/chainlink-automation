@@ -107,7 +107,7 @@ func newFinalConditionalFlow(
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "conditional-final-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "conditional-final-retryable-postprocessor")),
-		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "conditional-ineligible-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "conditional-final-ineligible-postprocessor")),
 	)
 	// create observer that only pushes results to result store. everything at
 	// this point can be dropped. this process is only responsible for running
@@ -128,7 +128,7 @@ func newFinalConditionalFlow(
 			utype:     ocr2keepers.ConditionTrigger,
 			batchSize: RetryBatchSize,
 		}, nil
-	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return ticker
 }

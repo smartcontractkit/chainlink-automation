@@ -82,6 +82,7 @@ func newPlugin(
 		retryQ,
 		proposalQ,
 		upkeepStateUpdater,
+		upkeepTypeGetter,
 		logger,
 	)
 

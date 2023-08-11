@@ -117,6 +117,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		factory.getter,
 		factory.encoder,
 		factory.upkeepTypeGetter,
+		factory.upkeepStateUpdater,
 		factory.runnable,
 		factory.runnerConf,
 		conf,
