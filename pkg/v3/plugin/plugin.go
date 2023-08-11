@@ -8,7 +8,6 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
@@ -46,10 +45,7 @@ func newPlugin(
 
 	// create the value stores
 	rs := resultstore.New(logger)
-	ms := store.NewMetadata(blockTicker)
-
-	// add recovery cache to metadata store with 24hr timeout
-	ms.Set(store.ProposalLogRecoveryMetadata, util.NewCache[ocr2keepers.CoordinatedProposal](24*time.Hour))
+	ms := store.NewMetadataStore(blockTicker)
 
 	// create a new runner instance
 	rn, err := runner.NewRunner(

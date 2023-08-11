@@ -8,6 +8,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -22,7 +23,7 @@ type Ratio interface {
 // ConditionalEligibility is a flow controller that surfaces conditional upkeeps
 type ConditionalEligibility struct {
 	builder ocr2keepers.PayloadBuilder
-	mStore  MetadataStore
+	mStore  store.MetadataStore
 	logger  *log.Logger
 }
 
@@ -33,7 +34,7 @@ func NewConditionalEligibility(
 	subscriber ocr2keepers.BlockSubscriber,
 	builder ocr2keepers.PayloadBuilder,
 	rs ResultStore,
-	ms MetadataStore,
+	ms store.MetadataStore,
 	rn ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
@@ -116,7 +117,7 @@ func newSampleProposalFlow(
 	ratio Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber ocr2keepers.BlockSubscriber,
-	ms MetadataStore,
+	ms store.MetadataStore,
 	rn ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (service.Recoverable, error) {

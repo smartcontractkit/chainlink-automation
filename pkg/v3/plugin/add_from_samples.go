@@ -6,11 +6,11 @@ import (
 )
 
 type AddFromSamplesHook struct {
-	metadata *store.Metadata
+	metadata store.MetadataStore
 	coord    Coordinator
 }
 
-func NewAddFromSamplesHook(ms *store.Metadata, coord Coordinator) AddFromSamplesHook {
+func NewAddFromSamplesHook(ms store.MetadataStore, coord Coordinator) AddFromSamplesHook {
 	return AddFromSamplesHook{metadata: ms, coord: coord}
 }
 

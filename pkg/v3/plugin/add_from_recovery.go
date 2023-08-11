@@ -6,11 +6,11 @@ import (
 )
 
 type AddLogRecoveryProposalsHook struct {
-	metadata *store.Metadata
+	metadata store.MetadataStore
 	coord    Coordinator
 }
 
-func NewAddLogRecoveryProposalsHook(ms *store.Metadata, coord Coordinator) AddLogRecoveryProposalsHook {
+func NewAddLogRecoveryProposalsHook(ms store.MetadataStore, coord Coordinator) AddLogRecoveryProposalsHook {
 	return AddLogRecoveryProposalsHook{metadata: ms, coord: coord}
 }
 

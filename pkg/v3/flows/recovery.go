@@ -9,6 +9,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -53,7 +54,7 @@ func newFinalRecoveryFlow(
 
 func newRecoveryProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ms MetadataStore,
+	ms store.MetadataStore,
 	rp ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
 	logger *log.Logger,

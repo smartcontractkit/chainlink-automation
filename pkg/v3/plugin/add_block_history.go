@@ -6,10 +6,10 @@ import (
 )
 
 type AddBlockHistoryHook struct {
-	metadata *store.Metadata
+	metadata store.MetadataStore
 }
 
-func NewAddBlockHistoryHook(ms *store.Metadata) AddBlockHistoryHook {
+func NewAddBlockHistoryHook(ms store.MetadataStore) AddBlockHistoryHook {
 	return AddBlockHistoryHook{metadata: ms}
 }
 

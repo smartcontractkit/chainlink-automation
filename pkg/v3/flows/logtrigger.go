@@ -38,12 +38,6 @@ type ResultStore interface {
 	Add(...ocr2keepers.CheckResult)
 }
 
-//go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename metadatastore.generated.go
-type MetadataStore interface {
-	Set(store.MetadataKey, interface{})
-	Get(store.MetadataKey) (interface{}, bool)
-}
-
 // Retryer provides the ability to push retries to an observer
 //
 //go:generate mockery --name Retryer --structname MockRetryer --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename retryer.generated.go
@@ -62,7 +56,7 @@ const (
 // with retry attempts.
 type LogTriggerEligibility struct {
 	builder ocr2keepers.PayloadBuilder
-	mStore  MetadataStore
+	mStore  store.MetadataStore
 	logger  *log.Logger
 }
 
@@ -70,7 +64,7 @@ type LogTriggerEligibility struct {
 func NewLogTriggerEligibility(
 	coord PreProcessor,
 	rStore ResultStore,
-	mStore MetadataStore,
+	mStore store.MetadataStore,
 	runner ocr2keepersv3.Runner,
 	logProvider ocr2keepers.LogEventProvider,
 	rp ocr2keepers.RecoverableProvider,

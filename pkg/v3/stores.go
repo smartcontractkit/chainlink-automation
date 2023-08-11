@@ -1,7 +1,6 @@
 package ocr2keepers
 
 import (
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -22,13 +21,6 @@ type ResultStore interface {
 	Remove(...string)
 	View(...ViewOpt) ([]ocr2keepers.CheckResult, error)
 	Notifications() <-chan Notification
-}
-
-type MetadataStore interface {
-	// Set should replace any existing values
-	Set(store.MetadataKey, interface{})
-	// Get should return a value if it exists and a boolean on whether the key exists
-	Get(store.MetadataKey) (interface{}, bool)
 }
 
 // Notification is a struct that will be sent by the ResultStore upon certain events happening
