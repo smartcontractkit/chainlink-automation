@@ -26,8 +26,6 @@ type ConditionalEligibility struct {
 	builder ocr2keepers.PayloadBuilder
 	mStore  store.MetadataStore
 	logger  *log.Logger
-
-	proposals ocr2keepers.ProposalQueue
 }
 
 // NewConditionalEligibility ...
@@ -60,60 +58,6 @@ func NewConditionalEligibility(
 		builder: builder,
 		logger:  logger,
 	}, []service.Recoverable{svc0, svc1}, err
-}
-
-func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	// TODO: Refactor into coordinatedProposals Flow
-	/*
-		samples, err := outcome.UpkeepIdentifiers()
-		if err != nil {
-			if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
-				return err
-			}
-
-			flow.logger.Printf("%s", err)
-
-			return nil
-		}
-
-		if len(samples) == 0 {
-			return nil
-		}
-
-		// limit timeout to get all proposal data
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		// merge block number and recoverables
-		for _, sample := range samples {
-			proposal := ocr2keepers.CoordinatedProposal{
-				UpkeepID: sample,
-			}
-
-			payloads, err := flow.builder.BuildPayloads(ctx, proposal)
-			if err != nil {
-				flow.logger.Printf("error encountered when building payload")
-				continue
-			}
-			if len(payloads) == 0 {
-				flow.logger.Printf("did not get any results when building payload")
-				continue
-			}
-			payload := payloads[0]
-
-			// pass to recoverer
-			if err := flow.final.Retry(ocr2keepers.CheckResult{
-				UpkeepID: payload.UpkeepID,
-				Trigger:  payload.Trigger,
-			}); err != nil {
-				continue
-			}
-		}
-
-		// reset samples in metadata
-		flow.mStore.Set(store.ProposalSampleMetadata, []ocr2keepers.UpkeepIdentifier{})
-	*/
-	return nil
 }
 
 func newSampleProposalFlow(

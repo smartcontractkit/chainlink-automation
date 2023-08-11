@@ -50,8 +50,6 @@ type LogTriggerEligibility struct {
 	builder ocr2keepers.PayloadBuilder
 	mStore  store.MetadataStore
 	logger  *log.Logger
-
-	proposals ocr2keepers.ProposalQueue
 }
 
 // NewLogTriggerEligibility ...
@@ -100,70 +98,10 @@ func NewLogTriggerEligibility(
 	// the final return includes a struct that provides the ability for hooks
 	// to pass data to internal flows
 	return &LogTriggerEligibility{
-		builder:   builder,
-		mStore:    mStore,
-		logger:    logger,
-		proposals: proposals,
+		builder: builder,
+		mStore:  mStore,
+		logger:  logger,
 	}, svcs
-}
-
-// ProcessOutcome functions as an observation pre-build hook to allow data from
-// outcomes to feed inputs in the eligibility flow
-func (flow *LogTriggerEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	// TODO: Refactor into coordinatedProposals Flow
-	/*networkProposals, err := outcome.RecoveryProposals()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
-			return err
-		}
-
-		flow.logger.Printf("%s", err)
-
-		return nil
-	}
-
-	if len(networkProposals) == 0 {
-		return nil
-	}
-
-	cachedProposals, err := store.RecoveryProposalCacheFromMetadata(flow.mStore)
-	if err != nil {
-		return err
-	}
-
-	// limit timeout to get all proposal data
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
-	// merge block number and recoverables
-	for _, proposal := range networkProposals {
-		// remove from local metadata store
-		cachedProposals.Delete(fmt.Sprintf("%v", proposal))
-
-		payloads, err := flow.builder.BuildPayloads(ctx, proposal)
-		if err != nil {
-			flow.logger.Printf("error encountered when building payload")
-			continue
-		}
-		if len(payloads) == 0 {
-			flow.logger.Printf("did not get any results when building payload")
-			continue
-		}
-		payload := payloads[0]
-
-		// pass to recoverer
-		if err := flow.recoverer.Retry(ocr2keepers.CheckResult{
-			UpkeepID: payload.UpkeepID,
-			Trigger:  payload.Trigger,
-		}); err != nil {
-			continue
-		}
-	}
-
-	cachedProposals.ClearExpired()
-
-	cancel()
-	*/
-	return nil
 }
 
 // log trigger flow is the happy path entry point for log triggered upkeeps
