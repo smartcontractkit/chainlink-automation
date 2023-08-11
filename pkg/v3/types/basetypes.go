@@ -68,8 +68,8 @@ type BlockNumber uint64
 
 // BlockKey represent a block (number and hash)
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
-// Any change here should be backwards compatible and should keep quorum requirements
-// in mind
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind
 type BlockKey struct {
 	Number BlockNumber
 	Hash   [32]byte
@@ -93,8 +93,8 @@ type TransmitEvent struct {
 }
 
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
-// Any change here should be backwards compatible and should keep quorum requirements
-// in mind
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind
 type CheckResult struct {
 	// zero if success, else indicates an error code
 	PipelineExecutionState uint8
@@ -192,8 +192,8 @@ type UpkeepPayload struct {
 // CoordinatedProposal is used to represent a unit of work that can be performed
 // after it has been coordinated between nodes.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
-// Any change here should be backwards compatible and should keep quorum requirements
-// in mind
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind
 type CoordinatedProposal struct {
 	// UpkeepID is the id of the proposed upkeep
 	UpkeepID UpkeepIdentifier

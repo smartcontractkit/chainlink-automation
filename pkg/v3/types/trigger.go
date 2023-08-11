@@ -9,8 +9,8 @@ import (
 // It contains an extension per trigger type, and the block number + hash
 // in which the trigger was checked.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
-// Any change here should be backwards compatible and should keep quorum requirements
-// in mind
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind
 type Trigger struct {
 	// BlockNumber is the block number in which the trigger was checked
 	BlockNumber BlockNumber
@@ -57,8 +57,8 @@ func (t Trigger) Validate() error {
 // LogTriggerExtension is the extension used for log triggers,
 // It contains information of the log event that was triggered.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
-// Any change here should be backwards compatible and should keep quorum requirements
-// in mind
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind
 type LogTriggerExtension struct {
 	// LogTxHash is the transaction hash of the log event
 	TxHash [32]byte
