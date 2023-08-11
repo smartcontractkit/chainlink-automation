@@ -420,7 +420,7 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 				c.cache.Set(k, v, util.DefaultCacheExpiration)
 			}
 
-			shouldAccept := c.ShouldAccept(tc.reportedUpkeep)
+			shouldAccept := c.Accept(tc.reportedUpkeep)
 
 			assert.Equal(t, tc.shouldAccept, shouldAccept)
 

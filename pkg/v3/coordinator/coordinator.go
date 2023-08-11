@@ -49,7 +49,7 @@ func NewCoordinator(transmitEventProvider ocr2keepers.TransmitEventProvider, upk
 	}
 }
 
-func (c *coordinator) ShouldAccept(reportedUpkeep ocr2keepers.ReportedUpkeep) bool {
+func (c *coordinator) Accept(reportedUpkeep ocr2keepers.ReportedUpkeep) bool {
 	if v, ok := c.cache.Get(reportedUpkeep.WorkID); !ok {
 		c.cache.Set(reportedUpkeep.WorkID, record{
 			checkBlockNumber:      reportedUpkeep.Trigger.BlockNumber,
@@ -84,7 +84,7 @@ func (c *coordinator) ShouldTransmit(reportedUpkeep ocr2keepers.ReportedUpkeep) 
 	}
 }
 
-// FilterPayloads?
+// TODO: rename to FilterPayloads
 func (c *coordinator) PreProcess(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
 	res := make([]ocr2keepers.UpkeepPayload, 0)
 	for _, payload := range payloads {

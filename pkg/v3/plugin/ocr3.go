@@ -229,7 +229,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 	accept := false
 	// If any upkeep can be accepted, then accept
 	for _, upkeep := range upkeeps {
-		shouldAccept := plugin.Coordinator.ShouldAccept(upkeep)
+		shouldAccept := plugin.Coordinator.Accept(upkeep)
 		plugin.Logger.Printf("checking shouldAccept of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldAccept)
 
 		if shouldAccept {

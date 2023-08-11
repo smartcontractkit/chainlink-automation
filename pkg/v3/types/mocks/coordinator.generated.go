@@ -14,6 +14,20 @@ type MockCoordinator struct {
 	mock.Mock
 }
 
+// Accept provides a mock function with given fields: _a0
+func (_m *MockCoordinator) Accept(_a0 types.ReportedUpkeep) bool {
+	ret := _m.Called(_a0)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(types.ReportedUpkeep) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // FilterProposals provides a mock function with given fields: _a0
 func (_m *MockCoordinator) FilterProposals(_a0 []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
 	ret := _m.Called(_a0)
@@ -90,20 +104,6 @@ func (_m *MockCoordinator) PreProcess(_a0 context.Context, payloads []types.Upke
 	}
 
 	return r0, r1
-}
-
-// ShouldAccept provides a mock function with given fields: _a0
-func (_m *MockCoordinator) ShouldAccept(_a0 types.ReportedUpkeep) bool {
-	ret := _m.Called(_a0)
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(types.ReportedUpkeep) bool); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
 }
 
 // ShouldTransmit provides a mock function with given fields: _a0

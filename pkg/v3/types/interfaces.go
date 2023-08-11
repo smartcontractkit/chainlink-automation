@@ -81,7 +81,7 @@ type ResultStore interface {
 type Coordinator interface {
 	PreProcess(_ context.Context, payloads []UpkeepPayload) ([]UpkeepPayload, error)
 
-	ShouldAccept(ReportedUpkeep) bool
+	Accept(ReportedUpkeep) bool
 	ShouldTransmit(ReportedUpkeep) bool
 	FilterResults([]CheckResult) ([]CheckResult, error)
 	FilterProposals([]CoordinatedProposal) ([]CoordinatedProposal, error)
