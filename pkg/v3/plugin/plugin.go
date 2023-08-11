@@ -125,7 +125,7 @@ func newPlugin(
 		AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore, logger),
 		AddFromStagingHook:          NewAddFromStagingHook(resultStore, coord, logger),
 		AddConditionalSamplesHook:   NewAddConditionalSamplesHook(metadataStore, coord, logger),
-		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coord),
+		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coord, logger),
 		Services:                    recoverSvcs,
 		Config:                      conf,
 		F:                           f,

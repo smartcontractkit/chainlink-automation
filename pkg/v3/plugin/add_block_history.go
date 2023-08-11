@@ -17,7 +17,7 @@ type AddBlockHistoryHook struct {
 func NewAddBlockHistoryHook(ms ocr2keepers.MetadataStore, logger *log.Logger) AddBlockHistoryHook {
 	return AddBlockHistoryHook{
 		metadata: ms,
-		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | pre-build hook:add-block-history]", telemetry.ServiceName), telemetry.LogPkgStdFlags)}
+		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-block-history]", telemetry.ServiceName), telemetry.LogPkgStdFlags)}
 }
 
 func (h *AddBlockHistoryHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int) error {

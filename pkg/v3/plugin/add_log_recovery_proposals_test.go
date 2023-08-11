@@ -1,7 +1,9 @@
 package plugin
 
 import (
+	"bytes"
 	"errors"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -130,7 +132,9 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			processor := NewAddLogRecoveryProposalsHook(tc.metadata, tc.coordinator)
+			var logBuf bytes.Buffer
+			logger := log.New(&logBuf, "", 0)
+			processor := NewAddLogRecoveryProposalsHook(tc.metadata, tc.coordinator, logger)
 			observation := &ocr2keepers.AutomationObservation{
 				UpkeepProposals: tc.proposals,
 			}
