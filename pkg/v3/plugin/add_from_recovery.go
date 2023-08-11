@@ -9,18 +9,19 @@ import (
 )
 
 type AddLogRecoveryProposalsHook struct {
-	metadata types.MetadataStore
-	coord    types.Coordinator
+	metadata    types.MetadataStore
+	coordinator types.Coordinator
 }
 
-func NewAddLogRecoveryProposalsHook(ms types.MetadataStore, coord types.Coordinator) AddLogRecoveryProposalsHook {
-	return AddLogRecoveryProposalsHook{metadata: ms, coord: coord}
+func NewAddLogRecoveryProposalsHook(metadataStore types.MetadataStore, coordinator types.Coordinator) AddLogRecoveryProposalsHook {
+	return AddLogRecoveryProposalsHook{metadata: metadataStore, coordinator: coordinator}
 }
 
 func (h *AddLogRecoveryProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	proposals := h.metadata.ViewLogRecoveryProposal()
+
 	var err error
-	proposals, err = h.coord.FilterProposals(proposals)
+	proposals, err = h.coordinator.FilterProposals(proposals)
 	if err != nil {
 		return err
 	}
