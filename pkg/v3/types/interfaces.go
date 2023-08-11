@@ -92,9 +92,9 @@ type MetadataStore interface {
 	SetBlockHistory(BlockHistory)
 	GetBlockHistory() BlockHistory
 
-	// AddProposals(proposals ...CoordinatedProposal)
+	// TODO AddProposals(proposals ...CoordinatedProposal)
 	ViewProposals(utype UpkeepType) []CoordinatedProposal
-	// RemoveProposals(proposals ...CoordinatedProposal)
+	// TODO RemoveProposals(proposals ...CoordinatedProposal)
 
 	AddLogRecoveryProposal(...CoordinatedProposal)
 	ViewLogRecoveryProposal() []CoordinatedProposal
