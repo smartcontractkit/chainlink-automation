@@ -26,7 +26,8 @@ type result struct {
 type resultStore struct {
 	lggr *log.Logger
 
-	close chan bool
+	close    chan bool
+	closedCh chan struct{}
 
 	data map[string]result
 	lock sync.RWMutex
@@ -36,10 +37,11 @@ var _ ocr2keepers.ResultStore = (*resultStore)(nil)
 
 func New(lggr *log.Logger) *resultStore {
 	return &resultStore{
-		lggr:  log.New(lggr.Writer(), fmt.Sprintf("[%s | result-store]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		close: make(chan bool, 1),
-		data:  make(map[string]result),
-		lock:  sync.RWMutex{},
+		lggr:     log.New(lggr.Writer(), fmt.Sprintf("[%s | result-store]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		close:    make(chan bool, 1),
+		closedCh: make(chan struct{}, 1),
+		data:     make(map[string]result),
+		lock:     sync.RWMutex{},
 	}
 }
 
@@ -62,6 +64,7 @@ func (s *resultStore) Start(pctx context.Context) error {
 			return nil
 		case <-s.close:
 			s.lggr.Println("result store close signal received, stopping gc")
+			s.closedCh <- struct{}{}
 			return nil
 		}
 	}

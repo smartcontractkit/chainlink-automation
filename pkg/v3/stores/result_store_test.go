@@ -192,6 +192,9 @@ func TestResultStore_Start(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, view, 0)
 
+	store.Close()
+
+	<-store.closedCh
 	gcInterval = origGcInterval
 	storeTTL = origStoreTTL
 }
