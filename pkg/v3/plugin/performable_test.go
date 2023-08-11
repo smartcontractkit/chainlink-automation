@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"math/big"
 	"testing"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
@@ -30,17 +31,17 @@ func TestPerformables(t *testing.T) {
 			observations: []ocr2keepers.AutomationObservation{
 				{
 					Performable: []types.CheckResult{
-						{WorkID: "1"},
+						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
 					},
 				},
 				{
 					Performable: []types.CheckResult{
-						{WorkID: "2"},
+						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
 					},
 				},
 				{
 					Performable: []types.CheckResult{
-						{WorkID: "3"},
+						{WorkID: "3", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
 					},
 				},
 			},
@@ -53,18 +54,18 @@ func TestPerformables(t *testing.T) {
 			observations: []ocr2keepers.AutomationObservation{
 				{
 					Performable: []types.CheckResult{
-						{WorkID: "1"},
-						{WorkID: "2"},
+						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
 					},
 				},
 				{
 					Performable: []types.CheckResult{
-						{WorkID: "1"},
+						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
 					},
 				},
 				{
 					Performable: []types.CheckResult{
-						{WorkID: "2"},
+						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
 					},
 				},
 			},

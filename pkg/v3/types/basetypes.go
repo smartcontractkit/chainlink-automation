@@ -67,6 +67,9 @@ func (u *UpkeepIdentifier) FromBigInt(i *big.Int) bool {
 type BlockNumber uint64
 
 // BlockKey represent a block (number and hash)
+// NOTE: This struct is sent on the p2p network as part of observations to get quorum
+// Any change here should be backwards compatible and should keep quorum requirements
+// in mind
 type BlockKey struct {
 	Number BlockNumber
 	Hash   [32]byte
@@ -89,6 +92,9 @@ type TransmitEvent struct {
 	CheckBlock BlockNumber
 }
 
+// NOTE: This struct is sent on the p2p network as part of observations to get quorum
+// Any change here should be backwards compatible and should keep quorum requirements
+// in mind
 type CheckResult struct {
 	// zero if success, else indicates an error code
 	PipelineExecutionState uint8
@@ -117,7 +123,9 @@ type CheckResult struct {
 }
 
 // UniqueID returns a unique identifier for the check result.
-// It is used to deduplicate check results.
+// It is used to achieve quorum on results before being sent within a report.
+// It contains all information that agreement should be achieved on.
+// TODO: Think through if it should contain all fields of the result
 func (r CheckResult) UniqueID() string {
 	var resultBytes []byte
 
@@ -183,6 +191,9 @@ type UpkeepPayload struct {
 
 // CoordinatedProposal is used to represent a unit of work that can be performed
 // after it has been coordinated between nodes.
+// NOTE: This struct is sent on the p2p network as part of observations to get quorum
+// Any change here should be backwards compatible and should keep quorum requirements
+// in mind
 type CoordinatedProposal struct {
 	// UpkeepID is the id of the proposed upkeep
 	UpkeepID UpkeepIdentifier

@@ -63,6 +63,9 @@ func ValidateAutomationObservation(o AutomationObservation) error {
 			return err
 		}
 	}
+	// TODO: Only eligible results should be sent and those that have 0 error state
+	// TODO: WorkID should be validated
+	// TODO: Observations should not have duplicate results
 	// TODO: Validate upkeepProposals and blockHistory
 
 	return nil

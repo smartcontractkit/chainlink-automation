@@ -20,6 +20,11 @@ type performables struct {
 	resultCount   map[string]resultAndCount[ocr2keepers.CheckResult]
 }
 
+// Performables gets quorum on agreed check results which should ultimately be
+// performed within a report. It assumes only valid observations are added to it
+// and simply adds all results which achieve the threshold quorum.
+// Results are agreed upon by their UniqueID() which contains all the data
+// to be sent to the contract, ensuring that the whole result gets quorum
 func newPerformables(threshold int, limit int, rSrc [16]byte) *performables {
 	return &performables{
 		threshold:   threshold,
@@ -29,10 +34,6 @@ func newPerformables(threshold int, limit int, rSrc [16]byte) *performables {
 
 func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 	for _, result := range observation.Performable {
-		if !result.Eligible {
-			continue
-		}
-
 		uid := result.UniqueID()
 		payloadCount, ok := p.resultCount[uid]
 		if !ok {
