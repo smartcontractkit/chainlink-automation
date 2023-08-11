@@ -40,6 +40,7 @@ func NewConditionalEligibility(
 	proposalQ ocr2keepers.ProposalQueue,
 	retryQ ocr2keepers.RetryQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
 	// TODO: add coordinator to preprocessor list
@@ -50,7 +51,7 @@ func NewConditionalEligibility(
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
-	svc1, err := newSampleProposalFlow(preprocessors, ratio, getter, subscriber, ms, rn, logger)
+	svc1, err := newSampleProposalFlow(preprocessors, ratio, getter, subscriber, ms, rn, typeGetter, logger)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -69,12 +70,11 @@ func newSampleProposalFlow(
 	subscriber ocr2keepers.BlockSubscriber,
 	ms store.MetadataStore,
 	rn ocr2keepersv3.Runner,
+	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
 	preprocessors = append(preprocessors, &proposalFilterer{ms, ocr2keepers.LogTrigger})
-	// create a metadata store postprocessor
-	// TODO: align postProcessor with metadata API
-	pp := postprocessors.NewAddSamplesToMetadataStorePostprocessor(ms)
+	pp := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms, typeGetter)
 
 	// create observer
 	observer := ocr2keepersv3.NewRunnableObserver(

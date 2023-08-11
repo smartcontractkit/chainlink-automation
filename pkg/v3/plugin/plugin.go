@@ -24,7 +24,7 @@ func newPlugin(
 	logProvider ocr2keepers.LogEventProvider,
 	events ocr2keepers.TransmitEventProvider,
 	blockSource ocr2keepers.BlockSubscriber,
-	rp ocr2keepers.RecoverableProvider,
+	recoverablesProvider ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	ratio flows.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
@@ -43,11 +43,11 @@ func newPlugin(
 	}
 
 	// create the value stores
-	rs := store.New(logger)
-	ms := store.NewMetadataStore(blockTicker, upkeepTypeGetter)
+	resultStore := store.New(logger)
+	metadataStore := store.NewMetadataStore(blockTicker, upkeepTypeGetter)
 
 	// create a new runner instance
-	rn, err := runner.NewRunner(
+	runner, err := runner.NewRunner(
 		logger,
 		runnable,
 		rConf,
@@ -61,18 +61,18 @@ func newPlugin(
 
 	retryQ := store.NewRetryQueue(logger)
 
-	retrySvc := flows.NewRetryFlow(coord, rs, rn, retryQ, 5*time.Second, upkeepStateUpdater, logger)
+	retrySvc := flows.NewRetryFlow(coord, resultStore, runner, retryQ, 5*time.Second, upkeepStateUpdater, logger)
 
 	proposalQ := store.NewProposalQueue(upkeepTypeGetter)
 
 	// initialize the log trigger eligibility flow
 	_, svcs := flows.NewLogTriggerEligibility(
 		coord,
-		rs,
-		ms,
-		rn,
+		resultStore,
+		metadataStore,
+		runner,
 		logProvider,
-		rp,
+		recoverablesProvider,
 		builder,
 		flows.LogCheckInterval,
 		flows.RecoveryCheckInterval,
@@ -84,9 +84,22 @@ func newPlugin(
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(svcs, []service.Recoverable{retrySvc, rs, ms, coord, rn, blockTicker}...)
+	allSvcs := append(svcs, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner, blockTicker}...)
 
-	_, svcs, err = flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, proposalQ, retryQ, upkeepStateUpdater, logger)
+	_, svcs, err = flows.NewConditionalEligibility(
+		ratio,
+		getter,
+		blockSource,
+		builder,
+		resultStore,
+		metadataStore,
+		runner,
+		proposalQ,
+		retryQ,
+		upkeepStateUpdater,
+		upkeepTypeGetter,
+		logger,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -105,13 +118,13 @@ func newPlugin(
 		ConfigDigest:                digest,
 		ReportEncoder:               encoder,
 		Coordinator:                 coord,
-		RemoveFromStagingHook:       NewRemoveFromStaging(rs, logger),
-		RemoveFromMetadataHook:      NewRemoveFromMetadataHook(rs, logger),
-		AddFromStagingHook:          NewAddFromStagingHook(rs, logger, coord),
-		AddFromSamplesHook:          NewAddFromSamplesHook(ms, coord),
-		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(ms, coord),
+		RemoveFromStagingHook:       NewRemoveFromStaging(resultStore, logger),
+		RemoveFromMetadataHook:      NewRemoveFromMetadataHook(resultStore, logger),
+		AddFromStagingHook:          NewAddFromStagingHook(resultStore, logger, coord),
+		AddFromSamplesHook:          NewAddFromSamplesHook(metadataStore, coord),
+		AddLogRecoveryProposalsHook: NewAddLogRecoveryProposalsHook(metadataStore, coord),
 		AddToProposalQHook:          NewAddToProposalQHook(proposalQ, logger),
-		AddBlockHistoryHook:         NewAddBlockHistoryHook(ms),
+		AddBlockHistoryHook:         NewAddBlockHistoryHook(metadataStore),
 		Services:                    recoverSvcs,
 		Config:                      conf,
 		F:                           f,

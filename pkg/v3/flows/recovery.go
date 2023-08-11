@@ -109,9 +109,7 @@ func newRecoveryProposalFlow(
 	}
 
 	// the recovery observer is just a pass-through to the metadata store
-	// add postprocessor for metatdata store
-	// TODO: align with new metadata store API
-	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms, typeGetter)
+	post := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms, typeGetter)
 
 	obs := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult](
 		preprocessors,

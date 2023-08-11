@@ -69,7 +69,7 @@ func TestMetadataAddPayload(t *testing.T) {
 		},
 	}
 
-	postprocessor := NewAddPayloadToMetadataStorePostprocessor(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+	postprocessor := NewAddProposalToMetadataStorePostprocessor(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 		return ocr2keepers.LogTrigger
 	})
 
@@ -115,7 +115,9 @@ func TestMetadataAddSamples(t *testing.T) {
 
 	//ms.On("Set", store.ProposalConditionalMetadata, expected)
 
-	pp := NewAddSamplesToMetadataStorePostprocessor(ms)
+	pp := NewAddProposalToMetadataStorePostprocessor(ms, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+		return ocr2keepers.ConditionTrigger
+	})
 	err := pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),

@@ -7,19 +7,16 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type addToMetadataStorePostprocessor struct {
+type addProposalToMetadataStore struct {
 	store      store.MetadataStore
 	typeGetter ocr2keepers.UpkeepTypeGetter
 }
 
-func NewAddPayloadToMetadataStorePostprocessor(store store.MetadataStore, typeGetter ocr2keepers.UpkeepTypeGetter) *addToMetadataStorePostprocessor {
-	return &addToMetadataStorePostprocessor{
-		store:      store,
-		typeGetter: typeGetter,
-	}
+func NewAddProposalToMetadataStorePostprocessor(store store.MetadataStore, typeGetter ocr2keepers.UpkeepTypeGetter) *addProposalToMetadataStore {
+	return &addProposalToMetadataStore{store: store, typeGetter: typeGetter}
 }
 
-func (a *addToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
+func (a *addProposalToMetadataStore) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	// should only add values and not remove them
 	for _, r := range results {
 		proposal := ocr2keepers.CoordinatedProposal{
@@ -36,30 +33,5 @@ func (a *addToMetadataStorePostprocessor) PostProcess(_ context.Context, results
 		}
 	}
 
-	return nil
-}
-
-type addSamplesToMetadataStorePostprocessor struct {
-	store store.MetadataStore
-}
-
-func NewAddSamplesToMetadataStorePostprocessor(store store.MetadataStore) *addSamplesToMetadataStorePostprocessor {
-	return &addSamplesToMetadataStorePostprocessor{store: store}
-}
-
-func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
-	// extract ids only
-	ids := make([]ocr2keepers.CoordinatedProposal, 0, len(results))
-	for _, r := range results {
-		if !r.Eligible {
-			continue
-		}
-		ids = append(ids, ocr2keepers.CoordinatedProposal{
-			UpkeepID: r.UpkeepID,
-			Trigger:  r.Trigger,
-			WorkID:   r.WorkID,
-		})
-	}
-	a.store.AddConditionalProposal(ids...)
 	return nil
 }
