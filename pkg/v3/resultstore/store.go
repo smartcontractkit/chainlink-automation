@@ -11,9 +11,8 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-// TODO: make these configurable?
 var (
-	storeTTL   = time.Minute
+	storeTTL   = time.Minute * 5
 	gcInterval = time.Minute * 5
 )
 
