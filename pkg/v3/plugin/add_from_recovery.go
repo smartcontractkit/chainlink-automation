@@ -6,7 +6,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type AddLogRecoveryProposalsHook struct {
@@ -20,15 +19,7 @@ func NewAddLogRecoveryProposalsHook(ms store.MetadataStore, coord Coordinator) A
 
 func (h *AddLogRecoveryProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	// TODO: Read log recovery proposals from metadata store
-	keys := h.metadata.GetProposalLogRecoveryKeys()
-	var proposals []types.CoordinatedProposal
-	for _, key := range keys {
-		proposal, ok := h.metadata.GetProposalLogRecovery(key)
-		if !ok {
-			continue
-		}
-		proposals = append(proposals, proposal)
-	}
+	proposals := h.metadata.ViewLogRecoveryProposal()
 	// TODO: filter proposals using coordinator
 	var err error
 	proposals, err = h.coord.FilterProposals(proposals)

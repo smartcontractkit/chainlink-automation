@@ -19,7 +19,7 @@ func NewAddFromSamplesHook(ms store.MetadataStore, coord Coordinator) AddFromSam
 
 func (h *AddFromSamplesHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	// TODO: Read conditional samples from metadata store
-	conditionals := h.metadata.GetProposalConditional()
+	conditionals := h.metadata.ViewConditionalProposal()
 
 	// TODO: filter proposals using coordinator
 	// Shuffle using random seed

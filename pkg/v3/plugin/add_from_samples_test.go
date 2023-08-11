@@ -24,7 +24,7 @@ func TestAddFromSamplesHook(t *testing.T) {
 		},
 	}
 
-	mStore.AppendProposalConditional(samples...)
+	mStore.AddConditionalProposal(samples...)
 
 	hook := NewAddFromSamplesHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}

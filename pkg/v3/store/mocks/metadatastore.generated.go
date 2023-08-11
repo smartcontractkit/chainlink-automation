@@ -7,8 +7,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	time "time"
-
 	types "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -17,8 +15,8 @@ type MockMetadataStore struct {
 	mock.Mock
 }
 
-// AppendProposalConditional provides a mock function with given fields: _a0
-func (_m *MockMetadataStore) AppendProposalConditional(_a0 ...types.CoordinatedProposal) {
+// AddConditionalProposal provides a mock function with given fields: _a0
+func (_m *MockMetadataStore) AddConditionalProposal(_a0 ...types.CoordinatedProposal) {
 	_va := make([]interface{}, len(_a0))
 	for _i := range _a0 {
 		_va[_i] = _a0[_i]
@@ -28,14 +26,15 @@ func (_m *MockMetadataStore) AppendProposalConditional(_a0 ...types.CoordinatedP
 	_m.Called(_ca...)
 }
 
-// ClearAllProposalLogRecovery provides a mock function with given fields:
-func (_m *MockMetadataStore) ClearAllProposalLogRecovery() {
-	_m.Called()
-}
-
-// ClearExpiredProposalLogRecovery provides a mock function with given fields:
-func (_m *MockMetadataStore) ClearExpiredProposalLogRecovery() {
-	_m.Called()
+// AddLogRecoveryProposal provides a mock function with given fields: _a0
+func (_m *MockMetadataStore) AddLogRecoveryProposal(_a0 ...types.CoordinatedProposal) {
+	_va := make([]interface{}, len(_a0))
+	for _i := range _a0 {
+		_va[_i] = _a0[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
 }
 
 // Close provides a mock function with given fields:
@@ -68,8 +67,49 @@ func (_m *MockMetadataStore) GetBlockHistory() types.BlockHistory {
 	return r0
 }
 
-// GetProposalConditional provides a mock function with given fields:
-func (_m *MockMetadataStore) GetProposalConditional() []types.CoordinatedProposal {
+// RemoveConditionalProposal provides a mock function with given fields: _a0
+func (_m *MockMetadataStore) RemoveConditionalProposal(_a0 ...types.CoordinatedProposal) {
+	_va := make([]interface{}, len(_a0))
+	for _i := range _a0 {
+		_va[_i] = _a0[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
+}
+
+// RemoveLogRecoveryProposal provides a mock function with given fields: _a0
+func (_m *MockMetadataStore) RemoveLogRecoveryProposal(_a0 ...types.CoordinatedProposal) {
+	_va := make([]interface{}, len(_a0))
+	for _i := range _a0 {
+		_va[_i] = _a0[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
+}
+
+// SetBlockHistory provides a mock function with given fields: _a0
+func (_m *MockMetadataStore) SetBlockHistory(_a0 types.BlockHistory) {
+	_m.Called(_a0)
+}
+
+// Start provides a mock function with given fields: _a0
+func (_m *MockMetadataStore) Start(_a0 context.Context) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// ViewConditionalProposal provides a mock function with given fields:
+func (_m *MockMetadataStore) ViewConditionalProposal() []types.CoordinatedProposal {
 	ret := _m.Called()
 
 	var r0 []types.CoordinatedProposal
@@ -84,92 +124,17 @@ func (_m *MockMetadataStore) GetProposalConditional() []types.CoordinatedProposa
 	return r0
 }
 
-// GetProposalLogRecovery provides a mock function with given fields: key
-func (_m *MockMetadataStore) GetProposalLogRecovery(key string) (types.CoordinatedProposal, bool) {
-	ret := _m.Called(key)
-
-	var r0 types.CoordinatedProposal
-	var r1 bool
-	if rf, ok := ret.Get(0).(func(string) (types.CoordinatedProposal, bool)); ok {
-		return rf(key)
-	}
-	if rf, ok := ret.Get(0).(func(string) types.CoordinatedProposal); ok {
-		r0 = rf(key)
-	} else {
-		r0 = ret.Get(0).(types.CoordinatedProposal)
-	}
-
-	if rf, ok := ret.Get(1).(func(string) bool); ok {
-		r1 = rf(key)
-	} else {
-		r1 = ret.Get(1).(bool)
-	}
-
-	return r0, r1
-}
-
-// GetProposalLogRecoveryKeys provides a mock function with given fields:
-func (_m *MockMetadataStore) GetProposalLogRecoveryKeys() []string {
+// ViewLogRecoveryProposal provides a mock function with given fields:
+func (_m *MockMetadataStore) ViewLogRecoveryProposal() []types.CoordinatedProposal {
 	ret := _m.Called()
 
-	var r0 []string
-	if rf, ok := ret.Get(0).(func() []string); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
-		}
-	}
-
-	return r0
-}
-
-// RemoveProposalConditional provides a mock function with given fields: _a0
-func (_m *MockMetadataStore) RemoveProposalConditional(_a0 ...types.CoordinatedProposal) []types.CoordinatedProposal {
-	_va := make([]interface{}, len(_a0))
-	for _i := range _a0 {
-		_va[_i] = _a0[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
 	var r0 []types.CoordinatedProposal
-	if rf, ok := ret.Get(0).(func(...types.CoordinatedProposal) []types.CoordinatedProposal); ok {
-		r0 = rf(_a0...)
+	if rf, ok := ret.Get(0).(func() []types.CoordinatedProposal); ok {
+		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]types.CoordinatedProposal)
 		}
-	}
-
-	return r0
-}
-
-// RemoveProposalLogRecovery provides a mock function with given fields: key
-func (_m *MockMetadataStore) RemoveProposalLogRecovery(key string) {
-	_m.Called(key)
-}
-
-// SetBlockHistory provides a mock function with given fields: blockHistory
-func (_m *MockMetadataStore) SetBlockHistory(blockHistory types.BlockHistory) {
-	_m.Called(blockHistory)
-}
-
-// SetProposalLogRecovery provides a mock function with given fields: key, value, expire
-func (_m *MockMetadataStore) SetProposalLogRecovery(key string, value types.CoordinatedProposal, expire time.Duration) {
-	_m.Called(key, value, expire)
-}
-
-// Start provides a mock function with given fields: _a0
-func (_m *MockMetadataStore) Start(_a0 context.Context) error {
-	ret := _m.Called(_a0)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Error(0)
 	}
 
 	return r0

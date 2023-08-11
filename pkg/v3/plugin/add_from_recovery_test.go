@@ -1,10 +1,8 @@
 package plugin
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
@@ -32,9 +30,7 @@ func TestAddFromRecoveryHook(t *testing.T) {
 		},
 	}
 
-	for _, p := range expectedProps {
-		mStore.SetProposalLogRecovery(fmt.Sprintf("%v", p), p, util.DefaultCacheExpiration)
-	}
+	mStore.AddLogRecoveryProposal(expectedProps...)
 
 	hook := NewAddLogRecoveryProposalsHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}

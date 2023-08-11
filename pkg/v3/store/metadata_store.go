@@ -7,53 +7,60 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 const (
-	proposalLogExpiry          = 24 * time.Hour
-	proposalLogCleanupInterval = time.Hour
+	logRecoveryExpiry = 24 * time.Hour
+	conditionalExpiry = 24 * time.Hour
 )
 
 //go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/store" --case underscore --filename metadatastore.generated.go
 type MetadataStore interface {
-	SetBlockHistory(blockHistory types.BlockHistory)
+	SetBlockHistory(types.BlockHistory)
 	GetBlockHistory() types.BlockHistory
-	GetProposalLogRecovery(key string) (types.CoordinatedProposal, bool)
-	SetProposalLogRecovery(key string, value types.CoordinatedProposal, expire time.Duration)
-	GetProposalLogRecoveryKeys() []string
-	RemoveProposalLogRecovery(key string)
-	ClearAllProposalLogRecovery()
-	ClearExpiredProposalLogRecovery()
-	AppendProposalConditional(...types.CoordinatedProposal)
-	GetProposalConditional() []types.CoordinatedProposal
-	RemoveProposalConditional(...types.CoordinatedProposal) []types.CoordinatedProposal
+
+	AddLogRecoveryProposal(...types.CoordinatedProposal)
+	ViewLogRecoveryProposal() []types.CoordinatedProposal
+	RemoveLogRecoveryProposal(...types.CoordinatedProposal)
+
+	AddConditionalProposal(...types.CoordinatedProposal)
+	ViewConditionalProposal() []types.CoordinatedProposal
+	RemoveConditionalProposal(...types.CoordinatedProposal)
+
 	Start(context.Context) error
 	Close() error
 }
 
+type expiringRecord struct {
+	createdAt time.Time
+	proposal  types.CoordinatedProposal
+}
+
+func (r expiringRecord) expired(expr time.Duration) bool {
+	return time.Now().Sub(r.createdAt) > expr
+}
+
 type metadataStore struct {
-	blocks                     *tickers.BlockTicker
-	blockHistory               types.BlockHistory
-	blockHistoryMutex          sync.RWMutex
-	proposalLogRecovery        *util.Cache[types.CoordinatedProposal]
-	proposalLogRecoveryCleaner *util.IntervalCacheCleaner[types.CoordinatedProposal]
-	proposalConditional        []types.CoordinatedProposal
-	conditionalMutex           sync.RWMutex
-	running                    atomic.Bool
-	stopCh                     chan struct{}
+	blocks               *tickers.BlockTicker
+	blockHistory         types.BlockHistory
+	blockHistoryMutex    sync.RWMutex
+	conditionalProposals map[string]expiringRecord
+	conditionalMutex     sync.RWMutex
+	logRecoveryProposals map[string]expiringRecord
+	logRecoveryMutex     sync.RWMutex
+	running              atomic.Bool
+	stopCh               chan struct{}
 }
 
 func NewMetadataStore(blocks *tickers.BlockTicker) *metadataStore {
 	return &metadataStore{
-		blocks:                     blocks,
-		blockHistory:               types.BlockHistory{},
-		proposalLogRecovery:        util.NewCache[types.CoordinatedProposal](proposalLogExpiry),
-		proposalLogRecoveryCleaner: util.NewIntervalCacheCleaner[types.CoordinatedProposal](proposalLogCleanupInterval),
-		proposalConditional:        []types.CoordinatedProposal{},
-		stopCh:                     make(chan struct{}, 1),
+		blocks:               blocks,
+		blockHistory:         types.BlockHistory{},
+		conditionalProposals: map[string]expiringRecord{},
+		logRecoveryProposals: map[string]expiringRecord{},
+		stopCh:               make(chan struct{}, 1),
 	}
 }
 
@@ -71,63 +78,82 @@ func (m *metadataStore) GetBlockHistory() types.BlockHistory {
 	return m.blockHistory
 }
 
-func (m *metadataStore) GetProposalLogRecovery(key string) (types.CoordinatedProposal, bool) {
-	return m.proposalLogRecovery.Get(key)
-}
-
-func (m *metadataStore) SetProposalLogRecovery(key string, value types.CoordinatedProposal, expire time.Duration) {
-	m.proposalLogRecovery.Set(key, value, expire)
-}
-
-func (m *metadataStore) GetProposalLogRecoveryKeys() []string {
-	return m.proposalLogRecovery.Keys()
-}
-
-func (m *metadataStore) RemoveProposalLogRecovery(key string) {
-	m.proposalLogRecovery.Delete(key)
-}
-
-func (m *metadataStore) ClearAllProposalLogRecovery() {
-	m.proposalLogRecovery.ClearAll()
-}
-
-func (m *metadataStore) ClearExpiredProposalLogRecovery() {
-	m.proposalLogRecovery.ClearExpired()
-}
-
-func (m *metadataStore) AppendProposalConditional(proposals ...types.CoordinatedProposal) {
-	m.conditionalMutex.Lock()
-	defer m.conditionalMutex.Unlock()
-
-	m.proposalConditional = append(m.proposalConditional, proposals...)
-}
-
-func (m *metadataStore) GetProposalConditional() []types.CoordinatedProposal {
-	m.conditionalMutex.RLock()
-	defer m.conditionalMutex.RUnlock()
-
-	return m.proposalConditional
-}
-
-func (m *metadataStore) RemoveProposalConditional(proposals ...types.CoordinatedProposal) []types.CoordinatedProposal {
-	m.conditionalMutex.Lock()
-	defer m.conditionalMutex.Unlock()
-
-	proposalsToRemove := make(map[types.CoordinatedProposal]bool)
+func (m *metadataStore) AddLogRecoveryProposal(proposals ...types.CoordinatedProposal) {
+	m.logRecoveryMutex.Lock()
+	defer m.logRecoveryMutex.Unlock()
 
 	for _, proposal := range proposals {
-		proposalsToRemove[proposal] = true
+		m.logRecoveryProposals[proposal.WorkID] = expiringRecord{
+			createdAt: time.Now(),
+			proposal:  proposal,
+		}
 	}
+}
 
-	var updatedProposals []types.CoordinatedProposal
-	for _, proposal := range m.proposalConditional {
-		if !proposalsToRemove[proposal] {
-			updatedProposals = append(updatedProposals, proposal)
+func (m *metadataStore) ViewLogRecoveryProposal() []types.CoordinatedProposal {
+	m.logRecoveryMutex.RLock()
+	defer m.logRecoveryMutex.RUnlock()
+
+	res := make([]types.CoordinatedProposal, 0)
+
+	for key, record := range m.logRecoveryProposals {
+		if record.expired(logRecoveryExpiry) {
+			delete(m.logRecoveryProposals, key)
+		} else {
+			res = append(res, record.proposal)
 		}
 	}
 
-	m.proposalConditional = updatedProposals
-	return m.proposalConditional
+	return res
+
+}
+
+func (m *metadataStore) RemoveLogRecoveryProposal(proposals ...types.CoordinatedProposal) {
+	m.logRecoveryMutex.Lock()
+	defer m.logRecoveryMutex.Unlock()
+
+	for _, proposal := range proposals {
+		delete(m.logRecoveryProposals, proposal.WorkID)
+	}
+}
+
+func (m *metadataStore) AddConditionalProposal(proposals ...types.CoordinatedProposal) {
+	m.conditionalMutex.Lock()
+	defer m.conditionalMutex.Unlock()
+
+	for _, proposal := range proposals {
+		m.conditionalProposals[proposal.WorkID] = expiringRecord{
+			createdAt: time.Now(),
+			proposal:  proposal,
+		}
+	}
+}
+
+func (m *metadataStore) ViewConditionalProposal() []types.CoordinatedProposal {
+	m.conditionalMutex.RLock()
+	defer m.conditionalMutex.RUnlock()
+
+	res := make([]types.CoordinatedProposal, 0)
+
+	for key, record := range m.conditionalProposals {
+		if record.expired(conditionalExpiry) {
+			delete(m.conditionalProposals, key)
+		} else {
+			res = append(res, record.proposal)
+		}
+	}
+
+	return res
+
+}
+
+func (m *metadataStore) RemoveConditionalProposal(proposals ...types.CoordinatedProposal) {
+	m.conditionalMutex.Lock()
+	defer m.conditionalMutex.Unlock()
+
+	for _, proposal := range proposals {
+		delete(m.conditionalProposals, proposal.WorkID)
+	}
 }
 
 func (m *metadataStore) Start(_ context.Context) error {
@@ -136,8 +162,6 @@ func (m *metadataStore) Start(_ context.Context) error {
 	}
 
 	m.running.Store(true)
-
-	go m.proposalLogRecoveryCleaner.Run(m.proposalLogRecovery)
 
 	for {
 		select {
@@ -154,7 +178,6 @@ func (m *metadataStore) Close() error {
 		return fmt.Errorf("service not running")
 	}
 
-	m.proposalLogRecoveryCleaner.Stop()
 	m.stopCh <- struct{}{}
 	m.running.Store(false)
 

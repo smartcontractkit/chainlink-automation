@@ -2,9 +2,7 @@ package postprocessors
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -25,7 +23,7 @@ func (a *addToMetadataStorePostprocessor) PostProcess(_ context.Context, results
 			Trigger:  r.Trigger,
 		}
 
-		a.store.SetProposalLogRecovery(fmt.Sprintf("%v", proposal), proposal, util.DefaultCacheExpiration)
+		a.store.AddLogRecoveryProposal(proposal)
 	}
 
 	return nil
@@ -54,6 +52,6 @@ func (a *addSamplesToMetadataStorePostprocessor) PostProcess(_ context.Context, 
 	}
 
 	// should always reset values every time sampling runs
-	a.store.AppendProposalConditional(ids...)
+	a.store.AddConditionalProposal(ids...)
 	return nil
 }
