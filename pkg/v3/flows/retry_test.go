@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -23,8 +22,8 @@ func TestRetryFlow(t *testing.T) {
 
 	times := 3
 
-	runner := new(mocks.MockRunner)
-	rStore := new(mocks.MockResultStore)
+	runner := new(ocr2keepersmocks.MockRunnable)
+	rStore := new(ocr2keepersmocks.MockResultStore)
 	coord := new(ocr2keepersmocks.MockCoordinator)
 	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
 	retryQ := stores.NewRetryQueue(logger)

@@ -16,8 +16,8 @@ import (
 
 func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rs ResultStore,
-	rn ocr2keepersv3.Runner,
+	resultStore ocr2keepers.ResultStore,
+	runner ocr2keepersv3.Runner,
 	retryQ ocr2keepers.RetryQueue,
 	recoveryInterval time.Duration,
 	proposalQ ocr2keepers.ProposalQueue,
@@ -26,7 +26,7 @@ func newFinalRecoveryFlow(
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
-		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
@@ -36,7 +36,7 @@ func newFinalRecoveryFlow(
 	recoveryObserver := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
-		rn,
+		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
@@ -86,14 +86,7 @@ func newRecoveryProposalFlow(
 	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) service.Recoverable {
-	// items come into the recovery path from multiple sources
-	// 1. [done] from the log provider as UpkeepPayload
-	// 2. [done] from retry ticker as CheckResult
-	// 3. [done] from primary flow as CheckResult if retry fails
-	// 4. [todo] from timeouts of the result store
 	preprocessors = append(preprocessors, &proposalFilterer{metadataStore, ocr2keepers.LogTrigger})
-
-	// the recovery observer is just a pass-through to the metadata store
 	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(metadataStore, typeGetter)
 
 	observer := ocr2keepersv3.NewRunnableObserver(

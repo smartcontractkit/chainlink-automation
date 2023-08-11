@@ -14,12 +14,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-//go:generate mockery --name Ratio --structname MockRatio --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename ratio.generated.go
-type Ratio interface {
-	// OfInt should return n out of x such that n/x ~ r (ratio)
-	OfInt(int) int
-}
-
 // ConditionalEligibility is a flow controller that surfaces conditional upkeeps
 type ConditionalEligibility struct {
 	builder ocr2keepers.PayloadBuilder
@@ -27,44 +21,9 @@ type ConditionalEligibility struct {
 	logger  *log.Logger
 }
 
-// NewConditionalEligibility ...
-func NewConditionalEligibility(
-	ratio Ratio,
-	getter ocr2keepers.ConditionalUpkeepProvider,
-	subscriber ocr2keepers.BlockSubscriber,
-	builder ocr2keepers.PayloadBuilder,
-	rs ResultStore,
-	ms ocr2keepers.MetadataStore,
-	rn ocr2keepersv3.Runner,
-	proposalQ ocr2keepers.ProposalQueue,
-	retryQ ocr2keepers.RetryQueue,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	typeGetter ocr2keepers.UpkeepTypeGetter,
-	logger *log.Logger,
-) (*ConditionalEligibility, []service.Recoverable, error) {
-	// TODO: add coordinator to preprocessor list
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{}
-
-	// runs full check pipeline on a coordinated block with coordinated upkeeps
-	svc0 := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, proposalQ, builder, retryQ, stateUpdater, logger)
-
-	// the sampling proposal flow takes random samples of active upkeeps, checks
-	// them and surfaces the ids if the items are eligible
-	svc1, err := newSampleProposalFlow(preprocessors, ratio, getter, subscriber, ms, rn, typeGetter, logger)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &ConditionalEligibility{
-		mStore:  ms,
-		builder: builder,
-		logger:  logger,
-	}, []service.Recoverable{svc0, svc1}, err
-}
-
 func newSampleProposalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ratio Ratio,
+	ratio ocr2keepers.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber ocr2keepers.BlockSubscriber,
 	ms ocr2keepers.MetadataStore,
@@ -95,8 +54,8 @@ func newSampleProposalFlow(
 
 func newFinalConditionalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rs ResultStore,
-	rn ocr2keepersv3.Runner,
+	resultStore ocr2keepers.ResultStore,
+	runner ocr2keepersv3.Runner,
 	interval time.Duration,
 	proposalQ ocr2keepers.ProposalQueue,
 	builder ocr2keepers.PayloadBuilder,
@@ -105,7 +64,7 @@ func newFinalConditionalFlow(
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
-		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "conditional-final-eligible-postprocessor")),
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "conditional-final-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "conditional-final-retryable-postprocessor")),
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "conditional-final-ineligible-postprocessor")),
 	)
@@ -115,7 +74,7 @@ func newFinalConditionalFlow(
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
-		rn,
+		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)

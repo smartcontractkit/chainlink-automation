@@ -70,6 +70,7 @@ type ProposalQueue interface {
 	Dequeue(t UpkeepType, n int) ([]CoordinatedProposal, error)
 }
 
+//go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename result_store.generated.go
 type ResultStore interface {
 	Add(...CheckResult)
 	Remove(...string)
@@ -105,4 +106,10 @@ type MetadataStore interface {
 
 	Start(context.Context) error
 	Close() error
+}
+
+//go:generate mockery --name Ratio --structname MockRatio --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename ratio.generated.go
+type Ratio interface {
+	// OfInt should return n out of x such that n/x ~ r (ratio)
+	OfInt(int) int
 }

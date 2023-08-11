@@ -26,7 +26,7 @@ func newPlugin(
 	blockSource ocr2keepers.BlockSubscriber,
 	recoverablesProvider ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
-	ratio flows.Ratio,
+	ratio ocr2keepers.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
@@ -66,7 +66,7 @@ func newPlugin(
 	proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 
 	// initialize the log trigger eligibility flow
-	_, svcs := flows.NewLogTriggerEligibility(
+	svcs := flows.LogTriggerFlows(
 		coord,
 		resultStore,
 		metadataStore,
@@ -86,7 +86,8 @@ func newPlugin(
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(svcs, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner, blockTicker}...)
 
-	_, svcs, err = flows.NewConditionalEligibility(
+	svcs, err = flows.ConditionalTriggerFlows(
+		coord,
 		ratio,
 		getter,
 		blockSource,

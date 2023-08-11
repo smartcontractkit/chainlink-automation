@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -25,8 +24,8 @@ func TestLogTriggerFlow(t *testing.T) {
 
 	times := 2
 
-	runner := new(mocks.MockRunner)
-	rStore := new(mocks.MockResultStore)
+	runner := new(ocr2keepersmocks.MockRunnable)
+	rStore := new(ocr2keepersmocks.MockResultStore)
 	coord := new(ocr2keepersmocks.MockCoordinator)
 	retryQ := stores.NewRetryQueue(logger)
 	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)

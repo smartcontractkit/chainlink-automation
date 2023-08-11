@@ -18,97 +18,16 @@ var (
 	ErrNotRetryable = fmt.Errorf("payload is not retryable")
 )
 
-//go:generate mockery --name Runner --structname MockRunner --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename runner.generated.go
-type Runner interface {
-	// CheckUpkeeps has an input of upkeeps with unknown state and an output of upkeeps with known state
-	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
-}
-
-//go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename resultstores.generated.go
-type ResultStore interface {
-	Add(...ocr2keepers.CheckResult)
-}
-
-// Retryer provides the ability to push retries to an observer
-//
-//go:generate mockery --name Retryer --structname MockRetryer --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename retryer.generated.go
-type Retryer interface {
-	// Retry provides an entry point for new retryable results
-	Retry(ocr2keepers.CheckResult) error
-}
-
 const (
 	LogCheckInterval        = 1 * time.Second
 	RecoveryCheckInterval   = 1 * time.Minute
 	ObservationProcessLimit = 5 * time.Second
 )
 
-// LogTriggerEligibility is a flow controller that surfaces eligible upkeeps
-// with retry attempts.
-type LogTriggerEligibility struct {
-	builder ocr2keepers.PayloadBuilder
-	mStore  ocr2keepers.MetadataStore
-	logger  *log.Logger
-}
-
-// NewLogTriggerEligibility ...
-func NewLogTriggerEligibility(
-	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rStore ResultStore,
-	mStore ocr2keepers.MetadataStore,
-	runner ocr2keepersv3.Runner,
-	logProvider ocr2keepers.LogEventProvider,
-	rp ocr2keepers.RecoverableProvider,
-	builder ocr2keepers.PayloadBuilder,
-	logInterval time.Duration,
-	recoveryInterval time.Duration,
-	retryQ ocr2keepers.RetryQueue,
-	proposals ocr2keepers.ProposalQueue,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	typeGetter ocr2keepers.UpkeepTypeGetter,
-	logger *log.Logger,
-) (*LogTriggerEligibility, []service.Recoverable) {
-	// all flows use the same preprocessor based on the coordinator
-	// each flow can add preprocessors to this provided slice
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
-
-	// the recovery proposal flow is for nodes to surface payloads that should
-	// be recovered. these values are passed to the network and the network
-	// votes on the proposed values
-	rcvProposal := newRecoveryProposalFlow(preprocessors, runner, mStore, rp, recoveryInterval, typeGetter, logger)
-
-	// the final recovery flow takes recoverable payloads merged with the latest
-	// blocks and runs the pipeline for them. these values to run are derived
-	// from node coordination and it can be assumed that all values should be
-	// run.
-	rcvFinal := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, proposals, builder, stateUpdater, logger)
-
-	// the log trigger flow is the happy path for log trigger payloads. all
-	// retryables that are encountered in this flow are elevated to the retry
-	// flow
-	logTrigger := newLogTriggerFlow(preprocessors, rStore, runner, logProvider, logInterval, retryQ, stateUpdater, logger)
-
-	// all above flows run internal time-keeper services. each is essential for
-	// running so the return is a slice of all above services as recoverables
-	svcs := []service.Recoverable{
-		rcvProposal,
-		rcvFinal,
-		logTrigger,
-	}
-
-	// the final return includes a struct that provides the ability for hooks
-	// to pass data to internal flows
-	return &LogTriggerEligibility{
-		builder: builder,
-		mStore:  mStore,
-		logger:  logger,
-	}, svcs
-}
-
 // log trigger flow is the happy path entry point for log triggered upkeeps
 func newLogTriggerFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rs ResultStore,
+	rs ocr2keepers.ResultStore,
 	rn ocr2keepersv3.Runner,
 	logProvider ocr2keepers.LogEventProvider,
 	logInterval time.Duration,
