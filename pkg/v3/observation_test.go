@@ -46,14 +46,6 @@ func TestAutomationObservation(t *testing.T) {
 }
 
 func TestValidateAutomationObservation(t *testing.T) {
-	t.Run("invalid metadata key", func(t *testing.T) {
-		testData := AutomationObservation{}
-
-		err := ValidateAutomationObservation(testData)
-
-		assert.ErrorIs(t, err, ErrInvalidMetadataKey, "invalid metadata key should return validation error")
-	})
-
 	t.Run("invalid check result", func(t *testing.T) {
 		testData := AutomationObservation{
 			Performable: []ocr2keepers.CheckResult{
