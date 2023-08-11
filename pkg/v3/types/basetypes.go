@@ -137,17 +137,25 @@ func (r CheckResult) UniqueID() string {
 
 // Validate validates the check result fields
 func (r CheckResult) Validate() error {
-	if r.Eligible && r.Retryable {
-		return fmt.Errorf("check result cannot be both eligible and retryable")
+	if r.PipelineExecutionState == 0 && r.Retryable {
+		return fmt.Errorf("check result cannot have successful execution state and be retryable")
 	}
-	// TODO: This should be checked only if eligible
-	if r.GasAllocated == 0 {
-		return fmt.Errorf("gas allocated cannot be zero")
+	if r.PipelineExecutionState == 0 {
+		if r.Eligible && r.IneligibilityReason != 0 {
+			return fmt.Errorf("check result cannot be eligible and have an ineligibility reason")
+		}
+		if r.IneligibilityReason == 0 && !r.Eligible {
+			return fmt.Errorf("check result cannot be ineligible and have no ineligibility reason")
+		}
+		if r.Eligible {
+			// TODO: This should be checked only if eligible
+			if r.GasAllocated == 0 {
+				return fmt.Errorf("gas allocated cannot be zero")
+			}
+			// TODO: add validation for upkeepType and presence of trigger extension
+			// TODO: add range validation on linkNative and fasGas (uint256)
+		}
 	}
-
-	// TODO: add validation for upkeepType and presence of trigger extension
-	// TODO: add range validation on linkNative and fasGas (uint256)
-
 	return nil
 }
 
