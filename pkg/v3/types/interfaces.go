@@ -78,6 +78,8 @@ type ResultStore interface {
 
 //go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename coordinator.generated.go
 type Coordinator interface {
+	PreProcess(_ context.Context, payloads []UpkeepPayload) ([]UpkeepPayload, error)
+
 	ShouldAccept(ReportedUpkeep) bool
 	ShouldTransmit(ReportedUpkeep) bool
 	FilterResults([]CheckResult) ([]CheckResult, error)

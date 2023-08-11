@@ -39,7 +39,7 @@ func TestAddFromRecoveryHook(t *testing.T) {
 }
 
 func TestAddFromRecoveryHook_Error(t *testing.T) {
-	mStore := store.NewMetadataStore(nil)
+	mStore := store.NewMetadataStore(nil, nil)
 	coord := new(mocks.MockCoordinator)
 	hook := NewAddLogRecoveryProposalsHook(mStore, coord)
 	observation := &ocr2keepersv3.AutomationObservation{}

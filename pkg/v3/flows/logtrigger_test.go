@@ -47,7 +47,7 @@ func TestLogTriggerFlow(t *testing.T) {
 
 	runner := new(mocks.MockRunner)
 	rStore := new(mocks.MockResultStore)
-	coord := new(mocks.MockPreProcessor)
+	coord := new(ocr2keepersmocks.MockCoordinator)
 	retryQ := retryqueue.NewRetryQueue(logger)
 	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
 	lp := new(typesmocks.MockLogEventProvider)

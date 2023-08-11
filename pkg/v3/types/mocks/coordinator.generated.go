@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	types "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -57,6 +59,32 @@ func (_m *MockCoordinator) FilterResults(_a0 []types.CheckResult) ([]types.Check
 
 	if rf, ok := ret.Get(1).(func([]types.CheckResult) error); ok {
 		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PreProcess provides a mock function with given fields: _a0, payloads
+func (_m *MockCoordinator) PreProcess(_a0 context.Context, payloads []types.UpkeepPayload) ([]types.UpkeepPayload, error) {
+	ret := _m.Called(_a0, payloads)
+
+	var r0 []types.UpkeepPayload
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []types.UpkeepPayload) ([]types.UpkeepPayload, error)); ok {
+		return rf(_a0, payloads)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []types.UpkeepPayload) []types.UpkeepPayload); ok {
+		r0 = rf(_a0, payloads)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]types.UpkeepPayload)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []types.UpkeepPayload) error); ok {
+		r1 = rf(_a0, payloads)
 	} else {
 		r1 = ret.Error(1)
 	}

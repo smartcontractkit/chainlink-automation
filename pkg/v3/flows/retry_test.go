@@ -25,7 +25,7 @@ func TestRetryFlow(t *testing.T) {
 
 	runner := new(mocks.MockRunner)
 	rStore := new(mocks.MockResultStore)
-	coord := new(mocks.MockPreProcessor)
+	coord := new(ocr2keepersmocks.MockCoordinator)
 	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
 	retryQ := retryqueue.NewRetryQueue(logger)
 
