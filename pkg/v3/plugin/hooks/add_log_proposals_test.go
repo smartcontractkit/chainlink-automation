@@ -173,6 +173,7 @@ type mockCoordinator struct {
 	types.Coordinator
 	FilterProposalsFn func([]types.CoordinatedProposal) ([]types.CoordinatedProposal, error)
 	FilterResultsFn   func([]types.CheckResult) ([]types.CheckResult, error)
+	ShouldAcceptFn    func(types.ReportedUpkeep) bool
 }
 
 func (s *mockCoordinator) FilterProposals(p []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
@@ -181,4 +182,8 @@ func (s *mockCoordinator) FilterProposals(p []types.CoordinatedProposal) ([]type
 
 func (s *mockCoordinator) FilterResults(res []types.CheckResult) ([]types.CheckResult, error) {
 	return s.FilterResultsFn(res)
+}
+
+func (s *mockCoordinator) ShouldAccept(upkeep types.ReportedUpkeep) bool {
+	return s.ShouldAcceptFn(upkeep)
 }
