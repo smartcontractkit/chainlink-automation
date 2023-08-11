@@ -1,4 +1,4 @@
-package resultstore
+package store
 
 import (
 	"context"

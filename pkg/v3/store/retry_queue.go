@@ -1,4 +1,4 @@
-package retryqueue
+package store
 
 import (
 	"fmt"

@@ -1,14 +1,10 @@
-package proposalqueue
+package store
 
 import (
 	"sync"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-)
-
-var (
-	DefaultExpiration = 24 * time.Hour
 )
 
 type proposalQueueRecord struct {
@@ -32,7 +28,7 @@ type proposalQueue struct {
 
 var _ ocr2keepers.ProposalQueue = &proposalQueue{}
 
-func New(typeGetter ocr2keepers.UpkeepTypeGetter) *proposalQueue {
+func NewProposalQueue(typeGetter ocr2keepers.UpkeepTypeGetter) *proposalQueue {
 	return &proposalQueue{
 		records:    map[string]proposalQueueRecord{},
 		typeGetter: typeGetter,

@@ -9,12 +9,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestNewEligiblePostProcessor(t *testing.T) {
-	resultsStore := resultstore.New(log.New(io.Discard, "", 0))
+	resultsStore := store.New(log.New(io.Discard, "", 0))
 	processor := NewEligiblePostProcessor(resultsStore, log.New(io.Discard, "", 0))
 
 	t.Run("process eligible results", func(t *testing.T) {

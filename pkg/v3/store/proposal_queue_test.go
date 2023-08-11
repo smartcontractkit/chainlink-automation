@@ -1,10 +1,11 @@
-package proposalqueue
+package store
 
 import (
 	"testing"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	"github.com/stretchr/testify/require"
+
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestProposalQueue_Enqueue(t *testing.T) {
@@ -61,7 +62,7 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			q := New(func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+			q := NewProposalQueue(func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 				return ocr2keepers.UpkeepType(uid[15])
 			})
 
@@ -133,7 +134,7 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			q := New(func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+			q := NewProposalQueue(func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 				return ocr2keepers.UpkeepType(uid[15])
 			})
 			for _, p := range tc.toEnqueue {

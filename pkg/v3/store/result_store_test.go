@@ -1,4 +1,4 @@
-package resultstore
+package store
 
 import (
 	"context"
@@ -255,28 +255,29 @@ func TestResultStore_Add(t *testing.T) {
 
 func TestResultStore_View(t *testing.T) {
 	lggr := log.New(io.Discard, "", 0)
-	store := New(lggr)
-
-	nitems := int32(4)
-	store.Add(result1, result2, result3, result4)
 
 	t.Run("no filters", func(t *testing.T) {
+		nitems := int32(4)
+		store := New(lggr)
+		store.Add(result1, result2, result3, result4)
 		v, err := store.View()
 		assert.NoError(t, err)
 		assert.Len(t, v, int(atomic.LoadInt32(&nitems)))
 	})
 
 	t.Run("ignore expired items", func(t *testing.T) {
+		store := New(lggr)
+		store.Add(result1, result2)
 		store.lock.Lock()
-		el := store.data["test-id-0"]
+		el := store.data["workID1"]
 		el.addedAt = time.Now().Add(-2 * storeTTL)
-		store.data["test-id-0"] = el
+		store.data["workID1"] = el
 		store.lock.Unlock()
 		v, err := store.View()
 		assert.NoError(t, err)
-		assert.Len(t, v, 3)
+		assert.Len(t, v, 1)
 
-		assert.Equal(t, "workID1", v[0].WorkID)
+		assert.Equal(t, "workID2", v[0].WorkID)
 
 	})
 }

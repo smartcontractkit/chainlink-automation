@@ -1,4 +1,4 @@
-package retryqueue
+package store
 
 import (
 	"context"
@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	"github.com/stretchr/testify/require"
+
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func overrideDefaults(expiration, retryInterval time.Duration) func() {
