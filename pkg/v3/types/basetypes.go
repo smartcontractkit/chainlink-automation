@@ -90,16 +90,22 @@ type TransmitEvent struct {
 }
 
 type CheckResult struct {
+	// zero if success, else indicates an error code
+	PipelineExecutionState uint8
+	// if PipelineExecutionState is non zero, then retryable indicates that the same
+	// payload can be processed again in order to get a successful execution
+	Retryable bool
+	// Rest of these fields are only applicable if PipelineExecutionState is zero
 	// Eligible indicates whether this result is eligible to be performed
 	Eligible bool
-	// If result is not eligible then the reason it failed
-	FailureReason uint8
-	// Retryable indicates if this result can be retried on the check pipeline
-	Retryable bool
+	// If result is not eligible then the reason it failed. Should be 0 if eligible
+	IneligibilityReason uint8
 	// Upkeep is all the information that identifies the upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger is the event that triggered the upkeep to be checked
 	Trigger Trigger
+	// WorkID represents the unit of work for the check result
+	WorkID string
 	// GasAllocated is the gas to provide an upkeep in a report
 	GasAllocated uint64
 	// PerformData is the raw data returned when simulating an upkeep perform
@@ -108,8 +114,6 @@ type CheckResult struct {
 	FastGasWei *big.Int
 	// todo: add comment
 	LinkNative *big.Int
-	// WorkID represents the unit of work for the check result
-	WorkID string
 }
 
 // UniqueID returns a unique identifier for the check result.
@@ -176,7 +180,7 @@ type CoordinatedProposal struct {
 	UpkeepID UpkeepIdentifier
 	// Trigger represents the event that triggered the upkeep to be checked
 	Trigger Trigger
-	// WorkID represents the unit of work for the reported upkeep
+	// WorkID represents the unit of work for the coordinated proposal
 	WorkID string
 }
 
