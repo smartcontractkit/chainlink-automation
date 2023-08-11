@@ -7,16 +7,14 @@ import (
 	"sync"
 	"time"
 
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 // TODO: make these configurable?
 var (
-	notifyQBufferSize = 128
-	storeTTL          = time.Minute
-	gcInterval        = time.Minute * 5
+	storeTTL   = time.Minute
+	gcInterval = time.Minute * 5
 )
 
 // result is an internal representation of a check result, with added time for TTL.
@@ -33,17 +31,14 @@ type resultStore struct {
 
 	data map[string]result
 	lock sync.RWMutex
-
-	notifications chan ocr2keepersv3.Notification
 }
 
 func New(lggr *log.Logger) *resultStore {
 	return &resultStore{
-		lggr:          log.New(lggr.Writer(), fmt.Sprintf("[%s | result-store]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		close:         make(chan bool, 1),
-		data:          make(map[string]result),
-		lock:          sync.RWMutex{},
-		notifications: make(chan ocr2keepersv3.Notification, notifyQBufferSize),
+		lggr:  log.New(lggr.Writer(), fmt.Sprintf("[%s | result-store]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		close: make(chan bool, 1),
+		data:  make(map[string]result),
+		lock:  sync.RWMutex{},
 	}
 }
 
@@ -74,11 +69,6 @@ func (s *resultStore) Start(pctx context.Context) error {
 func (s *resultStore) Close() error {
 	s.close <- true
 	return nil
-}
-
-// Notifications returns a channel that can be used to receive notifications about evicted/removed items in the store.
-func (s *resultStore) Notifications() <-chan ocr2keepersv3.Notification {
-	return s.notifications
 }
 
 // Add adds element/s to the store.
@@ -145,33 +135,18 @@ func (s *resultStore) gc() {
 	for k, v := range s.data {
 		if time.Since(v.addedAt) > storeTTL {
 			delete(s.data, k)
-			s.notify(ocr2keepersv3.NotifyOpEvict, v.data)
 
 			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", v.data.UpkeepID.String(), v.data.WorkID)
 		}
 	}
 }
 
-// notify writes to the notifications channel.
-// NOTE: we drop notifications in case the channel is full
-func (s *resultStore) notify(op ocr2keepersv3.NotifyOp, data ocr2keepers.CheckResult) {
-	select {
-	case s.notifications <- ocr2keepersv3.Notification{
-		Op:   op,
-		Data: data,
-	}:
-	default:
-		s.lggr.Println("notifications queue is full, dropping result")
-	}
-}
-
 // remove removes an element from the store.
 // NOTE: not thread safe, must be called with lock held
 func (s *resultStore) remove(id string) {
-	v, ok := s.data[id]
+	_, ok := s.data[id]
 	if !ok {
 		return
 	}
 	delete(s.data, id)
-	s.notify(ocr2keepersv3.NotifyOpRemove, v.data)
 }

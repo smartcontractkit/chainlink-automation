@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 
 	"github.com/stretchr/testify/assert"
@@ -143,36 +142,11 @@ func TestResultStore_Sanity(t *testing.T) {
 }
 
 func TestResultStore_GC(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	lggr := log.New(io.Discard, "", 0)
 	store := New(lggr)
 
 	store.Add(result1, result2)
-
-	var notifications []ocr2keepersv3.Notification
 	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		lctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
-		notify := store.Notifications()
-		for {
-			select {
-			case n := <-notify:
-				if n.Op == ocr2keepersv3.NotifyOpNil {
-					return
-				}
-				notifications = append(notifications, n)
-			case <-lctx.Done():
-				return
-			}
-		}
-	}()
 
 	store.Remove("workID1", "workID2")
 
@@ -184,18 +158,7 @@ func TestResultStore_GC(t *testing.T) {
 
 	store.gc()
 
-	// using nil notification to signal end of notifications
-	store.notifications <- ocr2keepersv3.Notification{
-		Op: ocr2keepersv3.NotifyOpNil,
-	}
-
 	wg.Wait()
-
-	assert.Len(t, notifications, 3)
-	ops := []ocr2keepersv3.NotifyOp{ocr2keepersv3.NotifyOpRemove, ocr2keepersv3.NotifyOpRemove, ocr2keepersv3.NotifyOpEvict}
-	for i, notification := range notifications {
-		assert.Equal(t, ops[i], notification.Op)
-	}
 }
 
 func TestResultStore_Start(t *testing.T) {

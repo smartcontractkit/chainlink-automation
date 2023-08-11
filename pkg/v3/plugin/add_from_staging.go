@@ -11,11 +11,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-//go:generate mockery --name ResultViewer --structname MockResultViewer --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename resultviewer.generated.go
-type ResultViewer interface {
-	View(...ocr2keepersv3.ViewOpt) ([]ocr2keepers.CheckResult, error)
-}
-
 func NewAddFromStagingHook(store ocr2keepers.ResultStore, logger *log.Logger, coord Coordinator) AddFromStagingHook {
 	return AddFromStagingHook{
 		store:  store,
