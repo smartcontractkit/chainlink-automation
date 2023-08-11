@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -799,6 +800,141 @@ func TestOcr3Plugin_ShouldAcceptAttestedReport(t *testing.T) {
 	}
 }
 
+func TestOcr3Plugin_ShouldTransmitAcceptedReport(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		sequenceNumber uint64
+		reportWithInfo ocr3types.ReportWithInfo[AutomationReportInfo]
+		encoder        ocr2keepers.Encoder
+		coordinator    ocr2keepers.Coordinator
+		expectsErr     bool
+		wantErr        error
+		wantOK         bool
+	}{
+		{
+			name:           "when at least one upkeep should be transmitted, we transmit",
+			sequenceNumber: 5,
+			encoder: &mockEncoder{
+				ExtractFn: func(i []byte) ([]ocr2keepers.ReportedUpkeep, error) {
+					return []ocr2keepers.ReportedUpkeep{
+						{
+							WorkID: "workID1",
+						},
+						{
+							WorkID: "workID2",
+						},
+						{
+							WorkID: "workID3",
+						},
+					}, nil
+				},
+			},
+			coordinator: &mockCoordinator{
+				ShouldTransmitFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
+					if upkeep.WorkID == "workID3" {
+						return true
+					}
+					return false
+				},
+			},
+			wantOK: true,
+		},
+		{
+			name:           "when all upkeeps shouldn't be transmitted, we don't transmit",
+			sequenceNumber: 5,
+			encoder: &mockEncoder{
+				ExtractFn: func(i []byte) ([]ocr2keepers.ReportedUpkeep, error) {
+					return []ocr2keepers.ReportedUpkeep{
+						{
+							WorkID: "workID1",
+						},
+						{
+							WorkID: "workID2",
+						},
+						{
+							WorkID: "workID3",
+						},
+					}, nil
+				},
+			},
+			coordinator: &mockCoordinator{
+				ShouldTransmitFn: func(upkeep ocr2keepers.ReportedUpkeep) bool {
+					return false
+				},
+			},
+			wantOK: false,
+		},
+		{
+			name:           "when extraction errors, an error is returned an we shouldn't transmit",
+			sequenceNumber: 5,
+			encoder: &mockEncoder{
+				ExtractFn: func(i []byte) ([]ocr2keepers.ReportedUpkeep, error) {
+					return nil, errors.New("extract boom")
+				},
+			},
+			wantOK:     false,
+			expectsErr: true,
+			wantErr:    errors.New("extract boom"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var logBuf bytes.Buffer
+			logger := log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0)
+
+			plugin := &ocr3Plugin{
+				Logger:        logger,
+				ReportEncoder: tc.encoder,
+				Coordinator:   tc.coordinator,
+			}
+			ok, err := plugin.ShouldTransmitAcceptedReport(context.Background(), tc.sequenceNumber, tc.reportWithInfo)
+			if tc.expectsErr {
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), tc.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantOK, ok)
+			}
+		})
+	}
+}
+
+func TestOcr3Plugin_startServices(t *testing.T) {
+	var logBuf bytes.Buffer
+	logger := log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0)
+
+	startedCh := make(chan struct{}, 1)
+	plugin := &ocr3Plugin{
+		Logger: logger,
+		Services: []service.Recoverable{
+			&mockRecoverable{
+				StartFn: func(ctx context.Context) error {
+					return errors.New("this won't prevent other services from starting")
+				},
+				CloseFn: func() error {
+					return nil
+				},
+			},
+			&mockRecoverable{
+				StartFn: func(ctx context.Context) error {
+					startedCh <- struct{}{}
+					return nil
+				},
+				CloseFn: func() error {
+					return errors.New("a service failed to close")
+				},
+			},
+		},
+	}
+	plugin.startServices()
+
+	<-startedCh
+
+	err := plugin.Close()
+
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "a service failed to close")
+}
+
 type mockResultStore struct {
 	ocr2keepers.ResultStore
 	ViewFn func() ([]ocr2keepers.CheckResult, error)
@@ -832,4 +968,17 @@ func (e *mockEncoder) Encode(res ...ocr2keepers.CheckResult) ([]byte, error) {
 
 func (e *mockEncoder) Extract(b []byte) ([]ocr2keepers.ReportedUpkeep, error) {
 	return e.ExtractFn(b)
+}
+
+type mockRecoverable struct {
+	StartFn func(context.Context) error
+	CloseFn func() error
+}
+
+func (e *mockRecoverable) Start(ctx context.Context) error {
+	return e.StartFn(ctx)
+}
+
+func (e *mockRecoverable) Close() error {
+	return e.CloseFn()
 }
