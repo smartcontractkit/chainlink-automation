@@ -1,6 +1,7 @@
 package flows
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -38,14 +39,14 @@ func NewConditionalEligibility(
 	rs ResultStore,
 	ms store.MetadataStore,
 	rn ocr2keepersv3.Runner,
-	proposals ocr2keepers.ProposalQueue,
+	proposalQ ocr2keepers.ProposalQueue,
 	logger *log.Logger,
 ) (*ConditionalEligibility, []service.Recoverable, error) {
 	// TODO: add coordinator to preprocessor list
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
-	svc0 := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, logger)
+	svc0 := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, proposalQ, builder, logger)
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
@@ -151,6 +152,8 @@ func newFinalConditionalFlow(
 	rs ResultStore,
 	rn ocr2keepersv3.Runner,
 	interval time.Duration,
+	proposalQ ocr2keepers.ProposalQueue,
+	builder ocr2keepers.PayloadBuilder,
 	logger *log.Logger,
 ) service.Recoverable {
 	// create observer that only pushes results to result store. everything at
@@ -164,12 +167,9 @@ func newFinalConditionalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create schedule ticker to manage retry interval
-	ticker := tickers.NewBasicTicker[ocr2keepers.UpkeepPayload](
-		interval,
-		observer,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
+	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return coordinatedProposalsTick{logger: logger, builder: builder, q: proposalQ, batchSize: RetryBatchSize}, nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return ticker
 }

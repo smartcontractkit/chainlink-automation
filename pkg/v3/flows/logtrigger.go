@@ -82,7 +82,7 @@ func NewLogTriggerEligibility(
 	// blocks and runs the pipeline for them. these values to run are derived
 	// from node coordination and it can be assumed that all values should be
 	// run.
-	rcvFinal := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, logger)
+	rcvFinal := newFinalRecoveryFlow(preprocessors, rStore, runner, retryQ, recoveryInterval, proposals, builder, logger)
 
 	// the log trigger flow is the happy path for log trigger payloads. all
 	// retryables that are encountered in this flow are elevated to the retry

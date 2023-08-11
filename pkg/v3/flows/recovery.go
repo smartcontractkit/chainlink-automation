@@ -21,13 +21,15 @@ func newFinalRecoveryFlow(
 	rn ocr2keepersv3.Runner,
 	retryQ ocr2keepers.RetryQueue,
 	recoveryInterval time.Duration,
+	proposalQ ocr2keepers.ProposalQueue,
+	builder ocr2keepers.PayloadBuilder,
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
+		// TODO: ineligibilty postprocessor
 	)
-
 	// create observer that only pushes results to result store. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
@@ -39,14 +41,34 @@ func newFinalRecoveryFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create schedule ticker to manage retry interval
-	ticker := tickers.NewBasicTicker[ocr2keepers.UpkeepPayload](
-		recoveryInterval,
-		recoveryObserver,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
+	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return coordinatedProposalsTick{logger: logger, builder: builder, q: proposalQ, batchSize: RetryBatchSize}, nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return ticker
+}
+
+// coordinatedProposalsTick is used to push proposals from the proposal queue to some observer
+type coordinatedProposalsTick struct {
+	logger    *log.Logger
+	builder   ocr2keepers.PayloadBuilder
+	q         ocr2keepers.ProposalQueue
+	utype     ocr2keepers.UpkeepType
+	batchSize int
+}
+
+func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	if t.q == nil {
+		return nil, nil
+	}
+
+	proposals, err := t.q.Dequeue(t.utype, t.batchSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dequeue from retry queue: %w", err)
+	}
+	t.logger.Printf("%d proposals returned from queue", len(proposals))
+
+	return t.builder.BuildPayloads(ctx, proposals...)
 }
 
 func newRecoveryProposalFlow(
