@@ -35,12 +35,9 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	if err != nil {
 		return err
 	}
-	// Shuffle using random seed
 	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(results), func(i, j int) {
 		results[i], results[j] = results[j], results[i]
 	})
-
-	// take first limit
 	if len(results) > limit {
 		results = results[:limit]
 	}

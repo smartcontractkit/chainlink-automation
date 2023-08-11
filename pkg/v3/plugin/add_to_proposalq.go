@@ -26,6 +26,7 @@ func (hook *AddToProposalQHook) RunHook(outcome ocr2keepersv3.AutomationOutcome)
 	for _, roundProposals := range outcome.AgreedProposals {
 		err := hook.proposalQ.Enqueue(roundProposals...)
 		if err != nil {
+			// Do not return error, just log and skip this round's proposals
 			hook.logger.Printf("Error adding proposals to queue: %v", err)
 			continue
 		}
