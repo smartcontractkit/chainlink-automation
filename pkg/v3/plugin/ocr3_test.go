@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"strings"
 	"testing"
@@ -449,12 +450,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 	})
 
 	t.Run("subsequent round processing, decoding an invalid previous outcome returns an error", func(t *testing.T) {
-		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
-
-		plugin := &ocr3Plugin{
-			Logger: logger,
-		}
+		plugin := &ocr3Plugin{}
 
 		outcomeCtx := ocr3types.OutcomeContext{
 			PreviousOutcome: ocr3types.Outcome(`invalid`),
@@ -464,7 +460,55 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, observation)
 	})
+}
 
+func TestOcr3Plugin_ValidateObservation(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		ao         types.AttributedObservation
+		expectsErr bool
+		wantErr    error
+	}{
+		{
+			name:       "validating an empty observation returns an error",
+			ao:         types.AttributedObservation{},
+			expectsErr: true,
+			wantErr:    errors.New("unexpected end of JSON input"),
+		},
+		{
+			name: "successfully validates a well formed observation",
+			ao: types.AttributedObservation{
+				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+			},
+		},
+		{
+			name: "gas allocated cannot be zero",
+			ao: types.AttributedObservation{
+				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+			},
+			expectsErr: true,
+			wantErr:    errors.New("gas allocated cannot be zero"),
+		},
+		{
+			name: "check result cannot be ineligible and have no ineligibility reason",
+			ao: types.AttributedObservation{
+				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+			},
+			expectsErr: true,
+			wantErr:    errors.New("check result cannot be ineligible and have no ineligibility reason"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			plugin := &ocr3Plugin{}
+			err := plugin.ValidateObservation(ocr3types.OutcomeContext{}, nil, tc.ao)
+			if tc.expectsErr {
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), tc.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 type mockResultStore struct {
