@@ -111,7 +111,6 @@ func ValidateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 	if wg(r.UpkeepID, r.Trigger) != r.WorkID {
 		return fmt.Errorf("incorrect workID within result")
 	}
-	// by maxObservationSize
 	if r.GasAllocated == 0 {
 		return fmt.Errorf("gas allocated cannot be zero")
 	}
