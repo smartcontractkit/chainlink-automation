@@ -24,6 +24,7 @@ type ocr3Plugin struct {
 	ConfigDigest                types.ConfigDigest
 	ReportEncoder               ocr2keepers.Encoder
 	Coordinator                 ocr2keepers.Coordinator
+	WorkIDGenerator             ocr2keepers.WorkIDGenerator
 	RemoveFromStagingHook       hooks.RemoveFromStagingHook
 	RemoveFromMetadataHook      hooks.RemoveFromMetadataHook
 	AddToProposalQHook          hooks.AddToProposalQHook
@@ -65,7 +66,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		}
 
 		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(automationOutcome); err != nil {
+		if err := ocr2keepersv3.ValidateAutomationOutcome(automationOutcome, plugin.WorkIDGenerator); err != nil {
 			return nil, err
 		}
 
@@ -107,7 +108,7 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 		return err
 	}
 
-	return ocr2keepersv3.ValidateAutomationObservation(o)
+	return ocr2keepersv3.ValidateAutomationObservation(o, plugin.WorkIDGenerator)
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
@@ -122,7 +123,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			// atleast f+1 valid observations
 			continue
 		}
-		if err := ocr2keepersv3.ValidateAutomationObservation(observation); err != nil {
+		if err := ocr2keepersv3.ValidateAutomationObservation(observation, plugin.WorkIDGenerator); err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations
@@ -145,7 +146,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			return nil, err
 		}
 		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(ao); err != nil {
+		if err := ocr2keepersv3.ValidateAutomationOutcome(ao, plugin.WorkIDGenerator); err != nil {
 			return nil, err
 		}
 		prevOutcome = ao
@@ -176,7 +177,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	}
 
 	// validate outcome (even though it is a signed outcome)
-	if err := ocr2keepersv3.ValidateAutomationOutcome(outcome); err != nil {
+	if err := ocr2keepersv3.ValidateAutomationOutcome(outcome, plugin.WorkIDGenerator); err != nil {
 		return nil, err
 	}
 

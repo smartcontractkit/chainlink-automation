@@ -73,6 +73,7 @@ type DelegateConfig struct {
 
 	// Methods passed from core
 	UpkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+	WorkIDGenerator  ocr2keepers.WorkIDGenerator
 
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is
@@ -174,6 +175,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			},
 			c.Encoder,
 			c.UpkeepTypeGetter,
+			c.WorkIDGenerator,
 			c.UpkeepStateUpdater,
 			l,
 		),

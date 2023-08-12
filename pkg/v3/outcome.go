@@ -33,7 +33,7 @@ func DecodeAutomationOutcome(data []byte) (AutomationOutcome, error) {
 }
 
 // ValidateAutomationOutcome validates individual values in an AutomationOutcome
-func ValidateAutomationOutcome(o AutomationOutcome) error {
+func ValidateAutomationOutcome(o AutomationOutcome, wg ocr2keepers.WorkIDGenerator) error {
 	// TODO: Validate sizes of AgreedPerformables, AgreedProposals
 	// TODO: Validate AgreedPerformables and AgreedProposals
 	return nil

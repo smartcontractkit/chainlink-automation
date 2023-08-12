@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -53,7 +54,7 @@ func TestValidateAutomationObservation(t *testing.T) {
 			},
 		}
 
-		err := ValidateAutomationObservation(testData)
+		err := ValidateAutomationObservation(testData, mockGenerateWorkID)
 
 		assert.NotNil(t, err, "invalid check result should return validation error")
 	})
@@ -61,7 +62,7 @@ func TestValidateAutomationObservation(t *testing.T) {
 	t.Run("no error on empty", func(t *testing.T) {
 		testData := AutomationObservation{}
 
-		err := ValidateAutomationObservation(testData)
+		err := ValidateAutomationObservation(testData, mockGenerateWorkID)
 
 		assert.NoError(t, err, "no error should return from empty observation")
 	})
@@ -78,8 +79,16 @@ func TestValidateAutomationObservation(t *testing.T) {
 			},
 		}
 
-		err := ValidateAutomationObservation(testData)
+		err := ValidateAutomationObservation(testData, mockGenerateWorkID)
 
 		assert.NoError(t, err, "no error should return from a valid observation")
 	})
+}
+
+func mockGenerateWorkID(id types.UpkeepIdentifier, trigger types.Trigger) string {
+	wid := string(id[:])
+	if trigger.LogTriggerExtension != nil {
+		wid += string(trigger.LogTriggerExtension.LogIdentifier())
+	}
+	return wid
 }

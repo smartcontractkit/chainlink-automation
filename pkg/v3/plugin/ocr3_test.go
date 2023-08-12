@@ -83,6 +83,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
+			WorkIDGenerator:             mockGenerateWorkID,
 			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
 			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
 			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
@@ -163,6 +164,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
+			WorkIDGenerator:             mockGenerateWorkID,
 			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
 			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
 			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
@@ -236,6 +238,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
+			WorkIDGenerator:             mockGenerateWorkID,
 			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
 			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
 			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
@@ -320,6 +323,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
+			WorkIDGenerator:       mockGenerateWorkID,
 			RemoveFromStagingHook: hooks.NewRemoveFromStagingHook(resultStore, logger),
 			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 				return ocr2keepers.LogTrigger
@@ -425,6 +429,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
+			WorkIDGenerator:       mockGenerateWorkID,
 			RemoveFromStagingHook: hooks.NewRemoveFromStagingHook(resultStore, logger),
 			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 				return ocr2keepers.LogTrigger
@@ -1052,4 +1057,12 @@ func (s *mockCoordinator) ShouldTransmit(upkeep ocr2keepers.ReportedUpkeep) bool
 
 func (s *mockCoordinator) Accept(r ocr2keepers.ReportedUpkeep) bool {
 	return s.AcceptFn(r)
+}
+
+func mockGenerateWorkID(id ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+	wid := string(id[:])
+	if trigger.LogTriggerExtension != nil {
+		wid += string(trigger.LogTriggerExtension.LogIdentifier())
+	}
+	return wid
 }

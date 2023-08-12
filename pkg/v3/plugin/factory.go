@@ -46,6 +46,7 @@ type pluginFactory struct {
 	runnerConf         runner.RunnerConfig
 	encoder            ocr2keepers.Encoder
 	upkeepTypeGetter   ocr2keepers.UpkeepTypeGetter
+	workIDGenerator    ocr2keepers.WorkIDGenerator
 	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater
 	logger             *log.Logger
 }
@@ -61,6 +62,7 @@ func NewReportingPluginFactory(
 	runnerConf runner.RunnerConfig,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
+	workIDGenerator ocr2keepers.WorkIDGenerator,
 	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
@@ -75,6 +77,7 @@ func NewReportingPluginFactory(
 		runnerConf:         runnerConf,
 		encoder:            encoder,
 		upkeepTypeGetter:   upkeepTypeGetter,
+		workIDGenerator:    workIDGenerator,
 		upkeepStateUpdater: upkeepStateUpdater,
 		logger:             logger,
 	}
@@ -120,6 +123,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		factory.getter,
 		factory.encoder,
 		factory.upkeepTypeGetter,
+		factory.workIDGenerator,
 		factory.upkeepStateUpdater,
 		factory.runnable,
 		factory.runnerConf,

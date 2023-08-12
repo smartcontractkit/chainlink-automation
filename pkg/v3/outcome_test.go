@@ -29,7 +29,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	t.Run("invalid instructions", func(t *testing.T) {
 		testData := AutomationOutcome{}
 
-		err := ValidateAutomationOutcome(testData)
+		err := ValidateAutomationOutcome(testData, mockGenerateWorkID)
 		assert.NoError(t, err)
 	})
 
@@ -52,7 +52,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	t.Run("no error on empty", func(t *testing.T) {
 		testData := AutomationOutcome{}
 
-		err := ValidateAutomationOutcome(testData)
+		err := ValidateAutomationOutcome(testData, mockGenerateWorkID)
 
 		assert.NoError(t, err, "no error should return from empty outcome")
 	})
@@ -60,7 +60,7 @@ func TestValidateAutomationOutcome(t *testing.T) {
 	t.Run("no error on valid", func(t *testing.T) {
 		testData := AutomationOutcome{}
 
-		err := ValidateAutomationOutcome(testData)
+		err := ValidateAutomationOutcome(testData, mockGenerateWorkID)
 
 		assert.NoError(t, err, "no error should return from a valid outcome")
 	})

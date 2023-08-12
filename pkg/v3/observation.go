@@ -33,7 +33,7 @@ func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
 	return ao, err
 }
 
-func ValidateAutomationObservation(o AutomationObservation) error {
+func ValidateAutomationObservation(o AutomationObservation, wg ocr2keepers.WorkIDGenerator) error {
 	// TODO: Validate sizes of upkeepProposals, BlockHistory, Performables
 	for _, res := range o.Performable {
 		if err := ValidateCheckResult(res); err != nil {
