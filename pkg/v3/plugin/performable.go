@@ -29,9 +29,11 @@ type performables struct {
 // withn the result.
 func newPerformables(threshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
 	return &performables{
-		threshold:   threshold,
-		resultCount: make(map[string]resultAndCount[ocr2keepers.CheckResult]),
-		logger:      logger,
+		threshold:     threshold,
+		limit:         limit,
+		keyRandSource: rSrc,
+		logger:        logger,
+		resultCount:   make(map[string]resultAndCount[ocr2keepers.CheckResult]),
 	}
 }
 

@@ -57,8 +57,6 @@ func (c *coordinatedBlockProposals) add(ao ocr2keepersv3.AutomationObservation) 
 }
 
 func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome, prevOutcome ocr2keepersv3.AutomationOutcome) {
-	c.logger.Printf("Got outcome with %d performables", len(outcome.AgreedPerformables))
-	// Keep proposals from previous outcome that haven't achieved quorum performable
 	outcome.SurfacedProposals = [][]ocr2keepers.CoordinatedBlockProposal{}
 	for _, round := range prevOutcome.SurfacedProposals {
 		roundProposals := []ocr2keepers.CoordinatedBlockProposal{}
@@ -124,7 +122,6 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		latestProposals = latestProposals[:c.perRoundLimit]
 	}
 	outcome.SurfacedProposals = append([][]ocr2keepers.CoordinatedBlockProposal{latestProposals}, outcome.SurfacedProposals...)
-	c.logger.Printf("Returning outcome with %d performables", len(outcome.AgreedPerformables))
 }
 
 func (c *coordinatedBlockProposals) getLatestQuorumBlock() (ocr2keepers.BlockKey, bool) {
