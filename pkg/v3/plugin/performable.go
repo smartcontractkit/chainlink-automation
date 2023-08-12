@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"log"
 	"math/rand"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
@@ -17,6 +18,7 @@ type performables struct {
 	limit         int
 	keyRandSource [16]byte
 	threshold     int
+	logger        *log.Logger
 	resultCount   map[string]resultAndCount[ocr2keepers.CheckResult]
 }
 
@@ -25,16 +27,18 @@ type performables struct {
 // and simply adds all results which achieve the threshold quorum.
 // Results are agreed upon by their UniqueID() which contains all the data
 // withn the result.
-func newPerformables(threshold int, limit int, rSrc [16]byte) *performables {
+func newPerformables(threshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
 	return &performables{
 		threshold:   threshold,
 		resultCount: make(map[string]resultAndCount[ocr2keepers.CheckResult]),
+		logger:      logger,
 	}
 }
 
 func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 	for _, result := range observation.Performable {
 		uid := result.UniqueID()
+		p.logger.Printf("Adding result %+v with uniqueID %s to performables", result, uid)
 		payloadCount, ok := p.resultCount[uid]
 		if !ok {
 			payloadCount = resultAndCount[ocr2keepers.CheckResult]{

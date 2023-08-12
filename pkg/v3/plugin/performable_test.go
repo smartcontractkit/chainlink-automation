@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"bytes"
+	"log"
 	"math/big"
 	"testing"
 
@@ -53,7 +55,10 @@ func TestPerformables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			performables := newPerformables(tt.threshold, tt.limit, [16]byte{})
+			// Prepare logger
+			var logBuf bytes.Buffer
+			logger := log.New(&logBuf, "", 0)
+			performables := newPerformables(tt.threshold, tt.limit, [16]byte{}, logger)
 			for _, observation := range tt.observations {
 				performables.add(observation)
 			}
