@@ -141,6 +141,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	}
 
 	p.set(&outcome)
+	p.logger.Printf("outcome after performables %v", outcome)
 	// Important to maintain the order here. Performables should be set before creating new proposals
 	c.set(&outcome, prevOutcome)
 
