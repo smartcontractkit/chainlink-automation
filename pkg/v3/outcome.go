@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"encoding/json"
+	"fmt"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -11,9 +12,9 @@ import (
 // adhere to each others' limits
 const (
 	OutcomeAgreedPerformablesLimit = 100
-	OutcomeAgreedProposalsLimit    = 50
+	OutcomeSurfacedProposalsLimit  = 50
 	// TODO: Derive this limit from max checkPipelineTime and deltaRound
-	OutcomeAgreedProposalsRoundHistoryLimit = 20
+	OutcomeSurfacedProposalsRoundHistoryLimit = 20
 )
 
 // AutomationOutcome represents agreed upon state by the network, derived from
@@ -39,18 +40,43 @@ type AutomationOutcome struct {
 	SurfacedProposals [][]ocr2keepers.CoordinatedBlockProposal
 }
 
-// DecodeAutomationOutcome decodes an AutomationOutcome from an encoded array
-// of bytes. Possible errors come from the encoding/json package
-func DecodeAutomationOutcome(data []byte) (AutomationOutcome, error) {
-	ao := AutomationOutcome{}
-	err := json.Unmarshal(data, &ao)
-	return ao, err
-}
-
 // ValidateAutomationOutcome validates individual values in an AutomationOutcome
-func ValidateAutomationOutcome(o AutomationOutcome, wg ocr2keepers.WorkIDGenerator) error {
-	// TODO: Validate sizes of AgreedPerformables, AgreedProposals
-	// TODO: Validate AgreedPerformables and AgreedProposals
+func ValidateAutomationOutcome(o AutomationOutcome, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	// Validate AgreedPerformables
+	if (len(o.AgreedPerformables)) > OutcomeAgreedPerformablesLimit {
+		return fmt.Errorf("outcome performable length cannot be greater than %d", OutcomeAgreedPerformablesLimit)
+	}
+	seenPerformables := make(map[string]bool)
+	for _, res := range o.AgreedPerformables {
+		if err := ValidateCheckResult(res, utg, wg); err != nil {
+			return err
+		}
+		if seenPerformables[res.WorkID] {
+			return fmt.Errorf("agreed performable cannot have duplicate workIDs")
+		}
+		seenPerformables[res.WorkID] = true
+	}
+
+	// Validate SurfacedProposals
+	if len(o.SurfacedProposals) >
+		OutcomeSurfacedProposalsRoundHistoryLimit {
+		return fmt.Errorf("number of rounds for surfaced proposals cannot be greater than %d", OutcomeSurfacedProposalsRoundHistoryLimit)
+	}
+	seenProposals := make(map[string]bool)
+	for _, round := range o.SurfacedProposals {
+		if len(round) > OutcomeSurfacedProposalsLimit {
+			return fmt.Errorf("number of surfaced proposals in a round cannot be greater than %d", OutcomeSurfacedProposalsLimit)
+		}
+		for _, proposal := range round {
+			if err := ValidateUpkeepProposal(proposal, utg, wg); err != nil {
+				return err
+			}
+			if seenProposals[proposal.WorkID] {
+				return fmt.Errorf("proposals cannot have duplicate workIDs")
+			}
+			seenProposals[proposal.WorkID] = true
+		}
+	}
 	return nil
 }
 
@@ -58,4 +84,12 @@ func ValidateAutomationOutcome(o AutomationOutcome, wg ocr2keepers.WorkIDGenerat
 // encoding/json package
 func (outcome AutomationOutcome) Encode() ([]byte, error) {
 	return json.Marshal(outcome)
+}
+
+// DecodeAutomationOutcome decodes an AutomationOutcome from an encoded array
+// of bytes. Possible errors come from the encoding/json package
+func DecodeAutomationOutcome(data []byte) (AutomationOutcome, error) {
+	ao := AutomationOutcome{}
+	err := json.Unmarshal(data, &ao)
+	return ao, err
 }

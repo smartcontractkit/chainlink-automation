@@ -62,13 +62,11 @@ func ValidateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 	if (len(o.Performable)) > ObservationPerformablesLimit {
 		return fmt.Errorf("performable length cannot be greater than %d", ObservationPerformablesLimit)
 	}
+	seenPerformables := make(map[string]bool)
 	for _, res := range o.Performable {
 		if err := ValidateCheckResult(res, utg, wg); err != nil {
 			return err
 		}
-	}
-	seenPerformables := make(map[string]bool)
-	for _, res := range o.Performable {
 		if seenPerformables[res.WorkID] {
 			return fmt.Errorf("performable cannot have duplicate workIDs")
 		}
@@ -80,13 +78,11 @@ func ValidateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 		(ObservationConditionalsProposalsLimit + ObservationLogRecoveryProposalsLimit) {
 		return fmt.Errorf("upkeep proposals length cannot be greater than %d", ObservationConditionalsProposalsLimit+ObservationLogRecoveryProposalsLimit)
 	}
+	seenProposals := make(map[string]bool)
 	for _, proposal := range o.UpkeepProposals {
 		if err := ValidateUpkeepProposal(proposal, utg, wg); err != nil {
 			return err
 		}
-	}
-	seenProposals := make(map[string]bool)
-	for _, proposal := range o.UpkeepProposals {
 		if seenProposals[proposal.WorkID] {
 			return fmt.Errorf("proposals cannot have duplicate workIDs")
 		}
@@ -160,6 +156,7 @@ func ValidateLogTriggerExtension(e ocr2keepers.LogTriggerExtension) error {
 	if e.Index == 0 {
 		return fmt.Errorf("log index cannot be zero")
 	}
+	// TODO: Should we allow undefined behaviour for other fields or explicitly zero them out?
 	return nil
 }
 

@@ -18,14 +18,14 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 	var uid3 types.UpkeepIdentifier = [32]byte{3}
 	tests := []struct {
 		name                        string
-		agreedProposals             [][]types.CoordinatedBlockProposal
+		surfacedProposals           [][]types.CoordinatedBlockProposal
 		upkeepTypeGetter            map[types.UpkeepIdentifier]types.UpkeepType
 		expectedConditionalRemovals int
 		expectedLogRemovals         int
 	}{
 		{
 			name: "Remove proposals from metadata store",
-			agreedProposals: [][]types.CoordinatedBlockProposal{
+			surfacedProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{UpkeepID: uid1, WorkID: "1"},
 					{UpkeepID: uid2, WorkID: "2"},
@@ -44,7 +44,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 		},
 		{
 			name: "No proposals to remove",
-			agreedProposals: [][]types.CoordinatedBlockProposal{
+			surfacedProposals: [][]types.CoordinatedBlockProposal{
 				{},
 				{},
 			},
@@ -75,7 +75,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 
 			// Prepare automation outcome with agreed proposals
 			automationOutcome := ocr2keepersv3.AutomationOutcome{
-				SurfacedProposals: tt.agreedProposals,
+				SurfacedProposals: tt.surfacedProposals,
 			}
 			// Run the hook
 			err := removeFromMetadataHook.RunHook(automationOutcome)

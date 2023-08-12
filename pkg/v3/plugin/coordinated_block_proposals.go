@@ -83,6 +83,7 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		newProposal := proposal
 		newProposal.Trigger.BlockNumber = latestQuorumBlock.Number
 		newProposal.Trigger.BlockHash = latestQuorumBlock.Hash
+		// TODO: Should logTrigger.blocknumber/hash be zeroed out for consistency?
 
 		latestProposals = append(latestProposals, newProposal)
 		added[proposal.WorkID] = true
