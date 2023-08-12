@@ -19,8 +19,9 @@ type AutomationOutcome struct {
 	// check pipeline. The proposals remain valid for a range of rounds where they do
 	// not get tied to a new coordinated block in order to give check pipeline enough
 	// time to run asynchronously
-	// TODO: Rename to surfacedProposals
-	AgreedProposals [][]ocr2keepers.CoordinatedProposal
+	// Quorum of f+1 is only applied on the blockNumber and blockHash of the proposal
+	// rest of the fields can be manipulated by malicious nodes
+	SurfacedProposals [][]ocr2keepers.CoordinatedBlockProposal
 }
 
 // DecodeAutomationOutcome decodes an AutomationOutcome from an encoded array

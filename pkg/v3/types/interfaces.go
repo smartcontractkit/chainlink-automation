@@ -36,7 +36,7 @@ type ConditionalUpkeepProvider interface {
 //go:generate mockery --name PayloadBuilder --structname MockPayloadBuilder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename payloadbuilder.generated.go
 type PayloadBuilder interface {
 	// Can get payloads for a subset of proposals along with an error
-	BuildPayloads(context.Context, ...CoordinatedProposal) ([]UpkeepPayload, error)
+	BuildPayloads(context.Context, ...CoordinatedBlockProposal) ([]UpkeepPayload, error)
 }
 
 //go:generate mockery --name Runnable --structname MockRunnable --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename runnable.generated.go
@@ -66,9 +66,9 @@ type RetryQueue interface {
 
 type ProposalQueue interface {
 	// Enqueue adds new items to the queue
-	Enqueue(items ...CoordinatedProposal) error
+	Enqueue(items ...CoordinatedBlockProposal) error
 	// Dequeue returns the next n items in the queue, considering retry time schedules
-	Dequeue(t UpkeepType, n int) ([]CoordinatedProposal, error)
+	Dequeue(t UpkeepType, n int) ([]CoordinatedBlockProposal, error)
 }
 
 //go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename result_store.generated.go
@@ -85,7 +85,7 @@ type Coordinator interface {
 	Accept(ReportedUpkeep) bool
 	ShouldTransmit(ReportedUpkeep) bool
 	FilterResults([]CheckResult) ([]CheckResult, error)
-	FilterProposals([]CoordinatedProposal) ([]CoordinatedProposal, error)
+	FilterProposals([]CoordinatedBlockProposal) ([]CoordinatedBlockProposal, error)
 }
 
 //go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename metadatastore.generated.go
@@ -93,17 +93,17 @@ type MetadataStore interface {
 	SetBlockHistory(BlockHistory)
 	GetBlockHistory() BlockHistory
 
-	// TODO AddProposals(proposals ...CoordinatedProposal)
-	ViewProposals(utype UpkeepType) []CoordinatedProposal
-	// TODO RemoveProposals(proposals ...CoordinatedProposal)
+	// TODO AddProposals(proposals ...CoordinatedBlockProposal)
+	ViewProposals(utype UpkeepType) []CoordinatedBlockProposal
+	// TODO RemoveProposals(proposals ...CoordinatedBlockProposal)
 
-	AddLogRecoveryProposal(...CoordinatedProposal)
-	ViewLogRecoveryProposal() []CoordinatedProposal
-	RemoveLogRecoveryProposal(...CoordinatedProposal)
+	AddLogRecoveryProposal(...CoordinatedBlockProposal)
+	ViewLogRecoveryProposal() []CoordinatedBlockProposal
+	RemoveLogRecoveryProposal(...CoordinatedBlockProposal)
 
-	AddConditionalProposal(...CoordinatedProposal)
-	ViewConditionalProposal() []CoordinatedProposal
-	RemoveConditionalProposal(...CoordinatedProposal)
+	AddConditionalProposal(...CoordinatedBlockProposal)
+	ViewConditionalProposal() []CoordinatedBlockProposal
+	RemoveConditionalProposal(...CoordinatedBlockProposal)
 
 	Start(context.Context) error
 	Close() error

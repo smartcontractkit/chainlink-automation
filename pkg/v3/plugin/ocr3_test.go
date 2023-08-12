@@ -42,15 +42,15 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{
 					{
 						WorkID: "workID1",
 					},
 				}
 			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{
 					{
 						WorkID: "workID2",
 					},
@@ -77,7 +77,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
 				return results, nil
 			},
-			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 				return proposals, nil
 			},
 		}
@@ -118,15 +118,15 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{
 					{
 						WorkID: "workID1",
 					},
 				}
 			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{
 					{
 						WorkID: "workID2",
 					},
@@ -157,7 +157,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
 				return results, nil
 			},
-			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 				return proposals, nil
 			},
 		}
@@ -198,11 +198,11 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{}
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{}
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
 		}
 
@@ -230,7 +230,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
 				return results, nil
 			},
-			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 				return proposals, nil
 			},
 		}
@@ -271,13 +271,13 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{}
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{}
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
-			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedProposal) {
+			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
 				// no op
 			},
 		}
@@ -305,15 +305,15 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
 				return results, nil
 			},
-			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 				return proposals, nil
 			},
 		}
 
-		queueItems := []ocr2keepers.CoordinatedProposal{}
+		queueItems := []ocr2keepers.CoordinatedBlockProposal{}
 
 		proposalQueue := &mockProposalQueue{
-			EnqueueFn: func(items ...ocr2keepers.CoordinatedProposal) error {
+			EnqueueFn: func(items ...ocr2keepers.CoordinatedBlockProposal) error {
 				queueItems = append(queueItems, items...)
 				return nil
 			},
@@ -338,7 +338,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					WorkID: "workID",
 				},
 			},
-			AgreedProposals: [][]ocr2keepers.CoordinatedProposal{
+			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID",
@@ -376,13 +376,13 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{}
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedProposal {
-				return []ocr2keepers.CoordinatedProposal{}
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
-			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedProposal) {
+			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
 				// no op
 			},
 		}
@@ -410,15 +410,15 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
 				return results[:1], nil
 			},
-			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 				return proposals, nil
 			},
 		}
 
-		queueItems := []ocr2keepers.CoordinatedProposal{}
+		queueItems := []ocr2keepers.CoordinatedBlockProposal{}
 
 		proposalQueue := &mockProposalQueue{
-			EnqueueFn: func(items ...ocr2keepers.CoordinatedProposal) error {
+			EnqueueFn: func(items ...ocr2keepers.CoordinatedBlockProposal) error {
 				queueItems = append(queueItems, items...)
 				return nil
 			},
@@ -443,7 +443,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					WorkID: "workID",
 				},
 			},
-			AgreedProposals: [][]ocr2keepers.CoordinatedProposal{
+			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID",
@@ -537,7 +537,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		{
 			name:         "processing an empty list of observations generates an empty outcome",
 			observations: []types.AttributedObservation{},
-			wantOutcome:  ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[]}`)),
+			wantOutcome:  ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[]}`)),
 		},
 		{
 			name: "processing a well formed observation with a previous outcome generates an new outcome",
@@ -546,8 +546,8 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 				},
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
 			name: "processing a malformed observation with a previous outcome generates an new outcome",
@@ -556,8 +556,8 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Observation: []byte(`invalid`),
 				},
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
 			name: "processing an invalid observation with a previous outcome generates an new outcome",
@@ -566,8 +566,8 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 				},
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
 			name: "processing an valid observation with a malformed previous outcome returns an error",
@@ -588,7 +588,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		//			Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 		//		},
 		//	},
-		//	outcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"AgreedProposals":[[{"WorkID":"workID1","GasAllocated":0}]]}`)),
+		//	outcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1","GasAllocated":0}]]}`)),
 		//	expectsErr:  true,
 		//	wantErr:     errors.New(""),
 		//},
@@ -640,7 +640,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		{
 			name:           "a well formed outcome gets encoded as a report",
 			sequenceNumber: 5,
-			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 			encoder: &mockEncoder{
 				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
 					return json.Marshal(result)
@@ -658,7 +658,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		{
 			name:           "an error is returned when the encoder errors",
 			sequenceNumber: 5,
-			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 			encoder: &mockEncoder{
 				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
 					return nil, errors.New("encode boom")
@@ -670,7 +670,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		{
 			name:           "an error is returned when the encoder errors",
 			sequenceNumber: 5,
-			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 			encoder: &mockEncoder{
 				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
 					return nil, errors.New("encode boom")
@@ -682,7 +682,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		{
 			name:           "an error is returned when the encoder errors when there are stillv values to add",
 			sequenceNumber: 5,
-			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"AgreedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 			encoder: &mockEncoder{
 				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
 					if len(result) == 0 { // the first call to encode with this test passes 0 check results, so we want to error on the second call, which gets non-zero results
@@ -963,15 +963,15 @@ func (s *mockResultStore) Remove(r ...string) {
 }
 
 type mockProposalQueue struct {
-	EnqueueFn func(items ...ocr2keepers.CoordinatedProposal) error
-	DequeueFn func(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedProposal, error)
+	EnqueueFn func(items ...ocr2keepers.CoordinatedBlockProposal) error
+	DequeueFn func(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedBlockProposal, error)
 }
 
-func (s *mockProposalQueue) Enqueue(items ...ocr2keepers.CoordinatedProposal) error {
+func (s *mockProposalQueue) Enqueue(items ...ocr2keepers.CoordinatedBlockProposal) error {
 	return s.EnqueueFn(items...)
 }
 
-func (s *mockProposalQueue) Dequeue(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedProposal, error) {
+func (s *mockProposalQueue) Dequeue(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 	return s.DequeueFn(t, n)
 }
 
@@ -1003,17 +1003,17 @@ func (e *mockRecoverable) Close() error {
 
 type mockMetadataStore struct {
 	ocr2keepers.MetadataStore
-	ViewLogRecoveryProposalFn   func() []ocr2keepers.CoordinatedProposal
-	ViewConditionalProposalFn   func() []ocr2keepers.CoordinatedProposal
+	ViewLogRecoveryProposalFn   func() []ocr2keepers.CoordinatedBlockProposal
+	ViewConditionalProposalFn   func() []ocr2keepers.CoordinatedBlockProposal
 	GetBlockHistoryFn           func() ocr2keepers.BlockHistory
-	RemoveLogRecoveryProposalFn func(...ocr2keepers.CoordinatedProposal)
+	RemoveLogRecoveryProposalFn func(...ocr2keepers.CoordinatedBlockProposal)
 }
 
-func (s *mockMetadataStore) ViewLogRecoveryProposal() []ocr2keepers.CoordinatedProposal {
+func (s *mockMetadataStore) ViewLogRecoveryProposal() []ocr2keepers.CoordinatedBlockProposal {
 	return s.ViewLogRecoveryProposalFn()
 }
 
-func (s *mockMetadataStore) ViewConditionalProposal() []ocr2keepers.CoordinatedProposal {
+func (s *mockMetadataStore) ViewConditionalProposal() []ocr2keepers.CoordinatedBlockProposal {
 	return s.ViewConditionalProposalFn()
 }
 
@@ -1021,20 +1021,20 @@ func (s *mockMetadataStore) GetBlockHistory() ocr2keepers.BlockHistory {
 	return s.GetBlockHistoryFn()
 }
 
-func (s *mockMetadataStore) RemoveLogRecoveryProposal(p ...ocr2keepers.CoordinatedProposal) {
+func (s *mockMetadataStore) RemoveLogRecoveryProposal(p ...ocr2keepers.CoordinatedBlockProposal) {
 	s.RemoveLogRecoveryProposalFn(p...)
 }
 
 type mockCoordinator struct {
 	ocr2keepers.Coordinator
-	FilterProposalsFn func([]ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error)
+	FilterProposalsFn func([]ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error)
 	FilterResultsFn   func([]ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error)
 	ShouldAcceptFn    func(ocr2keepers.ReportedUpkeep) bool
 	ShouldTransmitFn  func(ocr2keepers.ReportedUpkeep) bool
 	AcceptFn          func(ocr2keepers.ReportedUpkeep) bool
 }
 
-func (s *mockCoordinator) FilterProposals(p []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
+func (s *mockCoordinator) FilterProposals(p []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 	return s.FilterProposalsFn(p)
 }
 

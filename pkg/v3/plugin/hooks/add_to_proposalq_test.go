@@ -22,7 +22,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 		{
 			name: "Happy path add proposals to queue",
 			automationOutcome: ocr2keepersv3.AutomationOutcome{
-				AgreedProposals: [][]types.CoordinatedProposal{
+				SurfacedProposals: [][]types.CoordinatedBlockProposal{
 					{{WorkID: "1"}, {WorkID: "2"}},
 					{{WorkID: "3"}},
 				},
@@ -33,7 +33,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 		{
 			name: "Empty automation outcome",
 			automationOutcome: ocr2keepersv3.AutomationOutcome{
-				AgreedProposals: [][]types.CoordinatedProposal{},
+				SurfacedProposals: [][]types.CoordinatedBlockProposal{},
 			},
 			expectedQueueSize: 0,
 			expectedLog:       "Added 0 proposals from outcome",
@@ -41,7 +41,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 		{
 			name: "Multiple rounds with proposals",
 			automationOutcome: ocr2keepersv3.AutomationOutcome{
-				AgreedProposals: [][]types.CoordinatedProposal{
+				SurfacedProposals: [][]types.CoordinatedBlockProposal{
 					{{WorkID: "1"}, {WorkID: "2"}},
 					{{WorkID: "3"}},
 					{{WorkID: "4"}, {WorkID: "5"}, {WorkID: "6"}},

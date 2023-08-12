@@ -962,18 +962,18 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		name             string
 		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 		cacheInit        map[string]record
-		results          []ocr2keepers.CoordinatedProposal
-		wantResults      []ocr2keepers.CoordinatedProposal
+		results          []ocr2keepers.CoordinatedBlockProposal
+		wantResults      []ocr2keepers.CoordinatedBlockProposal
 		shouldProcess    bool
 	}{
 		{
 			name: "all proposals are included",
-			results: []ocr2keepers.CoordinatedProposal{
+			results: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedProposal{
+			wantResults: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -981,7 +981,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "proposals with pending transmission are excluded",
-			results: []ocr2keepers.CoordinatedProposal{
+			results: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -994,7 +994,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					isTransmissionPending: true,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedProposal{
+			wantResults: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1002,7 +1002,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "log proposals with a non pending transmission with a perform transmit type are excluded",
-			results: []ocr2keepers.CoordinatedProposal{
+			results: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1019,7 +1019,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					transmitType:          ocr2keepers.PerformEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedProposal{
+			wantResults: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1027,7 +1027,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "condition trigger proposals with a non pending transmission with a perform transmit type are included",
-			results: []ocr2keepers.CoordinatedProposal{
+			results: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1044,7 +1044,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					transmitType:          ocr2keepers.PerformEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedProposal{
+			wantResults: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1055,7 +1055,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "log proposals with a non pending transmission with a stale report transmit type are included",
-			results: []ocr2keepers.CoordinatedProposal{
+			results: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1072,7 +1072,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					transmitType:          ocr2keepers.StaleReportEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedProposal{
+			wantResults: []ocr2keepers.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},

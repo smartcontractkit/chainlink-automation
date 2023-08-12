@@ -25,7 +25,7 @@ type RemoveFromMetadataHook struct {
 
 func (hook *RemoveFromMetadataHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
 	removed := 0
-	for _, round := range outcome.AgreedProposals {
+	for _, round := range outcome.SurfacedProposals {
 		for _, proposal := range round {
 			if hook.upkeepTypeGetter(proposal.UpkeepID) == types.ConditionTrigger {
 				hook.ms.RemoveConditionalProposal(proposal)

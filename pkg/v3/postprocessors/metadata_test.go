@@ -41,7 +41,7 @@ func TestMetadataAddPayload(t *testing.T) {
 		},
 	}
 
-	expected := []ocr2keepers.CoordinatedProposal{
+	expected := []ocr2keepers.CoordinatedBlockProposal{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			Trigger: ocr2keepers.Trigger{

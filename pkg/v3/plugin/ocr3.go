@@ -112,7 +112,7 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
 	p := newPerformables(plugin.F+1, OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	c := newCoordinatedProposals(plugin.F+1, OutcomeAgreedProposalsRoundHistoryLimit, OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	c := newCoordinatedBlockProposals(plugin.F+1, OutcomeAgreedProposalsRoundHistoryLimit, OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
@@ -156,8 +156,8 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	c.set(&outcome, prevOutcome)
 
 	newProposals := 0
-	if len(outcome.AgreedProposals) > 0 {
-		newProposals = len(outcome.AgreedProposals[0])
+	if len(outcome.SurfacedProposals) > 0 {
+		newProposals = len(outcome.SurfacedProposals[0])
 	}
 	plugin.Logger.Printf("returning outcome with %d performables and %d new proposals", len(outcome.AgreedPerformables), newProposals)
 

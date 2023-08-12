@@ -17,7 +17,7 @@ type AutomationObservation struct {
 	Performable []ocr2keepers.CheckResult
 	// These are the proposals for upkeeps that need a coordinated block to be checked on
 	// The expectation is that once bound to a coordinated block, this goes into performables
-	UpkeepProposals []ocr2keepers.CoordinatedProposal
+	UpkeepProposals []ocr2keepers.CoordinatedBlockProposal
 	// This is the block history of the chain from this node's perspective. It sends a
 	// few latest blocks to help in block coordination
 	BlockHistory ocr2keepers.BlockHistory

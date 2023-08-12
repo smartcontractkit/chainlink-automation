@@ -23,7 +23,7 @@ type AddToProposalQHook struct {
 
 func (hook *AddToProposalQHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
 	addedProposals := 0
-	for _, roundProposals := range outcome.AgreedProposals {
+	for _, roundProposals := range outcome.SurfacedProposals {
 		err := hook.proposalQ.Enqueue(roundProposals...)
 		if err != nil {
 			// Do not return error, just log and skip this round's proposals

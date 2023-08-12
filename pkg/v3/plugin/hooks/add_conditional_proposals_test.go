@@ -17,7 +17,7 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 		name             string
 		metadata         types.MetadataStore
 		coordinator      types.Coordinator
-		proposals        []types.CoordinatedProposal
+		proposals        []types.CoordinatedBlockProposal
 		limit            int
 		src              [16]byte
 		wantNumProposals int
@@ -27,8 +27,8 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 		{
 			name: "proposals aren't filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewConditionalProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -36,7 +36,7 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 1, len(proposals))
 					return proposals, nil
 				},
@@ -48,8 +48,8 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 		{
 			name: "proposals are filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewConditionalProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -60,7 +60,7 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 2, len(proposals))
 					return proposals[:1], nil
 				},
@@ -72,8 +72,8 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 		{
 			name: "proposals are appended to the existing proposals in observation",
 			metadata: &mockMetadataStore{
-				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewConditionalProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -81,12 +81,12 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 1, len(proposals))
 					return proposals, nil
 				},
 			},
-			proposals:        []types.CoordinatedProposal{{WorkID: "workID2"}},
+			proposals:        []types.CoordinatedBlockProposal{{WorkID: "workID2"}},
 			limit:            5,
 			src:              [16]byte{1},
 			wantNumProposals: 2,
@@ -94,8 +94,8 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 		{
 			name: "proposals aren't filtered but are limited and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewConditionalProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -112,7 +112,7 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 4, len(proposals))
 					return proposals, nil
 				},
@@ -124,8 +124,8 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 		{
 			name: "if an error is encountered filtering proposals, an error is returned",
 			metadata: &mockMetadataStore{
-				ViewConditionalProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewConditionalProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -142,7 +142,7 @@ func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					return nil, errors.New("filter proposals boom")
 				},
 			},

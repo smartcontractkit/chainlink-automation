@@ -8,7 +8,7 @@ import (
 )
 
 type proposalQueueRecord struct {
-	proposal ocr2keepers.CoordinatedProposal
+	proposal ocr2keepers.CoordinatedBlockProposal
 	// visited is true if the record was already dequeued
 	removed bool
 	// createdAt is the first time the proposal was seen by the queue
@@ -35,7 +35,7 @@ func NewProposalQueue(typeGetter ocr2keepers.UpkeepTypeGetter) *proposalQueue {
 	}
 }
 
-func (pq *proposalQueue) Enqueue(newProposals ...ocr2keepers.CoordinatedProposal) error {
+func (pq *proposalQueue) Enqueue(newProposals ...ocr2keepers.CoordinatedBlockProposal) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 
@@ -52,11 +52,11 @@ func (pq *proposalQueue) Enqueue(newProposals ...ocr2keepers.CoordinatedProposal
 	return nil
 }
 
-func (pq *proposalQueue) Dequeue(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedProposal, error) {
+func (pq *proposalQueue) Dequeue(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 
-	var proposals []ocr2keepers.CoordinatedProposal
+	var proposals []ocr2keepers.CoordinatedBlockProposal
 	for _, record := range pq.records {
 		if record.expired(time.Now(), DefaultExpiration) {
 			delete(pq.records, record.proposal.WorkID)

@@ -105,8 +105,8 @@ func (c *coordinator) FilterResults(results []ocr2keepers.CheckResult) ([]ocr2ke
 	return res, nil
 }
 
-func (c *coordinator) FilterProposals(proposals []ocr2keepers.CoordinatedProposal) ([]ocr2keepers.CoordinatedProposal, error) {
-	res := make([]ocr2keepers.CoordinatedProposal, 0)
+func (c *coordinator) FilterProposals(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
+	res := make([]ocr2keepers.CoordinatedBlockProposal, 0)
 	for _, proposal := range proposals {
 		if v, ok := c.cache.Get(proposal.WorkID); ok {
 			if v.isTransmissionPending {

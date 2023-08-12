@@ -17,7 +17,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		name             string
 		metadata         types.MetadataStore
 		coordinator      types.Coordinator
-		proposals        []types.CoordinatedProposal
+		proposals        []types.CoordinatedBlockProposal
 		limit            int
 		src              [16]byte
 		wantNumProposals int
@@ -27,8 +27,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals aren't filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -36,7 +36,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 1, len(proposals))
 					return proposals, nil
 				},
@@ -48,8 +48,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals are filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -60,7 +60,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 2, len(proposals))
 					return proposals[:1], nil
 				},
@@ -72,8 +72,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals aren't filtered but are limited and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -90,7 +90,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 4, len(proposals))
 					return proposals, nil
 				},
@@ -102,8 +102,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "if an error is encountered filtering proposals, an error is returned",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedProposal {
-					return []types.CoordinatedProposal{
+				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
+					return []types.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -120,7 +120,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 					return nil, errors.New("filter proposals boom")
 				},
 			},
@@ -152,16 +152,16 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 
 type mockMetadataStore struct {
 	types.MetadataStore
-	ViewLogRecoveryProposalFn func() []types.CoordinatedProposal
-	ViewConditionalProposalFn func() []types.CoordinatedProposal
+	ViewLogRecoveryProposalFn func() []types.CoordinatedBlockProposal
+	ViewConditionalProposalFn func() []types.CoordinatedBlockProposal
 	GetBlockHistoryFn         func() types.BlockHistory
 }
 
-func (s *mockMetadataStore) ViewLogRecoveryProposal() []types.CoordinatedProposal {
+func (s *mockMetadataStore) ViewLogRecoveryProposal() []types.CoordinatedBlockProposal {
 	return s.ViewLogRecoveryProposalFn()
 }
 
-func (s *mockMetadataStore) ViewConditionalProposal() []types.CoordinatedProposal {
+func (s *mockMetadataStore) ViewConditionalProposal() []types.CoordinatedBlockProposal {
 	return s.ViewConditionalProposalFn()
 }
 
@@ -171,13 +171,13 @@ func (s *mockMetadataStore) GetBlockHistory() types.BlockHistory {
 
 type mockCoordinator struct {
 	types.Coordinator
-	FilterProposalsFn func([]types.CoordinatedProposal) ([]types.CoordinatedProposal, error)
+	FilterProposalsFn func([]types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error)
 	FilterResultsFn   func([]types.CheckResult) ([]types.CheckResult, error)
 	ShouldAcceptFn    func(types.ReportedUpkeep) bool
 	ShouldTransmitFn  func(types.ReportedUpkeep) bool
 }
 
-func (s *mockCoordinator) FilterProposals(p []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+func (s *mockCoordinator) FilterProposals(p []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 	return s.FilterProposalsFn(p)
 }
 

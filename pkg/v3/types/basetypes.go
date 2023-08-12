@@ -124,22 +124,25 @@ type CheckResult struct {
 
 // UniqueID returns a unique identifier for the check result.
 // It is used to achieve quorum on results before being sent within a report.
-// It contains all information that agreement should be achieved on.
-// TODO: Think if it should just simply contain all fields of the result by json marshalling
 func (r CheckResult) UniqueID() string {
 	var resultBytes []byte
-
-	resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
-	resultBytes = append(resultBytes, big.NewInt(int64(r.GasAllocated)).Bytes()...)
-	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
-	resultBytes = append(resultBytes, r.PerformData[:]...)
+	// TODO: Discuss if we should keep all fields here for simplicity and avoiding
+	// undefined behaviour for other fields when achieveing quorum on this struct
+	resultBytes = append(resultBytes, r.PipelineExecutionState)
+	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Retryable))...)
+	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Eligible))...)
+	resultBytes = append(resultBytes, r.IneligibilityReason)
 	resultBytes = append(resultBytes, r.UpkeepID[:]...)
 	resultBytes = append(resultBytes, r.Trigger.BlockHash[:]...)
 	resultBytes = append(resultBytes, big.NewInt(int64(r.Trigger.BlockNumber)).Bytes()...)
 	if r.Trigger.LogTriggerExtension != nil {
 		resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Trigger.LogTriggerExtension))...)
 	}
-
+	resultBytes = append(resultBytes, r.WorkID[:]...)
+	resultBytes = append(resultBytes, big.NewInt(int64(r.GasAllocated)).Bytes()...)
+	resultBytes = append(resultBytes, r.PerformData[:]...)
+	resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
+	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
 	return fmt.Sprintf("%x", resultBytes)
 }
 
@@ -165,14 +168,15 @@ type UpkeepPayload struct {
 	CheckData []byte
 }
 
-// CoordinatedProposal is used to represent a unit of work that can be performed
+// CoordinatedBlockProposal is used to represent a unit of work that can be performed
 // after a check block has been coordinated between nodes.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
-// quorum requirements in mind
-// TODO: Rename to coordinatedBlockProposal
-// Add note that fields cannot be trusted when consuming this struct
-type CoordinatedProposal struct {
+// quorum requirements in mind.
+// NOTE: Only the trigger.BlockHash and trigger.BlockNumber are coordinated across
+// the network to get a quorum. Rest of the fields here SHOULD NOT BE TRUSTED as they
+// can be manipulated by a single malicious node.
+type CoordinatedBlockProposal struct {
 	// UpkeepID is the id of the proposed upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger represents the event that triggered the upkeep to be checked

@@ -12,14 +12,14 @@ import (
 func TestProposalQueue_Enqueue(t *testing.T) {
 	tests := []struct {
 		name      string
-		initials  []ocr2keepers.CoordinatedProposal
-		toEnqueue []ocr2keepers.CoordinatedProposal
+		initials  []ocr2keepers.CoordinatedBlockProposal
+		toEnqueue []ocr2keepers.CoordinatedBlockProposal
 		size      int
 	}{
 		{
 			"add to empty queue",
-			[]ocr2keepers.CoordinatedProposal{},
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{},
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
@@ -29,13 +29,13 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 		},
 		{
 			"add to non-empty queue",
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 			},
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x2}),
 					WorkID:   "0x2",
@@ -45,13 +45,13 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 		},
 		{
 			"add existing",
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 			},
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
@@ -77,21 +77,21 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 func TestProposalQueue_Dequeue(t *testing.T) {
 	tests := []struct {
 		name         string
-		toEnqueue    []ocr2keepers.CoordinatedProposal
+		toEnqueue    []ocr2keepers.CoordinatedBlockProposal
 		dequeueType  ocr2keepers.UpkeepType
 		dequeueCount int
-		expected     []ocr2keepers.CoordinatedProposal
+		expected     []ocr2keepers.CoordinatedBlockProposal
 	}{
 		{
 			"empty queue",
-			[]ocr2keepers.CoordinatedProposal{},
+			[]ocr2keepers.CoordinatedBlockProposal{},
 			ocr2keepers.LogTrigger,
 			1,
-			[]ocr2keepers.CoordinatedProposal{},
+			[]ocr2keepers.CoordinatedBlockProposal{},
 		},
 		{
 			"happy path log trigger",
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
@@ -103,7 +103,7 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 			},
 			ocr2keepers.LogTrigger,
 			2,
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
@@ -112,7 +112,7 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 		},
 		{
 			"happy path log trigger",
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
@@ -124,7 +124,7 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 			},
 			ocr2keepers.ConditionTrigger,
 			2,
-			[]ocr2keepers.CoordinatedProposal{
+			[]ocr2keepers.CoordinatedBlockProposal{
 				{
 					UpkeepID: upkeepId(ocr2keepers.ConditionTrigger, []byte{0x1}),
 					WorkID:   "0x2",

@@ -29,23 +29,23 @@ func (_m *MockCoordinator) Accept(_a0 types.ReportedUpkeep) bool {
 }
 
 // FilterProposals provides a mock function with given fields: _a0
-func (_m *MockCoordinator) FilterProposals(_a0 []types.CoordinatedProposal) ([]types.CoordinatedProposal, error) {
+func (_m *MockCoordinator) FilterProposals(_a0 []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []types.CoordinatedProposal
+	var r0 []types.CoordinatedBlockProposal
 	var r1 error
-	if rf, ok := ret.Get(0).(func([]types.CoordinatedProposal) ([]types.CoordinatedProposal, error)); ok {
+	if rf, ok := ret.Get(0).(func([]types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func([]types.CoordinatedProposal) []types.CoordinatedProposal); ok {
+	if rf, ok := ret.Get(0).(func([]types.CoordinatedBlockProposal) []types.CoordinatedBlockProposal); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.CoordinatedProposal)
+			r0 = ret.Get(0).([]types.CoordinatedBlockProposal)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func([]types.CoordinatedProposal) error); ok {
+	if rf, ok := ret.Get(1).(func([]types.CoordinatedBlockProposal) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)

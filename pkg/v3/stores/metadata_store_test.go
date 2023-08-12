@@ -133,15 +133,15 @@ func TestNewMetadataStore(t *testing.T) {
 func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
-		addProposals    [][]types.CoordinatedProposal
-		afterAdd        []types.CoordinatedProposal
-		deleteProposals []types.CoordinatedProposal
-		afterDelete     []types.CoordinatedProposal
+		addProposals    [][]types.CoordinatedBlockProposal
+		afterAdd        []types.CoordinatedBlockProposal
+		deleteProposals []types.CoordinatedBlockProposal
+		afterDelete     []types.CoordinatedBlockProposal
 		timeFn          func() time.Time
 	}{
 		{
 			name: "all unique proposals are added and retrieved, existent keys are successfully deleted",
-			addProposals: [][]types.CoordinatedProposal{
+			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -159,7 +159,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedProposal{
+			afterAdd: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -173,7 +173,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					WorkID: "workID4",
 				},
 			},
-			deleteProposals: []types.CoordinatedProposal{
+			deleteProposals: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -184,7 +184,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					WorkID: "workID5",
 				},
 			},
-			afterDelete: []types.CoordinatedProposal{
+			afterDelete: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID2",
 				},
@@ -196,7 +196,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 		},
 		{
 			name: "duplicate proposals aren't returned, existent keys are successfully deleted",
-			addProposals: [][]types.CoordinatedProposal{
+			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -214,22 +214,22 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedProposal{
+			afterAdd: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			deleteProposals: []types.CoordinatedProposal{
+			deleteProposals: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedProposal{},
+			afterDelete: []types.CoordinatedBlockProposal{},
 			timeFn:      time.Now,
 		},
 		{
 			name: "proposals added three days ago aren't returned, non existent keys result in a no op delete",
-			addProposals: [][]types.CoordinatedProposal{
+			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -247,13 +247,13 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedProposal{},
-			deleteProposals: []types.CoordinatedProposal{
+			afterAdd: []types.CoordinatedBlockProposal{},
+			deleteProposals: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedProposal{},
+			afterDelete: []types.CoordinatedBlockProposal{},
 			timeFn: func() time.Time {
 				return time.Now().Add(-72 * time.Hour)
 			},
@@ -283,15 +283,15 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
-		addProposals    [][]types.CoordinatedProposal
-		afterAdd        []types.CoordinatedProposal
-		deleteProposals []types.CoordinatedProposal
-		afterDelete     []types.CoordinatedProposal
+		addProposals    [][]types.CoordinatedBlockProposal
+		afterAdd        []types.CoordinatedBlockProposal
+		deleteProposals []types.CoordinatedBlockProposal
+		afterDelete     []types.CoordinatedBlockProposal
 		timeFn          func() time.Time
 	}{
 		{
 			name: "all unique proposals are added and retrieved, existent keys are successfully deleted",
-			addProposals: [][]types.CoordinatedProposal{
+			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -309,7 +309,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedProposal{
+			afterAdd: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -323,7 +323,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					WorkID: "workID4",
 				},
 			},
-			deleteProposals: []types.CoordinatedProposal{
+			deleteProposals: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -334,7 +334,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					WorkID: "workID5",
 				},
 			},
-			afterDelete: []types.CoordinatedProposal{
+			afterDelete: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID2",
 				},
@@ -346,7 +346,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 		},
 		{
 			name: "duplicate proposals aren't returned, existent keys are successfully deleted",
-			addProposals: [][]types.CoordinatedProposal{
+			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -364,22 +364,22 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedProposal{
+			afterAdd: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			deleteProposals: []types.CoordinatedProposal{
+			deleteProposals: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedProposal{},
+			afterDelete: []types.CoordinatedBlockProposal{},
 			timeFn:      time.Now,
 		},
 		{
 			name: "proposals added three days ago aren't returned, non existent keys result in a no op delete",
-			addProposals: [][]types.CoordinatedProposal{
+			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -397,13 +397,13 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedProposal{},
-			deleteProposals: []types.CoordinatedProposal{
+			afterAdd: []types.CoordinatedBlockProposal{},
+			deleteProposals: []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedProposal{},
+			afterDelete: []types.CoordinatedBlockProposal{},
 			timeFn: func() time.Time {
 				return time.Now().Add(-72 * time.Hour)
 			},

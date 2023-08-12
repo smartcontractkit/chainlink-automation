@@ -11,8 +11,8 @@ import (
 
 func TestProposalFilterer_PreProcess(t *testing.T) {
 	metadata := &mockMetadataStore{
-		ViewProposalsFn: func(utype types.UpkeepType) []types.CoordinatedProposal {
-			return []types.CoordinatedProposal{
+		ViewProposalsFn: func(utype types.UpkeepType) []types.CoordinatedBlockProposal {
+			return []types.CoordinatedBlockProposal{
 				{
 					WorkID: "workID2",
 				},
@@ -34,9 +34,9 @@ func TestProposalFilterer_PreProcess(t *testing.T) {
 
 type mockMetadataStore struct {
 	types.MetadataStore
-	ViewProposalsFn func(utype types.UpkeepType) []types.CoordinatedProposal
+	ViewProposalsFn func(utype types.UpkeepType) []types.CoordinatedBlockProposal
 }
 
-func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedProposal {
+func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedBlockProposal {
 	return s.ViewProposalsFn(utype)
 }
