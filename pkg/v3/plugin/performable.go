@@ -54,6 +54,7 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 
 	for _, payload := range p.resultCount {
 		if payload.count > p.threshold {
+			// TODO: Add logging here
 			performable = append(performable, payload.result)
 		}
 	}
