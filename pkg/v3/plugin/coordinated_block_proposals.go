@@ -98,7 +98,12 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		// if it still has quorum and is not lagging the latestQuorumBlock by a threshold
 		newProposal.Trigger.BlockNumber = latestQuorumBlock.Number
 		newProposal.Trigger.BlockHash = latestQuorumBlock.Hash
-		// TODO: Should logTrigger.blocknumber/hash be zeroed out here for consistency?
+		if newProposal.Trigger.LogTriggerExtension != nil {
+			// Zero out blocknumber/hash for log triggers as these fields are not used
+			// in the proposal
+			newProposal.Trigger.LogTriggerExtension.BlockNumber = 0
+			newProposal.Trigger.LogTriggerExtension.BlockHash = [32]byte{}
+		}
 
 		// TODO: Add logging here
 		latestProposals = append(latestProposals, newProposal)
