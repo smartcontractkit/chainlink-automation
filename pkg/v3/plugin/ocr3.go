@@ -186,6 +186,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	var gasUsed uint64
 
 	for i, result := range outcome.AgreedPerformables {
+		// TODO: Ensure the same upkeepID is not added to the report
 		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
 			gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) {
 			// If report has reached capacity, encode and append this report

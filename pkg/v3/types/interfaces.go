@@ -5,8 +5,6 @@ import (
 )
 
 type UpkeepTypeGetter func(UpkeepIdentifier) UpkeepType
-
-// TODO: Discuss this
 type WorkIDGenerator func(UpkeepIdentifier, Trigger) string
 
 //go:generate mockery --name Encoder --structname MockEncoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename encoder.generated.go

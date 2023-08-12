@@ -170,6 +170,8 @@ type UpkeepPayload struct {
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
 // quorum requirements in mind
+// TODO: Rename to coordinatedBlockProposal
+// Add note that fields cannot be trusted when consuming this struct
 type CoordinatedProposal struct {
 	// UpkeepID is the id of the proposed upkeep
 	UpkeepID UpkeepIdentifier

@@ -19,6 +19,7 @@ type AutomationOutcome struct {
 	// check pipeline. The proposals remain valid for a range of rounds where they do
 	// not get tied to a new coordinated block in order to give check pipeline enough
 	// time to run asynchronously
+	// TODO: Rename to surfacedProposals
 	AgreedProposals [][]ocr2keepers.CoordinatedProposal
 }
 
