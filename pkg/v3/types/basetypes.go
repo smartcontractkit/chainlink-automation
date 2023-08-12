@@ -128,6 +128,8 @@ func (r CheckResult) UniqueID() string {
 	var resultBytes []byte
 	// TODO: Discuss if we should keep all fields here for simplicity and avoiding
 	// undefined behaviour for other fields when achieveing quorum on this struct
+	// json.marshall might be just simpler? (but slower)
+	// Alternatively the rest of the fields can be zeroed out for consistent behaviour
 	resultBytes = append(resultBytes, r.PipelineExecutionState)
 	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Retryable))...)
 	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Eligible))...)
@@ -136,6 +138,9 @@ func (r CheckResult) UniqueID() string {
 	resultBytes = append(resultBytes, r.Trigger.BlockHash[:]...)
 	resultBytes = append(resultBytes, big.NewInt(int64(r.Trigger.BlockNumber)).Bytes()...)
 	if r.Trigger.LogTriggerExtension != nil {
+		// Note: We encode the whole trigger extension so the behaiour of
+		// LogTriggerExtentsion.BlockNumber and LogTriggerExtentsion.BlockHash should be
+		// consistent across nodes
 		resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Trigger.LogTriggerExtension))...)
 	}
 	resultBytes = append(resultBytes, r.WorkID[:]...)

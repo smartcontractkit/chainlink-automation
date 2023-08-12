@@ -164,7 +164,25 @@ func ValidateLogTriggerExtension(e ocr2keepers.LogTriggerExtension) error {
 	return nil
 }
 
-func ValidateUpkeepProposal(r ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
-	// TODO
+func ValidateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	// No validation is done on Trigger.BlockNumber and Trigger.BlockHash because those
+	// get udpated with a coordinated quorum block
+	ut := utg(p.UpkeepID)
+	switch ut {
+	case ocr2keepers.ConditionTrigger:
+		if p.Trigger.LogTriggerExtension != nil {
+			return fmt.Errorf("log trigger extension cannot be present for condition upkeep proposals")
+		}
+	case ocr2keepers.LogTrigger:
+		if p.Trigger.LogTriggerExtension == nil {
+			return fmt.Errorf("log trigger extension cannot be empty for log upkeep proposals")
+		}
+		if err := ValidateLogTriggerExtension(*p.Trigger.LogTriggerExtension); err != nil {
+			return fmt.Errorf("log trigger extension invalid for upkeep proposal: %w", err)
+		}
+	}
+	if wg(p.UpkeepID, p.Trigger) != p.WorkID {
+		return fmt.Errorf("incorrect workID within proposal")
+	}
 	return nil
 }
