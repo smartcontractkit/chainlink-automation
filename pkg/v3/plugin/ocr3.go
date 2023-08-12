@@ -90,6 +90,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 }
 
 func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
+	plugin.Logger.Printf("inside ValidateObservation for sequence number %d", outctx.SeqNr)
 	o, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation)
 	if err != nil {
 		return err
@@ -105,13 +106,13 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
 		if err != nil {
-			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
+			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations
 			continue
 		}
 		if err := ocr2keepersv3.ValidateAutomationObservation(observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
-			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
+			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations
 			continue
