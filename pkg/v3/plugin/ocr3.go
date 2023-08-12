@@ -172,12 +172,14 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
+	seenUpkeepIDs := make(map[string]bool)
 
 	for i, result := range outcome.AgreedPerformables {
-		// TODO: Ensure the same upkeepID is not added to the report
 		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
-			gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) {
-			// If report has reached capacity, encode and append this report
+			gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) ||
+			seenUpkeepIDs[result.UpkeepID.String()] {
+
+			// If report has reached capacity or has existing upkeepID, encode and append this report
 			report, err := plugin.getReportFromPerformables(toPerform)
 			if err != nil {
 				return reports, fmt.Errorf("error encountered while encoding: %w", err)
@@ -186,11 +188,13 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 			reports = append(reports, report)
 			toPerform = []ocr2keepers.CheckResult{}
 			gasUsed = 0
+			seenUpkeepIDs = make(map[string]bool)
 		}
 
 		// Add the result to current report
 		gasUsed += result.GasAllocated + uint64(plugin.Config.GasOverheadPerUpkeep)
 		toPerform = append(toPerform, outcome.AgreedPerformables[i])
+		seenUpkeepIDs[result.UpkeepID.String()] = true
 	}
 
 	// if there are still values to add
