@@ -44,6 +44,7 @@ func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeCon
 }
 
 func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
+	plugin.Logger.Printf("inside Observation for seqNr %d", outctx.SeqNr)
 	// first round outcome will be nil or empty so no processing should be done
 	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
 		// Decode the outcome to AutomationOutcome
@@ -90,7 +91,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 }
 
 func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
-	plugin.Logger.Printf("inside ValidateObservation for sequence number %d", outctx.SeqNr)
+	plugin.Logger.Printf("inside ValidateObservation for seqNr %d", outctx.SeqNr)
 	o, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation)
 	if err != nil {
 		return err
@@ -100,6 +101,7 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
+	plugin.Logger.Printf("inside Outcome for seqNr %d", outctx.SeqNr)
 	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
 	c := newCoordinatedBlockProposals(plugin.F+1, ocr2keepersv3.OutcomeSurfacedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeSurfacedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
 
@@ -154,6 +156,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 }
 
 func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+	plugin.Logger.Printf("inside Reports for seqNr %d", seqNr)
 	var (
 		reports []ocr3types.ReportWithInfo[AutomationReportInfo]
 		outcome ocr2keepersv3.AutomationOutcome
@@ -212,7 +215,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 }
 
 func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
-	plugin.Logger.Printf("inside should accept attested report for sequence number %d", seqNr)
+	plugin.Logger.Printf("inside ShouldAcceptAttestedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
@@ -235,7 +238,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 }
 
 func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
-	plugin.Logger.Printf("inside should trasmit accepted report for sequence number %d", seqNr)
+	plugin.Logger.Printf("inside ShouldTransmitAcceptedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
