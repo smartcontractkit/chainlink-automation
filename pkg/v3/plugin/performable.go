@@ -24,7 +24,7 @@ type performables struct {
 // performed within a report. It assumes only valid observations are added to it
 // and simply adds all results which achieve the threshold quorum.
 // Results are agreed upon by their UniqueID() which contains all the data
-// to be sent to the contract, ensuring that the whole result gets quorum
+// withn the result.
 func newPerformables(threshold int, limit int, rSrc [16]byte) *performables {
 	return &performables{
 		threshold:   threshold,

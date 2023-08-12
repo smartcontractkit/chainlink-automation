@@ -17,7 +17,6 @@ type coordinatedBlockProposals struct {
 	allNewProposals      []ocr2keepers.CoordinatedBlockProposal
 }
 
-// TODO: add test for this
 func newCoordinatedBlockProposals(quorumBlockthreshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte) *coordinatedBlockProposals {
 	return &coordinatedBlockProposals{
 		quorumBlockthreshold: quorumBlockthreshold,
@@ -28,6 +27,20 @@ func newCoordinatedBlockProposals(quorumBlockthreshold int, roundHistoryLimit in
 	}
 }
 
+// SurfacedProposals gets constructed from a set of VALID observations and previous
+// outcome.
+//  1. History of proposals from previous outcome is carried over.
+//  2. Those proposals which got an agreed performable are removed.
+//  3. A latest quorum block is determined from the recent blocks in observations.
+//  4. If no block achieves quorum then no new proposals are surfaced and we exit.
+//  5. Oldest round's proposals are dropped if over limit to make room for new
+//     surfaced proposals.
+//  6. New proposals surfaced in this round are deduped, filtered from existing
+//     proposals and performables and then added to the outcome with quorum block
+//
+// NOTE: Quorum is NOT applied on surfaced proposals apart from the block number
+// A single node can surface a malicious proposal, it is expected that the nodes
+// when acting on proposals will keep that in account when processing them.
 func (c *coordinatedBlockProposals) add(ao ocr2keepersv3.AutomationObservation) {
 	c.allNewProposals = append(c.allNewProposals, ao.UpkeepProposals...)
 	for _, val := range ao.BlockHistory {
@@ -40,7 +53,6 @@ func (c *coordinatedBlockProposals) add(ao ocr2keepersv3.AutomationObservation) 
 	}
 }
 
-// TODO: Make the code more elegant if possible
 func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome, prevOutcome ocr2keepersv3.AutomationOutcome) {
 	// Keep proposals from previous outcome that haven't achieved quorum performable
 	outcome.SurfacedProposals = [][]ocr2keepers.CoordinatedBlockProposal{}
@@ -83,7 +95,7 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		newProposal := proposal
 		newProposal.Trigger.BlockNumber = latestQuorumBlock.Number
 		newProposal.Trigger.BlockHash = latestQuorumBlock.Hash
-		// TODO: Should logTrigger.blocknumber/hash be zeroed out for consistency?
+		// TODO: Should logTrigger.blocknumber/hash be zeroed out here for consistency?
 
 		latestProposals = append(latestProposals, newProposal)
 		added[proposal.WorkID] = true
