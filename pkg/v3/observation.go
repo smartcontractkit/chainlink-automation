@@ -3,8 +3,19 @@ package ocr2keepers
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+)
+
+// NOTE: Any change to these values should keep backwards compatibility in mind
+// as different nodes would upgrade at different times and would need to
+// adhere to each others' limits
+const (
+	ObservationPerformablesLimit          = 100
+	ObservationLogRecoveryProposalsLimit  = 2
+	ObservationConditionalsProposalsLimit = 2
+	ObservationBlockHistoryLimit          = 256
 )
 
 // AutomationObservation models the local automation view sent by a single node
@@ -33,49 +44,91 @@ func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
 	return ao, err
 }
 
-func ValidateAutomationObservation(o AutomationObservation, wg ocr2keepers.WorkIDGenerator) error {
-	// TODO: Validate sizes of upkeepProposals, BlockHistory, Performables
+func ValidateAutomationObservation(o AutomationObservation, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	// Validate Block History
+	if len(o.BlockHistory) > ObservationBlockHistoryLimit {
+		return fmt.Errorf("block history length cannot be greater than %d", ObservationBlockHistoryLimit)
+	}
+	// Block History should not have duplicate block numbers
+	seen := make(map[uint64]bool)
+	for _, block := range o.BlockHistory {
+		if seen[uint64(block.Number)] {
+			return fmt.Errorf("block history cannot have duplicate block numbers")
+		}
+		seen[uint64(block.Number)] = true
+	}
+
+	// Validate Performables
+	if (len(o.Performable)) > ObservationPerformablesLimit {
+		return fmt.Errorf("performable length cannot be greater than %d", ObservationPerformablesLimit)
+	}
 	for _, res := range o.Performable {
-		if err := ValidateCheckResult(res); err != nil {
+		if err := ValidateCheckResult(res, utg, wg); err != nil {
 			return err
 		}
 	}
-	// TODO: Only eligible results should be sent and those that have 0 error state
-	// TODO: WorkID should be validated
-	// TODO: Observations should not have duplicate results
-	// proposals should not have dplicate workIDs
-	// blockHistory should not have duplicate numbers
-	// TODO: Validate upkeepProposals and blockHistory
+	seenPerformables := make(map[string]bool)
+	for _, res := range o.Performable {
+		if seenPerformables[res.WorkID] {
+			return fmt.Errorf("performable cannot have duplicate workIDs")
+		}
+		seenPerformables[res.WorkID] = true
+	}
+
+	// Validate Proposals
+	if (len(o.UpkeepProposals)) >
+		(ObservationConditionalsProposalsLimit + ObservationLogRecoveryProposalsLimit) {
+		return fmt.Errorf("upkeep proposals length cannot be greater than %d", ObservationConditionalsProposalsLimit+ObservationLogRecoveryProposalsLimit)
+	}
+	for _, proposal := range o.UpkeepProposals {
+		if err := ValidateUpkeepProposal(proposal, utg, wg); err != nil {
+			return err
+		}
+	}
+	seenProposals := make(map[string]bool)
+	for _, proposal := range o.UpkeepProposals {
+		if seenProposals[proposal.WorkID] {
+			return fmt.Errorf("proposals cannot have duplicate workIDs")
+		}
+		seenProposals[proposal.WorkID] = true
+	}
 
 	return nil
 }
 
-// Validate validates the check result fields
-func ValidateCheckResult(r ocr2keepers.CheckResult) error {
-	if r.PipelineExecutionState == 0 && r.Retryable {
-		return fmt.Errorf("check result cannot have successful execution state and be retryable")
+// Validates the check result fields sent within an observation
+func ValidateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	if r.PipelineExecutionState != 0 || r.Retryable {
+		return fmt.Errorf("check result cannot have failed execution state")
 	}
-	if r.PipelineExecutionState == 0 {
-		if r.Eligible && r.IneligibilityReason != 0 {
-			return fmt.Errorf("check result cannot be eligible and have an ineligibility reason")
-		}
-		if r.IneligibilityReason == 0 && !r.Eligible {
-			return fmt.Errorf("check result cannot be ineligible and have no ineligibility reason")
-		}
-		if r.Eligible {
-			// TODO: This should be checked only if eligible
-			if r.GasAllocated == 0 {
-				return fmt.Errorf("gas allocated cannot be zero")
-			}
-			// TODO: add validation for upkeepType and presence of trigger extension
-			// TODO: add range validation on linkNative and fasGas (uint256)
-		}
+	if !r.Eligible || r.IneligibilityReason != 0 {
+		return fmt.Errorf("check result cannot be ineligible")
+	}
+	// UpkeepID is contained [32]byte, no validation needed
+	if err := ValidateTrigger(r.Trigger, utg(r.UpkeepID)); err != nil {
+		return fmt.Errorf("invalid trigger: %w", err)
+	}
+	if wg(r.UpkeepID, r.Trigger) != r.WorkID {
+		return fmt.Errorf("incorrect workID within result")
+	}
+	// by maxObservationSize
+	if r.GasAllocated == 0 {
+		return fmt.Errorf("gas allocated cannot be zero")
+	}
+	// PerformData is a []byte, no validation needed. Length constraint is handled
+	// by maxObservationSize
+	uint256Max, _ := big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+	if r.FastGasWei.Cmp(big.NewInt(0)) < 0 || r.FastGasWei.Cmp(uint256Max) > 0 {
+		return fmt.Errorf("fast gas wei must be in uint256 range")
+	}
+	if r.LinkNative.Cmp(big.NewInt(0)) < 0 || r.LinkNative.Cmp(uint256Max) > 0 {
+		return fmt.Errorf("link native must be in uint256 range")
 	}
 	return nil
 }
 
 // Validate validates the trigger fields, and any extensions if present.
-func ValidateTrigger(t ocr2keepers.Trigger) error {
+func ValidateTrigger(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
 	if t.BlockNumber == 0 {
 		return fmt.Errorf("block number cannot be zero")
 	}
@@ -83,17 +136,24 @@ func ValidateTrigger(t ocr2keepers.Trigger) error {
 		return fmt.Errorf("block hash cannot be empty")
 	}
 
-	if t.LogTriggerExtension != nil {
+	switch ut {
+	case ocr2keepers.ConditionTrigger:
+		if t.LogTriggerExtension != nil {
+			return fmt.Errorf("log trigger extension cannot be present for condition upkeep")
+		}
+	case ocr2keepers.LogTrigger:
+		if t.LogTriggerExtension == nil {
+			return fmt.Errorf("log trigger extension cannot be empty for log upkeep")
+		}
 		if err := ValidateLogTriggerExtension(*t.LogTriggerExtension); err != nil {
 			return fmt.Errorf("log trigger extension invalid: %w", err)
 		}
 	}
-
 	return nil
 }
 
 // Validate validates the log trigger extension fields.
-// NOTE: not checking block hash or block number because they might not be available (e.g. ReportedUpkeep)
+// NOTE: not checking block hash or block number because they are optional
 func ValidateLogTriggerExtension(e ocr2keepers.LogTriggerExtension) error {
 	if len(e.TxHash) == 0 {
 		return fmt.Errorf("log transaction hash cannot be empty")
@@ -101,6 +161,10 @@ func ValidateLogTriggerExtension(e ocr2keepers.LogTriggerExtension) error {
 	if e.Index == 0 {
 		return fmt.Errorf("log index cannot be zero")
 	}
+	return nil
+}
 
+func ValidateUpkeepProposal(r ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	// TODO
 	return nil
 }

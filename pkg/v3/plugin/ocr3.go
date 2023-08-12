@@ -24,6 +24,7 @@ type ocr3Plugin struct {
 	ConfigDigest                types.ConfigDigest
 	ReportEncoder               ocr2keepers.Encoder
 	Coordinator                 ocr2keepers.Coordinator
+	UpkeepTypeGetter            ocr2keepers.UpkeepTypeGetter
 	WorkIDGenerator             ocr2keepers.WorkIDGenerator
 	RemoveFromStagingHook       hooks.RemoveFromStagingHook
 	RemoveFromMetadataHook      hooks.RemoveFromMetadataHook
@@ -37,20 +38,6 @@ type ocr3Plugin struct {
 	F                           int
 	Logger                      *log.Logger
 }
-
-// NOTE: Any change to these values should keep backwards compatibility in mind
-// as different nodes would upgrade at different times and would need to
-// adhere to each others' limits
-const (
-	ObservationPerformablesLimit          = 100
-	ObservationLogRecoveryProposalsLimit  = 2
-	ObservationConditionalsProposalsLimit = 2
-	ObservationBlockHistoryLimit          = 256
-	OutcomeAgreedPerformablesLimit        = 100
-	OutcomeAgreedProposalsLimit           = 50
-	// TODO: Derive this limit from max checkPipelineTime and deltaRound
-	OutcomeAgreedProposalsRoundHistoryLimit = 20
-)
 
 func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
 	return nil, nil
@@ -83,16 +70,16 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	}
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
-	if err := plugin.AddBlockHistoryHook.RunHook(&observation, ObservationBlockHistoryLimit); err != nil {
+	if err := plugin.AddBlockHistoryHook.RunHook(&observation, ocr2keepersv3.ObservationBlockHistoryLimit); err != nil {
 		return nil, err
 	}
-	if err := plugin.AddFromStagingHook.RunHook(&observation, ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+	if err := plugin.AddFromStagingHook.RunHook(&observation, ocr2keepersv3.ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}
-	if err := plugin.AddLogProposalsHook.RunHook(&observation, ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+	if err := plugin.AddLogProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}
-	if err := plugin.AddConditionalProposalsHook.RunHook(&observation, ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+	if err := plugin.AddConditionalProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}
 
@@ -108,12 +95,12 @@ func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, q
 		return err
 	}
 
-	return ocr2keepersv3.ValidateAutomationObservation(o, plugin.WorkIDGenerator)
+	return ocr2keepersv3.ValidateAutomationObservation(o, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	p := newPerformables(plugin.F+1, OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	c := newCoordinatedBlockProposals(plugin.F+1, OutcomeAgreedProposalsRoundHistoryLimit, OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
+	c := newCoordinatedBlockProposals(plugin.F+1, ocr2keepersv3.OutcomeAgreedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeAgreedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
 
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
@@ -123,7 +110,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 			// atleast f+1 valid observations
 			continue
 		}
-		if err := ocr2keepersv3.ValidateAutomationObservation(observation, plugin.WorkIDGenerator); err != nil {
+		if err := ocr2keepersv3.ValidateAutomationObservation(observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations

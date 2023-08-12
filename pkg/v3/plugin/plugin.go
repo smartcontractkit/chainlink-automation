@@ -121,6 +121,7 @@ func newPlugin(
 		ConfigDigest:                digest,
 		ReportEncoder:               encoder,
 		Coordinator:                 coord,
+		UpkeepTypeGetter:            upkeepTypeGetter,
 		WorkIDGenerator:             workIDGenerator,
 		RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
 		RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, upkeepTypeGetter, logger),

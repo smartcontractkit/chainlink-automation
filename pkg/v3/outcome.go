@@ -6,6 +6,16 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
+// NOTE: Any change to these values should keep backwards compatibility in mind
+// as different nodes would upgrade at different times and would need to
+// adhere to each others' limits
+const (
+	OutcomeAgreedPerformablesLimit = 100
+	OutcomeAgreedProposalsLimit    = 50
+	// TODO: Derive this limit from max checkPipelineTime and deltaRound
+	OutcomeAgreedProposalsRoundHistoryLimit = 20
+)
+
 // AutomationOutcome represents agreed upon state by the network, derived from
 // a collection of AutomationObservations with applied quorum thresholds
 // NOTE: Any change to this structure should keep backwards compatibility in mind
