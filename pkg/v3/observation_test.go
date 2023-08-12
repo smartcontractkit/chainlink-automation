@@ -9,6 +9,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
+// TODO: Add tests
 func TestAutomationObservation(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationObservation{

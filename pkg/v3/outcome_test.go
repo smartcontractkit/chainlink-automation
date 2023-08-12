@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TODO: Add tests
 func TestAutomationOutcome_Encode_Decode(t *testing.T) {
 	// set non-default values to test encoding/decoding
 	input := AutomationOutcome{}
