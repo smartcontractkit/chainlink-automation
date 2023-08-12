@@ -106,20 +106,20 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	for _, attributedObservation := range attributedObservations {
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
 		if err != nil {
-			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
+			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations
 			continue
 		}
 		if err := ocr2keepersv3.ValidateAutomationObservation(observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
-			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
+			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations
 			continue
 		}
 
-		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables, %d upkeep proposals and %d block history",
-			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
+		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables, %d upkeep proposals and %d block history in seqNr %d",
+			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory), outctx.SeqNr)
 
 		p.add(observation)
 		c.add(observation)
@@ -148,7 +148,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	if len(outcome.SurfacedProposals) > 0 {
 		newProposals = len(outcome.SurfacedProposals[0])
 	}
-	plugin.Logger.Printf("returning outcome with %d performables and %d new proposals", len(outcome.AgreedPerformables), newProposals)
+	plugin.Logger.Printf("returning outcome with %d performables and %d new proposals in seqNr %d", len(outcome.AgreedPerformables), newProposals, outctx.SeqNr)
 
 	return outcome.Encode()
 }

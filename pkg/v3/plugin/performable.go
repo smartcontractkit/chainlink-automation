@@ -38,6 +38,7 @@ func newPerformables(threshold int, limit int, rSrc [16]byte, logger *log.Logger
 func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 	for _, result := range observation.Performable {
 		uid := result.UniqueID()
+		// TODO: clean up this log
 		p.logger.Printf("Adding result %+v with uniqueID %s to performables", result, uid)
 		payloadCount, ok := p.resultCount[uid]
 		if !ok {
@@ -50,15 +51,17 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 		}
 
 		p.resultCount[uid] = payloadCount
+		// TODO: clean up this log
+		p.logger.Printf("Count of uid %s now is %d", uid, payloadCount.count)
 	}
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	var performable []ocr2keepers.CheckResult
 
-	for _, payload := range p.resultCount {
+	for uid, payload := range p.resultCount {
 		if payload.count > p.threshold {
-			// TODO: Add logging here
+			p.logger.Printf("Adding agreed performable over threshold %d with uid %s and count %d", p.threshold, uid, payload.count)
 			performable = append(performable, payload.result)
 		}
 	}
