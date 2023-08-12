@@ -17,19 +17,22 @@ import (
 const (
 	// TODO: Calculate these properly, add MaxOutcomeLength
 	// MaxObservationLength applies a limit to the total length of bytes in an
-	// observation. Observations can become quite large due to multiple
-	// CheckResult objects and block coordination data. This is set to 1MB for
-	// now but might either need to be increased or data compression be applied.
+	// observation. Observations contain check results, proposals and block
+	// coordination data upto a certain number of elements which defines this limit
 	MaxObservationLength = 1_000_000
+	// MaxOutcomeLength applies a limit to the total length of bytes in an outcome for
+	// a round. Outcome contains agreed performables and surfaced proposals upto a
+	// certain number of elements which defines this limit
+	MaxOutcomeLength = 1_000_000
 	// MaxReportLength limits the total length of bytes for a single report. A
 	// report is composed of 1 or more abi encoded perform calls with
-	// performData of arbitrary length. Reports are limited by gas usaged to
+	// performData of arbitrary length. Reports are limited by gas used to
 	// transmit the report, so the length in bytes should be relative to this.
-	MaxReportLength = 10_000
+	MaxReportLength = 100_000
 	// MaxReportCount limits the total number of reports allowed to be produced
-	// by the OCR protocol. Limiting to a high number for now because each
-	// report will be signed independently.
-	MaxReportCount = 20
+	// by the OCR protocol in a single round. This should be atleast the number
+	// of allowed agreed performables in a single round.
+	MaxReportCount = 100
 )
 
 type pluginFactory struct {
@@ -83,7 +86,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		Limits: ocr3types.ReportingPluginLimits{
 			MaxQueryLength:       0,
 			MaxObservationLength: MaxObservationLength,
-			MaxOutcomeLength:     MaxObservationLength, // outcome length can be the same as observation length
+			MaxOutcomeLength:     MaxOutcomeLength,
 			MaxReportLength:      MaxReportLength,
 			MaxReportCount:       MaxReportCount,
 		},
