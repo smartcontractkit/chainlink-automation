@@ -101,7 +101,7 @@ func ValidateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 		return fmt.Errorf("check result cannot be ineligible")
 	}
 	// UpkeepID is contained [32]byte, no validation needed
-	if err := ValidateTrigger(r.Trigger, utg(r.UpkeepID)); err != nil {
+	if err := ValidateTriggerExtensionType(r.Trigger, utg(r.UpkeepID)); err != nil {
 		return fmt.Errorf("invalid trigger: %w", err)
 	}
 	if wg(r.UpkeepID, r.Trigger) != r.WorkID {
@@ -123,14 +123,7 @@ func ValidateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 }
 
 // Validate validates the trigger fields, and any extensions if present.
-func ValidateTrigger(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
-	if t.BlockNumber == 0 {
-		return fmt.Errorf("block number cannot be zero")
-	}
-	if len(t.BlockHash) == 0 {
-		return fmt.Errorf("block hash cannot be empty")
-	}
-
+func ValidateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
 	switch ut {
 	case ocr2keepers.ConditionTrigger:
 		if t.LogTriggerExtension != nil {
@@ -140,23 +133,7 @@ func ValidateTrigger(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
 		if t.LogTriggerExtension == nil {
 			return fmt.Errorf("log trigger extension cannot be empty for log upkeep")
 		}
-		if err := ValidateLogTriggerExtension(*t.LogTriggerExtension); err != nil {
-			return fmt.Errorf("log trigger extension invalid: %w", err)
-		}
 	}
-	return nil
-}
-
-// Validate validates the log trigger extension fields.
-// NOTE: not checking block hash or block number because they are optional
-func ValidateLogTriggerExtension(e ocr2keepers.LogTriggerExtension) error {
-	if len(e.TxHash) == 0 {
-		return fmt.Errorf("log transaction hash cannot be empty")
-	}
-	if e.Index == 0 {
-		return fmt.Errorf("log index cannot be zero")
-	}
-	// TODO: Should we allow undefined behaviour for other fields or explicitly zero them out?
 	return nil
 }
 
@@ -164,18 +141,8 @@ func ValidateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keep
 	// No validation is done on Trigger.BlockNumber and Trigger.BlockHash because those
 	// get udpated with a coordinated quorum block
 	ut := utg(p.UpkeepID)
-	switch ut {
-	case ocr2keepers.ConditionTrigger:
-		if p.Trigger.LogTriggerExtension != nil {
-			return fmt.Errorf("log trigger extension cannot be present for condition upkeep proposals")
-		}
-	case ocr2keepers.LogTrigger:
-		if p.Trigger.LogTriggerExtension == nil {
-			return fmt.Errorf("log trigger extension cannot be empty for log upkeep proposals")
-		}
-		if err := ValidateLogTriggerExtension(*p.Trigger.LogTriggerExtension); err != nil {
-			return fmt.Errorf("log trigger extension invalid for upkeep proposal: %w", err)
-		}
+	if err := ValidateTriggerExtensionType(p.Trigger, ut); err != nil {
+		return err
 	}
 	if wg(p.UpkeepID, p.Trigger) != p.WorkID {
 		return fmt.Errorf("incorrect workID within proposal")
