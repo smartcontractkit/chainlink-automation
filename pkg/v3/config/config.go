@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	// TODO: clean up?
 	// DefaultCacheExpiration is the default amount of time a key can remain
 	// in the cache before being eligible to be cleared
 	DefaultCacheExpiration = 20 * time.Minute
@@ -65,12 +66,14 @@ type OffchainConfig struct {
 	// calculated
 	TargetInRounds int `json:"targetInRounds"`
 
+	// TODO: Pass to conditional sampling flow?
 	// SamplingJobDuration is the time allowed for a sampling run to complete
 	// before forcing a new job on the latest block. Units are in milliseconds.
 	SamplingJobDuration int64 `json:"samplingJobDuration"`
 
-	// MinConfirmations limits registered log events to only those that have
+	// MinConfirmations limits registered transmit events to only those that have
 	// the provided number of confirmations.
+	// TODO: rename to minTransmitConfirmations?
 	MinConfirmations int `json:"minConfirmations"`
 
 	// GasLimitPerReport is the max gas that could be spent per one report.
@@ -87,6 +90,7 @@ type OffchainConfig struct {
 	// ReportBlockLag is the number to subtract from median block number during report phase.
 	ReportBlockLag int `json:"reportBlockLag"`
 
+	// TODO: Do we need this? How can we pass this to checkUpkeep?
 	// MercuryLookup is a flag to use mercury lookup in the plugin
 	MercuryLookup bool `json:"mercuryLookup"`
 }
