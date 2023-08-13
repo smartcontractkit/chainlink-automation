@@ -67,6 +67,7 @@ type OffchainConfig struct {
 	TargetInRounds int `json:"targetInRounds"`
 
 	// TODO: Pass to conditional sampling flow?
+	// Rename to samplingRoundDuration to be consistent with above?
 	// SamplingJobDuration is the time allowed for a sampling run to complete
 	// before forcing a new job on the latest block. Units are in milliseconds.
 	SamplingJobDuration int64 `json:"samplingJobDuration"`
