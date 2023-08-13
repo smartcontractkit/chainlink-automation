@@ -28,7 +28,7 @@ const (
 	// report is composed of 1 or more abi encoded perform calls with
 	// performData of arbitrary length. Reports are limited by gas used to
 	// transmit the report, so the length in bytes should be relative to this.
-	MaxReportLength = 100_000
+	MaxReportLength = 1_000_000
 	// MaxReportCount limits the total number of reports allowed to be produced
 	// by the OCR protocol in a single round. This should be atleast the number
 	// of allowed agreed performables in a single round.
