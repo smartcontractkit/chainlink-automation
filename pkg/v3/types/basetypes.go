@@ -111,6 +111,7 @@ type CheckResult struct {
 	// Trigger is the event that triggered the upkeep to be checked
 	Trigger Trigger
 	// WorkID represents the unit of work for the check result
+	// Exploratory: Make workID an internal field and an external WorkID() function which generates WID
 	WorkID string
 	// GasAllocated is the gas to provide an upkeep in a report
 	GasAllocated uint64

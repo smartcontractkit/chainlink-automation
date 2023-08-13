@@ -13,8 +13,8 @@ import (
 // adhere to each others' limits
 const (
 	ObservationPerformablesLimit          = 100
-	ObservationLogRecoveryProposalsLimit  = 2
-	ObservationConditionalsProposalsLimit = 2
+	ObservationLogRecoveryProposalsLimit  = 5
+	ObservationConditionalsProposalsLimit = 5
 	ObservationBlockHistoryLimit          = 256
 )
 
