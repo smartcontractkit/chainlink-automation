@@ -16,8 +16,8 @@ const (
 type TransmitEventType int
 
 const (
-	// Exploratory AUTO 4335: add type for unknown
-	PerformEvent TransmitEventType = iota
+	UnknownEvent TransmitEventType = iota
+	PerformEvent
 	StaleReportEvent
 	ReorgReportEvent
 	InsufficientFundsReportEvent
@@ -27,9 +27,9 @@ const (
 type UpkeepState uint8
 
 const (
-	// Exploratory AUTO 4335: add type for unknown
+	UnknownState UpkeepState = iota
 	// Performed means the upkeep was performed
-	Performed UpkeepState = iota
+	Performed
 	// Ineligible means the upkeep was not eligible to be performed
 	Ineligible
 )
