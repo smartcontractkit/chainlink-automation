@@ -95,11 +95,6 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 
 		// Coordinate the proposal on latest quorum block
 		newProposal := proposal
-		// TODO: Potential improvement for flaky conditional upkeeps
-		// Allow the proposal on existing trigger on which it was checked
-		// if it still has quorum and is not lagging the latestQuorumBlock by a threshold
-		// What if two nodes send proposal for the same upkeepID at two different quorum blocks
-		// which one should we prefer?
 		newProposal.Trigger.BlockNumber = latestQuorumBlock.Number
 		newProposal.Trigger.BlockHash = latestQuorumBlock.Hash
 		if newProposal.Trigger.LogTriggerExtension != nil {
