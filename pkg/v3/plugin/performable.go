@@ -64,6 +64,7 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 		}
 	}
 
+	// TODO: Sort by work ID first
 	rand.New(util.NewKeyedCryptoRandSource(p.keyRandSource)).Shuffle(len(performable), func(i, j int) {
 		performable[i], performable[j] = performable[j], performable[i]
 	})

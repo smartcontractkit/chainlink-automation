@@ -34,6 +34,7 @@ func (h *AddConditionalProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObser
 		return err
 	}
 
+	// TODO: Sort by work ID first
 	// Shuffle using random seed
 	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(conditionals), func(i, j int) {
 		conditionals[i], conditionals[j] = conditionals[j], conditionals[i]

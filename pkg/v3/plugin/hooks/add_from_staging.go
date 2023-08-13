@@ -35,6 +35,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	if err != nil {
 		return err
 	}
+	// TODO: Sort by work ID first
 	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(results), func(i, j int) {
 		results[i], results[j] = results[j], results[i]
 	})
