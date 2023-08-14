@@ -13,7 +13,7 @@ import (
 
 var (
 	storeTTL   = time.Minute * 5
-	gcInterval = time.Minute * 5
+	gcInterval = 30 * time.Second
 )
 
 // result is an internal representation of a check result, with added time for TTL.
@@ -101,7 +101,7 @@ func (s *resultStore) Remove(ids ...string) {
 	for _, id := range ids {
 		s.remove(id)
 
-		s.lggr.Printf("result removed for key '%s'", id)
+		s.lggr.Printf("result removed from result store for key '%s'", id)
 	}
 }
 
@@ -140,7 +140,7 @@ func (s *resultStore) gc() {
 		if time.Since(v.addedAt) > storeTTL {
 			delete(s.data, k)
 
-			s.lggr.Printf("value evicted for upkeep id '%s' and trigger id '%s'", v.data.UpkeepID.String(), v.data.WorkID)
+			s.lggr.Printf("value evicted from result store for upkeep id '%s' and work id '%s'", v.data.UpkeepID.String(), v.data.WorkID)
 		}
 	}
 }
