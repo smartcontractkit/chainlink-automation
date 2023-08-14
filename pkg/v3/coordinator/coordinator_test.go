@@ -219,6 +219,7 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 					return []ocr2keepers.TransmitEvent{
 						{
 							Confirmations: 2,
+							Type:          ocr2keepers.PerformEvent,
 							CheckBlock:    ocr2keepers.BlockNumber(100),
 							WorkID:        "workID1",
 							TransmitBlock: ocr2keepers.BlockNumber(99),
@@ -250,6 +251,7 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 					return []ocr2keepers.TransmitEvent{
 						{
 							Confirmations: 2,
+							Type:          ocr2keepers.PerformEvent,
 							CheckBlock:    ocr2keepers.BlockNumber(200),
 							WorkID:        "workID1",
 							TransmitBlock: ocr2keepers.BlockNumber(99),
