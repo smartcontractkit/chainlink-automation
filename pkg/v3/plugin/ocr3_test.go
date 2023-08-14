@@ -632,8 +632,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 }
 */
 
-// TODO: Fix the test according to latest validation
-// TODO: add tests for repeated upkeepIDs
+// TODO: add tests for repeated upkeepIDs - is this possible to recreate at this level when we catch duplicate workIDs?
 func TestOcr3Plugin_Reports(t *testing.T) {
 	for _, tc := range []struct {
 		name                string
@@ -730,6 +729,24 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 					Report: []byte(`[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":1,"LinkNative":2}]`),
 				},
 			},
+		},
+		{
+			name:           "agreed performables with duplicate workIDs returns an error",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"FastGasWei":1,"LinkNative":2,"GasAllocated":1,"Eligible":true,"UpkeepID":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"},{"FastGasWei":1,"LinkNative":2,"GasAllocated":1,"Eligible":true,"UpkeepID":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"},{"UpkeepID":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					return json.Marshal(result)
+				},
+			},
+			utg: func(identifier ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
+			expectsErr: true,
+			wantErr:    errors.New("agreed performable cannot have duplicate workIDs"),
 		},
 		{
 			name:           "an error is returned when the encoder errors",
