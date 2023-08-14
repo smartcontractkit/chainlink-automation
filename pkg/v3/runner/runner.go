@@ -197,8 +197,8 @@ func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2ke
 			r.AddSuccesses(1)
 
 			for _, result := range results {
-				// only add to the cache if the result is not retryable
-				if !result.Retryable {
+				// only add to the cache if pipeline was successful
+				if result.PipelineExecutionState == 0 {
 					o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
 				}
 
