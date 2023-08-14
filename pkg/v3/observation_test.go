@@ -243,6 +243,108 @@ func TestDuplicateProposal(t *testing.T) {
 	assert.ErrorContains(t, err, "proposals cannot have duplicate workIDs")
 }
 
+func TestInvalidPipelineExecutionState(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validConditionalResult
+	invalidPerformable.PipelineExecutionState = 1
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "check result cannot have failed execution state")
+}
+
+func TestInvalidRetryable(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validConditionalResult
+	invalidPerformable.Retryable = true
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "check result cannot have failed execution state")
+}
+
+func TestInvalidEligibility(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validConditionalResult
+	invalidPerformable.Eligible = false
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "check result cannot be ineligible")
+}
+
+func TestInvalidIneligibilityReason(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validConditionalResult
+	invalidPerformable.IneligibilityReason = 1
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "check result cannot be ineligible")
+}
+
+func TestInvalidTriggerTypeConditional(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validConditionalResult
+	invalidPerformable.Trigger = logTrigger
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "invalid trigger")
+}
+
+func TestInvalidTriggerTypeLog(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.Trigger = conditionalTrigger
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "invalid trigger")
+}
+
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
 	if id == conditionalUpkeepID {
 		return types.ConditionTrigger
