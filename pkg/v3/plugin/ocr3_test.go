@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"math/big"
 	"strings"
 	"testing"
 
@@ -432,6 +433,8 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
 					Eligible:     true,
 					GasAllocated: 1,
+					FastGasWei:   big.NewInt(1),
+					LinkNative:   big.NewInt(10),
 				},
 			},
 			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
@@ -544,6 +547,8 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
 					Eligible:     true,
 					GasAllocated: 1,
+					FastGasWei:   big.NewInt(1),
+					LinkNative:   big.NewInt(10),
 				},
 			},
 			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
@@ -644,6 +649,8 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
 					Eligible:     true,
 					GasAllocated: 1,
+					FastGasWei:   big.NewInt(1),
+					LinkNative:   big.NewInt(10),
 				},
 			},
 			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
@@ -755,6 +762,8 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
 					Eligible:     true,
 					GasAllocated: 1,
+					FastGasWei:   big.NewInt(1),
+					LinkNative:   big.NewInt(10),
 				},
 			},
 			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
@@ -882,6 +891,8 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
 					Eligible:     true,
 					GasAllocated: 1,
+					FastGasWei:   big.NewInt(1),
+					LinkNative:   big.NewInt(10),
 				},
 			},
 			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
@@ -938,7 +949,7 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 				return "workID1"
 			},
 			observation: types.AttributedObservation{
-				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":10,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+				Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":10,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":10,"LinkNative":10}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 			},
 		},
 		{
@@ -1014,7 +1025,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
 				return "workID1"
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"FastGasWei":0,"LinkNative":0,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
 			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
@@ -1027,7 +1038,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
 				return "workID1"
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"FastGasWei":0,"LinkNative":0,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
 			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
@@ -1040,8 +1051,8 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
 				return "workID1"
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[g],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"FastGasWei":0,"LinkNative":0,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
 			name: "processing an valid observation with a malformed previous outcome returns an error",

@@ -381,6 +381,23 @@ func TestInvalidGasAllocated(t *testing.T) {
 	assert.ErrorContains(t, err, "gas allocated cannot be zero")
 }
 
+func TestNilFastGas(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.FastGasWei = nil
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "fast gas wei must be present")
+}
+
 func TestInvalidFastGasNegative(t *testing.T) {
 	ao := AutomationObservation{
 		Performable:     []types.CheckResult{},
@@ -413,6 +430,23 @@ func TestInvalidFastGasTooBig(t *testing.T) {
 	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "fast gas wei must be in uint256 range")
+}
+
+func TestNilLinkNative(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.LinkNative = nil
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "link native must be present")
 }
 
 func TestInvalidLinkNativeNegative(t *testing.T) {

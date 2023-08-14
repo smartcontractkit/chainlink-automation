@@ -137,15 +137,15 @@ func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 	}
 	// PerformData is a []byte, no validation needed. Length constraint is handled
 	// by maxObservationSize
-	if r.FastGasWei == nil {
-		r.FastGasWei = big.NewInt(0)
-	}
-	if r.LinkNative == nil {
-		r.LinkNative = big.NewInt(0)
-	}
 	uint256Max, _ := big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+	if r.FastGasWei == nil {
+		return fmt.Errorf("fast gas wei must be present")
+	}
 	if r.FastGasWei.Cmp(big.NewInt(0)) < 0 || r.FastGasWei.Cmp(uint256Max) > 0 {
 		return fmt.Errorf("fast gas wei must be in uint256 range")
+	}
+	if r.LinkNative == nil {
+		return fmt.Errorf("link native must be present")
 	}
 	if r.LinkNative.Cmp(big.NewInt(0)) < 0 || r.LinkNative.Cmp(uint256Max) > 0 {
 		return fmt.Errorf("link native must be in uint256 range")
