@@ -45,17 +45,10 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{
 					{
 						WorkID: "workID1",
-					},
-				}
-			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
-				return []ocr2keepers.CoordinatedBlockProposal{
-					{
-						WorkID: "workID2",
 					},
 				}
 			},
@@ -101,7 +94,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
 		assert.Nil(t, err)
-		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 2 performables, 2 upkeep proposals and 2 block history"))
 	})
 
@@ -123,14 +116,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
-				return []ocr2keepers.CoordinatedBlockProposal{
-					{
-						WorkID: "workID1",
-					},
-				}
-			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{
 					{
 						WorkID: "workID2",
@@ -183,7 +169,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
 		assert.Nil(t, err)
-		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 3 performables, 2 upkeep proposals and 3 block history"))
 	})
 
@@ -205,10 +191,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
-				return []ocr2keepers.CoordinatedBlockProposal{}
-			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
 		}
@@ -280,10 +263,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
-				return []ocr2keepers.CoordinatedBlockProposal{}
-			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
 		}
@@ -381,10 +361,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
-				return []ocr2keepers.CoordinatedBlockProposal{}
-			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
 			RemoveProposalsFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
@@ -495,10 +472,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					},
 				}
 			},
-			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
-				return []ocr2keepers.CoordinatedBlockProposal{}
-			},
-			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
 			RemoveProposalsFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
@@ -590,6 +564,343 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":1,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID5","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":4,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":5,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 1 performables, 0 upkeep proposals and 3 block history"))
+	})
+
+	t.Run("subsequent round processing, previous outcome will be non nil, when AddFromStagingHook errors, an error is returned", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+
+		metadataStore := &mockMetadataStore{
+			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
+				return ocr2keepers.BlockHistory{
+					{
+						Number: 3,
+					},
+					{
+						Number: 4,
+					},
+					{
+						Number: 5,
+					},
+				}
+			},
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
+			},
+			RemoveProposalsFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
+				// no op
+			},
+		}
+
+		resultStore := &mockResultStore{
+			ViewFn: func() ([]ocr2keepers.CheckResult, error) {
+				return nil, errors.New("result store view boom")
+			},
+			RemoveFn: func(s ...string) {
+				// no op
+			},
+		}
+
+		coordinator := &mockCoordinator{
+			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+				return results[:1], nil
+			},
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
+				return proposals, nil
+			},
+		}
+
+		queueItems := []ocr2keepers.CoordinatedBlockProposal{}
+
+		proposalQueue := &mockProposalQueue{
+			EnqueueFn: func(items ...ocr2keepers.CoordinatedBlockProposal) error {
+				queueItems = append(queueItems, items...)
+				return nil
+			},
+		}
+
+		plugin := &ocr3Plugin{
+			UpkeepTypeGetter: mockUpkeepTypeGetter,
+			WorkIDGenerator: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				var triggerExtBytes []byte
+				if trigger.LogTriggerExtension != nil {
+					triggerExtBytes = trigger.LogTriggerExtension.LogIdentifier()
+				}
+				uid := &ocr2keepers.UpkeepIdentifier{}
+				hash := crypto.Keccak256(append(uid[:], triggerExtBytes...))
+				return hex.EncodeToString(hash[:])
+			},
+			RemoveFromStagingHook:  hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, logger),
+			AddToProposalQHook:     hooks.NewAddToProposalQHook(proposalQueue, logger),
+			AddBlockHistoryHook:    hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:     hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			Logger:                 logger,
+		}
+
+		previousOutcome := ocr2keepers2.AutomationOutcome{
+			AgreedPerformables: []ocr2keepers.CheckResult{
+				{
+					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					Eligible:     true,
+					GasAllocated: 1,
+				},
+			},
+			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
+				{
+					{
+						WorkID: "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					},
+				},
+			},
+		}
+		previousOutcomeBytes, err := json.Marshal(previousOutcome)
+		assert.NoError(t, err)
+		outcomeCtx := ocr3types.OutcomeContext{
+			PreviousOutcome: ocr3types.Outcome(previousOutcomeBytes),
+		}
+
+		_, err = plugin.Observation(context.Background(), outcomeCtx, types.Query{})
+		assert.Error(t, err)
+		assert.Equal(t, "result store view boom", err.Error())
+	})
+
+	t.Run("subsequent round processing, previous outcome will be non nil, when AddLogProposalsHook errors, an error is returned", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+
+		metadataStore := &mockMetadataStore{
+			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
+				return ocr2keepers.BlockHistory{
+					{
+						Number: 3,
+					},
+					{
+						Number: 4,
+					},
+					{
+						Number: 5,
+					},
+				}
+			},
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
+			},
+			RemoveProposalsFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
+				// no op
+			},
+		}
+
+		resultStore := &mockResultStore{
+			ViewFn: func() ([]ocr2keepers.CheckResult, error) {
+				return []ocr2keepers.CheckResult{
+					{
+						WorkID:              "workID5",
+						IneligibilityReason: 1,
+						Eligible:            true,
+					},
+					{
+						WorkID:   "workID6",
+						Eligible: true,
+					},
+				}, nil
+			},
+			RemoveFn: func(s ...string) {
+				// no op
+			},
+		}
+
+		coordinator := &mockCoordinator{
+			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+				return results[:1], nil
+			},
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
+				return nil, errors.New("filter proposals error")
+			},
+		}
+
+		queueItems := []ocr2keepers.CoordinatedBlockProposal{}
+
+		proposalQueue := &mockProposalQueue{
+			EnqueueFn: func(items ...ocr2keepers.CoordinatedBlockProposal) error {
+				queueItems = append(queueItems, items...)
+				return nil
+			},
+		}
+
+		plugin := &ocr3Plugin{
+			UpkeepTypeGetter: mockUpkeepTypeGetter,
+			WorkIDGenerator: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				var triggerExtBytes []byte
+				if trigger.LogTriggerExtension != nil {
+					triggerExtBytes = trigger.LogTriggerExtension.LogIdentifier()
+				}
+				uid := &ocr2keepers.UpkeepIdentifier{}
+				hash := crypto.Keccak256(append(uid[:], triggerExtBytes...))
+				return hex.EncodeToString(hash[:])
+			},
+			RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
+			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			Logger:                      logger,
+		}
+
+		previousOutcome := ocr2keepers2.AutomationOutcome{
+			AgreedPerformables: []ocr2keepers.CheckResult{
+				{
+					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					Eligible:     true,
+					GasAllocated: 1,
+				},
+			},
+			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
+				{
+					{
+						WorkID: "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					},
+				},
+			},
+		}
+		previousOutcomeBytes, err := json.Marshal(previousOutcome)
+		assert.NoError(t, err)
+		outcomeCtx := ocr3types.OutcomeContext{
+			PreviousOutcome: ocr3types.Outcome(previousOutcomeBytes),
+		}
+
+		_, err = plugin.Observation(context.Background(), outcomeCtx, types.Query{})
+		assert.Error(t, err)
+		assert.Equal(t, "filter proposals error", err.Error())
+	})
+
+	t.Run("subsequent round processing, previous outcome will be non nil, when AddConditionalProposalsHook errors, an error is returned", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+
+		metadataStore := &mockMetadataStore{
+			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
+				return ocr2keepers.BlockHistory{
+					{
+						Number: 3,
+					},
+					{
+						Number: 4,
+					},
+					{
+						Number: 5,
+					},
+				}
+			},
+			ViewProposalsFn: func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
+				switch upkeepType {
+				case ocr2keepers.ConditionTrigger:
+					return []ocr2keepers.CoordinatedBlockProposal{
+						{
+							UpkeepID: [32]byte{1},
+							Trigger: ocr2keepers.Trigger{
+								BlockNumber: 1,
+								BlockHash:   [32]byte{2},
+							},
+							WorkID: "workID1",
+						},
+					}
+				}
+				return []ocr2keepers.CoordinatedBlockProposal{}
+			},
+			RemoveProposalsFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
+				// no op
+			},
+		}
+
+		resultStore := &mockResultStore{
+			ViewFn: func() ([]ocr2keepers.CheckResult, error) {
+				return []ocr2keepers.CheckResult{
+					{
+						WorkID:              "workID5",
+						IneligibilityReason: 1,
+						Eligible:            true,
+					},
+					{
+						WorkID:   "workID6",
+						Eligible: true,
+					},
+				}, nil
+			},
+			RemoveFn: func(s ...string) {
+				// no op
+			},
+		}
+
+		coordinator := &mockCoordinator{
+			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+				return results[:1], nil
+			},
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
+				if len(proposals) == 1 {
+					return nil, errors.New("filter proposals error")
+				}
+				return []ocr2keepers.CoordinatedBlockProposal{}, nil
+			},
+		}
+
+		queueItems := []ocr2keepers.CoordinatedBlockProposal{}
+
+		proposalQueue := &mockProposalQueue{
+			EnqueueFn: func(items ...ocr2keepers.CoordinatedBlockProposal) error {
+				queueItems = append(queueItems, items...)
+				return nil
+			},
+		}
+
+		plugin := &ocr3Plugin{
+			UpkeepTypeGetter: mockUpkeepTypeGetter,
+			WorkIDGenerator: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				var triggerExtBytes []byte
+				if trigger.LogTriggerExtension != nil {
+					triggerExtBytes = trigger.LogTriggerExtension.LogIdentifier()
+				}
+				uid := &ocr2keepers.UpkeepIdentifier{}
+				hash := crypto.Keccak256(append(uid[:], triggerExtBytes...))
+				return hex.EncodeToString(hash[:])
+			},
+			RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
+			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			Logger:                      logger,
+		}
+
+		previousOutcome := ocr2keepers2.AutomationOutcome{
+			AgreedPerformables: []ocr2keepers.CheckResult{
+				{
+					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					Eligible:     true,
+					GasAllocated: 1,
+				},
+			},
+			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
+				{
+					{
+						WorkID: "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					},
+				},
+			},
+		}
+		previousOutcomeBytes, err := json.Marshal(previousOutcome)
+		assert.NoError(t, err)
+		outcomeCtx := ocr3types.OutcomeContext{
+			PreviousOutcome: ocr3types.Outcome(previousOutcomeBytes),
+		}
+
+		_, err = plugin.Observation(context.Background(), outcomeCtx, types.Query{})
+		assert.Error(t, err)
+		assert.Equal(t, "filter proposals error", err.Error())
 	})
 
 	t.Run("subsequent round processing, decoding an invalid previous outcome returns an error", func(t *testing.T) {
@@ -1250,21 +1561,13 @@ func (e *mockRecoverable) Close() error {
 
 type mockMetadataStore struct {
 	ocr2keepers.MetadataStore
-	ViewLogRecoveryProposalFn func() []ocr2keepers.CoordinatedBlockProposal
-	ViewConditionalProposalFn func() []ocr2keepers.CoordinatedBlockProposal
-	GetBlockHistoryFn         func() ocr2keepers.BlockHistory
-	RemoveProposalsFn         func(...ocr2keepers.CoordinatedBlockProposal)
+	ViewProposalsFn   func(upkeepType ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal
+	GetBlockHistoryFn func() ocr2keepers.BlockHistory
+	RemoveProposalsFn func(...ocr2keepers.CoordinatedBlockProposal)
 }
 
 func (s *mockMetadataStore) ViewProposals(utype ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
-	switch utype {
-	case ocr2keepers.LogTrigger:
-		return s.ViewLogRecoveryProposalFn()
-	case ocr2keepers.ConditionTrigger:
-		return s.ViewConditionalProposalFn()
-	default:
-		return nil
-	}
+	return s.ViewProposalsFn(utype)
 
 }
 
