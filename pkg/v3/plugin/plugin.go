@@ -3,7 +3,6 @@ package plugin
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
@@ -63,7 +62,7 @@ func newPlugin(
 
 	retryQ := stores.NewRetryQueue(logger)
 
-	retrySvc := flows.NewRetryFlow(coord, resultStore, runner, retryQ, 5*time.Second, upkeepStateUpdater, logger)
+	retrySvc := flows.NewRetryFlow(coord, resultStore, runner, retryQ, flows.RetryCheckInterval, upkeepStateUpdater, logger)
 
 	proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 

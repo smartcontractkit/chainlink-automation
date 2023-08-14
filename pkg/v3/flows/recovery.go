@@ -15,6 +15,12 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
+const (
+	// These are the maximum number of log upkeeps dequeued on every tick from proposal queue in FinalRecoveryFlow
+	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
+	FinalRecoveryBatchSize = 50
+)
+
 func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	resultStore ocr2keepers.ResultStore,
@@ -48,7 +54,7 @@ func newFinalRecoveryFlow(
 			builder:   builder,
 			q:         proposalQ,
 			utype:     ocr2keepers.LogTrigger,
-			batchSize: RetryBatchSize,
+			batchSize: FinalRecoveryBatchSize,
 		}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 

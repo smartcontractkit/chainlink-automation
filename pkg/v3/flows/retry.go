@@ -14,8 +14,11 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-var (
-	RetryBatchSize = 5
+const (
+	// These are the max number of payloads dequeued on every tick from the retry queue in the retry flow
+	RetryBatchSize = 10
+	// This is the ticker interval for retry flow
+	RetryCheckInterval = 5 * time.Second
 )
 
 func NewRetryFlow(

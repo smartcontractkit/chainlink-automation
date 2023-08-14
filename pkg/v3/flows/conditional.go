@@ -15,6 +15,12 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
+const (
+	// These are the maximum number of conditional upkeeps dequeued on every tick from proposal queue in FinalConditionalFlow
+	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
+	FinalConditionalBatchSize = 50
+)
+
 func newSampleProposalFlow(
 	pre []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ratio ocr2keepers.Ratio,
@@ -78,7 +84,7 @@ func newFinalConditionalFlow(
 			builder:   builder,
 			q:         proposalQ,
 			utype:     ocr2keepers.ConditionTrigger,
-			batchSize: RetryBatchSize,
+			batchSize: FinalConditionalBatchSize,
 		}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
