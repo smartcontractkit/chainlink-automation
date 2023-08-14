@@ -15,6 +15,13 @@ type proposalQueueRecord struct {
 	createdAt time.Time
 }
 
+// Default expiry for a proposal in the queue
+// Proposals are short lived, only kept for a period of time to
+// run pipeline for it once (ObservationProcessLimit)
+// The same workID can get coordinated on a new block after that time and it should
+// be processed on a new block
+const proposalExpiry = 20 * time.Second
+
 func (r proposalQueueRecord) expired(now time.Time, expr time.Duration) bool {
 	return now.Sub(r.createdAt) > expr
 }
@@ -58,7 +65,7 @@ func (pq *proposalQueue) Dequeue(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers
 
 	var proposals []ocr2keepers.CoordinatedBlockProposal
 	for _, record := range pq.records {
-		if record.expired(time.Now(), DefaultExpiration) {
+		if record.expired(time.Now(), proposalExpiry) {
 			delete(pq.records, record.proposal.WorkID)
 			continue
 		}
