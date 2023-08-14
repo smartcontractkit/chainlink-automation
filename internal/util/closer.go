@@ -1,16 +1,16 @@
-package tickers
+package util
 
 import (
 	"context"
 	"sync"
 )
 
-type closer struct {
+type Closer struct {
 	cancel context.CancelFunc
 	lock   sync.Mutex
 }
 
-func (c *closer) Store(cancel context.CancelFunc) bool {
+func (c *Closer) Store(cancel context.CancelFunc) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -21,7 +21,7 @@ func (c *closer) Store(cancel context.CancelFunc) bool {
 	return true
 }
 
-func (c *closer) Close() bool {
+func (c *Closer) Close() bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

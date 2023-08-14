@@ -4,13 +4,14 @@ import (
 	"context"
 	"log"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 // BlockTicker is a struct that follows the same design paradigm as a time ticker but provides blocks
 // instead of time
 type BlockTicker struct {
-	closer closer
+	closer util.Closer
 
 	C             chan ocr2keepers.BlockHistory
 	chID          int

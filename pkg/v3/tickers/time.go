@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 )
 
 type observer[T any] interface {
@@ -14,7 +16,7 @@ type observer[T any] interface {
 type getterFunc[T any] func(context.Context, time.Time) (Tick[T], error)
 
 type timeTicker[T any] struct {
-	closer closer
+	closer util.Closer
 
 	interval time.Duration
 	observer observer[T]

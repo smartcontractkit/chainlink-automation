@@ -19,7 +19,7 @@ type shuffler[T any] interface {
 }
 
 type sampleTicker struct {
-	closer closer
+	closer util.Closer
 	// provided dependencies
 	observer observer[[]ocr2keepers.UpkeepPayload]
 	getter   ocr2keepers.ConditionalUpkeepProvider
