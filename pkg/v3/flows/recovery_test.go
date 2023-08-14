@@ -1,106 +1,109 @@
 package flows
 
-// import (
-// 	"context"
-// 	"io"
-// 	"log"
-// 	"sync"
-// 	"testing"
-// 	"time"
+import (
+	"context"
+	"io"
+	"log"
+	"sync"
+	"testing"
+	"time"
 
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
-// 	"github.com/smartcontractkit/ocr2keepers/internal/util"
-// 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
-// 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-// 	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-// )
+	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+)
 
-// // func TestRecoveryFlow(t *testing.T) {
-// // 	runner := &mockedRunner{eligibleAfter: 0}
-// // 	rStore := new(mocks.MockResultStore)
-// // 	coord := new(mockedPreprocessor)
-// // 	rtyr := new(mocks.MockRetryer)
-// // 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+func TestRecoveryFinalization(t *testing.T) {
+	upkeepIDs := []ocr2keepers.UpkeepIdentifier{
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{2}),
+	}
+	workIDs := []string{
+		"0x1",
+		"0x2",
+	}
 
-// // 	rStore.On("Add", mock.Anything).Times(1)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 
-// // 	svc, recoverer := newFinalRecoveryFlow(preprocessors, rStore, runner, rtyr, 20*time.Millisecond, log.New(io.Discard, "", 0))
+	times := 3
 
-// // 	var wg sync.WaitGroup
-// // 	wg.Add(1)
+	runner := new(mocks.MockRunnable)
+	rStore := new(mocks.MockResultStore)
+	coord := new(mocks.MockCoordinator)
+	payloadBuilder := new(mocks.MockPayloadBuilder)
+	proposalQ := stores.NewProposalQueue(func(ui ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+		return ocr2keepers.LogTrigger
+	})
+	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
 
-// // 	go func(svc service.Recoverable, ctx context.Context) {
-// // 		assert.NoError(t, svc.Start(ctx))
-// // 		wg.Done()
-// // 	}(svc, context.Background())
+	retryQ := stores.NewRetryQueue(logger)
 
-// // 	retryable := ocr2keepers.CheckResult{
-// // 		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-// // 	}
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(times)
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+			Eligible: true,
+		},
+		{
+			UpkeepID:  upkeepIDs[1],
+			WorkID:    workIDs[1],
+			Retryable: true,
+		},
+	}, nil).Times(times)
+	rStore.On("Add", mock.Anything).Times(times)
+	payloadBuilder.On("BuildPayloads", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(times)
 
-// // 	assert.NoError(t, recoverer.Retry(retryable), "no error from retrying")
+	// set the ticker time lower to reduce the test time
+	recFinalInterval := 50 * time.Millisecond
+	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	svc := newFinalRecoveryFlow(pre, rStore, runner, retryQ, recFinalInterval, proposalQ, payloadBuilder, upkeepStateUpdater, logger)
 
-// // 	// allow 2 ticks
-// // 	time.Sleep(50 * time.Millisecond)
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-// // 	assert.NoError(t, svc.Close(), "no error expected on shut down")
-// // 	assert.Equal(t, 2, coord.Calls())
+	err := proposalQ.Enqueue(ocr2keepers.CoordinatedBlockProposal{
+		UpkeepID: upkeepIDs[0],
+		WorkID:   workIDs[0],
+	}, ocr2keepers.CoordinatedBlockProposal{
+		UpkeepID: upkeepIDs[1],
+		WorkID:   workIDs[1],
+	})
+	assert.NoError(t, err)
 
-// // 	rStore.AssertExpectations(t)
+	go func(svc service.Recoverable, ctx context.Context) {
+		defer wg.Done()
+		assert.NoError(t, svc.Start(ctx))
+	}(svc, context.Background())
 
-// // 	wg.Wait()
-// // }
+	time.Sleep(recFinalInterval*time.Duration(times) + recFinalInterval/2)
 
-// // func TestRecoveryProposalFlow(t *testing.T) {
-// // 	logger := log.New(io.Discard, "", log.LstdFlags)
+	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
-// // 	mStore := new(mocks.MockMetadataStore)
-// // 	rec := new(mocks2.MockRecoverableProvider)
-// // 	configFuncs := []tickers.ScheduleTickerConfigFunc{ // retry configs
-// // 		tickers.ScheduleTickerWithDefaults,
-// // 		func(c *tickers.ScheduleTickerConfig) {
-// // 			c.SendDelay = 30 * time.Millisecond
-// // 		},
-// // 	}
-// // 	// preprocessor is just a pass through
-// // 	coord := new(mockedPreprocessor)
-// // 	testData := []ocr2keepers.UpkeepPayload{
-// // 		{WorkID: "test"},
-// // 	}
-// // 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
-// // 	ar := util.NewSyncedArray[ocr2keepers.UpkeepPayload]()
+	rStore.AssertExpectations(t)
 
-// // 	rec.On("GetRecoveryProposals", mock.Anything).Return(testData, nil).Times(1)
-// // 	rec.On("GetRecoveryProposals", mock.Anything).Return(nil, nil).Times(3)
-
-// // 	// metadata store should set the value
-// // 	mStore.On("Get", store.ProposalRecoveryMetadata).Return(ar, true).Times(4)
-
-// // 	// set the ticker time lower to reduce the test time
-// // 	recoveryInterval := 50 * time.Millisecond
-
-// // 	svc, _ := newRecoveryProposalFlow(preprocessors, mStore, rec, recoveryInterval, logger, configFuncs...)
-
-// // 	var wg sync.WaitGroup
-// // 	wg.Add(1)
-
-// // 	go func(svc service.Recoverable, ctx context.Context) {
-// // 		assert.NoError(t, svc.Start(ctx))
-// // 		wg.Done()
-// // 	}(svc, context.Background())
-
-// // 	time.Sleep(210 * time.Millisecond)
-
-// // 	assert.NoError(t, svc.Close(), "no error expected on shut down")
-
-// // 	assert.Equal(t, 4, coord.Calls())
-// // 	mStore.AssertExpectations(t)
-
-// // 	wg.Wait()
-// // }
+	wg.Wait()
+}

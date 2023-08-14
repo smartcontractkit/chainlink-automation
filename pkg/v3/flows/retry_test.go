@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	ocr2keepersmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,10 +22,10 @@ func TestRetryFlow(t *testing.T) {
 
 	times := 3
 
-	runner := new(ocr2keepersmocks.MockRunnable)
-	rStore := new(ocr2keepersmocks.MockResultStore)
-	coord := new(ocr2keepersmocks.MockCoordinator)
-	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
+	runner := new(mocks.MockRunnable)
+	rStore := new(mocks.MockResultStore)
+	coord := new(mocks.MockCoordinator)
+	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
 	retryQ := stores.NewRetryQueue(logger)
 
 	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{

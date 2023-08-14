@@ -1,125 +1,108 @@
 package flows
 
-// import (
-// 	"context"
-// 	"io"
-// 	"log"
-// 	"sync"
-// 	"testing"
-// 	"time"
+import (
+	"context"
+	"io"
+	"log"
+	"sync"
+	"testing"
+	"time"
 
-// 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-// 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
-// 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-// 	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
 
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/mock"
-// )
+func TestConditionalFinalization(t *testing.T) {
+	upkeepIDs := []ocr2keepers.UpkeepIdentifier{
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{2}),
+	}
+	workIDs := []string{
+		"0x1",
+		"0x2",
+	}
 
-// func TestNewSampleProposalFlow(t *testing.T) {
-// 	r := new(mocks.MockRatio)
-// 	pp := new(mockedPreprocessor)
-// 	up := new(mocks2.MockConditionalUpkeepProvider)
-// 	rn := &mockedRunner{eligibleAfter: 0}
-// 	ms := new(mocks.MockMetadataStore)
-// 	bs := &mockBlockSubscriber{
-// 		ch: make(chan ocr2keepers.BlockHistory),
-// 	}
+	logger := log.New(io.Discard, "", log.LstdFlags)
 
-// 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{pp}
+	times := 3
 
-// 	svc, err := newSampleProposalFlow(preprocessors, r, up, bs, ms, rn, log.New(io.Discard, "", 0))
+	runner := new(mocks.MockRunnable)
+	rStore := new(mocks.MockResultStore)
+	coord := new(mocks.MockCoordinator)
+	payloadBuilder := new(mocks.MockPayloadBuilder)
+	proposalQ := stores.NewProposalQueue(func(ui ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+		return ocr2keepers.LogTrigger
+	})
+	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
 
-// 	assert.NoError(t, err, "no error from initialization")
+	retryQ := stores.NewRetryQueue(logger)
 
-// 	var wg sync.WaitGroup
-// 	wg.Add(1)
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(times)
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+			Eligible: true,
+		},
+		{
+			UpkeepID:  upkeepIDs[1],
+			WorkID:    workIDs[1],
+			Retryable: true,
+		},
+	}, nil).Times(times)
+	rStore.On("Add", mock.Anything).Times(times)
+	payloadBuilder.On("BuildPayloads", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(times)
 
-// 	go func(svc service.Recoverable, ctx context.Context) {
-// 		assert.NoError(t, svc.Start(ctx))
-// 		wg.Done()
-// 	}(svc, context.Background())
+	// set the ticker time lower to reduce the test time
+	interval := 50 * time.Millisecond
+	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	svc := newFinalConditionalFlow(pre, rStore, runner, interval, proposalQ, payloadBuilder, retryQ, upkeepStateUpdater, logger)
 
-// 	testValues := []ocr2keepers.UpkeepPayload{
-// 		{
-// 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-// 		},
-// 		{
-// 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
-// 		},
-// 		{
-// 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
-// 		},
-// 		{
-// 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
-// 		},
-// 	}
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-// 	up.On("GetActiveUpkeeps", mock.Anything, mock.Anything).Return(testValues, nil)
-// 	r.On("OfInt", 4).Return(1)
-// 	ms.On("Set", store.ProposalSampleMetadata, mock.Anything).Times(1)
+	err := proposalQ.Enqueue(ocr2keepers.CoordinatedBlockProposal{
+		UpkeepID: upkeepIDs[0],
+		WorkID:   workIDs[0],
+	}, ocr2keepers.CoordinatedBlockProposal{
+		UpkeepID: upkeepIDs[1],
+		WorkID:   workIDs[1],
+	})
+	assert.NoError(t, err)
 
-// 	bs.ch <- ocr2keepers.BlockHistory{
-// 		ocr2keepers.BlockKey{
-// 			Number: 4,
-// 		},
-// 		ocr2keepers.BlockKey{
-// 			Number: 3,
-// 		},
-// 	}
+	go func(svc service.Recoverable, ctx context.Context) {
+		defer wg.Done()
+		assert.NoError(t, svc.Start(ctx))
+	}(svc, context.Background())
 
-// 	time.Sleep(1 * time.Second)
+	time.Sleep(interval*time.Duration(times) + interval/2)
 
-// 	assert.NoError(t, svc.Close(), "no error expected on shut down")
+	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
-// 	r.AssertExpectations(t)
-// 	up.AssertExpectations(t)
-// 	ms.AssertExpectations(t)
+	rStore.AssertExpectations(t)
 
-// 	assert.Equal(t, 1, pp.Calls())
-
-// 	wg.Wait()
-// }
-
-// func TestNewFinalConditionalFlow(t *testing.T) {
-// 	pp := new(mockedPreprocessor)
-// 	rs := new(mocks.MockResultStore)
-// 	rn := &mockedRunner{eligibleAfter: 0}
-
-// 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{pp}
-
-// 	svc, _ := newFinalConditionalFlow(preprocessors, rs, rn, 20*time.Millisecond, log.New(io.Discard, "", 0))
-
-// 	var wg sync.WaitGroup
-// 	wg.Add(1)
-
-// 	go func(svc service.Recoverable, ctx context.Context) {
-// 		assert.NoError(t, svc.Start(ctx))
-// 		wg.Done()
-// 	}(svc, context.Background())
-
-// 	time.Sleep(50 * time.Millisecond)
-
-// 	assert.NoError(t, svc.Close(), "no error expected on shut down")
-
-// 	rs.AssertExpectations(t)
-
-// 	assert.Equal(t, 2, pp.Calls())
-
-// 	wg.Wait()
-// }
-
-// type mockBlockSubscriber struct {
-// 	ch chan ocr2keepers.BlockHistory
-// }
-
-// func (_m *mockBlockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error) {
-// 	return 0, _m.ch, nil
-// }
-
-// func (_m *mockBlockSubscriber) Unsubscribe(int) error {
-// 	return nil
-// }
+	wg.Wait()
+}

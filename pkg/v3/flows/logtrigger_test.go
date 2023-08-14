@@ -15,8 +15,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	ocr2keepersmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-	typesmocks "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 )
 
 func TestLogTriggerFlow(t *testing.T) {
@@ -24,12 +23,12 @@ func TestLogTriggerFlow(t *testing.T) {
 
 	times := 2
 
-	runner := new(ocr2keepersmocks.MockRunnable)
-	rStore := new(ocr2keepersmocks.MockResultStore)
-	coord := new(ocr2keepersmocks.MockCoordinator)
+	runner := new(mocks.MockRunnable)
+	rStore := new(mocks.MockResultStore)
+	coord := new(mocks.MockCoordinator)
 	retryQ := stores.NewRetryQueue(logger)
-	upkeepStateUpdater := new(ocr2keepersmocks.MockUpkeepStateUpdater)
-	lp := new(typesmocks.MockLogEventProvider)
+	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
+	lp := new(mocks.MockLogEventProvider)
 
 	lp.On("GetLatestPayloads", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
 		{

@@ -20,7 +20,7 @@ func newFinalRecoveryFlow(
 	resultStore ocr2keepers.ResultStore,
 	runner ocr2keepersv3.Runner,
 	retryQ ocr2keepers.RetryQueue,
-	recoveryInterval time.Duration,
+	recoveryFinalizationInterval time.Duration,
 	proposalQ ocr2keepers.ProposalQueue,
 	builder ocr2keepers.PayloadBuilder,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
@@ -42,7 +42,7 @@ func newFinalRecoveryFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryFinalizationInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
 		return coordinatedProposalsTick{
 			logger:    logger,
 			builder:   builder,
