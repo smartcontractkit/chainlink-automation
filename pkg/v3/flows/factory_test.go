@@ -12,9 +12,8 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-// TODO placeholder
 func TestConditionalTriggerFlows(t *testing.T) {
-	conditional, err := ConditionalTriggerFlows(
+	flows, err := ConditionalTriggerFlows(
 		nil,
 		nil,
 		nil,
@@ -36,13 +35,12 @@ func TestConditionalTriggerFlows(t *testing.T) {
 		nil,
 		log.New(io.Discard, "", 0),
 	)
-	assert.NotNil(t, conditional)
 	assert.Nil(t, err)
+	assert.Equal(t, 2, len(flows))
 }
 
-// TODO placeholder
 func TestLogTriggerFlows(t *testing.T) {
-	logTrigger := LogTriggerFlows(
+	flows := LogTriggerFlows(
 		nil,
 		nil,
 		nil,
@@ -61,7 +59,7 @@ func TestLogTriggerFlows(t *testing.T) {
 		nil,
 		log.New(io.Discard, "", 0),
 	)
-	assert.NotNil(t, logTrigger)
+	assert.Equal(t, 3, len(flows))
 }
 
 type mockRunner struct {

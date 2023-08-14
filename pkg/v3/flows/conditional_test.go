@@ -130,9 +130,9 @@ func TestSamplingProposal(t *testing.T) {
 
 	ch := make(chan ocr2keepers.BlockHistory)
 
-	blockSub.On("Subscribe", mock.Anything).Return(1, ch, nil)
-	blockSub.On("Unsubscribe", mock.Anything).Return(nil)
-	ratio.On("OfInt", mock.Anything).Return(0, nil).Times(1)
+	blockSub.On("Subscribe", mock.Anything).Return(1, ch, nil).Times(1)
+	blockSub.On("Unsubscribe", mock.Anything).Return(nil).Times(1)
+
 	ratio.On("OfInt", mock.Anything).Return(1, nil).Times(1)
 
 	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
@@ -215,4 +215,6 @@ func TestSamplingProposal(t *testing.T) {
 	upkeepProvider.AssertExpectations(t)
 	coord.AssertExpectations(t)
 	runner.AssertExpectations(t)
+	ratio.AssertExpectations(t)
+	blockSub.AssertExpectations(t)
 }

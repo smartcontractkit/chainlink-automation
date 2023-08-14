@@ -79,6 +79,8 @@ func TestRetryFlow(t *testing.T) {
 
 	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
+	coord.AssertExpectations(t)
+	runner.AssertExpectations(t)
 	rStore.AssertExpectations(t)
 
 	wg.Wait()
