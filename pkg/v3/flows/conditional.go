@@ -115,7 +115,7 @@ func newFinalConditionalFlow(
 	)
 	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
-	// recovery proposals that originate from network agreements
+	// conditional proposals that originate from network agreements
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
