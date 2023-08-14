@@ -12,7 +12,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-// TODO: Add proper tests
 func TestPerformables(t *testing.T) {
 	tests := []struct {
 		name                   string
@@ -53,7 +52,7 @@ func TestPerformables(t *testing.T) {
 			},
 			expectedOutcomeWorkIDs: []types.CheckResult{},
 			wantResultCount: map[string]resultAndCount[types.CheckResult]{
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",
 						FastGasWei: big.NewInt(10),
@@ -61,7 +60,7 @@ func TestPerformables(t *testing.T) {
 					},
 					count: 1,
 				},
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000320a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000320a0a": {
 					result: types.CheckResult{
 						WorkID:     "2",
 						FastGasWei: big.NewInt(10),
@@ -69,7 +68,7 @@ func TestPerformables(t *testing.T) {
 					},
 					count: 1,
 				},
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000330a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000330a0a": {
 					result: types.CheckResult{
 						WorkID:     "3",
 						FastGasWei: big.NewInt(10),
@@ -113,7 +112,7 @@ func TestPerformables(t *testing.T) {
 				},
 			},
 			wantResultCount: map[string]resultAndCount[types.CheckResult]{
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",
 						FastGasWei: big.NewInt(10),
@@ -121,7 +120,7 @@ func TestPerformables(t *testing.T) {
 					},
 					count: 1,
 				},
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000320a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000320a0a": {
 					result: types.CheckResult{
 						WorkID:     "2",
 						FastGasWei: big.NewInt(10),
@@ -180,7 +179,7 @@ func TestPerformables(t *testing.T) {
 				},
 			},
 			wantResultCount: map[string]resultAndCount[types.CheckResult]{
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",
 						FastGasWei: big.NewInt(10),
@@ -188,7 +187,7 @@ func TestPerformables(t *testing.T) {
 					},
 					count: 1,
 				},
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000320a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000320a0a": {
 					result: types.CheckResult{
 						WorkID:     "2",
 						FastGasWei: big.NewInt(10),
@@ -196,13 +195,118 @@ func TestPerformables(t *testing.T) {
 					},
 					count: 3,
 				},
-				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000330a0a": resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000330a0a": {
 					result: types.CheckResult{
 						WorkID:     "3",
 						FastGasWei: big.NewInt(10),
 						LinkNative: big.NewInt(10),
 					},
 					count: 3,
+				},
+			},
+		},
+		{
+			name:      "When the count exceeds the limit, the number of results are limited with same sorting order",
+			threshold: 2,
+			limit:     1,
+			observations: []ocr2keepers.AutomationObservation{
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "4", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "5", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "4", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "5", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "4", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "5", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "2", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "4", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "5", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "3", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "4", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "5", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "3", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "4", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "5", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "3", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "4", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+						{WorkID: "5", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+			},
+			expectedOutcomeWorkIDs: []types.CheckResult{
+				{
+					WorkID:     "2",
+					FastGasWei: big.NewInt(10),
+					LinkNative: big.NewInt(10),
+				},
+			},
+			wantResultCount: map[string]resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
+					result: types.CheckResult{
+						WorkID:     "1",
+						FastGasWei: big.NewInt(10),
+						LinkNative: big.NewInt(10),
+					},
+					count: 1,
+				},
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000320a0a": {
+					result: types.CheckResult{
+						WorkID:     "2",
+						FastGasWei: big.NewInt(10),
+						LinkNative: big.NewInt(10),
+					},
+					count: 3,
+				},
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000330a0a": {
+					result: types.CheckResult{
+						WorkID:     "3",
+						FastGasWei: big.NewInt(10),
+						LinkNative: big.NewInt(10),
+					},
+					count: 3,
+				},
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000340a0a": {
+					result: types.CheckResult{
+						WorkID:     "4",
+						FastGasWei: big.NewInt(10),
+						LinkNative: big.NewInt(10),
+					},
+					count: 7,
+				},
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000350a0a": {
+					result: types.CheckResult{
+						WorkID:     "5",
+						FastGasWei: big.NewInt(10),
+						LinkNative: big.NewInt(10),
+					},
+					count: 7,
 				},
 			},
 		},
