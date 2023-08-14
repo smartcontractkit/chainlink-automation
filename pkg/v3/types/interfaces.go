@@ -45,6 +45,7 @@ type Runnable interface {
 	CheckUpkeeps(context.Context, ...UpkeepPayload) ([]CheckResult, error)
 }
 
+//go:generate mockery --name BlockSubscriber --structname MockBlockSubscriber --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename block_subscriber.generated.go
 type BlockSubscriber interface {
 	// Subscribe provides an identifier integer, a new channel, and potentially an error
 	Subscribe() (int, chan BlockHistory, error)
