@@ -1002,7 +1002,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		{
 			name:         "processing an empty list of observations generates an empty outcome",
 			observations: []types.AttributedObservation{},
-			wantOutcome:  ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[]}`)),
+			wantOutcome:  ocr3types.Outcome([]byte(`{"AgreedPerformables":[],"SurfacedProposals":[]}`)),
 		},
 		{
 			name: "processing a well formed observation with a previous outcome generates an new outcome",
@@ -1015,7 +1015,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 				return "workID1"
 			},
 			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
 			name: "processing a malformed observation with a previous outcome generates an new outcome",
@@ -1028,7 +1028,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 				return "workID1"
 			},
 			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
 			name: "processing an invalid observation with a previous outcome generates an new outcome",
@@ -1041,7 +1041,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 				return "workID1"
 			},
 			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[g],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
 			name: "processing an valid observation with a malformed previous outcome returns an error",
