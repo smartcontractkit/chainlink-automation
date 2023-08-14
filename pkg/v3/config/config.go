@@ -47,7 +47,10 @@ type ReportingFactoryConfig struct {
 	ServiceQueueLength    int
 }
 
-// OffchainConfig ...
+// NOTE: Any changes to this struct should keep in mind existing production contracts
+// with deployed config. Additionally, offchain node upgrades can happen
+// out of sync and nodes should be compatible with each other during the upgrade
+// Please ensure to get a proper review along with an upgrade plan before changing this
 type OffchainConfig struct {
 	// Version is used by the plugin to switch feature sets based on the intent
 	// of the off-chain config

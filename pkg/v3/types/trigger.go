@@ -10,7 +10,8 @@ import (
 // in which the trigger was checked.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
-// quorum requirements in mind
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
 type Trigger struct {
 	// BlockNumber is the block number in which the trigger was checked
 	BlockNumber BlockNumber
@@ -40,7 +41,8 @@ func NewLogTrigger(blockNumber BlockNumber, blockHash [32]byte, logTriggerExtens
 // It contains information of the log event that was triggered.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
-// quorum requirements in mind
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
 type LogTriggerExtension struct {
 	// LogTxHash is the transaction hash of the log event
 	TxHash [32]byte

@@ -69,7 +69,8 @@ type BlockNumber uint64
 // BlockKey represent a block (number and hash)
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
-// quorum requirements in mind
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
 type BlockKey struct {
 	Number BlockNumber
 	Hash   [32]byte
@@ -94,7 +95,8 @@ type TransmitEvent struct {
 
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
-// quorum requirements in mind
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
 type CheckResult struct {
 	// zero if success, else indicates an error code
 	PipelineExecutionState uint8
@@ -117,9 +119,9 @@ type CheckResult struct {
 	GasAllocated uint64
 	// PerformData is the raw data returned when simulating an upkeep perform
 	PerformData []byte
-	// todo: add comment
+	// FastGasWei is the fast gas price in wei when performing this upkeep
 	FastGasWei *big.Int
-	// todo: add comment
+	// Link to native ratio to be used when performing this upkeep
 	LinkNative *big.Int
 }
 
@@ -178,10 +180,12 @@ type UpkeepPayload struct {
 // after a check block has been coordinated between nodes.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
-// quorum requirements in mind.
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
 // NOTE: Only the trigger.BlockHash and trigger.BlockNumber are coordinated across
-// the network to get a quorum. Rest of the fields here SHOULD NOT BE TRUSTED as they
-// can be manipulated by a single malicious node.
+// the network to get a quorum. WorkID is guaranteed to be correctly generated.
+// Rest of the fields here SHOULD NOT BE TRUSTED as they can be manipulated by
+// a single malicious node.
 type CoordinatedBlockProposal struct {
 	// UpkeepID is the id of the proposed upkeep
 	UpkeepID UpkeepIdentifier
