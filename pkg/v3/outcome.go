@@ -25,11 +25,6 @@ const (
 type AutomationOutcome struct {
 	// These are the upkeeps that got quorum that they should be performed on chain
 	// These require quorum of f+1 nodes
-	// TODO: Discuss what should be the behaviour for fields that are not
-	// necessary for quorum (e.g. eligibility, LogTrigger.Block etc). Options
-	// 1. Require quorum on all fields
-	// 2. Zero them out before quorum
-	// 3. Undefined behaviour (can be manipulated by malicious nodes)
 	AgreedPerformables []ocr2keepers.CheckResult
 	// These are the proposals with a coordinated block that should be run through the
 	// check pipeline. The proposals remain valid for a range of rounds where they do
