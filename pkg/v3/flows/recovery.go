@@ -19,6 +19,8 @@ const (
 	// These are the maximum number of log upkeeps dequeued on every tick from proposal queue in FinalRecoveryFlow
 	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
 	FinalRecoveryBatchSize = 50
+	// This is the ticker interval for final recovery flow
+	RecoveryCheckInterval = 1 * time.Minute
 )
 
 func newFinalRecoveryFlow(

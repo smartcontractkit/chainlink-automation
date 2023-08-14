@@ -19,8 +19,8 @@ var (
 )
 
 const (
-	LogCheckInterval      = 1 * time.Second
-	RecoveryCheckInterval = 1 * time.Minute
+	// This is the ticker interval for log trigger flow
+	LogCheckInterval = 1 * time.Second
 	// Limit for processing a whole observer flow given a payload. The main component of this
 	// is the checkPipeline which involves some RPC, DB and Mercury calls, this is limited
 	// to 20 seconds for now
