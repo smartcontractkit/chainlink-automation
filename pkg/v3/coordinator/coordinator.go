@@ -84,7 +84,6 @@ func (c *coordinator) ShouldTransmit(reportedUpkeep ocr2keepers.ReportedUpkeep) 
 	}
 }
 
-// TODO: rename to FilterPayloads
 func (c *coordinator) PreProcess(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
 	res := make([]ocr2keepers.UpkeepPayload, 0)
 	for _, payload := range payloads {
