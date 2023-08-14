@@ -288,9 +288,13 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 		deleteProposals []types.CoordinatedBlockProposal
 		afterDelete     []types.CoordinatedBlockProposal
 		timeFn          func() time.Time
+		typeGetter      types.UpkeepTypeGetter
 	}{
 		{
 			name: "all unique proposals are added and retrieved, existent keys are successfully deleted",
+			typeGetter: func(identifier types.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
+			},
 			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
@@ -346,6 +350,9 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 		},
 		{
 			name: "duplicate proposals aren't returned, existent keys are successfully deleted",
+			typeGetter: func(identifier types.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
+			},
 			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
@@ -379,6 +386,9 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 		},
 		{
 			name: "proposals added three days ago aren't returned, non existent keys result in a no op delete",
+			typeGetter: func(identifier types.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
+			},
 			addProposals: [][]types.CoordinatedBlockProposal{
 				{
 					{
@@ -416,7 +426,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 				timeFn = oldTimeFn
 			}()
 
-			store := NewMetadataStore(nil, nil)
+			store := NewMetadataStore(nil, tc.typeGetter)
 			for _, proposal := range tc.addProposals {
 				store.AddProposals(proposal...)
 			}
