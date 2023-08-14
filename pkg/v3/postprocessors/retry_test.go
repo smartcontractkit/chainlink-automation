@@ -17,9 +17,9 @@ func TestRetryPostProcessor_PostProcess(t *testing.T) {
 	processor := NewRetryablePostProcessor(q, lggr)
 
 	results := []ocr2keepers.CheckResult{
-		{Retryable: true},
-		{Retryable: false},
-		{Retryable: true},
+		{Retryable: true, PipelineExecutionState: 1},
+		{Retryable: false, PipelineExecutionState: 3},
+		{Retryable: true, PipelineExecutionState: 2},
 	}
 
 	// Call the PostProcess method

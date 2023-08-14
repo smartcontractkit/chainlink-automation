@@ -24,13 +24,16 @@ var _ PostProcessor = (*retryablePostProcessor)(nil)
 
 func (p *retryablePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, payloads []ocr2keepers.UpkeepPayload) error {
 	var err error
-
+	retryable := 0
 	for i, res := range results {
-		// TODO: TBD ensure this is not recoverable
-		if res.Retryable {
-			err = errors.Join(err, p.q.Enqueue(payloads[i]))
+		if res.PipelineExecutionState != 0 && res.Retryable {
+			e := p.q.Enqueue(payloads[i])
+			if e == nil {
+				retryable++
+			}
+			err = errors.Join(err, e)
 		}
 	}
-
+	p.logger.Printf("[retryable-post-processor] post-processing %d results, %d retryable\n", len(results), retryable)
 	return err
 }

@@ -24,11 +24,14 @@ func (p *ineligiblePostProcessor) PostProcess(ctx context.Context, results []ocr
 	var merr error
 	ineligible := 0
 	for _, res := range results {
-		if !res.Eligible && !res.Retryable {
-			ineligible++
-			merr = errors.Join(merr, p.stateUpdater.SetUpkeepState(ctx, res, ocr2keepers.Ineligible))
+		if res.PipelineExecutionState == 0 && !res.Eligible {
+			err := p.stateUpdater.SetUpkeepState(ctx, res, ocr2keepers.Ineligible)
+			if err != nil {
+				ineligible++
+			}
+			merr = errors.Join(merr, err)
 		}
 	}
-	p.lggr.Printf("post-processing %d results, %d ineligible\n", len(results), ineligible)
+	p.lggr.Printf("[ineligible-post-processor] post-processing %d results, %d ineligible\n", len(results), ineligible)
 	return merr
 }

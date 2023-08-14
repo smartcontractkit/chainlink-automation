@@ -35,11 +35,11 @@ func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger)
 func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	eligible := 0
 	for _, res := range results {
-		if res.Eligible {
+		if res.PipelineExecutionState == 0 && res.Eligible {
 			eligible++
 			p.resultsAdder.Add(res)
 		}
 	}
-	p.lggr.Printf("post-processing %d results, %d eligible\n", len(results), eligible)
+	p.lggr.Printf("[eligible-post-processor] post-processing %d results, %d eligible\n", len(results), eligible)
 	return nil
 }
