@@ -21,7 +21,7 @@ type RemoveFromStagingHook struct {
 	logger *log.Logger
 }
 
-func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
+func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) {
 	toRemove := make([]string, 0, len(outcome.AgreedPerformables))
 	for _, result := range outcome.AgreedPerformables {
 		toRemove = append(toRemove, result.WorkID)
@@ -29,6 +29,4 @@ func (hook *RemoveFromStagingHook) RunHook(outcome ocr2keepersv3.AutomationOutco
 
 	hook.logger.Printf("%d results found in outcome for removal", len(toRemove))
 	hook.store.Remove(toRemove...)
-
-	return nil
 }

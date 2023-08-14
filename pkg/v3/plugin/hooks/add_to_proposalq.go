@@ -21,7 +21,7 @@ type AddToProposalQHook struct {
 	logger    *log.Logger
 }
 
-func (hook *AddToProposalQHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
+func (hook *AddToProposalQHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) {
 	addedProposals := 0
 	for _, roundProposals := range outcome.SurfacedProposals {
 		err := hook.proposalQ.Enqueue(roundProposals...)
@@ -34,5 +34,4 @@ func (hook *AddToProposalQHook) RunHook(outcome ocr2keepersv3.AutomationOutcome)
 	}
 	hook.logger.Printf("Added %d proposals from outcome", addedProposals)
 
-	return nil
 }

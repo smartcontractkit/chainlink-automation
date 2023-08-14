@@ -21,7 +21,7 @@ type RemoveFromMetadataHook struct {
 	logger *log.Logger
 }
 
-func (hook *RemoveFromMetadataHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) error {
+func (hook *RemoveFromMetadataHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) {
 	removed := 0
 	for _, round := range outcome.SurfacedProposals {
 		for _, proposal := range round {
@@ -30,5 +30,4 @@ func (hook *RemoveFromMetadataHook) RunHook(outcome ocr2keepersv3.AutomationOutc
 		}
 	}
 	hook.logger.Printf("%d proposals found in outcome for removal", removed)
-	return nil
 }

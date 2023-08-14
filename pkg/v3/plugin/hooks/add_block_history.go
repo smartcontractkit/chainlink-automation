@@ -20,12 +20,11 @@ func NewAddBlockHistoryHook(ms ocr2keepers.MetadataStore, logger *log.Logger) Ad
 		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-block-history]", telemetry.ServiceName), telemetry.LogPkgStdFlags)}
 }
 
-func (h *AddBlockHistoryHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int) error {
+func (h *AddBlockHistoryHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int) {
 	blockHistory := h.metadata.GetBlockHistory()
 	if len(blockHistory) > limit {
 		blockHistory = blockHistory[:limit]
 	}
 	obs.BlockHistory = blockHistory
 	h.logger.Printf("adding %d blocks to observation", len(blockHistory))
-	return nil
 }

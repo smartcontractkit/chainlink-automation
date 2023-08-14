@@ -54,21 +54,15 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		}
 
 		// Execute pre-build hooks
-		if err := plugin.RemoveFromStagingHook.RunHook(automationOutcome); err != nil {
-			return nil, err
-		}
-		if err := plugin.RemoveFromMetadataHook.RunHook(automationOutcome); err != nil {
-			return nil, err
-		}
-		if err := plugin.AddToProposalQHook.RunHook(automationOutcome); err != nil {
-			return nil, err
-		}
+		plugin.RemoveFromStagingHook.RunHook(automationOutcome)
+		plugin.RemoveFromMetadataHook.RunHook(automationOutcome)
+		plugin.AddToProposalQHook.RunHook(automationOutcome)
 	}
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
-	if err := plugin.AddBlockHistoryHook.RunHook(&observation, ocr2keepersv3.ObservationBlockHistoryLimit); err != nil {
-		return nil, err
-	}
+
+	plugin.AddBlockHistoryHook.RunHook(&observation, ocr2keepersv3.ObservationBlockHistoryLimit)
+
 	if err := plugin.AddFromStagingHook.RunHook(&observation, ocr2keepersv3.ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}

@@ -3,16 +3,21 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
+	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/stretchr/testify/assert"
 
+	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -24,8 +29,6 @@ func TestOcr3Plugin_Query(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-// TODO: Fix the test according to latest validation
-/*
 func TestOcr3Plugin_Observation(t *testing.T) {
 	t.Run("first round processing, previous outcome will be nil, creates an observation with 2 performables, 2 proposals and 2 block history", func(t *testing.T) {
 		var logBuf bytes.Buffer
@@ -98,7 +101,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
 		assert.Nil(t, err)
-		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 2 performables, 2 upkeep proposals and 2 block history"))
 	})
 
@@ -180,7 +183,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
 		assert.Nil(t, err)
-		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"},{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 3 performables, 2 upkeep proposals and 3 block history"))
 	})
 
@@ -255,11 +258,11 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
 		assert.Nil(t, err)
-		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":1,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":1,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID3","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 3 performables, 0 upkeep proposals and 3 block history"))
 	})
 
-	t.Run("subsequent round processing, previous outcome will be non nil, creates an observation built an observation with 2 performables, 0 upkeep proposals and 3 block history", func(t *testing.T) {
+	t.Run("ineligible check result returns an error", func(t *testing.T) {
 		var logBuf bytes.Buffer
 		logger := log.New(&logBuf, "ocr3-test-observation", 0)
 
@@ -282,9 +285,6 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			},
 			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{}
-			},
-			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
-				// no op
 			},
 		}
 
@@ -326,12 +326,10 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
-			UpkeepTypeGetter:      mockUpkeepTypeGetter,
-			WorkIDGenerator:       mockWorkIDGenerator,
-			RemoveFromStagingHook: hooks.NewRemoveFromStagingHook(resultStore, logger),
-			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
-			}, logger),
+			UpkeepTypeGetter:            mockUpkeepTypeGetter,
+			WorkIDGenerator:             mockWorkIDGenerator,
+			RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
 			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
 			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
 			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
@@ -360,9 +358,122 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			PreviousOutcome: ocr3types.Outcome(previousOutcomeBytes),
 		}
 
+		_, err = plugin.Observation(context.Background(), outcomeCtx, types.Query{})
+		assert.Error(t, err)
+		assert.Equal(t, "check result cannot be ineligible", err.Error())
+	})
+
+	t.Run("subsequent round processing, previous outcome will be non nil, creates an observation built an observation with 2 performables, 0 upkeep proposals and 3 block history", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+
+		metadataStore := &mockMetadataStore{
+			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
+				return ocr2keepers.BlockHistory{
+					{
+						Number: 3,
+					},
+					{
+						Number: 4,
+					},
+					{
+						Number: 5,
+					},
+				}
+			},
+			ViewConditionalProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
+			},
+			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
+				return []ocr2keepers.CoordinatedBlockProposal{}
+			},
+			RemoveProposalsFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
+				// no op
+			},
+		}
+
+		resultStore := &mockResultStore{
+			ViewFn: func() ([]ocr2keepers.CheckResult, error) {
+				return []ocr2keepers.CheckResult{
+					{
+						WorkID:   "workID5",
+						Eligible: true,
+					},
+					{
+						WorkID:   "workID6",
+						Eligible: true,
+					},
+				}, nil
+			},
+			RemoveFn: func(s ...string) {
+				// no op
+			},
+		}
+
+		coordinator := &mockCoordinator{
+			FilterResultsFn: func(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
+				return results, nil
+			},
+			FilterProposalsFn: func(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
+				return proposals, nil
+			},
+		}
+
+		queueItems := []ocr2keepers.CoordinatedBlockProposal{}
+
+		proposalQueue := &mockProposalQueue{
+			EnqueueFn: func(items ...ocr2keepers.CoordinatedBlockProposal) error {
+				queueItems = append(queueItems, items...)
+				return nil
+			},
+		}
+
+		plugin := &ocr3Plugin{
+			UpkeepTypeGetter: mockUpkeepTypeGetter,
+			WorkIDGenerator: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				var triggerExtBytes []byte
+				if trigger.LogTriggerExtension != nil {
+					triggerExtBytes = trigger.LogTriggerExtension.LogIdentifier()
+				}
+				uid := &ocr2keepers.UpkeepIdentifier{}
+				hash := crypto.Keccak256(append(uid[:], triggerExtBytes...))
+				return hex.EncodeToString(hash[:])
+			},
+			RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
+			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
+			Logger:                      logger,
+		}
+
+		previousOutcome := ocr2keepers2.AutomationOutcome{
+			AgreedPerformables: []ocr2keepers.CheckResult{
+				{
+					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					Eligible:     true,
+					GasAllocated: 1,
+				},
+			},
+			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
+				{
+					{
+						WorkID: "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					},
+				},
+			},
+		}
+		previousOutcomeBytes, err := json.Marshal(previousOutcome)
+		assert.NoError(t, err)
+		outcomeCtx := ocr3types.OutcomeContext{
+			PreviousOutcome: ocr3types.Outcome(previousOutcomeBytes),
+		}
+
 		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
 		assert.NoError(t, err)
-		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID6","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":1,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID5","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":4,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":5,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID5","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null},{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID6","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":4,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":5,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 2 performables, 0 upkeep proposals and 3 block history"))
 	})
 
@@ -390,7 +501,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 			ViewLogRecoveryProposalFn: func() []ocr2keepers.CoordinatedBlockProposal {
 				return []ocr2keepers.CoordinatedBlockProposal{}
 			},
-			RemoveLogRecoveryProposalFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
+			RemoveProposalsFn: func(proposal ...ocr2keepers.CoordinatedBlockProposal) {
 				// no op
 			},
 		}
@@ -401,11 +512,11 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 					{
 						WorkID:              "workID5",
 						IneligibilityReason: 1,
-						Eligible:            false,
+						Eligible:            true,
 					},
 					{
 						WorkID:   "workID6",
-						Eligible: false,
+						Eligible: true,
 					},
 				}, nil
 			},
@@ -433,12 +544,18 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		}
 
 		plugin := &ocr3Plugin{
-			UpkeepTypeGetter:      mockUpkeepTypeGetter,
-			WorkIDGenerator:       mockWorkIDGenerator,
-			RemoveFromStagingHook: hooks.NewRemoveFromStagingHook(resultStore, logger),
-			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
-			}, logger),
+			UpkeepTypeGetter: mockUpkeepTypeGetter,
+			WorkIDGenerator: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				var triggerExtBytes []byte
+				if trigger.LogTriggerExtension != nil {
+					triggerExtBytes = trigger.LogTriggerExtension.LogIdentifier()
+				}
+				uid := &ocr2keepers.UpkeepIdentifier{}
+				hash := crypto.Keccak256(append(uid[:], triggerExtBytes...))
+				return hex.EncodeToString(hash[:])
+			},
+			RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
 			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
 			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
 			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
@@ -450,13 +567,15 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		previousOutcome := ocr2keepers2.AutomationOutcome{
 			AgreedPerformables: []ocr2keepers.CheckResult{
 				{
-					WorkID: "workID",
+					WorkID:       "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+					Eligible:     true,
+					GasAllocated: 1,
 				},
 			},
 			SurfacedProposals: [][]ocr2keepers.CoordinatedBlockProposal{
 				{
 					{
-						WorkID: "workID",
+						WorkID: "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
 					},
 				},
 			},
@@ -469,12 +588,14 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 		observation, err := plugin.Observation(context.Background(), outcomeCtx, types.Query{})
 		assert.NoError(t, err)
-		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":1,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID5","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":4,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":5,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
+		assert.Equal(t, types.Observation(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":1,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID5","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}],"UpkeepProposals":null,"BlockHistory":[{"Number":3,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":4,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":5,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`), observation)
 		assert.True(t, strings.Contains(logBuf.String(), "built an observation in sequence nr 0 with 1 performables, 0 upkeep proposals and 3 block history"))
 	})
 
 	t.Run("subsequent round processing, decoding an invalid previous outcome returns an error", func(t *testing.T) {
-		plugin := &ocr3Plugin{}
+		plugin := &ocr3Plugin{
+			Logger: log.New(io.Discard, "", 1),
+		}
 
 		outcomeCtx := ocr3types.OutcomeContext{
 			PreviousOutcome: ocr3types.Outcome(`invalid`),
@@ -484,9 +605,8 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, observation)
 	})
-}*/
+}
 
-// TODO: Fix the test according to latest validation
 func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
