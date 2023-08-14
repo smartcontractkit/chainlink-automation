@@ -38,13 +38,20 @@ func (observation AutomationObservation) Encode() ([]byte, error) {
 	return json.Marshal(observation)
 }
 
-func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
+func DecodeAutomationObservation(data []byte, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) (AutomationObservation, error) {
 	ao := AutomationObservation{}
 	err := json.Unmarshal(data, &ao)
-	return ao, err
+	if err != nil {
+		return AutomationObservation{}, err
+	}
+	err = validateAutomationObservation(ao, utg, wg)
+	if err != nil {
+		return AutomationObservation{}, err
+	}
+	return ao, nil
 }
 
-func ValidateAutomationObservation(o AutomationObservation, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
 	// Validate Block History
 	if len(o.BlockHistory) > ObservationBlockHistoryLimit {
 		return fmt.Errorf("block history length cannot be greater than %d", ObservationBlockHistoryLimit)
@@ -64,7 +71,7 @@ func ValidateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 	}
 	seenPerformables := make(map[string]bool)
 	for _, res := range o.Performable {
-		if err := ValidateCheckResult(res, utg, wg); err != nil {
+		if err := validateCheckResult(res, utg, wg); err != nil {
 			return err
 		}
 		if seenPerformables[res.WorkID] {
@@ -80,7 +87,7 @@ func ValidateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 	}
 	seenProposals := make(map[string]bool)
 	for _, proposal := range o.UpkeepProposals {
-		if err := ValidateUpkeepProposal(proposal, utg, wg); err != nil {
+		if err := validateUpkeepProposal(proposal, utg, wg); err != nil {
 			return err
 		}
 		if seenProposals[proposal.WorkID] {
@@ -93,7 +100,7 @@ func ValidateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 }
 
 // Validates the check result fields sent within an observation
-func ValidateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
 	if r.PipelineExecutionState != 0 || r.Retryable {
 		return fmt.Errorf("check result cannot have failed execution state")
 	}
@@ -101,7 +108,7 @@ func ValidateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 		return fmt.Errorf("check result cannot be ineligible")
 	}
 	// UpkeepID is contained [32]byte, no validation needed
-	if err := ValidateTriggerExtensionType(r.Trigger, utg(r.UpkeepID)); err != nil {
+	if err := validateTriggerExtensionType(r.Trigger, utg(r.UpkeepID)); err != nil {
 		return fmt.Errorf("invalid trigger: %w", err)
 	}
 	if wg(r.UpkeepID, r.Trigger) != r.WorkID {
@@ -123,7 +130,7 @@ func ValidateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 }
 
 // Validate validates the trigger fields, and any extensions if present.
-func ValidateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
+func validateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
 	switch ut {
 	case ocr2keepers.ConditionTrigger:
 		if t.LogTriggerExtension != nil {
@@ -137,11 +144,11 @@ func ValidateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepTy
 	return nil
 }
 
-func ValidateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
 	// No validation is done on Trigger.BlockNumber and Trigger.BlockHash because those
 	// get udpated with a coordinated quorum block
 	ut := utg(p.UpkeepID)
-	if err := ValidateTriggerExtensionType(p.Trigger, ut); err != nil {
+	if err := validateTriggerExtensionType(p.Trigger, ut); err != nil {
 		return err
 	}
 	if wg(p.UpkeepID, p.Trigger) != p.WorkID {

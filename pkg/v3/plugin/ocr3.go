@@ -92,12 +92,8 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 
 func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
 	plugin.Logger.Printf("inside ValidateObservation for seqNr %d", outctx.SeqNr)
-	o, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation)
-	if err != nil {
-		return err
-	}
-
-	return ocr2keepersv3.ValidateAutomationObservation(o, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
+	_, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
+	return err
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
@@ -106,14 +102,8 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	c := newCoordinatedBlockProposals(plugin.F+1, ocr2keepersv3.OutcomeSurfacedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeSurfacedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
 
 	for _, attributedObservation := range attributedObservations {
-		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
+		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
-			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
-			// Ignore this observation and continue with further observations. It is expected we will get
-			// atleast f+1 valid observations
-			continue
-		}
-		if err := ocr2keepersv3.ValidateAutomationObservation(observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// atleast f+1 valid observations

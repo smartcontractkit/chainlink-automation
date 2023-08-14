@@ -48,7 +48,7 @@ func ValidateAutomationOutcome(o AutomationOutcome, utg ocr2keepers.UpkeepTypeGe
 	}
 	seenPerformables := make(map[string]bool)
 	for _, res := range o.AgreedPerformables {
-		if err := ValidateCheckResult(res, utg, wg); err != nil {
+		if err := validateCheckResult(res, utg, wg); err != nil {
 			return err
 		}
 		if seenPerformables[res.WorkID] {
@@ -68,7 +68,7 @@ func ValidateAutomationOutcome(o AutomationOutcome, utg ocr2keepers.UpkeepTypeGe
 			return fmt.Errorf("number of surfaced proposals in a round cannot be greater than %d", OutcomeSurfacedProposalsLimit)
 		}
 		for _, proposal := range round {
-			if err := ValidateUpkeepProposal(proposal, utg, wg); err != nil {
+			if err := validateUpkeepProposal(proposal, utg, wg); err != nil {
 				return err
 			}
 			if seenProposals[proposal.WorkID] {

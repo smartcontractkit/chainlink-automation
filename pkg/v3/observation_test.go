@@ -1,94 +1,89 @@
 package ocr2keepers
 
 import (
-	"encoding/json"
+	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/stretchr/testify/assert"
 )
 
-// TODO: Add tests
-func TestAutomationObservation(t *testing.T) {
-	// set non-default values to test encoding/decoding
-	input := AutomationObservation{
-		Performable: []types.CheckResult{
-			{
-				UpkeepID:    [32]byte{111},
-				Retryable:   true,
-				Eligible:    true,
-				PerformData: []byte("testing"),
-			},
-		},
-	}
-
-	expected := AutomationObservation{
-		Performable: []types.CheckResult{
-			{
-				UpkeepID:    [32]byte{111},
-				Retryable:   true,
-				Eligible:    true,
-				PerformData: []byte("testing"),
-			},
-		},
-	}
-
-	jsonData, _ := json.Marshal(input)
-	data, err := input.Encode()
-
-	assert.Equal(t, jsonData, data, "json marshalling should return the same result")
-	assert.NoError(t, err, "no error from encoding")
-
-	result, err := DecodeAutomationObservation(data)
-	assert.NoError(t, err, "no error from decoding")
-
-	assert.Equal(t, expected, result, "final result from encoding and decoding should match")
+var conditionalUpkeepID = [32]byte{1}
+var logUpkeepID = [32]byte{2}
+var conditionalTrigger = types.Trigger{
+	BlockNumber: 10,
+	BlockHash:   [32]byte{1},
+}
+var logTrigger = types.Trigger{
+	BlockNumber: 10,
+	BlockHash:   [32]byte{1},
+	LogTriggerExtension: &types.LogTriggerExtension{
+		TxHash:      [32]byte{1},
+		Index:       0,
+		BlockHash:   [32]byte{1},
+		BlockNumber: 5,
+	},
+}
+var validConditionalResult = types.CheckResult{
+	PipelineExecutionState: 0,
+	Retryable:              false,
+	Eligible:               true,
+	IneligibilityReason:    0,
+	UpkeepID:               conditionalUpkeepID,
+	Trigger:                conditionalTrigger,
+	WorkID:                 mockWorkIDGenerator(conditionalUpkeepID, conditionalTrigger),
+	GasAllocated:           100,
+	PerformData:            []byte("testing"),
+	FastGasWei:             big.NewInt(100),
+	LinkNative:             big.NewInt(100),
+}
+var validLogResult = types.CheckResult{
+	PipelineExecutionState: 0,
+	Retryable:              false,
+	Eligible:               true,
+	IneligibilityReason:    0,
+	UpkeepID:               logUpkeepID,
+	Trigger:                logTrigger,
+	WorkID:                 mockWorkIDGenerator(logUpkeepID, logTrigger),
+	GasAllocated:           100,
+	PerformData:            []byte("testing"),
+	FastGasWei:             big.NewInt(100),
+	LinkNative:             big.NewInt(100),
+}
+var validConditionalProposal = types.CoordinatedBlockProposal{
+	UpkeepID: conditionalUpkeepID,
+	Trigger:  conditionalTrigger,
+	WorkID:   mockWorkIDGenerator(conditionalUpkeepID, conditionalTrigger),
+}
+var validLogProposal = types.CoordinatedBlockProposal{
+	UpkeepID: logUpkeepID,
+	Trigger:  logTrigger,
+	WorkID:   mockWorkIDGenerator(logUpkeepID, logTrigger),
+}
+var validBlockHistory = types.BlockHistory{
+	{
+		Number: 10,
+		Hash:   [32]byte{1},
+	},
 }
 
-func TestValidateAutomationObservation(t *testing.T) {
-	t.Run("invalid check result", func(t *testing.T) {
-		testData := AutomationObservation{
-			Performable: []types.CheckResult{
-				{},
-			},
-		}
+func TestValidAutomationObservation(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
 
-		err := ValidateAutomationObservation(testData, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	decoded, err := DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.NoError(t, err, "no error in decoding valid automation observation")
 
-		assert.NotNil(t, err, "invalid check result should return validation error")
-	})
-
-	t.Run("no error on empty", func(t *testing.T) {
-		testData := AutomationObservation{}
-
-		err := ValidateAutomationObservation(testData, mockUpkeepTypeGetter, mockWorkIDGenerator)
-
-		assert.NoError(t, err, "no error should return from empty observation")
-	})
-
-	/*
-		t.Run("no error on valid", func(t *testing.T) {
-			testData := AutomationObservation{
-				Performable: []types.CheckResult{
-					{
-						Eligible:     true,
-						Retryable:    false,
-						GasAllocated: 1,
-						UpkeepID:     types.UpkeepIdentifier([32]byte{123}),
-					},
-				},
-			}
-
-			err := ValidateAutomationObservation(testData, mockUpkeepTypeGetter, mockWorkIDGenerator)
-
-			assert.NoError(t, err, "no error should return from a valid observation")
-		})
-	*/
+	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
 }
 
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
-	if id.BigInt().Int64() < 10 {
+	if id == conditionalUpkeepID {
 		return types.ConditionTrigger
 	}
 	return types.LogTrigger
