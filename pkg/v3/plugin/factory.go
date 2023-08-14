@@ -9,61 +9,41 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-)
-
-const (
-	// TODO: Calculate these properly, add MaxOutcomeLength
-	// MaxObservationLength applies a limit to the total length of bytes in an
-	// observation. Observations contain check results, proposals and block
-	// coordination data upto a certain number of elements which defines this limit
-	MaxObservationLength = 1_000_000
-	// MaxOutcomeLength applies a limit to the total length of bytes in an outcome for
-	// a round. Outcome contains agreed performables and surfaced proposals upto a
-	// certain number of elements which defines this limit
-	MaxOutcomeLength = 1_000_000
-	// MaxReportLength limits the total length of bytes for a single report. A
-	// report is composed of 1 or more abi encoded perform calls with
-	// performData of arbitrary length. Reports are limited by gas used to
-	// transmit the report, so the length in bytes should be relative to this.
-	MaxReportLength = 1_000_000
-	// MaxReportCount limits the total number of reports allowed to be produced
-	// by the OCR protocol in a single round. This should be atleast the number
-	// of allowed agreed performables in a single round.
-	MaxReportCount = 100
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type pluginFactory struct {
-	logProvider        ocr2keepers.LogEventProvider
-	events             ocr2keepers.TransmitEventProvider
-	blocks             ocr2keepers.BlockSubscriber
-	rp                 ocr2keepers.RecoverableProvider
-	builder            ocr2keepers.PayloadBuilder
-	getter             ocr2keepers.ConditionalUpkeepProvider
-	runnable           ocr2keepers.Runnable
+	logProvider        types.LogEventProvider
+	events             types.TransmitEventProvider
+	blocks             types.BlockSubscriber
+	rp                 types.RecoverableProvider
+	builder            types.PayloadBuilder
+	getter             types.ConditionalUpkeepProvider
+	runnable           types.Runnable
 	runnerConf         runner.RunnerConfig
-	encoder            ocr2keepers.Encoder
-	upkeepTypeGetter   ocr2keepers.UpkeepTypeGetter
-	workIDGenerator    ocr2keepers.WorkIDGenerator
-	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater
+	encoder            types.Encoder
+	upkeepTypeGetter   types.UpkeepTypeGetter
+	workIDGenerator    types.WorkIDGenerator
+	upkeepStateUpdater types.UpkeepStateUpdater
 	logger             *log.Logger
 }
 
 func NewReportingPluginFactory(
-	logProvider ocr2keepers.LogEventProvider,
-	events ocr2keepers.TransmitEventProvider,
-	blocks ocr2keepers.BlockSubscriber,
-	rp ocr2keepers.RecoverableProvider,
-	builder ocr2keepers.PayloadBuilder,
-	getter ocr2keepers.ConditionalUpkeepProvider,
-	runnable ocr2keepers.Runnable,
+	logProvider types.LogEventProvider,
+	events types.TransmitEventProvider,
+	blocks types.BlockSubscriber,
+	rp types.RecoverableProvider,
+	builder types.PayloadBuilder,
+	getter types.ConditionalUpkeepProvider,
+	runnable types.Runnable,
 	runnerConf runner.RunnerConfig,
-	encoder ocr2keepers.Encoder,
-	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
-	workIDGenerator ocr2keepers.WorkIDGenerator,
-	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater,
+	encoder types.Encoder,
+	upkeepTypeGetter types.UpkeepTypeGetter,
+	workIDGenerator types.WorkIDGenerator,
+	upkeepStateUpdater types.UpkeepStateUpdater,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
 	return &pluginFactory{
@@ -88,10 +68,10 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		Name: fmt.Sprintf("Oracle: %d: Automation Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: ocr3types.ReportingPluginLimits{
 			MaxQueryLength:       0,
-			MaxObservationLength: MaxObservationLength,
-			MaxOutcomeLength:     MaxOutcomeLength,
-			MaxReportLength:      MaxReportLength,
-			MaxReportCount:       MaxReportCount,
+			MaxObservationLength: ocr2keepers.MaxObservationLength,
+			MaxOutcomeLength:     ocr2keepers.MaxOutcomeLength,
+			MaxReportLength:      ocr2keepers.MaxReportLength,
+			MaxReportCount:       ocr2keepers.MaxReportCount,
 		},
 	}
 

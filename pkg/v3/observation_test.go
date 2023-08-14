@@ -545,8 +545,7 @@ func TestLargeObservationSize(t *testing.T) {
 	assert.NoError(t, err, "no error in decoding valid automation observation")
 
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
-	// TODO: fix import cycle. Should be plugin.MaxObservationSize
-	assert.Less(t, len(encoded), 1000000, "encoded observation should be less than maxObservationSize")
+	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation should be less than maxObservationSize")
 }
 
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {

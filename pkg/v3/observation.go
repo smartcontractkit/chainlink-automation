@@ -16,6 +16,11 @@ const (
 	ObservationLogRecoveryProposalsLimit  = 5
 	ObservationConditionalsProposalsLimit = 5
 	ObservationBlockHistoryLimit          = 256
+
+	// MaxObservationLength applies a limit to the total length of bytes in an
+	// observation. NOTE: This is derived from a limit of 5000 on performData
+	// which is guaranteed onchain
+	MaxObservationLength = 1_000_000
 )
 
 // AutomationObservation models the local automation view sent by a single node
