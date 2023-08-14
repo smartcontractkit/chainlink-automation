@@ -130,9 +130,11 @@ func TestLargePerformable(t *testing.T) {
 	}
 	for i := 0; i < ObservationPerformablesLimit+1; i++ {
 		newConditionalResult := validConditionalResult
-		newConditionalResult.Trigger.BlockNumber = types.BlockNumber(i + 1)
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 1)))
+		newConditionalResult.UpkeepID = uid
 		newConditionalResult.WorkID = mockWorkIDGenerator(newConditionalResult.UpkeepID, newConditionalResult.Trigger)
-		ao.Performable = append(ao.Performable, validConditionalResult)
+		ao.Performable = append(ao.Performable, newConditionalResult)
 	}
 	encoded, err := ao.Encode()
 	assert.NoError(t, err, "no error in encoding valid automation observation")
@@ -496,6 +498,55 @@ func TestInvalidLogProposal(t *testing.T) {
 	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "log trigger extension cannot be empty for log upkeep")
+}
+
+func TestLargeObservationSize(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		BlockHistory:    types.BlockHistory{},
+	}
+	for i := 0; i < ObservationBlockHistoryLimit; i++ {
+		ao.BlockHistory = append(ao.BlockHistory, types.BlockKey{
+			Number: types.BlockNumber(i + 1),
+			Hash:   [32]byte{1},
+		})
+	}
+	largePerformData := [5001]byte{}
+	for i := 0; i < ObservationPerformablesLimit; i++ {
+		newResult := validLogResult
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 10001)))
+		newResult.UpkeepID = uid
+		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
+		newResult.PerformData = largePerformData[:]
+		ao.Performable = append(ao.Performable, newResult)
+	}
+	for i := 0; i < ObservationConditionalsProposalsLimit; i++ {
+		newProposal := validConditionalProposal
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 1)))
+		newProposal.UpkeepID = uid
+		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
+		ao.UpkeepProposals = append(ao.UpkeepProposals, newProposal)
+	}
+	for i := 0; i < ObservationLogRecoveryProposalsLimit; i++ {
+		newProposal := validLogProposal
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 1001)))
+		newProposal.UpkeepID = uid
+		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
+		ao.UpkeepProposals = append(ao.UpkeepProposals, newProposal)
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	decoded, err := DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.NoError(t, err, "no error in decoding valid automation observation")
+
+	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
+	// TODO: fix import cycle. Should be plugin.MaxObservationSize
+	assert.Less(t, len(encoded), 1000000, "encoded observation should be less than maxObservationSize")
 }
 
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
