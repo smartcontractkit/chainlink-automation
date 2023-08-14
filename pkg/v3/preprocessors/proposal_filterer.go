@@ -1,4 +1,4 @@
-package flows
+package preprocessors
 
 import (
 	"context"
@@ -6,6 +6,13 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
+
+func NewProposalFilterer(metadata ocr2keepers.MetadataStore, upkeepType ocr2keepers.UpkeepType) ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] {
+	return &proposalFilterer{
+		upkeepType: upkeepType,
+		metadata:   metadata,
+	}
+}
 
 type proposalFilterer struct {
 	metadata   ocr2keepers.MetadataStore

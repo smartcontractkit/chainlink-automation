@@ -8,6 +8,7 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
@@ -15,7 +16,7 @@ import (
 )
 
 func newSampleProposalFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	pre []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ratio ocr2keepers.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	subscriber ocr2keepers.BlockSubscriber,
@@ -23,12 +24,12 @@ func newSampleProposalFlow(
 	runner ocr2keepersv3.Runner,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
-	preprocessors = append(preprocessors, &proposalFilterer{ms, ocr2keepers.LogTrigger})
+	pre = append(pre, preprocessors.NewProposalFilterer(ms, ocr2keepers.LogTrigger))
 	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
 
 	// create observer
 	observer := ocr2keepersv3.NewRunnableObserver(
-		preprocessors,
+		pre,
 		postprocessors,
 		runner,
 		ObservationProcessLimit,
