@@ -1106,7 +1106,8 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 	}
 }
 
-// TODO: add tests for repeated upkeepIDs - is this possible to recreate at this level when we catch duplicate workIDs?
+// Exploratory: Add tests for batching of performables according to config
+// and duplicate upkeepIDs
 func TestOcr3Plugin_Reports(t *testing.T) {
 	for _, tc := range []struct {
 		name                string
