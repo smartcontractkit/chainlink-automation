@@ -447,6 +447,57 @@ func TestInvalidLinkNativeTooBig(t *testing.T) {
 	assert.ErrorContains(t, err, "link native must be in uint256 range")
 }
 
+func TestInvalidWorkIDProposal(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidProposal := validLogProposal
+	invalidProposal.WorkID = "invalid"
+	ao.UpkeepProposals = append(ao.UpkeepProposals, invalidProposal)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "incorrect workID within proposal")
+}
+
+func TestInvalidConditionalProposal(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidProposal := validConditionalProposal
+	invalidProposal.Trigger = logTrigger
+	ao.UpkeepProposals = append(ao.UpkeepProposals, invalidProposal)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "log trigger extension cannot be present for condition upkeep")
+}
+
+func TestInvalidLogProposal(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidProposal := validLogProposal
+	invalidProposal.Trigger = conditionalTrigger
+	ao.UpkeepProposals = append(ao.UpkeepProposals, invalidProposal)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "log trigger extension cannot be empty for log upkeep")
+}
+
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
 	if id == conditionalUpkeepID {
 		return types.ConditionTrigger
