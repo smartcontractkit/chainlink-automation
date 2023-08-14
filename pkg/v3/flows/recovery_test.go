@@ -107,3 +107,95 @@ func TestRecoveryFinalization(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestRecoveryProposal(t *testing.T) {
+	upkeepIDs := []ocr2keepers.UpkeepIdentifier{
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		ocr2keepers.UpkeepIdentifier([32]byte{3}),
+	}
+	workIDs := []string{
+		"0x1",
+		"0x2",
+		"0x3",
+	}
+
+	logger := log.New(io.Discard, "", log.LstdFlags)
+
+	runner := new(mocks.MockRunnable)
+	mStore := new(mocks.MockMetadataStore)
+	recoverer := new(mocks.MockRecoverableProvider)
+	coord := new(mocks.MockCoordinator)
+
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+	}, nil).Times(1)
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(1)
+
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+			Eligible: true,
+		},
+	}, nil).Times(1)
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+			Eligible: true,
+		},
+	}, nil).Times(1)
+
+	mStore.On("ViewProposals", mock.Anything).Return([]ocr2keepers.CoordinatedBlockProposal{
+		{
+			UpkeepID: upkeepIDs[2],
+			WorkID:   workIDs[2],
+		},
+	}, nil).Times(2)
+	mStore.On("AddProposals", mock.Anything).Return(nil).Times(2)
+
+	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+	}, nil).Times(1)
+	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(1)
+	// set the ticker time lower to reduce the test time
+	interval := 50 * time.Millisecond
+	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	svc := newRecoveryProposalFlow(pre, runner, mStore, recoverer, interval, logger)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func(svc service.Recoverable, ctx context.Context) {
+		defer wg.Done()
+		assert.NoError(t, svc.Start(ctx))
+	}(svc, context.Background())
+
+	time.Sleep(interval*time.Duration(2) + interval/2)
+
+	assert.NoError(t, svc.Close(), "no error expected on shut down")
+
+	mStore.AssertExpectations(t)
+	recoverer.AssertExpectations(t)
+	runner.AssertExpectations(t)
+	coord.AssertExpectations(t)
+
+	wg.Wait()
+}
