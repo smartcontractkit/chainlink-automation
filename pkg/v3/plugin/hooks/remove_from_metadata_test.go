@@ -5,11 +5,11 @@ import (
 	"log"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
@@ -69,10 +69,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 				SurfacedProposals: tt.surfacedProposals,
 			}
 			// Run the hook
-			err := removeFromMetadataHook.RunHook(automationOutcome)
-
-			// Assert that the hook function executed without error
-			assert.NoError(t, err)
+			removeFromMetadataHook.RunHook(automationOutcome)
 
 			mockMetadataStore.AssertExpectations(t)
 		})

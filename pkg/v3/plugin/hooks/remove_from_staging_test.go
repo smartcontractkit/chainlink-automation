@@ -67,7 +67,7 @@ func TestRemoveFromStagingHook(t *testing.T) {
 
 			r := NewRemoveFromStagingHook(mr, log.New(io.Discard, "", 0))
 
-			assert.NoError(t, r.RunHook(ob))
+			r.RunHook(ob)
 			assert.Equal(t, len(ob.AgreedPerformables), len(mr.removedIDs))
 		})
 	}

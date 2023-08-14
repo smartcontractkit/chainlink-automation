@@ -67,10 +67,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 			addToProposalQHook := NewAddToProposalQHook(proposalQ, logger)
 
 			// Run the hook
-			err := addToProposalQHook.RunHook(tt.automationOutcome)
-
-			// Assert that the hook function executed without error
-			assert.NoError(t, err)
+			addToProposalQHook.RunHook(tt.automationOutcome)
 
 			// Assert that the correct number of proposals were added to the queue
 			assert.Equal(t, tt.expectedQueueSize, proposalQ.Size())

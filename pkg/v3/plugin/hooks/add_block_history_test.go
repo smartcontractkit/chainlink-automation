@@ -5,10 +5,11 @@ import (
 	"log"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAddBlockHistoryHook_RunHook(t *testing.T) {
@@ -81,10 +82,7 @@ func TestAddBlockHistoryHook_RunHook(t *testing.T) {
 			}
 
 			// Run the hook
-			err := addBlockHistoryHook.RunHook(obs, tt.limit)
-
-			// Assert that the hook function executed without error
-			assert.NoError(t, err)
+			addBlockHistoryHook.RunHook(obs, tt.limit)
 
 			// Assert that the observation's BlockHistory matches the expected output
 			assert.Equal(t, tt.expectedOutput, obs.BlockHistory)
