@@ -3,6 +3,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"testing"
@@ -633,7 +634,6 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 // TODO: Fix the test according to latest validation
 // TODO: add tests for repeated upkeepIDs
-/*
 func TestOcr3Plugin_Reports(t *testing.T) {
 	for _, tc := range []struct {
 		name                string
@@ -641,6 +641,8 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		outcome             ocr3types.Outcome
 		wantReportsWithInfo []ocr3types.ReportWithInfo[AutomationReportInfo]
 		encoder             ocr2keepers.Encoder
+		utg                 ocr2keepers.UpkeepTypeGetter
+		wg                  ocr2keepers.WorkIDGenerator
 		expectsErr          bool
 		wantErr             error
 	}{
@@ -658,7 +660,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo](nil),
 		},
 		{
-			name:           "a well formed outcome gets encoded as a report",
+			name:           "a well formed but invalid outcome returns an error",
 			sequenceNumber: 5,
 			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 			encoder: &mockEncoder{
@@ -666,43 +668,91 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 					return json.Marshal(result)
 				},
 			},
+			expectsErr: true,
+			wantErr:    errors.New("check result cannot be ineligible"),
+		},
+		{
+			name:           "when an invalid work ID is generated, an error is returned",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					return json.Marshal(result)
+				},
+			},
+			utg: func(identifier ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "invalid work ID"
+			},
+			expectsErr: true,
+			wantErr:    errors.New("incorrect workID within result"),
+		},
+		{
+			name:           "when gas allocated is 0, an error is returned",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					return json.Marshal(result)
+				},
+			},
+			utg: func(identifier ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
+			expectsErr: true,
+			wantErr:    errors.New("gas allocated cannot be zero"),
+		},
+		{
+			name:           "a well formed report is encoded without error",
+			sequenceNumber: 5,
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"FastGasWei":1,"LinkNative":2,"GasAllocated":1,"Eligible":true,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			encoder: &mockEncoder{
+				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
+					return json.Marshal(result)
+				},
+			},
+			utg: func(identifier ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
 			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo]{
 				{
 					Report: []byte(`[]`),
 				},
 				{
-					Report: []byte(`[{"PipelineExecutionState":0,"Retryable":false,"Eligible":false,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":null,"LinkNative":null}]`),
+					Report: []byte(`[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":1,"LinkNative":2}]`),
 				},
 			},
 		},
 		{
 			name:           "an error is returned when the encoder errors",
 			sequenceNumber: 5,
-			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"FastGasWei":1,"LinkNative":2,"GasAllocated":1,"Eligible":true,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 			encoder: &mockEncoder{
 				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
 					return nil, errors.New("encode boom")
 				},
 			},
-			expectsErr: true,
-			wantErr:    errors.New("error encountered while encoding: encode boom"),
-		},
-		{
-			name:           "an error is returned when the encoder errors",
-			sequenceNumber: 5,
-			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
-			encoder: &mockEncoder{
-				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
-					return nil, errors.New("encode boom")
-				},
+			utg: func(identifier ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
 			},
 			expectsErr: true,
 			wantErr:    errors.New("error encountered while encoding: encode boom"),
 		},
 		{
-			name:           "an error is returned when the encoder errors when there are stillv values to add",
+			name:           "an error is returned when the encoder errors when there are still values to add",
 			sequenceNumber: 5,
-			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			outcome:        ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"FastGasWei":1,"LinkNative":2,"GasAllocated":1,"Eligible":true,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 			encoder: &mockEncoder{
 				EncodeFn: func(result ...ocr2keepers.CheckResult) ([]byte, error) {
 					if len(result) == 0 { // the first call to encode with this test passes 0 check results, so we want to error on the second call, which gets non-zero results
@@ -710,6 +760,12 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 					}
 					return nil, errors.New("encode boom")
 				},
+			},
+			utg: func(identifier ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+				return ocr2keepers.ConditionTrigger
+			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
 			},
 			expectsErr: true,
 			wantErr:    errors.New("error encountered while encoding: encode boom"),
@@ -720,8 +776,10 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 			logger := log.New(&logBuf, "ocr3-test-reports", 0)
 
 			plugin := &ocr3Plugin{
-				Logger:        logger,
-				ReportEncoder: tc.encoder,
+				Logger:           logger,
+				ReportEncoder:    tc.encoder,
+				UpkeepTypeGetter: tc.utg,
+				WorkIDGenerator:  tc.wg,
 			}
 			reportsWithInfo, err := plugin.Reports(tc.sequenceNumber, tc.outcome)
 			if tc.expectsErr {
@@ -734,7 +792,6 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		})
 	}
 }
-*/
 
 func TestOcr3Plugin_ShouldAcceptAttestedReport(t *testing.T) {
 	for _, tc := range []struct {
