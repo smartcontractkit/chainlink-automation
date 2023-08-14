@@ -34,8 +34,8 @@ func (h *AddLogProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, 
 		return err
 	}
 
-	// TODO: Sort by work ID first
-	// Shuffle using random seed
+	// Do random shuffling. Sorting isn't done here as we don't require multiple nodes
+	// to agree on the same proposal, hence each node just sends a random subset of its proposals
 	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(proposals), func(i, j int) {
 		proposals[i], proposals[j] = proposals[j], proposals[i]
 	})

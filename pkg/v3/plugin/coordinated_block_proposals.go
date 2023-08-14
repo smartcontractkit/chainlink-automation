@@ -109,8 +109,7 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		added[proposal.WorkID] = true
 	}
 
-	// TODO: Sort by work ID first
-	// Apply limit here on new proposals with random seed shuffling
+	// TODO: Do a pseduorandom sort by shuffled work ID
 	rand.New(util.NewKeyedCryptoRandSource(c.keyRandSource)).Shuffle(len(latestProposals), func(i, j int) {
 		latestProposals[i], latestProposals[j] = latestProposals[j], latestProposals[i]
 	})

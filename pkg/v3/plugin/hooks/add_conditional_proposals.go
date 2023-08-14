@@ -34,8 +34,8 @@ func (h *AddConditionalProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObser
 		return err
 	}
 
-	// TODO: Sort by work ID first
-	// Shuffle using random seed
+	// Do random shuffling. Sorting isn't done here as we don't require multiple nodes
+	// to agree on the same proposal, hence each node just sends a random subset of its proposals
 	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(conditionals), func(i, j int) {
 		conditionals[i], conditionals[j] = conditionals[j], conditionals[i]
 	})
