@@ -122,7 +122,7 @@ func newPlugin(
 		UpkeepTypeGetter:            upkeepTypeGetter,
 		WorkIDGenerator:             workIDGenerator,
 		RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
-		RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, upkeepTypeGetter, logger),
+		RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
 		AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQ, logger),
 		AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
 		AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coord, logger),

@@ -17,11 +17,10 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 	var uid2 types.UpkeepIdentifier = [32]byte{2}
 	var uid3 types.UpkeepIdentifier = [32]byte{3}
 	tests := []struct {
-		name                        string
-		surfacedProposals           [][]types.CoordinatedBlockProposal
-		upkeepTypeGetter            map[types.UpkeepIdentifier]types.UpkeepType
-		expectedConditionalRemovals int
-		expectedLogRemovals         int
+		name              string
+		surfacedProposals [][]types.CoordinatedBlockProposal
+		upkeepTypeGetter  map[types.UpkeepIdentifier]types.UpkeepType
+		expectedRemovals  int
 	}{
 		{
 			name: "Remove proposals from metadata store",
@@ -39,8 +38,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 				uid2: types.LogTrigger,
 				uid3: types.ConditionTrigger,
 			},
-			expectedConditionalRemovals: 2,
-			expectedLogRemovals:         1,
+			expectedRemovals: 3,
 		},
 		{
 			name: "No proposals to remove",
@@ -55,15 +53,8 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Prepare mock MetadataStore
 			mockMetadataStore := &mocks.MockMetadataStore{}
-			// Prepare mock UpkeepTypeGetter
-			mockUpkeepTypeGetter := func(upkeepID types.UpkeepIdentifier) types.UpkeepType {
-				return tt.upkeepTypeGetter[upkeepID]
-			}
-			if tt.expectedConditionalRemovals > 0 {
-				mockMetadataStore.On("RemoveProposals", mock.Anything).Times(tt.expectedConditionalRemovals)
-			}
-			if tt.expectedLogRemovals > 0 {
-				mockMetadataStore.On("RemoveProposals", mock.Anything).Times(tt.expectedLogRemovals)
+			if tt.expectedRemovals > 0 {
+				mockMetadataStore.On("RemoveProposals", mock.Anything).Times(tt.expectedRemovals)
 			}
 
 			// Prepare logger
@@ -71,7 +62,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 			logger := log.New(&logBuf, "", 0)
 
 			// Create the hook with mock MetadataStore, mock UpkeepTypeGetter, and logger
-			removeFromMetadataHook := NewRemoveFromMetadataHook(mockMetadataStore, mockUpkeepTypeGetter, logger)
+			removeFromMetadataHook := NewRemoveFromMetadataHook(mockMetadataStore, logger)
 
 			// Prepare automation outcome with agreed proposals
 			automationOutcome := ocr2keepersv3.AutomationOutcome{
