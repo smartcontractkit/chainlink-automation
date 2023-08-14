@@ -12,9 +12,7 @@ import (
 
 var (
 	DefaultExpiration = 24 * time.Hour
-	RetryInterval     = 5 * time.Minute
-
-	// ErrSendDurationExceeded = fmt.Errorf("scheduled value has exceed allowed send window")
+	RetryInterval     = 30 * time.Second
 )
 
 type retryQueueRecord struct {
@@ -73,10 +71,12 @@ func (q *retryQueue) Enqueue(payloads ...types.UpkeepPayload) error {
 		}
 		if payload.Trigger.BlockNumber > record.payload.Trigger.BlockNumber {
 			// new item is newer -> replace payload
-			q.lggr.Printf("updating payload for workID %s on block %d", payload.WorkID, payload.Trigger.BlockNumber)
+			q.lggr.Printf("[retry-queue] updating payload for workID %s on block %d", payload.WorkID, payload.Trigger.BlockNumber)
 			record.payload = payload
 		}
-		// TODO: TBD ignore old/pending items?
+		// Enqueue the item with updatedAt = now. It will be dequeue-able after RetryInterval
+		// If item was already pending, it will be eligible to get retried again
+		// (can happen when the same payload gets retryable error again)
 		record.updatedAt = now
 		record.pending = false
 		q.records[payload.WorkID] = record
@@ -98,7 +98,7 @@ func (q *retryQueue) Dequeue(n int) ([]types.UpkeepPayload, error) {
 	var results []types.UpkeepPayload
 	for k, record := range q.records {
 		if record.expired(now, q.expiration) {
-			q.lggr.Printf("removing expired record %s", k)
+			q.lggr.Printf("[retry-queue] removing expired record %s", k)
 			delete(q.records, k)
 			continue
 		}
