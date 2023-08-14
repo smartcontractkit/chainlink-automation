@@ -12,16 +12,15 @@ import (
 )
 
 func TestCombinedPostprocessor(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	one := new(MockPostProcessor)
-	two := new(MockPostProcessor)
-	tre := new(MockPostProcessor)
-
-	cmb := NewCombinedPostprocessor(one, two, tre)
-
 	t.Run("no errors", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		one := new(MockPostProcessor)
+		two := new(MockPostProcessor)
+		tre := new(MockPostProcessor)
+
+		cmb := NewCombinedPostprocessor(one, two, tre)
 		rst := []ocr2keepers.CheckResult{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1", Retryable: true}}
 		p := []ocr2keepers.UpkeepPayload{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1"}}
 
@@ -33,7 +32,14 @@ func TestCombinedPostprocessor(t *testing.T) {
 	})
 
 	t.Run("with errors", func(t *testing.T) {
-		t.Skip() // TODO: fix this test
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		one := new(MockPostProcessor)
+		two := new(MockPostProcessor)
+		tre := new(MockPostProcessor)
+
+		cmb := NewCombinedPostprocessor(one, two, tre)
 		rst := []ocr2keepers.CheckResult{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1", Retryable: true}}
 		p := []ocr2keepers.UpkeepPayload{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1"}}
 
