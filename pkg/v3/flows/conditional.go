@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/preprocessors"
@@ -25,30 +26,71 @@ func newSampleProposalFlow(
 	pre []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	ratio ocr2keepers.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
-	subscriber ocr2keepers.BlockSubscriber,
 	ms ocr2keepers.MetadataStore,
 	runner ocr2keepersv3.Runner,
+	interval time.Duration,
 	logger *log.Logger,
-) (service.Recoverable, error) {
+) service.Recoverable {
 	pre = append(pre, preprocessors.NewProposalFilterer(ms, ocr2keepers.LogTrigger))
 	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
 
-	// create observer
 	observer := ocr2keepersv3.NewRunnableObserver(
 		pre,
 		postprocessors,
 		runner,
 		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	return tickers.NewSampleTicker(
-		ratio,
-		getter,
-		observer,
-		subscriber,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
+	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return NewSampler(ratio, getter, logger), nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+}
+
+func NewSampler(
+	ratio ocr2keepers.Ratio,
+	getter ocr2keepers.ConditionalUpkeepProvider,
+	logger *log.Logger,
+) *sampler {
+	return &sampler{
+		logger:   logger,
+		getter:   getter,
+		ratio:    ratio,
+		shuffler: util.Shuffler[ocr2keepers.UpkeepPayload]{Source: util.NewCryptoRandSource()},
+	}
+}
+
+type shuffler[T any] interface {
+	Shuffle([]T) []T
+}
+
+type sampler struct {
+	logger *log.Logger
+
+	ratio    ocr2keepers.Ratio
+	getter   ocr2keepers.ConditionalUpkeepProvider
+	shuffler shuffler[ocr2keepers.UpkeepPayload]
+}
+
+func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	upkeeps, err := s.getter.GetActiveUpkeeps(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(upkeeps) == 0 {
+		return nil, nil
+	}
+
+	upkeeps = s.shuffler.Shuffle(upkeeps)
+	size := s.ratio.OfInt(len(upkeeps))
+
+	if len(upkeeps) == 0 || size <= 0 {
+		return nil, nil
+	}
+	if len(upkeeps) > size {
+		size = len(upkeeps)
+	}
+	return upkeeps[:size], nil
 }
 
 func newFinalConditionalFlow(

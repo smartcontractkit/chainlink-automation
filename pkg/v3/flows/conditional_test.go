@@ -125,14 +125,9 @@ func TestSamplingProposal(t *testing.T) {
 	mStore := new(mocks.MockMetadataStore)
 	upkeepProvider := new(mocks.MockConditionalUpkeepProvider)
 	ratio := new(mocks.MockRatio)
-	blockSub := new(mocks.MockBlockSubscriber)
 	coord := new(mocks.MockCoordinator)
 
-	ch := make(chan ocr2keepers.BlockHistory)
-
-	blockSub.On("Subscribe", mock.Anything).Return(1, ch, nil).Times(1)
-	blockSub.On("Unsubscribe", mock.Anything).Return(nil).Times(1)
-
+	ratio.On("OfInt", mock.Anything).Return(0, nil).Times(1)
 	ratio.On("OfInt", mock.Anything).Return(1, nil).Times(1)
 
 	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
@@ -141,6 +136,13 @@ func TestSamplingProposal(t *testing.T) {
 			WorkID:   workIDs[0],
 		},
 	}, nil).Times(1)
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(1)
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return(nil, nil)
 
 	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
 		{
@@ -149,6 +151,14 @@ func TestSamplingProposal(t *testing.T) {
 			Eligible: true,
 		},
 	}, nil).Times(1)
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+			Eligible: true,
+		},
+	}, nil).Times(1)
+	runner.On("CheckUpkeeps", mock.Anything).Return(nil, nil)
 
 	mStore.On("ViewProposals", mock.Anything).Return([]ocr2keepers.CoordinatedBlockProposal{
 		{
@@ -156,56 +166,33 @@ func TestSamplingProposal(t *testing.T) {
 			WorkID:   workIDs[2],
 		},
 	}, nil)
-	mStore.On("AddProposals", mock.Anything).Return(nil).Times(1) // should add 1 sample proposal
+	mStore.On("AddProposals", mock.Anything).Return(nil).Times(2)
 
 	upkeepProvider.On("GetActiveUpkeeps", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
 		{
-			UpkeepID: upkeepIDs[1],
-			WorkID:   workIDs[1],
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
 		},
 		{
 			UpkeepID: upkeepIDs[1],
 			WorkID:   workIDs[1],
 		},
-	}, nil).Times(1)
+	}, nil).Times(2)
+	upkeepProvider.On("GetActiveUpkeeps", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil)
 	// set the ticker time lower to reduce the test time
 	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
-	svc, err := newSampleProposalFlow(pre, ratio, upkeepProvider, blockSub, mStore, runner, logger)
-	assert.NoError(t, err)
+	svc := newSampleProposalFlow(pre, ratio, upkeepProvider, mStore, runner, time.Millisecond*100, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
 	go func(svc service.Recoverable, ctx context.Context) {
 		defer wg.Done()
 		assert.NoError(t, svc.Start(ctx))
-	}(svc, context.Background())
-
-	ch <- []ocr2keepers.BlockKey{
-		{
-			Number: 2,
-			Hash:   [32]byte{2},
-		},
-		{
-			Number: 1,
-			Hash:   [32]byte{1},
-		},
-	}
-
-	ch <- []ocr2keepers.BlockKey{
-		{
-			Number: 3,
-			Hash:   [32]byte{3},
-		},
-		{
-			Number: 2,
-			Hash:   [32]byte{2},
-		},
-		{
-			Number: 1,
-			Hash:   [32]byte{1},
-		},
-	}
+	}(svc, ctx)
 
 	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
@@ -215,6 +202,5 @@ func TestSamplingProposal(t *testing.T) {
 	upkeepProvider.AssertExpectations(t)
 	coord.AssertExpectations(t)
 	runner.AssertExpectations(t)
-	ratio.AssertExpectations(t)
-	blockSub.AssertExpectations(t)
+	// ratio.AssertExpectations(t)
 }

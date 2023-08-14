@@ -103,11 +103,9 @@ func newRecoveryProposalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
 		return logRecoveryTick{logger: logger, logRecoverer: recoverableProvider}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
-
-	return timeTick
 }
 
 type logRecoveryTick struct {

@@ -13,7 +13,7 @@ import (
 )
 
 func TestConditionalTriggerFlows(t *testing.T) {
-	flows, err := ConditionalTriggerFlows(
+	flows := ConditionalTriggerFlows(
 		nil,
 		nil,
 		nil,
@@ -35,7 +35,6 @@ func TestConditionalTriggerFlows(t *testing.T) {
 		nil,
 		log.New(io.Discard, "", 0),
 	)
-	assert.Nil(t, err)
 	assert.Equal(t, 2, len(flows))
 }
 

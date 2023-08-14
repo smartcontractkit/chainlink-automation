@@ -67,7 +67,7 @@ func newPlugin(
 	proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 
 	// initialize the log trigger eligibility flow
-	svcs := flows.LogTriggerFlows(
+	logTriggerFlows := flows.LogTriggerFlows(
 		coord,
 		resultStore,
 		metadataStore,
@@ -84,9 +84,9 @@ func newPlugin(
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(svcs, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner, blockTicker}...)
+	allSvcs := append(logTriggerFlows, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner, blockTicker}...)
 
-	svcs, err = flows.ConditionalTriggerFlows(
+	contionalFlows := flows.ConditionalTriggerFlows(
 		coord,
 		ratio,
 		getter,
@@ -104,7 +104,7 @@ func newPlugin(
 		return nil, err
 	}
 
-	allSvcs = append(allSvcs, svcs...)
+	allSvcs = append(allSvcs, contionalFlows...)
 
 	recoverSvcs := []service.Recoverable{}
 

@@ -22,7 +22,7 @@ func ConditionalTriggerFlows(
 	retryQ ocr2keepers.RetryQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
-) ([]service.Recoverable, error) {
+) []service.Recoverable {
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
@@ -30,12 +30,9 @@ func ConditionalTriggerFlows(
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
-	conditionalProposal, err := newSampleProposalFlow(preprocessors, ratio, getter, subscriber, metadataStore, runner, logger)
-	if err != nil {
-		return nil, err
-	}
+	conditionalProposal := newSampleProposalFlow(preprocessors, ratio, getter, metadataStore, runner, time.Second, logger)
 
-	return []service.Recoverable{conditionalFinal, conditionalProposal}, err
+	return []service.Recoverable{conditionalFinal, conditionalProposal}
 }
 
 func LogTriggerFlows(
