@@ -26,7 +26,7 @@ func ConditionalTriggerFlows(
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
-	conditionalFinal := newFinalConditionalFlow(preprocessors, resultStore, runner, time.Second, proposalQ, builder, retryQ, stateUpdater, logger)
+	conditionalFinal := newFinalConditionalFlow(preprocessors, resultStore, runner, FinalConditionalInterval, proposalQ, builder, retryQ, stateUpdater, logger)
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible

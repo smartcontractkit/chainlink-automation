@@ -17,6 +17,8 @@ import (
 )
 
 const (
+	// This is the ticker interval for final conditional flow
+	FinalConditionalInterval = 1 * time.Second
 	// These are the maximum number of conditional upkeeps dequeued on every tick from proposal queue in FinalConditionalFlow
 	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
 	FinalConditionalBatchSize = 50
