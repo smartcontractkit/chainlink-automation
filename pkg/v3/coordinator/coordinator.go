@@ -42,7 +42,7 @@ func NewCoordinator(transmitEventProvider ocr2keepers.TransmitEventProvider, upk
 		logger:               logger,
 		eventsProvider:       transmitEventProvider,
 		upkeepTypeGetter:     upkeepTypeGetter,
-		cache:                util.NewCache[record](time.Hour),
+		cache:                util.NewCache[record](time.Duration(conf.PerformLockoutWindow) * time.Millisecond),
 		cacheCleaner:         util.NewIntervalCacheCleaner[record](defaultCacheClean),
 		minimumConfirmations: conf.MinConfirmations,
 		chStop:               make(chan struct{}, 1),

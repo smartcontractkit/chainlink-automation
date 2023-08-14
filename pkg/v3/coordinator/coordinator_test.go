@@ -41,7 +41,7 @@ func TestNewCoordinator(t *testing.T) {
 
 		logger := log.New(io.Discard, "coordinator_test", 0)
 
-		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{MinConfirmations: 2}, logger)
+		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, logger)
 
 		go func() {
 			err := c.Start(context.Background())
@@ -81,7 +81,7 @@ func TestNewCoordinator(t *testing.T) {
 		var memLog bytes.Buffer
 		logger.SetOutput(&memLog)
 
-		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{MinConfirmations: 2}, logger)
+		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, logger)
 
 		go func() {
 			err2 := c.Start(context.Background())
@@ -123,7 +123,7 @@ func TestNewCoordinator(t *testing.T) {
 		var memLog bytes.Buffer
 		logger.SetOutput(&memLog)
 
-		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{MinConfirmations: 2}, logger)
+		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, logger)
 
 		go func() {
 			err := c.Start(context.Background())
@@ -140,14 +140,14 @@ func TestNewCoordinator(t *testing.T) {
 	})
 
 	t.Run("starting an already started coordinator returns an error", func(t *testing.T) {
-		c := NewCoordinator(nil, nil, config.OffchainConfig{MinConfirmations: 2}, nil)
+		c := NewCoordinator(nil, nil, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, nil)
 		c.running.Store(true)
 		err := c.Start(context.Background())
 		assert.Error(t, err)
 	})
 
 	t.Run("closing an already closed coordinator returns an error", func(t *testing.T) {
-		c := NewCoordinator(nil, nil, config.OffchainConfig{MinConfirmations: 2}, nil)
+		c := NewCoordinator(nil, nil, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, nil)
 		c.running.Store(false)
 		err := c.Close()
 		assert.Error(t, err)
@@ -280,7 +280,7 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 			var memLog bytes.Buffer
 			logger.SetOutput(&memLog)
 
-			c := NewCoordinator(tc.eventProvider, tc.upkeepTypeGetter, config.OffchainConfig{MinConfirmations: 2}, logger)
+			c := NewCoordinator(tc.eventProvider, tc.upkeepTypeGetter, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, logger)
 			// initialise the cache if needed
 			for k, v := range tc.cacheInit {
 				c.cache.Set(k, v, util.DefaultCacheExpiration)
