@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
@@ -538,13 +539,12 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 	}
 }*/
 
-// TODO: Fix the test according to latest validation
-/*
 func TestOcr3Plugin_Outcome(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		observations []types.AttributedObservation
 		prevOutcome  ocr3types.Outcome
+		wg           ocr2keepers.WorkIDGenerator
 		wantOutcome  ocr3types.Outcome
 		expectsErr   bool
 		wantErr      error
@@ -558,10 +558,13 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 			name: "processing a well formed observation with a previous outcome generates an new outcome",
 			observations: []types.AttributedObservation{
 				{
-					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 				},
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
 			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
@@ -571,7 +574,10 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Observation: []byte(`invalid`),
 				},
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
 			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
@@ -581,7 +587,10 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":0,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 				},
 			},
-			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
 			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":null,"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
 		},
 		{
@@ -591,22 +600,27 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
 				},
 			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
 			prevOutcome: ocr3types.Outcome([]byte(`invalid`)),
 			expectsErr:  true,
 			wantErr:     errors.New("invalid character 'i' looking for beginning of value"),
 		},
-		// TODO when ValidateAutomationOutcome is implemented
-		//{
-		//	name: "processing an valid observation with an invalid previous outcome returns an error",
-		//	observations: []types.AttributedObservation{
-		//		{
-		//			Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
-		//		},
-		//	},
-		//	outcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1","GasAllocated":0}]]}`)),
-		//	expectsErr:  true,
-		//	wantErr:     errors.New(""),
-		//},
+		{
+			name: "processing an valid observation with an invalid previous outcome returns an error",
+			observations: []types.AttributedObservation{
+				{
+					Observation: []byte(`{"Performable":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"UpkeepProposals":[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID2"}],"BlockHistory":[{"Number":1,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},{"Number":2,"Hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}]}`),
+				},
+			},
+			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+				return "workID1"
+			},
+			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1","GasAllocated":0}]]}`)),
+			expectsErr:  true,
+			wantErr:     errors.New("check result cannot be ineligible"),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
@@ -614,7 +628,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 
 			plugin := &ocr3Plugin{
 				UpkeepTypeGetter: mockUpkeepTypeGetter,
-				WorkIDGenerator:  mockWorkIDGenerator,
+				WorkIDGenerator:  tc.wg,
 				Logger:           logger,
 			}
 			outcome, err := plugin.Outcome(ocr3types.OutcomeContext{
@@ -630,7 +644,6 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 		})
 	}
 }
-*/
 
 // TODO: add tests for repeated upkeepIDs - is this possible to recreate at this level when we catch duplicate workIDs?
 func TestOcr3Plugin_Reports(t *testing.T) {

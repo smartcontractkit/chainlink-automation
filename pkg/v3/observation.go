@@ -124,7 +124,7 @@ func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 	if err := validateTriggerExtensionType(r.Trigger, utg(r.UpkeepID)); err != nil {
 		return fmt.Errorf("invalid trigger: %w", err)
 	}
-	if wg(r.UpkeepID, r.Trigger) != r.WorkID {
+	if generatedWorkID := wg(r.UpkeepID, r.Trigger); generatedWorkID != r.WorkID {
 		return fmt.Errorf("incorrect workID within result")
 	}
 	if r.GasAllocated == 0 {
@@ -132,6 +132,12 @@ func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 	}
 	// PerformData is a []byte, no validation needed. Length constraint is handled
 	// by maxObservationSize
+	if r.FastGasWei == nil {
+		r.FastGasWei = big.NewInt(0)
+	}
+	if r.LinkNative == nil {
+		r.LinkNative = big.NewInt(0)
+	}
 	uint256Max, _ := big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
 	if r.FastGasWei.Cmp(big.NewInt(0)) < 0 || r.FastGasWei.Cmp(uint256Max) > 0 {
 		return fmt.Errorf("fast gas wei must be in uint256 range")
@@ -164,7 +170,7 @@ func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keep
 	if err := validateTriggerExtensionType(p.Trigger, ut); err != nil {
 		return err
 	}
-	if wg(p.UpkeepID, p.Trigger) != p.WorkID {
+	if generatedWorkID := wg(p.UpkeepID, p.Trigger); generatedWorkID != p.WorkID {
 		return fmt.Errorf("incorrect workID within proposal")
 	}
 	return nil
