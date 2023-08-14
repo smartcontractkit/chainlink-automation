@@ -48,13 +48,8 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	// first round outcome will be nil or empty so no processing should be done
 	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
 		// Decode the outcome to AutomationOutcome
-		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
+		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
-			return nil, err
-		}
-
-		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(automationOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
 			return nil, err
 		}
 
@@ -121,12 +116,8 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	prevOutcome := ocr2keepersv3.AutomationOutcome{}
 	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
 		// Decode the outcome to AutomationOutcome
-		ao, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
+		ao, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
-			return nil, err
-		}
-		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(ao, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
 			return nil, err
 		}
 		prevOutcome = ao
@@ -152,16 +143,9 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		outcome ocr2keepersv3.AutomationOutcome
 		err     error
 	)
-
-	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw); err != nil {
+	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
 		return nil, err
 	}
-
-	// validate outcome (even though it is a signed outcome)
-	if err := ocr2keepersv3.ValidateAutomationOutcome(outcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
-		return nil, err
-	}
-
 	plugin.Logger.Printf("creating report from outcome with %d agreed performables; max batch size: %d; report gas limit %d", len(outcome.AgreedPerformables), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
 
 	toPerform := []ocr2keepers.CheckResult{}

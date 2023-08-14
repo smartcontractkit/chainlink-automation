@@ -36,7 +36,7 @@ type AutomationOutcome struct {
 }
 
 // ValidateAutomationOutcome validates individual values in an AutomationOutcome
-func ValidateAutomationOutcome(o AutomationOutcome, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateAutomationOutcome(o AutomationOutcome, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
 	// Validate AgreedPerformables
 	if (len(o.AgreedPerformables)) > OutcomeAgreedPerformablesLimit {
 		return fmt.Errorf("outcome performable length cannot be greater than %d", OutcomeAgreedPerformablesLimit)
@@ -83,8 +83,15 @@ func (outcome AutomationOutcome) Encode() ([]byte, error) {
 
 // DecodeAutomationOutcome decodes an AutomationOutcome from an encoded array
 // of bytes. Possible errors come from the encoding/json package
-func DecodeAutomationOutcome(data []byte) (AutomationOutcome, error) {
+func DecodeAutomationOutcome(data []byte, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) (AutomationOutcome, error) {
 	ao := AutomationOutcome{}
 	err := json.Unmarshal(data, &ao)
+	if err != nil {
+		return AutomationOutcome{}, err
+	}
+	err = validateAutomationOutcome(ao, utg, wg)
+	if err != nil {
+		return AutomationOutcome{}, err
+	}
 	return ao, err
 }
