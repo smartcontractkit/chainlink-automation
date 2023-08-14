@@ -145,8 +145,9 @@ func (m *metadataStore) addLogRecoveryProposal(proposals ...types.CoordinatedBlo
 }
 
 func (m *metadataStore) viewLogRecoveryProposal() []types.CoordinatedBlockProposal {
-	m.logRecoveryMutex.RLock()
-	defer m.logRecoveryMutex.RUnlock()
+	// We also remove expired items in this function, hence take Lock() instead of RLock()
+	m.logRecoveryMutex.Lock()
+	defer m.logRecoveryMutex.Unlock()
 
 	res := make([]types.CoordinatedBlockProposal, 0)
 
@@ -184,8 +185,9 @@ func (m *metadataStore) addConditionalProposal(proposals ...types.CoordinatedBlo
 }
 
 func (m *metadataStore) viewConditionalProposal() []types.CoordinatedBlockProposal {
-	m.conditionalMutex.RLock()
-	defer m.conditionalMutex.RUnlock()
+	// We also remove expired items in this function, hence take Lock() instead of RLock()
+	m.conditionalMutex.Lock()
+	defer m.conditionalMutex.Unlock()
 
 	res := make([]types.CoordinatedBlockProposal, 0)
 
