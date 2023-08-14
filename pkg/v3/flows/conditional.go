@@ -86,10 +86,10 @@ func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 	upkeeps = s.shuffler.Shuffle(upkeeps)
 	size := s.ratio.OfInt(len(upkeeps))
 
-	if len(upkeeps) == 0 || size <= 0 {
+	if size <= 0 {
 		return nil, nil
 	}
-	if len(upkeeps) > size {
+	if len(upkeeps) < size {
 		size = len(upkeeps)
 	}
 	return upkeeps[:size], nil
