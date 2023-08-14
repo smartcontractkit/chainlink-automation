@@ -52,7 +52,7 @@ func TestRetryFlow(t *testing.T) {
 	}, nil).Times(times)
 	// within the 3 ticks, it should retry twice and the third time it should be eligible and add to result store
 	rStore.On("Add", mock.Anything).Times(times)
-
+	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	// set the ticker time lower to reduce the test time
 	retryInterval := 50 * time.Millisecond
 

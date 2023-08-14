@@ -76,6 +76,7 @@ func TestConditionalFinalization(t *testing.T) {
 		},
 	}, nil).Times(times)
 
+	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	// set the ticker time lower to reduce the test time
 	interval := 50 * time.Millisecond
 	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
