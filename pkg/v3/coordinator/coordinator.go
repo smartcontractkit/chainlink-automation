@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync/atomic"
 	"time"
 
+	internalutil "github.com/smartcontractkit/ocr2keepers/internal/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/util"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -18,14 +18,13 @@ const (
 )
 
 type coordinator struct {
+	closer               internalutil.Closer
 	logger               *log.Logger
 	eventsProvider       ocr2keepers.TransmitEventProvider
 	upkeepTypeGetter     ocr2keepers.UpkeepTypeGetter
 	cache                *util.Cache[record]
 	cacheCleaner         *util.IntervalCacheCleaner[record]
 	minimumConfirmations int
-	running              atomic.Bool
-	chStop               chan struct{}
 }
 
 var _ ocr2keepers.Coordinator = (*coordinator)(nil)
@@ -45,7 +44,6 @@ func NewCoordinator(transmitEventProvider ocr2keepers.TransmitEventProvider, upk
 		cache:                util.NewCache[record](time.Duration(conf.PerformLockoutWindow) * time.Millisecond),
 		cacheCleaner:         util.NewIntervalCacheCleaner[record](defaultCacheClean),
 		minimumConfirmations: conf.MinConfirmations,
-		chStop:               make(chan struct{}, 1),
 	}
 }
 
@@ -192,8 +190,10 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 	return nil
 }
 
-func (c *coordinator) run() {
+func (c *coordinator) run(ctx context.Context) {
 	timer := time.NewTimer(cadence)
+	defer timer.Stop()
+
 	for {
 		select {
 		case <-timer.C:
@@ -214,36 +214,35 @@ func (c *coordinator) run() {
 				// wait the difference between the cadence and the time taken
 				timer.Reset(cadence - diff)
 			}
-		case <-c.chStop:
-			timer.Stop()
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
 // Start starts all subprocesses
-func (c *coordinator) Start(_ context.Context) error {
-	if c.running.Load() {
+func (c *coordinator) Start(pctx context.Context) error {
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
+	if !c.closer.Store(cancel) {
 		return fmt.Errorf("process already running")
 	}
 
 	go c.cacheCleaner.Run(c.cache)
 
-	c.running.Store(true)
-	c.run()
+	c.run(ctx)
 
 	return nil
 }
 
 // Close terminates all subprocesses
 func (c *coordinator) Close() error {
-	if !c.running.Load() {
+	if !c.closer.Close() {
 		return fmt.Errorf("process not running")
 	}
 
 	c.cacheCleaner.Stop()
-	c.chStop <- struct{}{}
-	c.running.Store(false)
 
 	return nil
 }

@@ -141,14 +141,13 @@ func TestNewCoordinator(t *testing.T) {
 
 	t.Run("starting an already started coordinator returns an error", func(t *testing.T) {
 		c := NewCoordinator(nil, nil, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, nil)
-		c.running.Store(true)
+		c.closer.Store(context.CancelFunc(func() {}))
 		err := c.Start(context.Background())
 		assert.Error(t, err)
 	})
 
 	t.Run("closing an already closed coordinator returns an error", func(t *testing.T) {
 		c := NewCoordinator(nil, nil, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, nil)
-		c.running.Store(false)
 		err := c.Close()
 		assert.Error(t, err)
 	})
