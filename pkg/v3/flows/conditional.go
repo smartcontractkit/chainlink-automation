@@ -17,6 +17,8 @@ import (
 )
 
 const (
+	// This is the ticker interval for sampling conditional flow
+	SamplingConditionInterval = 3 * time.Second
 	// This is the ticker interval for final conditional flow
 	FinalConditionalInterval = 1 * time.Second
 	// These are the maximum number of conditional upkeeps dequeued on every tick from proposal queue in FinalConditionalFlow

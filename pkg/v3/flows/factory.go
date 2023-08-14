@@ -30,7 +30,7 @@ func ConditionalTriggerFlows(
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
-	conditionalProposal := newSampleProposalFlow(preprocessors, ratio, getter, metadataStore, runner, time.Second, logger)
+	conditionalProposal := newSampleProposalFlow(preprocessors, ratio, getter, metadataStore, runner, SamplingConditionInterval, logger)
 
 	return []service.Recoverable{conditionalFinal, conditionalProposal}
 }
