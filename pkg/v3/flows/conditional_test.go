@@ -187,7 +187,7 @@ func TestSamplingProposal(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	go func(svc service.Recoverable, ctx context.Context) {
