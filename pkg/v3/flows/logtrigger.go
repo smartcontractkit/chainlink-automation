@@ -19,9 +19,12 @@ var (
 )
 
 const (
-	LogCheckInterval        = 1 * time.Second
-	RecoveryCheckInterval   = 1 * time.Minute
-	ObservationProcessLimit = 5 * time.Second
+	LogCheckInterval      = 1 * time.Second
+	RecoveryCheckInterval = 1 * time.Minute
+	// Limit for processing a whole observer flow given a payload. The main component of this
+	// is the checkPipeline which involves some RPC, DB and Mercury calls, this is limited
+	// to 20 seconds for now
+	ObservationProcessLimit = 20 * time.Second
 )
 
 // log trigger flow is the happy path entry point for log triggered upkeeps

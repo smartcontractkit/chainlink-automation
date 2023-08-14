@@ -13,7 +13,9 @@ import (
 const (
 	OutcomeAgreedPerformablesLimit = 100
 	OutcomeSurfacedProposalsLimit  = 50
-	// TODO: Derive this limit from max checkPipelineTime and deltaRound
+	// NOTE: This should be enough number of rounds to encompass ObservationProcessLimit
+	// so that proposals have enough time to be processed before getting coordinated on
+	// a new block
 	OutcomeSurfacedProposalsRoundHistoryLimit = 20
 
 	// MaxOutcomeLength applies a limit to the total length of bytes in an outcome for
