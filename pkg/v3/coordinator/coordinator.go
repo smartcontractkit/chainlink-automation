@@ -170,6 +170,7 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 			if event.CheckBlock < v.checkBlockNumber {
 				c.logger.Printf("Ignoring event in transaction %s from older report (block %v) while waiting for (block %v)", event.TransactionHash, event.CheckBlock, v.checkBlockNumber)
 			} else if event.CheckBlock == v.checkBlockNumber {
+				c.logger.Printf("Got event in transaction %s of type %d for workID %s and check block %v", event.TransactionHash, event.Type, event.WorkID, event.CheckBlock)
 				c.cache.Set(event.WorkID, record{
 					checkBlockNumber:      v.checkBlockNumber,
 					isTransmissionPending: false,
