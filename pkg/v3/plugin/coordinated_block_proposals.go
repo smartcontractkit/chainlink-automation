@@ -69,9 +69,11 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 	}
 	latestQuorumBlock, ok := c.getLatestQuorumBlock()
 	if !ok {
+		c.logger.Printf("Could not find a quorum coordinated block, not adding new proposals")
 		// Can't coordinate new proposals without a quorum block, return with existing proposals
 		return
 	}
+	c.logger.Printf("Coordinating new proposals on block %+v", latestQuorumBlock)
 	// If existing outcome has more than roundHistoryLimit proposals, remove oldest ones
 	// and make room to add one more
 	if len(outcome.SurfacedProposals) >= c.roundHistoryLimit {
@@ -104,7 +106,7 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 			newProposal.Trigger.LogTriggerExtension.BlockHash = [32]byte{}
 		}
 
-		// TODO: Add logging here
+		c.logger.Printf("Adding new coordinated proposal to outcome %+v", newProposal)
 		latestProposals = append(latestProposals, newProposal)
 		added[proposal.WorkID] = true
 	}
@@ -114,8 +116,10 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		return util.ShuffleString(latestProposals[i].WorkID, c.keyRandSource) < util.ShuffleString(latestProposals[j].WorkID, c.keyRandSource)
 	})
 	if len(latestProposals) > c.perRoundLimit {
+		c.logger.Printf("Limiting new proposals in outcome to %d", c.perRoundLimit)
 		latestProposals = latestProposals[:c.perRoundLimit]
 	}
+	c.logger.Printf("Setting latest rounds outcome.SurfacedProposals with %d proposals", len(latestProposals))
 	outcome.SurfacedProposals = append([][]ocr2keepers.CoordinatedBlockProposal{latestProposals}, outcome.SurfacedProposals...)
 }
 

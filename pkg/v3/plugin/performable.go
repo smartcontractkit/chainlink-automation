@@ -70,6 +70,7 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	})
 
 	if len(performable) > p.limit {
+		p.logger.Printf("Limiting new performables in outcome to %d", p.limit)
 		performable = performable[:p.limit]
 	}
 	p.logger.Printf("Setting outcome.AgreedPerformables with %d performables", len(performable))
