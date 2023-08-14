@@ -21,11 +21,10 @@ func newSampleProposalFlow(
 	subscriber ocr2keepers.BlockSubscriber,
 	ms ocr2keepers.MetadataStore,
 	runner ocr2keepersv3.Runner,
-	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) (service.Recoverable, error) {
 	preprocessors = append(preprocessors, &proposalFilterer{ms, ocr2keepers.LogTrigger})
-	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms, typeGetter)
+	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
 
 	// create observer
 	observer := ocr2keepersv3.NewRunnableObserver(

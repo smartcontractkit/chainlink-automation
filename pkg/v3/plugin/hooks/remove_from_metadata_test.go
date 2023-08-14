@@ -60,10 +60,10 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 				return tt.upkeepTypeGetter[upkeepID]
 			}
 			if tt.expectedConditionalRemovals > 0 {
-				mockMetadataStore.On("RemoveConditionalProposal", mock.Anything).Times(tt.expectedConditionalRemovals)
+				mockMetadataStore.On("RemoveProposals", mock.Anything).Times(tt.expectedConditionalRemovals)
 			}
 			if tt.expectedLogRemovals > 0 {
-				mockMetadataStore.On("RemoveLogRecoveryProposal", mock.Anything).Times(tt.expectedLogRemovals)
+				mockMetadataStore.On("RemoveProposals", mock.Anything).Times(tt.expectedLogRemovals)
 			}
 
 			// Prepare logger

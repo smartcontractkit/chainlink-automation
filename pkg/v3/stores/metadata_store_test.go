@@ -268,12 +268,12 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 
 			store := NewMetadataStore(nil, nil)
 			for _, proposal := range tc.addProposals {
-				store.AddConditionalProposal(proposal...)
+				store.addConditionalProposal(proposal...)
 			}
-			proposals := store.ViewConditionalProposal()
+			proposals := store.viewConditionalProposal()
 			assert.Equal(t, tc.afterAdd, proposals)
-			store.RemoveConditionalProposal(tc.deleteProposals...)
-			proposals = store.ViewConditionalProposal()
+			store.removeConditionalProposal(tc.deleteProposals...)
+			proposals = store.viewConditionalProposal()
 			assert.Equal(t, tc.afterDelete, proposals)
 		})
 
@@ -418,12 +418,12 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 
 			store := NewMetadataStore(nil, nil)
 			for _, proposal := range tc.addProposals {
-				store.AddLogRecoveryProposal(proposal...)
+				store.AddProposals(proposal...)
 			}
-			proposals := store.ViewLogRecoveryProposal()
+			proposals := store.viewLogRecoveryProposal()
 			assert.Equal(t, tc.afterAdd, proposals)
-			store.RemoveLogRecoveryProposal(tc.deleteProposals...)
-			proposals = store.ViewLogRecoveryProposal()
+			store.RemoveProposals(tc.deleteProposals...)
+			proposals = store.viewLogRecoveryProposal()
 			assert.Equal(t, tc.afterDelete, proposals)
 		})
 

@@ -93,17 +93,9 @@ type MetadataStore interface {
 	SetBlockHistory(BlockHistory)
 	GetBlockHistory() BlockHistory
 
-	// TODO AddProposals(proposals ...CoordinatedBlockProposal)
+	AddProposals(proposals ...CoordinatedBlockProposal)
 	ViewProposals(utype UpkeepType) []CoordinatedBlockProposal
-	// TODO RemoveProposals(proposals ...CoordinatedBlockProposal)
-
-	AddLogRecoveryProposal(...CoordinatedBlockProposal)
-	ViewLogRecoveryProposal() []CoordinatedBlockProposal
-	RemoveLogRecoveryProposal(...CoordinatedBlockProposal)
-
-	AddConditionalProposal(...CoordinatedBlockProposal)
-	ViewConditionalProposal() []CoordinatedBlockProposal
-	RemoveConditionalProposal(...CoordinatedBlockProposal)
+	RemoveProposals(proposals ...CoordinatedBlockProposal)
 
 	Start(context.Context) error
 	Close() error

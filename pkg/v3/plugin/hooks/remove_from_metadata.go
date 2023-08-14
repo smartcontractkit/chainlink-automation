@@ -28,10 +28,10 @@ func (hook *RemoveFromMetadataHook) RunHook(outcome ocr2keepersv3.AutomationOutc
 	for _, round := range outcome.SurfacedProposals {
 		for _, proposal := range round {
 			if hook.upkeepTypeGetter(proposal.UpkeepID) == types.ConditionTrigger {
-				hook.ms.RemoveConditionalProposal(proposal)
+				hook.ms.RemoveProposals(proposal)
 				removed++
 			} else if hook.upkeepTypeGetter(proposal.UpkeepID) == types.LogTrigger {
-				hook.ms.RemoveLogRecoveryProposal(proposal)
+				hook.ms.RemoveProposals(proposal)
 				removed++
 			}
 		}

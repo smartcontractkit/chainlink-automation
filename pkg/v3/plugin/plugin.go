@@ -81,7 +81,6 @@ func newPlugin(
 		retryQ,
 		proposalQ,
 		upkeepStateUpdater,
-		upkeepTypeGetter,
 		logger,
 	)
 
@@ -100,7 +99,6 @@ func newPlugin(
 		proposalQ,
 		retryQ,
 		upkeepStateUpdater,
-		upkeepTypeGetter,
 		logger,
 	)
 	if err != nil {

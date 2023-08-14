@@ -21,7 +21,6 @@ func ConditionalTriggerFlows(
 	proposalQ ocr2keepers.ProposalQueue,
 	retryQ ocr2keepers.RetryQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) ([]service.Recoverable, error) {
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
@@ -31,7 +30,7 @@ func ConditionalTriggerFlows(
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
-	conditionalProposal, err := newSampleProposalFlow(preprocessors, ratio, getter, subscriber, metadataStore, runner, typeGetter, logger)
+	conditionalProposal, err := newSampleProposalFlow(preprocessors, ratio, getter, subscriber, metadataStore, runner, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +51,6 @@ func LogTriggerFlows(
 	retryQ ocr2keepers.RetryQueue,
 	proposals ocr2keepers.ProposalQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	typeGetter ocr2keepers.UpkeepTypeGetter,
 	logger *log.Logger,
 ) []service.Recoverable {
 	// all flows use the same preprocessor based on the coordinator
@@ -62,7 +60,7 @@ func LogTriggerFlows(
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network
 	// votes on the proposed values
-	rcvProposal := newRecoveryProposalFlow(preprocessors, runner, metadataStore, rp, recoveryInterval, typeGetter, logger)
+	rcvProposal := newRecoveryProposalFlow(preprocessors, runner, metadataStore, rp, recoveryInterval, logger)
 
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived

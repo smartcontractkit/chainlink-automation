@@ -73,9 +73,9 @@ func (m *metadataStore) AddProposals(proposals ...types.CoordinatedBlockProposal
 	for _, proposal := range proposals {
 		switch m.typeGetter(proposal.UpkeepID) {
 		case types.LogTrigger:
-			m.AddLogRecoveryProposal(proposal)
+			m.addLogRecoveryProposal(proposal)
 		case types.ConditionTrigger:
-			m.AddConditionalProposal(proposal)
+			m.addConditionalProposal(proposal)
 		}
 	}
 }
@@ -83,9 +83,9 @@ func (m *metadataStore) AddProposals(proposals ...types.CoordinatedBlockProposal
 func (m *metadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedBlockProposal {
 	switch utype {
 	case types.LogTrigger:
-		return m.ViewLogRecoveryProposal()
+		return m.viewLogRecoveryProposal()
 	case types.ConditionTrigger:
-		return m.ViewConditionalProposal()
+		return m.viewConditionalProposal()
 	default:
 		return nil
 	}
@@ -95,89 +95,10 @@ func (m *metadataStore) RemoveProposals(proposals ...types.CoordinatedBlockPropo
 	for _, proposal := range proposals {
 		switch m.typeGetter(proposal.UpkeepID) {
 		case types.LogTrigger:
-			m.RemoveLogRecoveryProposal(proposal)
+			m.removeLogRecoveryProposal(proposal)
 		case types.ConditionTrigger:
-			m.RemoveConditionalProposal(proposal)
+			m.removeConditionalProposal(proposal)
 		}
-	}
-}
-
-func (m *metadataStore) AddLogRecoveryProposal(proposals ...types.CoordinatedBlockProposal) {
-	m.logRecoveryMutex.Lock()
-	defer m.logRecoveryMutex.Unlock()
-
-	for _, proposal := range proposals {
-		m.logRecoveryProposals.Add(proposal.WorkID, expiringRecord{
-			createdAt: timeFn(),
-			proposal:  proposal,
-		})
-	}
-}
-
-func (m *metadataStore) ViewLogRecoveryProposal() []types.CoordinatedBlockProposal {
-	m.logRecoveryMutex.RLock()
-	defer m.logRecoveryMutex.RUnlock()
-
-	res := make([]types.CoordinatedBlockProposal, 0)
-
-	for _, key := range m.logRecoveryProposals.Keys() {
-		record := m.logRecoveryProposals.Get(key)
-		if record.expired(logRecoveryExpiry) {
-			m.logRecoveryProposals.Delete(key)
-		} else {
-			res = append(res, record.proposal)
-		}
-	}
-
-	return res
-}
-
-func (m *metadataStore) RemoveLogRecoveryProposal(proposals ...types.CoordinatedBlockProposal) {
-	m.logRecoveryMutex.Lock()
-	defer m.logRecoveryMutex.Unlock()
-
-	for _, proposal := range proposals {
-		m.logRecoveryProposals.Delete(proposal.WorkID)
-	}
-}
-
-func (m *metadataStore) AddConditionalProposal(proposals ...types.CoordinatedBlockProposal) {
-	m.conditionalMutex.Lock()
-	defer m.conditionalMutex.Unlock()
-
-	for _, proposal := range proposals {
-		m.conditionalProposals.Add(proposal.WorkID, expiringRecord{
-			createdAt: timeFn(),
-			proposal:  proposal,
-		})
-	}
-}
-
-func (m *metadataStore) ViewConditionalProposal() []types.CoordinatedBlockProposal {
-	m.conditionalMutex.RLock()
-	defer m.conditionalMutex.RUnlock()
-
-	res := make([]types.CoordinatedBlockProposal, 0)
-
-	for _, key := range m.conditionalProposals.Keys() {
-		record := m.conditionalProposals.Get(key)
-		if record.expired(conditionalExpiry) {
-			m.conditionalProposals.Delete(key)
-		} else {
-			res = append(res, record.proposal)
-		}
-	}
-
-	return res
-
-}
-
-func (m *metadataStore) RemoveConditionalProposal(proposals ...types.CoordinatedBlockProposal) {
-	m.conditionalMutex.Lock()
-	defer m.conditionalMutex.Unlock()
-
-	for _, proposal := range proposals {
-		m.conditionalProposals.Delete(proposal.WorkID)
 	}
 }
 
@@ -209,6 +130,85 @@ func (m *metadataStore) Close() error {
 	m.running.Store(false)
 
 	return nil
+}
+
+func (m *metadataStore) addLogRecoveryProposal(proposals ...types.CoordinatedBlockProposal) {
+	m.logRecoveryMutex.Lock()
+	defer m.logRecoveryMutex.Unlock()
+
+	for _, proposal := range proposals {
+		m.logRecoveryProposals.Add(proposal.WorkID, expiringRecord{
+			createdAt: timeFn(),
+			proposal:  proposal,
+		})
+	}
+}
+
+func (m *metadataStore) viewLogRecoveryProposal() []types.CoordinatedBlockProposal {
+	m.logRecoveryMutex.RLock()
+	defer m.logRecoveryMutex.RUnlock()
+
+	res := make([]types.CoordinatedBlockProposal, 0)
+
+	for _, key := range m.logRecoveryProposals.Keys() {
+		record := m.logRecoveryProposals.Get(key)
+		if record.expired(logRecoveryExpiry) {
+			m.logRecoveryProposals.Delete(key)
+		} else {
+			res = append(res, record.proposal)
+		}
+	}
+
+	return res
+}
+
+func (m *metadataStore) removeLogRecoveryProposal(proposals ...types.CoordinatedBlockProposal) {
+	m.logRecoveryMutex.Lock()
+	defer m.logRecoveryMutex.Unlock()
+
+	for _, proposal := range proposals {
+		m.logRecoveryProposals.Delete(proposal.WorkID)
+	}
+}
+
+func (m *metadataStore) addConditionalProposal(proposals ...types.CoordinatedBlockProposal) {
+	m.conditionalMutex.Lock()
+	defer m.conditionalMutex.Unlock()
+
+	for _, proposal := range proposals {
+		m.conditionalProposals.Add(proposal.WorkID, expiringRecord{
+			createdAt: timeFn(),
+			proposal:  proposal,
+		})
+	}
+}
+
+func (m *metadataStore) viewConditionalProposal() []types.CoordinatedBlockProposal {
+	m.conditionalMutex.RLock()
+	defer m.conditionalMutex.RUnlock()
+
+	res := make([]types.CoordinatedBlockProposal, 0)
+
+	for _, key := range m.conditionalProposals.Keys() {
+		record := m.conditionalProposals.Get(key)
+		if record.expired(conditionalExpiry) {
+			m.conditionalProposals.Delete(key)
+		} else {
+			res = append(res, record.proposal)
+		}
+	}
+
+	return res
+
+}
+
+func (m *metadataStore) removeConditionalProposal(proposals ...types.CoordinatedBlockProposal) {
+	m.conditionalMutex.Lock()
+	defer m.conditionalMutex.Unlock()
+
+	for _, proposal := range proposals {
+		m.conditionalProposals.Delete(proposal.WorkID)
+	}
 }
 
 func newOrderedMap() orderedMap {

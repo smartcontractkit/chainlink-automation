@@ -34,7 +34,6 @@ func TestConditionalTriggerFlows(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		log.New(io.Discard, "", 0),
 	)
 	assert.NotNil(t, conditional)
@@ -57,7 +56,6 @@ func TestLogTriggerFlows(t *testing.T) {
 		nil,
 		time.Minute,
 		time.Minute,
-		nil,
 		nil,
 		nil,
 		nil,

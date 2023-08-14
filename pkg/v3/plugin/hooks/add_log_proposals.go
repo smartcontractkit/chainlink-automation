@@ -26,7 +26,7 @@ func NewAddLogProposalsHook(metadataStore types.MetadataStore, coordinator types
 }
 
 func (h *AddLogProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	proposals := h.metadata.ViewLogRecoveryProposal()
+	proposals := h.metadata.ViewProposals(types.LogTrigger)
 
 	var err error
 	proposals, err = h.coordinator.FilterProposals(proposals)

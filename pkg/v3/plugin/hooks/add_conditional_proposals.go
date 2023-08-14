@@ -26,7 +26,7 @@ func NewAddConditionalProposalsHook(ms types.MetadataStore, coord types.Coordina
 }
 
 func (h *AddConditionalProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	conditionals := h.metadata.ViewConditionalProposal()
+	conditionals := h.metadata.ViewProposals(types.ConditionTrigger)
 
 	var err error
 	conditionals, err = h.coord.FilterProposals(conditionals)

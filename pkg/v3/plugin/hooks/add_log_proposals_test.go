@@ -157,12 +157,15 @@ type mockMetadataStore struct {
 	GetBlockHistoryFn         func() types.BlockHistory
 }
 
-func (s *mockMetadataStore) ViewLogRecoveryProposal() []types.CoordinatedBlockProposal {
-	return s.ViewLogRecoveryProposalFn()
-}
-
-func (s *mockMetadataStore) ViewConditionalProposal() []types.CoordinatedBlockProposal {
-	return s.ViewConditionalProposalFn()
+func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedBlockProposal {
+	switch utype {
+	case types.LogTrigger:
+		return s.ViewLogRecoveryProposalFn()
+	case types.ConditionTrigger:
+		return s.ViewConditionalProposalFn()
+	default:
+		return nil
+	}
 }
 
 func (s *mockMetadataStore) GetBlockHistory() types.BlockHistory {

@@ -8,11 +8,10 @@ import (
 
 type addProposalToMetadataStore struct {
 	metadataStore ocr2keepers.MetadataStore
-	typeGetter    ocr2keepers.UpkeepTypeGetter
 }
 
-func NewAddProposalToMetadataStorePostprocessor(store ocr2keepers.MetadataStore, typeGetter ocr2keepers.UpkeepTypeGetter) *addProposalToMetadataStore {
-	return &addProposalToMetadataStore{metadataStore: store, typeGetter: typeGetter}
+func NewAddProposalToMetadataStorePostprocessor(store ocr2keepers.MetadataStore) *addProposalToMetadataStore {
+	return &addProposalToMetadataStore{metadataStore: store}
 }
 
 func (a *addProposalToMetadataStore) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
@@ -23,13 +22,7 @@ func (a *addProposalToMetadataStore) PostProcess(_ context.Context, results []oc
 			Trigger:  r.Trigger,
 			WorkID:   r.WorkID,
 		}
-		switch a.typeGetter(r.UpkeepID) {
-		case ocr2keepers.LogTrigger:
-			a.metadataStore.AddLogRecoveryProposal(proposal)
-		case ocr2keepers.ConditionTrigger:
-			a.metadataStore.AddConditionalProposal(proposal)
-		default:
-		}
+		a.metadataStore.AddProposals(proposal)
 	}
 
 	return nil

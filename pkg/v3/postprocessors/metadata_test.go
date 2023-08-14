@@ -68,9 +68,7 @@ func TestMetadataAddPayload(t *testing.T) {
 		},
 	}
 
-	postprocessor := NewAddProposalToMetadataStorePostprocessor(metadataStore, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-		return ocr2keepers.LogTrigger
-	})
+	postprocessor := NewAddProposalToMetadataStorePostprocessor(metadataStore)
 
 	err := postprocessor.PostProcess(context.Background(), []ocr2keepers.CheckResult{
 		{
@@ -87,7 +85,7 @@ func TestMetadataAddPayload(t *testing.T) {
 
 	assert.NoError(t, err, "no error expected from post processor")
 
-	assert.Equal(t, len(metadataStore.ViewLogRecoveryProposal()), len(expected), "values in synced array should match input")
+	assert.Equal(t, len(metadataStore.ViewProposals(ocr2keepers.LogTrigger)), len(expected), "values in synced array should match input")
 }
 
 func TestMetadataAddSamples(t *testing.T) {
@@ -113,9 +111,7 @@ func TestMetadataAddSamples(t *testing.T) {
 		},
 	}
 
-	pp := NewAddProposalToMetadataStorePostprocessor(ms, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-		return ocr2keepers.ConditionTrigger
-	})
+	pp := NewAddProposalToMetadataStorePostprocessor(ms)
 	err := pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
@@ -133,5 +129,5 @@ func TestMetadataAddSamples(t *testing.T) {
 
 	assert.NoError(t, err, "no error expected from post processor")
 
-	assert.Equal(t, 3, len(ms.ViewConditionalProposal()))
+	assert.Equal(t, 3, len(ms.ViewProposals(ocr2keepers.ConditionTrigger)))
 }

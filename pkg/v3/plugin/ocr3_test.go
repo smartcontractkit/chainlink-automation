@@ -1024,26 +1024,30 @@ func (e *mockRecoverable) Close() error {
 
 type mockMetadataStore struct {
 	ocr2keepers.MetadataStore
-	ViewLogRecoveryProposalFn   func() []ocr2keepers.CoordinatedBlockProposal
-	ViewConditionalProposalFn   func() []ocr2keepers.CoordinatedBlockProposal
-	GetBlockHistoryFn           func() ocr2keepers.BlockHistory
-	RemoveLogRecoveryProposalFn func(...ocr2keepers.CoordinatedBlockProposal)
+	ViewLogRecoveryProposalFn func() []ocr2keepers.CoordinatedBlockProposal
+	ViewConditionalProposalFn func() []ocr2keepers.CoordinatedBlockProposal
+	GetBlockHistoryFn         func() ocr2keepers.BlockHistory
+	RemoveProposalsFn         func(...ocr2keepers.CoordinatedBlockProposal)
 }
 
-func (s *mockMetadataStore) ViewLogRecoveryProposal() []ocr2keepers.CoordinatedBlockProposal {
-	return s.ViewLogRecoveryProposalFn()
-}
+func (s *mockMetadataStore) ViewProposals(utype ocr2keepers.UpkeepType) []ocr2keepers.CoordinatedBlockProposal {
+	switch utype {
+	case ocr2keepers.LogTrigger:
+		return s.ViewLogRecoveryProposalFn()
+	case ocr2keepers.ConditionTrigger:
+		return s.ViewConditionalProposalFn()
+	default:
+		return nil
+	}
 
-func (s *mockMetadataStore) ViewConditionalProposal() []ocr2keepers.CoordinatedBlockProposal {
-	return s.ViewConditionalProposalFn()
 }
 
 func (s *mockMetadataStore) GetBlockHistory() ocr2keepers.BlockHistory {
 	return s.GetBlockHistoryFn()
 }
 
-func (s *mockMetadataStore) RemoveLogRecoveryProposal(p ...ocr2keepers.CoordinatedBlockProposal) {
-	s.RemoveLogRecoveryProposalFn(p...)
+func (s *mockMetadataStore) RemoveProposals(p ...ocr2keepers.CoordinatedBlockProposal) {
+	s.RemoveProposalsFn(p...)
 }
 
 type mockCoordinator struct {
