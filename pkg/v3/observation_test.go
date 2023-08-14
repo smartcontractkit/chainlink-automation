@@ -83,6 +83,44 @@ func TestValidAutomationObservation(t *testing.T) {
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
 }
 
+func TestLargeBlockHistory(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    types.BlockHistory{},
+	}
+	for i := 0; i < ObservationBlockHistoryLimit+1; i++ {
+		ao.BlockHistory = append(ao.BlockHistory, types.BlockKey{
+			Number: types.BlockNumber(i + 1),
+			Hash:   [32]byte{1},
+		})
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err, fmt.Errorf("block history length cannot be greater than %d", ObservationBlockHistoryLimit))
+}
+
+func TestDuplicateBlockHistory(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    types.BlockHistory{},
+	}
+	for i := 0; i < 2; i++ {
+		ao.BlockHistory = append(ao.BlockHistory, types.BlockKey{
+			Number: types.BlockNumber(1),
+			Hash:   [32]byte{uint8(i)},
+		})
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err, "block history cannot have duplicate block numbers")
+}
+
 func TestLargePerformable(t *testing.T) {
 	ao := AutomationObservation{
 		Performable:     []types.CheckResult{},
