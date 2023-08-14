@@ -53,6 +53,7 @@ func TestLogTriggerFlows(t *testing.T) {
 		nil,
 		time.Minute,
 		time.Minute,
+		time.Minute,
 		nil,
 		nil,
 		nil,

@@ -44,7 +44,8 @@ func LogTriggerFlows(
 	rp ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
 	logInterval time.Duration,
-	recoveryInterval time.Duration,
+	recoveryProposalInterval time.Duration,
+	recoveryFinalInterval time.Duration,
 	retryQ ocr2keepers.RetryQueue,
 	proposals ocr2keepers.ProposalQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
@@ -57,13 +58,13 @@ func LogTriggerFlows(
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network
 	// votes on the proposed values
-	rcvProposal := newRecoveryProposalFlow(preprocessors, runner, metadataStore, rp, recoveryInterval, logger)
+	rcvProposal := newRecoveryProposalFlow(preprocessors, runner, metadataStore, rp, recoveryProposalInterval, logger)
 
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived
 	// from node coordination and it can be assumed that all values should be
 	// run.
-	rcvFinal := newFinalRecoveryFlow(preprocessors, resultStore, runner, retryQ, recoveryInterval, proposals, builder, stateUpdater, logger)
+	rcvFinal := newFinalRecoveryFlow(preprocessors, resultStore, runner, retryQ, recoveryFinalInterval, proposals, builder, stateUpdater, logger)
 
 	// the log trigger flow is the happy path for log trigger payloads. all
 	// retryables that are encountered in this flow are elevated to the retry
