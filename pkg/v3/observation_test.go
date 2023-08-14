@@ -345,6 +345,108 @@ func TestInvalidTriggerTypeLog(t *testing.T) {
 	assert.ErrorContains(t, err, "invalid trigger")
 }
 
+func TestInvalidWorkID(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.WorkID = "invalid"
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "incorrect workID within result")
+}
+
+func TestInvalidGasAllocated(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.GasAllocated = 0
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "gas allocated cannot be zero")
+}
+
+func TestInvalidFastGasNegative(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.FastGasWei = big.NewInt(-1)
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "fast gas wei must be in uint256 range")
+}
+
+func TestInvalidFastGasTooBig(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.FastGasWei, _ = big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639936", 10)
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "fast gas wei must be in uint256 range")
+}
+
+func TestInvalidLinkNativeNegative(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.LinkNative = big.NewInt(-1)
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "link native must be in uint256 range")
+}
+
+func TestInvalidLinkNativeTooBig(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{},
+		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    validBlockHistory,
+	}
+	invalidPerformable := validLogResult
+	invalidPerformable.LinkNative, _ = big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639936", 10)
+	ao.Performable = append(ao.Performable, invalidPerformable)
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "link native must be in uint256 range")
+}
+
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
 	if id == conditionalUpkeepID {
 		return types.ConditionTrigger
