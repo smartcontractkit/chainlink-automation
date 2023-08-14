@@ -27,9 +27,15 @@ func TestProposalFilterer_PreProcess(t *testing.T) {
 		{
 			WorkID: "workID1",
 		},
+		{
+			WorkID: "workID2",
+		},
+		{
+			WorkID: "workID3",
+		},
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, []types.UpkeepPayload{{WorkID: "workID1"}}, payloads)
+	assert.Equal(t, []types.UpkeepPayload{{WorkID: "workID1"}, {WorkID: "workID3"}}, payloads)
 }
 
 type mockMetadataStore struct {
