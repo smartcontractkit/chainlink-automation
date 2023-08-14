@@ -55,7 +55,7 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
-	var performable []ocr2keepers.CheckResult
+	performable := make([]ocr2keepers.CheckResult, 0)
 
 	for uid, payload := range p.resultCount {
 		if payload.count > p.threshold {
