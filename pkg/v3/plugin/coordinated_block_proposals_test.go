@@ -508,3 +508,529 @@ func Test_performableExists(t *testing.T) {
 		})
 	}
 }
+
+func Test_newCoordinatedBlockProposals_set(t *testing.T) {
+	t.Run("calling set on an empty outcome with an empty previous outcome updates the outcome based on the internal state", func(t *testing.T) {
+		proposals := newCoordinatedBlockProposals(1, 2, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+
+		observations := []ocr2keepers.AutomationObservation{
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{1},
+						Trigger: types.Trigger{
+							BlockNumber: 1,
+						},
+						WorkID: "workID1",
+					},
+					{
+						UpkeepID: [32]byte{1},
+						Trigger: types.Trigger{
+							BlockNumber: 1,
+						},
+						WorkID: "workID1",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{2},
+						Trigger: types.Trigger{
+							BlockNumber: 2,
+						},
+						WorkID: "workID2",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+		}
+
+		for _, ao := range observations {
+			proposals.add(ao)
+		}
+
+		outcome := &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
+		}
+		previousOutcome := ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
+		}
+		proposals.set(outcome, previousOutcome)
+
+		assert.Equal(t, &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{1}),
+						WorkID:   "workID1",
+						Trigger: types.Trigger{
+							BlockNumber: 3,
+							BlockHash:   [32]byte{3},
+						},
+					},
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{2}),
+						WorkID:   "workID2",
+						Trigger: types.Trigger{
+							BlockNumber: 3,
+							BlockHash:   [32]byte{3},
+						},
+					},
+				},
+			},
+		}, outcome)
+	})
+
+	t.Run("new proposals that already exist on the surfaced proposals and agreed performables of the previous outcome are not re-added", func(t *testing.T) {
+		proposals := newCoordinatedBlockProposals(1, 2, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+
+		observations := []ocr2keepers.AutomationObservation{
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{1},
+						Trigger: types.Trigger{
+							BlockNumber: 1,
+						},
+						WorkID: "workID1",
+					},
+					{
+						UpkeepID: [32]byte{1},
+						Trigger: types.Trigger{
+							BlockNumber: 1,
+						},
+						WorkID: "workID1",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{2},
+						Trigger: types.Trigger{
+							BlockNumber: 2,
+						},
+						WorkID: "workID2",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+		}
+
+		for _, ao := range observations {
+			proposals.add(ao)
+		}
+
+		outcome := &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{
+				{
+					UpkeepID: types.UpkeepIdentifier([32]byte{1}),
+					WorkID:   "workID1",
+					Trigger: types.Trigger{
+						BlockNumber: 3,
+						BlockHash:   [32]byte{3},
+					},
+				},
+			},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{},
+		}
+		previousOutcome := ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{2}),
+						WorkID:   "workID2",
+						Trigger: types.Trigger{
+							BlockNumber: 3,
+							BlockHash:   [32]byte{3},
+						},
+					},
+				},
+			},
+		}
+		proposals.set(outcome, previousOutcome)
+
+		assert.Equal(t, &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{
+				{
+					UpkeepID: types.UpkeepIdentifier([32]byte{1}),
+					WorkID:   "workID1",
+					Trigger: types.Trigger{
+						BlockNumber: 3,
+						BlockHash:   [32]byte{3},
+					},
+				},
+			},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{},
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{2}),
+						WorkID:   "workID2",
+						Trigger: types.Trigger{
+							BlockNumber: 3,
+							BlockHash:   [32]byte{3},
+						},
+					},
+				},
+			},
+		}, outcome)
+	})
+
+	t.Run("when the number of surfaced proposals in the previous outcome equals or exceeds the round history limit, the number of surfaced proposals is truncated to the limit", func(t *testing.T) {
+		proposals := newCoordinatedBlockProposals(1, 1, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+
+		observations := []ocr2keepers.AutomationObservation{
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{1},
+						Trigger: types.Trigger{
+							BlockNumber: 1,
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{2},
+								BlockNumber: 2,
+							},
+						},
+						WorkID: "workID1",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{2},
+						Trigger: types.Trigger{
+							BlockNumber: 2,
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{2},
+								BlockNumber: 2,
+							},
+						},
+						WorkID: "workID2",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+		}
+
+		for _, ao := range observations {
+			proposals.add(ao)
+		}
+
+		outcome := &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
+		}
+		previousOutcome := ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{4}),
+						WorkID:   "workID4",
+						Trigger: types.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{4},
+						},
+					},
+				},
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{5}),
+						WorkID:   "workID5",
+						Trigger: types.Trigger{
+							BlockNumber: 5,
+							BlockHash:   [32]byte{5},
+						},
+					},
+				},
+			},
+		}
+		proposals.set(outcome, previousOutcome)
+
+		assert.Equal(t, &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{1}),
+						WorkID:   "workID1",
+						Trigger: types.Trigger{
+							BlockNumber: 3,
+							BlockHash:   [32]byte{3},
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{},
+								BlockNumber: 0,
+							},
+						},
+					},
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{2}),
+						WorkID:   "workID2",
+						Trigger: types.Trigger{
+							BlockNumber: 3,
+							BlockHash:   [32]byte{3},
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{},
+								BlockNumber: 0,
+							},
+						},
+					},
+				},
+			},
+		}, outcome)
+	})
+
+	t.Run("when the number of latest proposals exceeds the per round limit, the number of surfaced proposals is truncated to the limit", func(t *testing.T) {
+		proposals := newCoordinatedBlockProposals(1, 1, 1, [16]byte{1}, log.New(io.Discard, "", 1))
+
+		observations := []ocr2keepers.AutomationObservation{
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{1},
+						Trigger: types.Trigger{
+							BlockNumber: 1,
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{2},
+								BlockNumber: 2,
+							},
+						},
+						WorkID: "workID1",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{2},
+						Trigger: types.Trigger{
+							BlockNumber: 2,
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{2},
+								BlockNumber: 2,
+							},
+						},
+						WorkID: "workID2",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+		}
+
+		for _, ao := range observations {
+			proposals.add(ao)
+		}
+
+		outcome := &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
+		}
+		previousOutcome := ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{4}),
+						WorkID:   "workID4",
+						Trigger: types.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{4},
+						},
+					},
+				},
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{5}),
+						WorkID:   "workID5",
+						Trigger: types.Trigger{
+							BlockNumber: 5,
+							BlockHash:   [32]byte{5},
+						},
+					},
+				},
+			},
+		}
+		proposals.set(outcome, previousOutcome)
+
+		assert.Equal(t, &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{1}),
+						WorkID:   "workID1",
+						Trigger: types.Trigger{
+							BlockNumber: 3,
+							BlockHash:   [32]byte{3},
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{},
+								BlockNumber: 0,
+							},
+						},
+					},
+				},
+			},
+		}, outcome)
+	})
+
+	t.Run("when the quorum block cannot be fetched, we return without adding new proposals", func(t *testing.T) {
+		proposals := newCoordinatedBlockProposals(3, 1, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+
+		observations := []ocr2keepers.AutomationObservation{
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{1},
+						Trigger: types.Trigger{
+							BlockNumber: 1,
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{2},
+								BlockNumber: 2,
+							},
+						},
+						WorkID: "workID1",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+			{
+				UpkeepProposals: []types.CoordinatedBlockProposal{
+					{
+						UpkeepID: [32]byte{2},
+						Trigger: types.Trigger{
+							BlockNumber: 2,
+							LogTriggerExtension: &types.LogTriggerExtension{
+								BlockHash:   [32]byte{2},
+								BlockNumber: 2,
+							},
+						},
+						WorkID: "workID2",
+					},
+				},
+				BlockHistory: []types.BlockKey{
+					{
+						Number: 3,
+						Hash:   [32]byte{3},
+					},
+				},
+			},
+		}
+
+		for _, ao := range observations {
+			proposals.add(ao)
+		}
+
+		outcome := &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
+		}
+		previousOutcome := ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{4}),
+						WorkID:   "workID4",
+						Trigger: types.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{4},
+						},
+					},
+				},
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{5}),
+						WorkID:   "workID5",
+						Trigger: types.Trigger{
+							BlockNumber: 5,
+							BlockHash:   [32]byte{5},
+						},
+					},
+				},
+			},
+		}
+		proposals.set(outcome, previousOutcome)
+
+		assert.Equal(t, &ocr2keepers.AutomationOutcome{
+			AgreedPerformables: []types.CheckResult{},
+			SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{4}),
+						WorkID:   "workID4",
+						Trigger: types.Trigger{
+							BlockNumber: 4,
+							BlockHash:   [32]byte{4},
+						},
+					},
+				},
+				{
+					{
+						UpkeepID: types.UpkeepIdentifier([32]byte{5}),
+						WorkID:   "workID5",
+						Trigger: types.Trigger{
+							BlockNumber: 5,
+							BlockHash:   [32]byte{5},
+						},
+					},
+				},
+			},
+		}, outcome)
+	})
+}
