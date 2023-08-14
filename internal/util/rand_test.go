@@ -81,7 +81,18 @@ func TestNewKeyedCryptoRandSource(t *testing.T) {
 
 func TestShuffler_Shuffle(t *testing.T) {
 	shuffler := Shuffler[int]{Source: rand.NewSource(0)}
-	arr := []int{1, 2, 3}
+	arr := []int{1, 2, 3, 4, 5}
 	arr = shuffler.Shuffle(arr)
-	assert.Equal(t, arr, []int{2, 1, 3})
+	assert.Equal(t, arr, []int{3, 4, 2, 1, 5})
+
+	// Sorting again using a used shuffler should yield a different result
+	arr = []int{1, 2, 3, 4, 5}
+	arr = shuffler.Shuffle(arr)
+	assert.Equal(t, arr, []int{3, 4, 1, 5, 2})
+
+	// Sorting again using a new shuffler with the same pseudo-random source should yield the same result
+	shuffler2 := Shuffler[int]{Source: rand.NewSource(0)}
+	arr2 := []int{1, 2, 3, 4, 5}
+	arr2 = shuffler2.Shuffle(arr2)
+	assert.Equal(t, arr2, []int{3, 4, 2, 1, 5})
 }
