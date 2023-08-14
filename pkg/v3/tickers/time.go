@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync/atomic"
 	"time"
 )
 
@@ -15,23 +14,20 @@ type observer[T any] interface {
 type getterFunc[T any] func(context.Context, time.Time) (Tick[T], error)
 
 type timeTicker[T any] struct {
+	closer closer
+
 	interval time.Duration
-	ticker   *time.Ticker
 	observer observer[T]
 	getterFn getterFunc[T]
 	logger   *log.Logger
-	chClose  chan struct{}
-	running  atomic.Bool
 }
 
 func NewTimeTicker[T any](interval time.Duration, observer observer[T], getterFn getterFunc[T], logger *log.Logger) *timeTicker[T] {
 	t := &timeTicker[T]{
 		interval: interval,
-		ticker:   time.NewTicker(interval),
 		observer: observer,
 		getterFn: getterFn,
 		logger:   logger,
-		chClose:  make(chan struct{}, 1),
 	}
 
 	return t
@@ -40,21 +36,23 @@ func NewTimeTicker[T any](interval time.Duration, observer observer[T], getterFn
 // Start uses the provided context for each call to the getter function with the
 // configured interval as a timeout. This function blocks until Close is called
 // or the parent context is cancelled.
-func (t *timeTicker[T]) Start(ctx context.Context) error {
-	if t.running.Load() {
+func (t *timeTicker[T]) Start(pctx context.Context) error {
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
+	if !t.closer.Store(cancel) {
 		return fmt.Errorf("already running")
 	}
 
-	t.running.Store(true)
-
-	ctx, cancel := context.WithCancel(ctx)
-
 	t.logger.Printf("starting ticker service")
+	defer t.logger.Printf("ticker service stopped")
 
-Loop:
+	ticker := time.NewTicker(t.interval)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case tm := <-t.ticker.C:
+		case tm := <-ticker.C:
 			if t.getterFn == nil {
 				continue
 			}
@@ -66,27 +64,13 @@ Loop:
 			if err := t.observer.Process(ctx, tick); err != nil {
 				t.logger.Printf("error processing observer: %s", err.Error())
 			}
-		case <-t.chClose:
-			break Loop
+		case <-ctx.Done():
+			return nil
 		}
 	}
-
-	cancel()
-
-	t.running.Store(false)
-
-	t.logger.Printf("ticker service stopped")
-
-	return nil
 }
 
 func (t *timeTicker[T]) Close() error {
-	if !t.running.Load() {
-		return fmt.Errorf("not running")
-	}
-
-	t.ticker.Stop()
-	t.chClose <- struct{}{}
-
+	_ = t.closer.Close()
 	return nil
 }

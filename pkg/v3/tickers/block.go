@@ -3,7 +3,6 @@ package tickers
 import (
 	"context"
 	"log"
-	"sync"
 
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -11,14 +10,14 @@ import (
 // BlockTicker is a struct that follows the same design paradigm as a time ticker but provides blocks
 // instead of time
 type BlockTicker struct {
+	closer closer
+
 	C             chan ocr2keepers.BlockHistory
 	chID          int
 	ch            chan ocr2keepers.BlockHistory
 	subscriber    ocr2keepers.BlockSubscriber
 	bufferedValue ocr2keepers.BlockHistory
 	nextCh        chan ocr2keepers.BlockHistory
-	closer        sync.Once
-	stopCh        chan int
 }
 
 func NewBlockTicker(subscriber ocr2keepers.BlockSubscriber) (*BlockTicker, error) {
@@ -33,13 +32,17 @@ func NewBlockTicker(subscriber ocr2keepers.BlockSubscriber) (*BlockTicker, error
 		C:          make(chan ocr2keepers.BlockHistory),
 		nextCh:     make(chan ocr2keepers.BlockHistory),
 		subscriber: subscriber,
-		closer:     sync.Once{},
-		stopCh:     make(chan int),
 	}, nil
 }
 
-func (t *BlockTicker) Start(ctx context.Context) (err error) {
-loop:
+func (t *BlockTicker) Start(pctx context.Context) (err error) {
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
+	if !t.closer.Store(cancel) {
+		return nil
+	}
+
 	for {
 		select {
 		case blockHistory := <-t.ch:
@@ -50,9 +53,6 @@ loop:
 				t.bufferedValue = blockHistory
 			}
 		case <-ctx.Done():
-			err = ctx.Err()
-			break loop
-		case <-t.stopCh:
 			return nil
 		default:
 			if t.bufferedValue != nil {
@@ -64,16 +64,16 @@ loop:
 			}
 		}
 	}
-	return err
 }
 
 func (t *BlockTicker) Close() error {
-	t.closer.Do(func() {
-		t.stopCh <- 1
-		if err := t.subscriber.Unsubscribe(t.chID); err != nil {
-			log.Printf("error unsubscribing: %v", err)
-		}
-	})
+	if !t.closer.Close() {
+		return nil
+	}
+
+	if err := t.subscriber.Unsubscribe(t.chID); err != nil {
+		log.Printf("error unsubscribing: %v", err)
+	}
 
 	return nil
 }
