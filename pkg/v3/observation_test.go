@@ -156,6 +156,25 @@ func TestDuplicatePerformable(t *testing.T) {
 	assert.Error(t, err, "performable cannot have duplicate workIDs")
 }
 
+func TestLargeProposal(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		BlockHistory:    validBlockHistory,
+	}
+	for i := 0; i < ObservationConditionalsProposalsLimit+ObservationLogRecoveryProposalsLimit+1; i++ {
+		newProposal := validConditionalProposal
+		newProposal.Trigger.BlockNumber = types.BlockNumber(i + 1)
+		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
+		ao.UpkeepProposals = append(ao.UpkeepProposals, newProposal)
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err, fmt.Errorf("upkeep proposals length cannot be greater than %d", ObservationConditionalsProposalsLimit+ObservationLogRecoveryProposalsLimit))
+}
+
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
 	if id == conditionalUpkeepID {
 		return types.ConditionTrigger

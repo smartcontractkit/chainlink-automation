@@ -85,6 +85,8 @@ func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 		(ObservationConditionalsProposalsLimit + ObservationLogRecoveryProposalsLimit) {
 		return fmt.Errorf("upkeep proposals length cannot be greater than %d", ObservationConditionalsProposalsLimit+ObservationLogRecoveryProposalsLimit)
 	}
+	conditionalProposalCount := 0
+	logProposalCount := 0
 	seenProposals := make(map[string]bool)
 	for _, proposal := range o.UpkeepProposals {
 		if err := validateUpkeepProposal(proposal, utg, wg); err != nil {
@@ -94,6 +96,17 @@ func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 			return fmt.Errorf("proposals cannot have duplicate workIDs")
 		}
 		seenProposals[proposal.WorkID] = true
+		if utg(proposal.UpkeepID) == ocr2keepers.ConditionTrigger {
+			conditionalProposalCount++
+		} else if utg(proposal.UpkeepID) == ocr2keepers.LogTrigger {
+			logProposalCount++
+		}
+	}
+	if conditionalProposalCount > ObservationConditionalsProposalsLimit {
+		return fmt.Errorf("conditional upkeep proposals length cannot be greater than %d", ObservationConditionalsProposalsLimit)
+	}
+	if logProposalCount > ObservationLogRecoveryProposalsLimit {
+		return fmt.Errorf("log upkeep proposals length cannot be greater than %d", ObservationLogRecoveryProposalsLimit)
 	}
 
 	return nil
