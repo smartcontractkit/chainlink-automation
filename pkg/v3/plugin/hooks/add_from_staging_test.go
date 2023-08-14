@@ -20,8 +20,9 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 		resultStoreErr           error
 		coordinatorFilterResults []types.CheckResult
 		coordinatorErr           error
+		rSrc                     [16]byte
 		limit                    int
-		observationPerformable   int
+		observationWorkIDs       []string
 		expectedErr              error
 		expectedLogMsg           string
 	}{
@@ -29,18 +30,18 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			name:               "Add results to observation",
 			initialObservation: ocr2keepersv3.AutomationObservation{},
 			resultStoreResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
-				{UpkeepID: [32]byte{3}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
 			limit: 10,
 			coordinatorFilterResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
-				{UpkeepID: [32]byte{3}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
-			observationPerformable: 3,
-			expectedLogMsg:         "adding 3 results to observation",
+			observationWorkIDs: []string{"30a", "20b", "10c"},
+			expectedLogMsg:     "adding 3 results to observation",
 		},
 		{
 			name:                     "Empty result store",
@@ -48,56 +49,93 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			resultStoreResults:       []types.CheckResult{},
 			coordinatorFilterResults: []types.CheckResult{},
 			limit:                    10,
-			observationPerformable:   0,
+			observationWorkIDs:       []string{},
 			expectedLogMsg:           "adding 0 results to observation",
 		},
 		{
 			name:               "Filtered coordinator results observation",
 			initialObservation: ocr2keepersv3.AutomationObservation{},
 			resultStoreResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
-				{UpkeepID: [32]byte{3}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
 			limit: 10,
 			coordinatorFilterResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
-			observationPerformable: 2,
-			expectedLogMsg:         "adding 2 results to observation",
+			observationWorkIDs: []string{"20b", "10c"},
+			expectedLogMsg:     "adding 2 results to observation",
 		},
 		{
 			name: "Existing results in observation appended",
 			initialObservation: ocr2keepersv3.AutomationObservation{
-				Performable: []types.CheckResult{{UpkeepID: [32]byte{3}}},
+				Performable: []types.CheckResult{{UpkeepID: [32]byte{3}, WorkID: "30a"}},
 			},
 			resultStoreResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
 			limit: 10,
 			coordinatorFilterResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
-			observationPerformable: 3,
-			expectedLogMsg:         "adding 2 results to observation",
+			observationWorkIDs: []string{"30a", "20b", "10c"},
+			expectedLogMsg:     "adding 2 results to observation",
 		},
 		{
 			name:               "limits applied",
 			initialObservation: ocr2keepersv3.AutomationObservation{},
 			resultStoreResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			limit: 2,
+			coordinatorFilterResults: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			observationWorkIDs: []string{"30a", "20b"},
+			expectedLogMsg:     "adding 2 results to observation",
+		},
+		{
+			name:               "limits applied in same order with same rSrc",
+			initialObservation: ocr2keepersv3.AutomationObservation{},
+			resultStoreResults: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
 			limit: 1,
 			coordinatorFilterResults: []types.CheckResult{
-				{UpkeepID: [32]byte{1}},
-				{UpkeepID: [32]byte{2}},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
-			observationPerformable: 1,
-			expectedLogMsg:         "adding 1 results to observation",
+			observationWorkIDs: []string{"30a"},
+			expectedLogMsg:     "adding 1 results to observation",
+		},
+		{
+			name:               "limits applied in different order with different rSrc",
+			initialObservation: ocr2keepersv3.AutomationObservation{},
+			resultStoreResults: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			rSrc:  [16]byte{1},
+			limit: 2,
+			coordinatorFilterResults: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			observationWorkIDs: []string{"10c", "20b"},
+			expectedLogMsg:     "adding 2 results to observation",
 		},
 	}
 
@@ -122,7 +160,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			addFromStagingHook := NewAddFromStagingHook(mockResultStore, mockCoordinator, logger)
 
 			// Run the hook
-			err := addFromStagingHook.RunHook(obs, tt.limit, [16]byte{})
+			err := addFromStagingHook.RunHook(obs, tt.limit, tt.rSrc)
 
 			if tt.expectedErr != nil {
 				// Assert that the hook function returns the expected error
@@ -132,8 +170,12 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				// Assert that the hook function executed without error
 				assert.NoError(t, err)
 
+				obsW := []string{}
+				for _, r := range obs.Performable {
+					obsW = append(obsW, r.WorkID)
+				}
 				// Assert that the observation is updated as expected
-				assert.Len(t, obs.Performable, tt.observationPerformable)
+				assert.Equal(t, obsW, tt.observationWorkIDs)
 
 				// Assert log messages if needed
 				assert.Contains(t, logBuf.String(), tt.expectedLogMsg)
