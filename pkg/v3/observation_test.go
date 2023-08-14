@@ -225,6 +225,24 @@ func TestLargeLogProposal(t *testing.T) {
 	assert.ErrorContains(t, err, "log upkeep proposals length cannot be greater than")
 }
 
+func TestDuplicateProposal(t *testing.T) {
+	ao := AutomationObservation{
+		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		BlockHistory:    validBlockHistory,
+	}
+	for i := 0; i < 2; i++ {
+		newProposal := validConditionalProposal
+		ao.UpkeepProposals = append(ao.UpkeepProposals, newProposal)
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "proposals cannot have duplicate workIDs")
+}
+
 func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
 	if id == conditionalUpkeepID {
 		return types.ConditionTrigger
