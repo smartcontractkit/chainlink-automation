@@ -69,3 +69,11 @@ func (s Shuffler[T]) Shuffle(a []T) []T {
 	})
 	return a
 }
+
+func ShuffleString(s string, rSrc [16]byte) string {
+	shuffled := []rune(s)
+	rand.New(NewKeyedCryptoRandSource(rSrc)).Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+	return string(shuffled)
+}

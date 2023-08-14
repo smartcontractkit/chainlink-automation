@@ -2,7 +2,7 @@ package plugin
 
 import (
 	"log"
-	"math/rand"
+	"sort"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
@@ -109,9 +109,9 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		added[proposal.WorkID] = true
 	}
 
-	// TODO: Do a pseduorandom sort by shuffled work ID
-	rand.New(util.NewKeyedCryptoRandSource(c.keyRandSource)).Shuffle(len(latestProposals), func(i, j int) {
-		latestProposals[i], latestProposals[j] = latestProposals[j], latestProposals[i]
+	// Sort by a shuffled workID.
+	sort.Slice(latestProposals, func(i, j int) bool {
+		return util.ShuffleString(latestProposals[i].WorkID, c.keyRandSource) < util.ShuffleString(latestProposals[j].WorkID, c.keyRandSource)
 	})
 	if len(latestProposals) > c.perRoundLimit {
 		latestProposals = latestProposals[:c.perRoundLimit]

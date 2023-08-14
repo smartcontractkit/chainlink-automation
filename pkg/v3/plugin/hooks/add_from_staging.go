@@ -3,7 +3,7 @@ package hooks
 import (
 	"fmt"
 	"log"
-	"math/rand"
+	"sort"
 
 	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
@@ -36,9 +36,12 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 		return err
 	}
 
-	// TODO: Do a pseduorandom sort by shuffled work ID
-	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(results), func(i, j int) {
-		results[i], results[j] = results[j], results[i]
+	// Sort by a shuffled workID. workID for all items is shuffled using a pseduorandom souce
+	// that is the same across all nodes for a given round. This ensures that all nodes try to
+	// send the same subset of workIDs if they are available, while giving different priority
+	// to workIDs in different rounds.
+	sort.Slice(results, func(i, j int) bool {
+		return util.ShuffleString(results[i].WorkID, rSrc) < util.ShuffleString(results[j].WorkID, rSrc)
 	})
 	if len(results) > limit {
 		results = results[:limit]
