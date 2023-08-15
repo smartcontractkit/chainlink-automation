@@ -2,8 +2,10 @@ package postprocessors
 
 import (
 	"context"
+	"fmt"
 	"log"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -27,7 +29,7 @@ type eligiblePostProcessor struct {
 
 func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger) *eligiblePostProcessor {
 	return &eligiblePostProcessor{
-		lggr:         logger,
+		lggr:         log.New(logger.Writer(), fmt.Sprintf("[%s | eligible-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		resultsAdder: resultsAdder,
 	}
 }
@@ -40,6 +42,6 @@ func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2kee
 			p.resultsAdder.Add(res)
 		}
 	}
-	p.lggr.Printf("[eligible-post-processor] post-processing %d results, %d eligible\n", len(results), eligible)
+	p.lggr.Printf("post-processing %d results, %d eligible\n", len(results), eligible)
 	return nil
 }

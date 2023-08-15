@@ -3,8 +3,10 @@ package postprocessors
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -15,7 +17,7 @@ type ineligiblePostProcessor struct {
 
 func NewIneligiblePostProcessor(stateUpdater ocr2keepers.UpkeepStateUpdater, logger *log.Logger) *ineligiblePostProcessor {
 	return &ineligiblePostProcessor{
-		lggr:         logger,
+		lggr:         log.New(logger.Writer(), fmt.Sprintf("[%s | ineligible-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		stateUpdater: stateUpdater,
 	}
 }
@@ -32,6 +34,6 @@ func (p *ineligiblePostProcessor) PostProcess(ctx context.Context, results []ocr
 			merr = errors.Join(merr, err)
 		}
 	}
-	p.lggr.Printf("[ineligible-post-processor] post-processing %d results, %d ineligible\n", len(results), ineligible)
+	p.lggr.Printf("post-processing %d results, %d ineligible\n", len(results), ineligible)
 	return merr
 }

@@ -3,14 +3,16 @@ package postprocessors
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func NewRetryablePostProcessor(q ocr2keepers.RetryQueue, logger *log.Logger) *retryablePostProcessor {
 	return &retryablePostProcessor{
-		logger: logger,
+		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | retryable-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		q:      q,
 	}
 }
@@ -34,6 +36,6 @@ func (p *retryablePostProcessor) PostProcess(_ context.Context, results []ocr2ke
 			err = errors.Join(err, e)
 		}
 	}
-	p.logger.Printf("[retryable-post-processor] post-processing %d results, %d retryable\n", len(results), retryable)
+	p.logger.Printf("post-processing %d results, %d retryable\n", len(results), retryable)
 	return err
 }
