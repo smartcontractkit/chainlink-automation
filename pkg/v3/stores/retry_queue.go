@@ -47,7 +47,7 @@ var _ types.RetryQueue = (*retryQueue)(nil)
 
 func NewRetryQueue(lggr *log.Logger) *retryQueue {
 	return &retryQueue{
-		lggr:       log.New(lggr.Writer(), fmt.Sprintf("[%s | retry-q]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		lggr:       log.New(lggr.Writer(), fmt.Sprintf("[%s | retry-queue]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		records:    map[string]retryQueueRecord{},
 		lock:       sync.RWMutex{},
 		expiration: DefaultExpiration,
@@ -71,7 +71,7 @@ func (q *retryQueue) Enqueue(payloads ...types.UpkeepPayload) error {
 		}
 		if payload.Trigger.BlockNumber > record.payload.Trigger.BlockNumber {
 			// new item is newer -> replace payload
-			q.lggr.Printf("[retry-queue] updating payload for workID %s on block %d", payload.WorkID, payload.Trigger.BlockNumber)
+			q.lggr.Printf("updating payload for workID %s on block %d", payload.WorkID, payload.Trigger.BlockNumber)
 			record.payload = payload
 		}
 		// Enqueue the item with updatedAt = now. It will be dequeue-able after RetryInterval
@@ -98,7 +98,7 @@ func (q *retryQueue) Dequeue(n int) ([]types.UpkeepPayload, error) {
 	var results []types.UpkeepPayload
 	for k, record := range q.records {
 		if record.expired(now, q.expiration) {
-			q.lggr.Printf("[retry-queue] removing expired record %s", k)
+			q.lggr.Printf("removing expired record %s", k)
 			delete(q.records, k)
 			continue
 		}
