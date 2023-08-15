@@ -130,7 +130,10 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 	for _, payload := range payloads {
 
 		// if in cache, add to result
-		if res, ok := o.cache.Get(payload.WorkID); ok {
+		// TODO: Clean this up
+		if res, ok := o.cache.Get(payload.WorkID); ok &&
+			(res.Trigger.BlockNumber == payload.Trigger.BlockNumber) &&
+			(res.Trigger.BlockHash == payload.Trigger.BlockHash) {
 			result.Add(res)
 			continue
 		}
