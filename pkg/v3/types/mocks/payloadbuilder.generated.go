@@ -15,7 +15,7 @@ type MockPayloadBuilder struct {
 }
 
 // BuildPayloads provides a mock function with given fields: _a0, _a1
-func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...types.CoordinatedProposal) ([]types.UpkeepPayload, error) {
+func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...types.CoordinatedBlockProposal) ([]types.UpkeepPayload, error) {
 	_va := make([]interface{}, len(_a1))
 	for _i := range _a1 {
 		_va[_i] = _a1[_i]
@@ -27,10 +27,10 @@ func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...types.Co
 
 	var r0 []types.UpkeepPayload
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, ...types.CoordinatedProposal) ([]types.UpkeepPayload, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...types.CoordinatedBlockProposal) ([]types.UpkeepPayload, error)); ok {
 		return rf(_a0, _a1...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, ...types.CoordinatedProposal) []types.UpkeepPayload); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...types.CoordinatedBlockProposal) []types.UpkeepPayload); ok {
 		r0 = rf(_a0, _a1...)
 	} else {
 		if ret.Get(0) != nil {
@@ -38,7 +38,7 @@ func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...types.Co
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, ...types.CoordinatedProposal) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ...types.CoordinatedBlockProposal) error); ok {
 		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)

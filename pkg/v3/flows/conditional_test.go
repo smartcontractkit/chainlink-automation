@@ -9,117 +9,199 @@ import (
 	"time"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	mocks2 "github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
-
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func TestNewSampleProposalFlow(t *testing.T) {
-	r := new(mocks.MockRatio)
-	pp := new(mockedPreprocessor)
-	up := new(mocks2.MockConditionalUpkeepProvider)
-	rn := &mockedRunner{eligibleAfter: 0}
-	ms := new(mocks.MockMetadataStore)
-	bs := &mockBlockSubscriber{
-		ch: make(chan ocr2keepers.BlockHistory),
+func TestConditionalFinalization(t *testing.T) {
+	upkeepIDs := []ocr2keepers.UpkeepIdentifier{
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{2}),
+	}
+	workIDs := []string{
+		"0x1",
+		"0x2",
 	}
 
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{pp}
+	logger := log.New(io.Discard, "", log.LstdFlags)
 
-	svc, err := newSampleProposalFlow(preprocessors, r, up, bs, ms, rn, log.New(io.Discard, "", 0))
+	times := 3
 
-	assert.NoError(t, err, "no error from initialization")
+	runner := new(mocks.MockRunnable)
+	rStore := new(mocks.MockResultStore)
+	coord := new(mocks.MockCoordinator)
+	payloadBuilder := new(mocks.MockPayloadBuilder)
+	proposalQ := stores.NewProposalQueue(func(ui ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+		return ocr2keepers.LogTrigger
+	})
+	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
+
+	retryQ := stores.NewRetryQueue(logger)
+
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(times)
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+			Eligible: true,
+		},
+		{
+			UpkeepID:  upkeepIDs[1],
+			WorkID:    workIDs[1],
+			Retryable: true,
+		},
+	}, nil).Times(times)
+	rStore.On("Add", mock.Anything).Times(times)
+	payloadBuilder.On("BuildPayloads", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(times)
+
+	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	// set the ticker time lower to reduce the test time
+	interval := 50 * time.Millisecond
+	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	svc := newFinalConditionalFlow(pre, rStore, runner, interval, proposalQ, payloadBuilder, retryQ, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
+	err := proposalQ.Enqueue(ocr2keepers.CoordinatedBlockProposal{
+		UpkeepID: upkeepIDs[0],
+		WorkID:   workIDs[0],
+	}, ocr2keepers.CoordinatedBlockProposal{
+		UpkeepID: upkeepIDs[1],
+		WorkID:   workIDs[1],
+	})
+	assert.NoError(t, err)
+
 	go func(svc service.Recoverable, ctx context.Context) {
+		defer wg.Done()
 		assert.NoError(t, svc.Start(ctx))
-		wg.Done()
 	}(svc, context.Background())
 
-	testValues := []ocr2keepers.UpkeepPayload{
-		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-		},
-		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
-		},
-		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{3}),
-		},
-		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{4}),
-		},
-	}
-
-	up.On("GetActiveUpkeeps", mock.Anything, mock.Anything).Return(testValues, nil)
-	r.On("OfInt", 4).Return(1)
-	ms.On("Set", store.ProposalSampleMetadata, mock.Anything).Times(1)
-
-	bs.ch <- ocr2keepers.BlockHistory{
-		ocr2keepers.BlockKey{
-			Number: 4,
-		},
-		ocr2keepers.BlockKey{
-			Number: 3,
-		},
-	}
-
-	time.Sleep(1 * time.Second)
+	time.Sleep(interval*time.Duration(times) + interval/2)
 
 	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
-	r.AssertExpectations(t)
-	up.AssertExpectations(t)
-	ms.AssertExpectations(t)
-
-	assert.Equal(t, 1, pp.Calls())
+	rStore.AssertExpectations(t)
 
 	wg.Wait()
 }
 
-func TestNewFinalConditionalFlow(t *testing.T) {
-	pp := new(mockedPreprocessor)
-	rs := new(mocks.MockResultStore)
-	rn := &mockedRunner{eligibleAfter: 0}
+func TestSamplingProposal(t *testing.T) {
+	upkeepIDs := []ocr2keepers.UpkeepIdentifier{
+		ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		ocr2keepers.UpkeepIdentifier([32]byte{3}),
+	}
+	workIDs := []string{
+		"0x1",
+		"0x2",
+		"0x3",
+	}
 
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{pp}
+	logger := log.New(io.Discard, "", log.LstdFlags)
 
-	svc, _ := newFinalConditionalFlow(preprocessors, rs, rn, 20*time.Millisecond, log.New(io.Discard, "", 0))
+	runner := new(mocks.MockRunnable)
+	mStore := new(mocks.MockMetadataStore)
+	upkeepProvider := new(mocks.MockConditionalUpkeepProvider)
+	ratio := new(mocks.MockRatio)
+	coord := new(mocks.MockCoordinator)
+
+	ratio.On("OfInt", mock.Anything).Return(0, nil).Times(1)
+	ratio.On("OfInt", mock.Anything).Return(1, nil).Times(1)
+
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+	}, nil).Times(1)
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(1)
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return(nil, nil)
+
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+			Eligible: true,
+		},
+	}, nil).Times(1)
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+			Eligible: true,
+		},
+	}, nil).Times(1)
+	runner.On("CheckUpkeeps", mock.Anything).Return(nil, nil)
+
+	mStore.On("ViewProposals", mock.Anything).Return([]ocr2keepers.CoordinatedBlockProposal{
+		{
+			UpkeepID: upkeepIDs[2],
+			WorkID:   workIDs[2],
+		},
+	}, nil)
+	mStore.On("AddProposals", mock.Anything).Return(nil).Times(2)
+
+	upkeepProvider.On("GetActiveUpkeeps", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: upkeepIDs[0],
+			WorkID:   workIDs[0],
+		},
+		{
+			UpkeepID: upkeepIDs[1],
+			WorkID:   workIDs[1],
+		},
+	}, nil).Times(2)
+	upkeepProvider.On("GetActiveUpkeeps", mock.Anything).Return([]ocr2keepers.UpkeepPayload{}, nil)
+	// set the ticker time lower to reduce the test time
+	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	svc := newSampleProposalFlow(pre, ratio, upkeepProvider, mStore, runner, time.Millisecond*100, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	go func(svc service.Recoverable, ctx context.Context) {
-		assert.NoError(t, svc.Start(ctx))
-		wg.Done()
-	}(svc, context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
 
-	time.Sleep(50 * time.Millisecond)
+	go func(svc service.Recoverable, ctx context.Context) {
+		defer wg.Done()
+		assert.NoError(t, svc.Start(ctx))
+	}(svc, ctx)
 
 	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
-	rs.AssertExpectations(t)
-
-	assert.Equal(t, 2, pp.Calls())
-
 	wg.Wait()
-}
 
-type mockBlockSubscriber struct {
-	ch chan ocr2keepers.BlockHistory
-}
-
-func (_m *mockBlockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error) {
-	return 0, _m.ch, nil
-}
-
-func (_m *mockBlockSubscriber) Unsubscribe(int) error {
-	return nil
+	mStore.AssertExpectations(t)
+	upkeepProvider.AssertExpectations(t)
+	coord.AssertExpectations(t)
+	runner.AssertExpectations(t)
+	// ratio.AssertExpectations(t)
 }

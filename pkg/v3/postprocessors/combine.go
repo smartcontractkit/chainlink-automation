@@ -20,11 +20,11 @@ func NewCombinedPostprocessor(src ...PostProcessor) *CombinedPostprocessor {
 // PostProcess implements the PostProcessor interface and runs all source
 // processors in the sequence in which they were provided. All processors are
 // run and errors are joined.
-func (cpp *CombinedPostprocessor) PostProcess(ctx context.Context, results []ocr2keepers.CheckResult) error {
+func (cpp *CombinedPostprocessor) PostProcess(ctx context.Context, results []ocr2keepers.CheckResult, payloads []ocr2keepers.UpkeepPayload) error {
 	var err error
 
 	for _, pp := range cpp.source {
-		err = errors.Join(err, pp.PostProcess(ctx, results))
+		err = errors.Join(err, pp.PostProcess(ctx, results, payloads))
 	}
 
 	return err

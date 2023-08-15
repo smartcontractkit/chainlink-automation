@@ -8,63 +8,79 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows/mocks"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestRetryFlow(t *testing.T) {
 	logger := log.New(io.Discard, "", log.LstdFlags)
 
-	runner := &mockedRunner{eligibleAfter: 2}
+	times := 3
+
+	runner := new(mocks.MockRunnable)
 	rStore := new(mocks.MockResultStore)
-	recoverer := new(mocks.MockRetryer)
-	configFuncs := []tickers.ScheduleTickerConfigFunc{ // retry configs
-		tickers.ScheduleTickerWithDefaults,
-		func(c *tickers.ScheduleTickerConfig) {
-			c.SendDelay = 30 * time.Millisecond
-			// set the max send duration high to avoid retry failure
-			c.MaxSendDuration = 1000 * time.Millisecond
+	coord := new(mocks.MockCoordinator)
+	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
+	retryQ := stores.NewRetryQueue(logger)
+
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			WorkID:   "0x1",
 		},
-	}
-	coord := new(mockedPreprocessor)
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
-
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:   "0x2",
+		},
+	}, nil).Times(times)
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			WorkID:   "0x1",
+			Eligible: true,
+		},
+		{
+			UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:    "0x2",
+			Retryable: true,
+		},
+	}, nil).Times(times)
 	// within the 3 ticks, it should retry twice and the third time it should be eligible and add to result store
-	rStore.On("Add", mock.Anything).Times(1)
-
+	rStore.On("Add", mock.Anything).Times(times)
+	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	// set the ticker time lower to reduce the test time
 	retryInterval := 50 * time.Millisecond
 
-	svc, retryer := newRetryFlow(preprocessors, rStore, runner, recoverer, retryInterval, logger, configFuncs...)
-
-	testCheckResult := ocr2keepers.CheckResult{
-		Retryable: true,
-		UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{1}),
-	}
+	svc := NewRetryFlow(coord, rStore, runner, retryQ, retryInterval, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+
+	err := retryQ.Enqueue(ocr2keepers.UpkeepPayload{
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+		WorkID:   "0x1",
+	}, ocr2keepers.UpkeepPayload{
+		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+		WorkID:   "0x2",
+	})
+	assert.NoError(t, err)
 
 	go func(svc service.Recoverable, ctx context.Context) {
 		assert.NoError(t, svc.Start(ctx))
 		wg.Done()
 	}(svc, context.Background())
 
-	if err := retryer.Retry(testCheckResult); err != nil {
-		return
-	}
-
-	time.Sleep(160 * time.Millisecond)
+	time.Sleep(retryInterval*time.Duration(times) + retryInterval/2)
 
 	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
-	assert.Equal(t, 3, coord.Calls())
+	coord.AssertExpectations(t)
+	runner.AssertExpectations(t)
 	rStore.AssertExpectations(t)
 
 	wg.Wait()

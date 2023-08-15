@@ -9,67 +9,57 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-)
-
-const (
-	// MaxObservationLength applies a limit to the total length of bytes in an
-	// observation. Observations can become quite large due to multiple
-	// CheckResult objects and block coordination data. This is set to 1MB for
-	// now but might either need to be increased or data compression be applied.
-	MaxObservationLength = 1_000_000
-	// MaxReportLength limits the total length of bytes for a single report. A
-	// report is composed of 1 or more abi encoded perform calls with
-	// performData of arbitrary length. Reports are limited by gas usaged to
-	// transmit the report, so the length in bytes should be relative to this.
-	MaxReportLength = 10_000
-	// MaxReportCount limits the total number of reports allowed to be produced
-	// by the OCR protocol. Limiting to a high number for now because each
-	// report will be signed independently.
-	MaxReportCount = 20
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type pluginFactory struct {
-	logProvider      ocr2keepers.LogEventProvider
-	events           ocr2keepers.TransmitEventProvider
-	blocks           ocr2keepers.BlockSubscriber
-	rp               ocr2keepers.RecoverableProvider
-	builder          ocr2keepers.PayloadBuilder
-	getter           ocr2keepers.ConditionalUpkeepProvider
-	runnable         ocr2keepers.Runnable
-	runnerConf       runner.RunnerConfig
-	encoder          ocr2keepers.Encoder
-	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
-	logger           *log.Logger
+	logProvider        types.LogEventProvider
+	events             types.TransmitEventProvider
+	blocks             types.BlockSubscriber
+	rp                 types.RecoverableProvider
+	builder            types.PayloadBuilder
+	getter             types.ConditionalUpkeepProvider
+	runnable           types.Runnable
+	runnerConf         runner.RunnerConfig
+	encoder            types.Encoder
+	upkeepTypeGetter   types.UpkeepTypeGetter
+	workIDGenerator    types.WorkIDGenerator
+	upkeepStateUpdater types.UpkeepStateUpdater
+	logger             *log.Logger
 }
 
 func NewReportingPluginFactory(
-	logProvider ocr2keepers.LogEventProvider,
-	events ocr2keepers.TransmitEventProvider,
-	blocks ocr2keepers.BlockSubscriber,
-	rp ocr2keepers.RecoverableProvider,
-	builder ocr2keepers.PayloadBuilder,
-	getter ocr2keepers.ConditionalUpkeepProvider,
-	runnable ocr2keepers.Runnable,
+	logProvider types.LogEventProvider,
+	events types.TransmitEventProvider,
+	blocks types.BlockSubscriber,
+	rp types.RecoverableProvider,
+	builder types.PayloadBuilder,
+	getter types.ConditionalUpkeepProvider,
+	runnable types.Runnable,
 	runnerConf runner.RunnerConfig,
-	encoder ocr2keepers.Encoder,
-	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
+	encoder types.Encoder,
+	upkeepTypeGetter types.UpkeepTypeGetter,
+	workIDGenerator types.WorkIDGenerator,
+	upkeepStateUpdater types.UpkeepStateUpdater,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
 	return &pluginFactory{
-		logProvider:      logProvider,
-		events:           events,
-		blocks:           blocks,
-		rp:               rp,
-		builder:          builder,
-		getter:           getter,
-		runnable:         runnable,
-		runnerConf:       runnerConf,
-		encoder:          encoder,
-		upkeepTypeGetter: upkeepTypeGetter,
-		logger:           logger,
+		logProvider:        logProvider,
+		events:             events,
+		blocks:             blocks,
+		rp:                 rp,
+		builder:            builder,
+		getter:             getter,
+		runnable:           runnable,
+		runnerConf:         runnerConf,
+		encoder:            encoder,
+		upkeepTypeGetter:   upkeepTypeGetter,
+		workIDGenerator:    workIDGenerator,
+		upkeepStateUpdater: upkeepStateUpdater,
+		logger:             logger,
 	}
 }
 
@@ -78,10 +68,10 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		Name: fmt.Sprintf("Oracle: %d: Automation Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: ocr3types.ReportingPluginLimits{
 			MaxQueryLength:       0,
-			MaxObservationLength: MaxObservationLength,
-			MaxOutcomeLength:     MaxObservationLength, // outcome length can be the same as observation length
-			MaxReportLength:      MaxReportLength,
-			MaxReportCount:       MaxReportCount,
+			MaxObservationLength: ocr2keepers.MaxObservationLength,
+			MaxOutcomeLength:     ocr2keepers.MaxOutcomeLength,
+			MaxReportLength:      ocr2keepers.MaxReportLength,
+			MaxReportCount:       ocr2keepers.MaxReportCount,
 		},
 	}
 
@@ -113,6 +103,8 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		factory.getter,
 		factory.encoder,
 		factory.upkeepTypeGetter,
+		factory.workIDGenerator,
+		factory.upkeepStateUpdater,
 		factory.runnable,
 		factory.runnerConf,
 		conf,

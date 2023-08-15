@@ -51,7 +51,7 @@ type mockPostprocessor struct {
 	mock.Mock
 }
 
-func (m *mockPostprocessor) PostProcess(ctx context.Context, results []int64) error {
+func (m *mockPostprocessor) PostProcess(ctx context.Context, results []int64, payloads []int) error {
 	ret := m.Called(ctx, results)
 	return ret.Error(0)
 }
@@ -61,7 +61,7 @@ func TestNewGenericObserver(t *testing.T) {
 
 	type args struct {
 		preprocessors []PreProcessor[int]
-		postprocessor PostProcessor[int64]
+		postprocessor PostProcessor[int64, int]
 		runner        func(context.Context, ...int) ([]int64, error)
 		limit         time.Duration
 		logger        *log.Logger
@@ -115,7 +115,7 @@ func TestNewGenericObserver(t *testing.T) {
 func TestObserve_Process(t *testing.T) {
 	type fields struct {
 		Preprocessors []PreProcessor[int]
-		Postprocessor PostProcessor[int64]
+		Postprocessor PostProcessor[int64, int]
 		Processor     *mockProcessFunc
 	}
 

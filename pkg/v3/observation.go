@@ -3,110 +3,180 @@ package ocr2keepers
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type ObservationMetadataKey string
-
+// NOTE: Any change to these values should keep backwards compatibility in mind
+// as different nodes would upgrade at different times and would need to
+// adhere to each others' limits
 const (
-	BlockHistoryObservationKey     ObservationMetadataKey = "blockHistory"
-	SampleProposalObservationKey   ObservationMetadataKey = "sampleProposals"
-	RecoveryProposalObservationKey ObservationMetadataKey = "recoveryProposals"
+	ObservationPerformablesLimit          = 100
+	ObservationLogRecoveryProposalsLimit  = 5
+	ObservationConditionalsProposalsLimit = 5
+	ObservationBlockHistoryLimit          = 256
+
+	// MaxObservationLength applies a limit to the total length of bytes in an
+	// observation. NOTE: This is derived from a limit of 5000 on performData
+	// which is guaranteed onchain
+	MaxObservationLength = 1_000_000
 )
 
-var (
-	ErrInvalidMetadataKey = fmt.Errorf("invalid metadata key")
-	ErrWrongDataType      = fmt.Errorf("wrong data type")
-	ErrBlockNotAvailable  = fmt.Errorf("coordinated block not available in outcome")
-)
-
-func ValidateObservationMetadataKey(key ObservationMetadataKey) error {
-	switch key {
-	case BlockHistoryObservationKey:
-		return nil
-	default:
-		return fmt.Errorf("%w: %s", ErrInvalidMetadataKey, key)
-	}
-}
-
-// AutomationObservation models the proposed actionable decisions made by a single node
+// AutomationObservation models the local automation view sent by a single node
+// to the network upon which they later get agreement
+// NOTE: Any change to this structure should keep backwards compatibility in mind
+// as different nodes would upgrade at different times and would need to understand
+// each others' observations meanwhile
 type AutomationObservation struct {
-	Instructions []instructions.Instruction
-	Metadata     map[ObservationMetadataKey]interface{}
-	Performable  []ocr2keepers.CheckResult
+	// These are the upkeeps that are eligible and should be performed
+	Performable []ocr2keepers.CheckResult
+	// These are the proposals for upkeeps that need a coordinated block to be checked on
+	// The expectation is that once bound to a coordinated block, this goes into performables
+	UpkeepProposals []ocr2keepers.CoordinatedBlockProposal
+	// This is the block history of the chain from this node's perspective. It sends a
+	// few latest blocks to help in block coordination
+	BlockHistory ocr2keepers.BlockHistory
 }
 
 func (observation AutomationObservation) Encode() ([]byte, error) {
 	return json.Marshal(observation)
 }
 
-func DecodeAutomationObservation(data []byte) (AutomationObservation, error) {
-	type raw struct {
-		Instructions []instructions.Instruction
-		Metadata     map[string]json.RawMessage
-		Performable  []ocr2keepers.CheckResult
+func DecodeAutomationObservation(data []byte, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) (AutomationObservation, error) {
+	ao := AutomationObservation{}
+	err := json.Unmarshal(data, &ao)
+	if err != nil {
+		return AutomationObservation{}, err
 	}
-
-	var (
-		obs    AutomationObservation
-		rawObs raw
-	)
-
-	if err := json.Unmarshal(data, &rawObs); err != nil {
-		return obs, err
+	err = validateAutomationObservation(ao, utg, wg)
+	if err != nil {
+		return AutomationObservation{}, err
 	}
-
-	metadata := make(map[ObservationMetadataKey]interface{})
-	for key := range rawObs.Metadata {
-		switch ObservationMetadataKey(key) {
-		case BlockHistoryObservationKey:
-			// value is a block history type
-			// var tmp string
-			// var bh ocr2keepers.BlockKey
-
-			// if err := json.Unmarshal(value, &tmp); err != nil {
-			// 	return obs, err
-			// }
-			// parts := strings.Split(tmp, "|")
-			// if len(parts) == 0 {
-			// 	return obs, fmt.Errorf("%w: %s", ErrWrongDataType, tmp)
-			// }
-			// if val, ok := big.NewInt(0).SetString(parts[0], 10); !ok {
-			// 	return obs, fmt.Errorf("%w: %s", ErrWrongDataType, tmp)
-			// } else {
-			// 	bh.Number = ocr2keepers.BlockNumber(val.Int64())
-			// }
-			// metadata[BlockHistoryObservationKey] = ocr2keepers.BlockHistory{bh}
-		}
-	}
-
-	obs.Instructions = rawObs.Instructions
-	obs.Metadata = metadata
-	obs.Performable = rawObs.Performable
-
-	return obs, nil
+	return ao, nil
 }
 
-func ValidateAutomationObservation(o AutomationObservation) error {
-	for _, in := range o.Instructions {
-		if err := instructions.Validate(in); err != nil {
-			return err
+func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	// Validate Block History
+	if len(o.BlockHistory) > ObservationBlockHistoryLimit {
+		return fmt.Errorf("block history length cannot be greater than %d", ObservationBlockHistoryLimit)
+	}
+	// Block History should not have duplicate block numbers
+	seen := make(map[uint64]bool)
+	for _, block := range o.BlockHistory {
+		if seen[uint64(block.Number)] {
+			return fmt.Errorf("block history cannot have duplicate block numbers")
 		}
+		seen[uint64(block.Number)] = true
 	}
 
-	for key := range o.Metadata {
-		if err := ValidateObservationMetadataKey(key); err != nil {
-			return err
-		}
+	// Validate Performables
+	if (len(o.Performable)) > ObservationPerformablesLimit {
+		return fmt.Errorf("performable length cannot be greater than %d", ObservationPerformablesLimit)
 	}
-
+	seenPerformables := make(map[string]bool)
 	for _, res := range o.Performable {
-		if err := res.Validate(); err != nil {
+		if err := validateCheckResult(res, utg, wg); err != nil {
 			return err
 		}
+		if seenPerformables[res.WorkID] {
+			return fmt.Errorf("performable cannot have duplicate workIDs")
+		}
+		seenPerformables[res.WorkID] = true
 	}
 
+	// Validate Proposals
+	if (len(o.UpkeepProposals)) >
+		(ObservationConditionalsProposalsLimit + ObservationLogRecoveryProposalsLimit) {
+		return fmt.Errorf("upkeep proposals length cannot be greater than %d", ObservationConditionalsProposalsLimit+ObservationLogRecoveryProposalsLimit)
+	}
+	conditionalProposalCount := 0
+	logProposalCount := 0
+	seenProposals := make(map[string]bool)
+	for _, proposal := range o.UpkeepProposals {
+		if err := validateUpkeepProposal(proposal, utg, wg); err != nil {
+			return err
+		}
+		if seenProposals[proposal.WorkID] {
+			return fmt.Errorf("proposals cannot have duplicate workIDs")
+		}
+		seenProposals[proposal.WorkID] = true
+		if utg(proposal.UpkeepID) == ocr2keepers.ConditionTrigger {
+			conditionalProposalCount++
+		} else if utg(proposal.UpkeepID) == ocr2keepers.LogTrigger {
+			logProposalCount++
+		}
+	}
+	if conditionalProposalCount > ObservationConditionalsProposalsLimit {
+		return fmt.Errorf("conditional upkeep proposals length cannot be greater than %d", ObservationConditionalsProposalsLimit)
+	}
+	if logProposalCount > ObservationLogRecoveryProposalsLimit {
+		return fmt.Errorf("log upkeep proposals length cannot be greater than %d", ObservationLogRecoveryProposalsLimit)
+	}
+
+	return nil
+}
+
+// Validates the check result fields sent within an observation
+func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	if r.PipelineExecutionState != 0 || r.Retryable {
+		return fmt.Errorf("check result cannot have failed execution state")
+	}
+	if !r.Eligible || r.IneligibilityReason != 0 {
+		return fmt.Errorf("check result cannot be ineligible")
+	}
+	// UpkeepID is contained [32]byte, no validation needed
+	if err := validateTriggerExtensionType(r.Trigger, utg(r.UpkeepID)); err != nil {
+		return fmt.Errorf("invalid trigger: %w", err)
+	}
+	if generatedWorkID := wg(r.UpkeepID, r.Trigger); generatedWorkID != r.WorkID {
+		return fmt.Errorf("incorrect workID within result")
+	}
+	if r.GasAllocated == 0 {
+		return fmt.Errorf("gas allocated cannot be zero")
+	}
+	// PerformData is a []byte, no validation needed. Length constraint is handled
+	// by maxObservationSize
+	uint256Max, _ := big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+	if r.FastGasWei == nil {
+		return fmt.Errorf("fast gas wei must be present")
+	}
+	if r.FastGasWei.Cmp(big.NewInt(0)) < 0 || r.FastGasWei.Cmp(uint256Max) > 0 {
+		return fmt.Errorf("fast gas wei must be in uint256 range")
+	}
+	if r.LinkNative == nil {
+		return fmt.Errorf("link native must be present")
+	}
+	if r.LinkNative.Cmp(big.NewInt(0)) < 0 || r.LinkNative.Cmp(uint256Max) > 0 {
+		return fmt.Errorf("link native must be in uint256 range")
+	}
+	return nil
+}
+
+// Validate validates the trigger fields, and any extensions if present.
+func validateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
+	switch ut {
+	case ocr2keepers.ConditionTrigger:
+		if t.LogTriggerExtension != nil {
+			return fmt.Errorf("log trigger extension cannot be present for condition upkeep")
+		}
+	case ocr2keepers.LogTrigger:
+		if t.LogTriggerExtension == nil {
+			return fmt.Errorf("log trigger extension cannot be empty for log upkeep")
+		}
+	}
+	return nil
+}
+
+func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	// No validation is done on Trigger.BlockNumber and Trigger.BlockHash because those
+	// get udpated with a coordinated quorum block
+	ut := utg(p.UpkeepID)
+	if err := validateTriggerExtensionType(p.Trigger, ut); err != nil {
+		return err
+	}
+	if generatedWorkID := wg(p.UpkeepID, p.Trigger); generatedWorkID != p.WorkID {
+		return fmt.Errorf("incorrect workID within proposal")
+	}
 	return nil
 }

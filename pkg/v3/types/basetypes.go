@@ -16,8 +16,8 @@ const (
 type TransmitEventType int
 
 const (
-	// Exploratory AUTO 4335: add type for unknown
-	PerformEvent TransmitEventType = iota
+	UnknownEvent TransmitEventType = iota
+	PerformEvent
 	StaleReportEvent
 	ReorgReportEvent
 	InsufficientFundsReportEvent
@@ -27,9 +27,9 @@ const (
 type UpkeepState uint8
 
 const (
-	// Exploratory AUTO 4335: add type for unknown
+	UnknownState UpkeepState = iota
 	// Performed means the upkeep was performed
-	Performed UpkeepState = iota
+	Performed
 	// Ineligible means the upkeep was not eligible to be performed
 	Ineligible
 )
@@ -67,6 +67,10 @@ func (u *UpkeepIdentifier) FromBigInt(i *big.Int) bool {
 type BlockNumber uint64
 
 // BlockKey represent a block (number and hash)
+// NOTE: This struct is sent on the p2p network as part of observations to get quorum
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
 type BlockKey struct {
 	Number BlockNumber
 	Hash   [32]byte
@@ -89,6 +93,10 @@ type TransmitEvent struct {
 	CheckBlock BlockNumber
 }
 
+// NOTE: This struct is sent on the p2p network as part of observations to get quorum
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
 type CheckResult struct {
 	// zero if success, else indicates an error code
 	PipelineExecutionState uint8
@@ -105,47 +113,41 @@ type CheckResult struct {
 	// Trigger is the event that triggered the upkeep to be checked
 	Trigger Trigger
 	// WorkID represents the unit of work for the check result
+	// Exploratory: Make workID an internal field and an external WorkID() function which generates WID
 	WorkID string
 	// GasAllocated is the gas to provide an upkeep in a report
 	GasAllocated uint64
 	// PerformData is the raw data returned when simulating an upkeep perform
 	PerformData []byte
-	// todo: add comment
+	// FastGasWei is the fast gas price in wei when performing this upkeep
 	FastGasWei *big.Int
-	// todo: add comment
+	// Link to native ratio to be used when performing this upkeep
 	LinkNative *big.Int
 }
 
 // UniqueID returns a unique identifier for the check result.
-// It is used to deduplicate check results.
+// It is used to achieve quorum on results before being sent within a report.
 func (r CheckResult) UniqueID() string {
 	var resultBytes []byte
-
-	resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
-	resultBytes = append(resultBytes, big.NewInt(int64(r.GasAllocated)).Bytes()...)
-	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
-	resultBytes = append(resultBytes, r.PerformData[:]...)
+	resultBytes = append(resultBytes, r.PipelineExecutionState)
+	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Retryable))...)
+	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Eligible))...)
+	resultBytes = append(resultBytes, r.IneligibilityReason)
 	resultBytes = append(resultBytes, r.UpkeepID[:]...)
 	resultBytes = append(resultBytes, r.Trigger.BlockHash[:]...)
 	resultBytes = append(resultBytes, big.NewInt(int64(r.Trigger.BlockNumber)).Bytes()...)
 	if r.Trigger.LogTriggerExtension != nil {
+		// Note: We encode the whole trigger extension so the behaiour of
+		// LogTriggerExtentsion.BlockNumber and LogTriggerExtentsion.BlockHash should be
+		// consistent across nodes when sending observations
 		resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Trigger.LogTriggerExtension))...)
 	}
-
+	resultBytes = append(resultBytes, r.WorkID[:]...)
+	resultBytes = append(resultBytes, big.NewInt(int64(r.GasAllocated)).Bytes()...)
+	resultBytes = append(resultBytes, r.PerformData[:]...)
+	resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
+	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
 	return fmt.Sprintf("%x", resultBytes)
-}
-
-// Validate validates the check result fields
-func (r CheckResult) Validate() error {
-	if r.Eligible && r.Retryable {
-		return fmt.Errorf("check result cannot be both eligible and retryable")
-	}
-
-	if r.GasAllocated == 0 {
-		return fmt.Errorf("gas allocated cannot be zero")
-	}
-
-	return nil
 }
 
 // BlockHistory is a list of block keys
@@ -170,9 +172,17 @@ type UpkeepPayload struct {
 	CheckData []byte
 }
 
-// CoordinatedProposal is used to represent a unit of work that can be performed
-// after it has been coordinated between nodes.
-type CoordinatedProposal struct {
+// CoordinatedBlockProposal is used to represent a unit of work that can be performed
+// after a check block has been coordinated between nodes.
+// NOTE: This struct is sent on the p2p network as part of observations to get quorum
+// Any change here should be backwards compatible and should keep validation and
+// quorum requirements in mind. Please ensure to get a proper review along with an
+// upgrade plan before changing this
+// NOTE: Only the trigger.BlockHash and trigger.BlockNumber are coordinated across
+// the network to get a quorum. WorkID is guaranteed to be correctly generated.
+// Rest of the fields here SHOULD NOT BE TRUSTED as they can be manipulated by
+// a single malicious node.
+type CoordinatedBlockProposal struct {
 	// UpkeepID is the id of the proposed upkeep
 	UpkeepID UpkeepIdentifier
 	// Trigger represents the event that triggered the upkeep to be checked

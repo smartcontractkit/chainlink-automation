@@ -8,115 +8,123 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
+const (
+	// This is the ticker interval for recovery final flow
+	RecoveryFinalInterval = 1 * time.Second
+	// These are the maximum number of log upkeeps dequeued on every tick from proposal queue in FinalRecoveryFlow
+	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
+	FinalRecoveryBatchSize = 50
+	// This is the ticker interval for recovery proposal flow
+	RecoveryProposalInterval = 1 * time.Second
+)
+
 func newFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rs ResultStore,
-	rn ocr2keepersv3.Runner,
-	recoverer Retryer,
-	recoveryInterval time.Duration,
+	resultStore ocr2keepers.ResultStore,
+	runner ocr2keepersv3.Runner,
+	retryQ ocr2keepers.RetryQueue,
+	recoveryFinalizationInterval time.Duration,
+	proposalQ ocr2keepers.ProposalQueue,
+	builder ocr2keepers.PayloadBuilder,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
-) (service.Recoverable, Retryer) {
-	// postprocessing is a combination of multiple smaller postprocessors
+) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
-		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
-		// create retry postprocessor
-		postprocessors.NewRetryPostProcessor(nil, recoverer),
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
-
-	// create observer that only pushes results to result store. everything at
+	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
 	recoveryObserver := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
-		rn,
+		runner,
 		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create schedule ticker to manage retry interval
-	ticker := tickers.NewBasicTicker[ocr2keepers.UpkeepPayload](
-		recoveryInterval,
-		recoveryObserver,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-final-recovery]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
+	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryFinalizationInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return coordinatedProposalsTick{
+			logger:    logger,
+			builder:   builder,
+			q:         proposalQ,
+			utype:     ocr2keepers.LogTrigger,
+			batchSize: FinalRecoveryBatchSize,
+		}, nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &basicRetryer{ticker: ticker}
+	return ticker
+}
 
-	return ticker, retryer
+// coordinatedProposalsTick is used to push proposals from the proposal queue to some observer
+type coordinatedProposalsTick struct {
+	logger    *log.Logger
+	builder   ocr2keepers.PayloadBuilder
+	q         ocr2keepers.ProposalQueue
+	utype     ocr2keepers.UpkeepType
+	batchSize int
+}
+
+func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	if t.q == nil {
+		return nil, nil
+	}
+
+	proposals, err := t.q.Dequeue(t.utype, t.batchSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dequeue from retry queue: %w", err)
+	}
+	t.logger.Printf("%d proposals returned from queue", len(proposals))
+
+	return t.builder.BuildPayloads(ctx, proposals...)
 }
 
 func newRecoveryProposalFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ms MetadataStore,
-	rp ocr2keepers.RecoverableProvider,
+	preProcessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	runner ocr2keepersv3.Runner,
+	metadataStore ocr2keepers.MetadataStore,
+	recoverableProvider ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
 	logger *log.Logger,
-	configFuncs ...tickers.ScheduleTickerConfigFunc,
-) (service.Recoverable, Retryer) {
-	// items come into the recovery path from multiple sources
-	// 1. [done] from the log provider as UpkeepPayload
-	// 2. [done] from retry ticker as CheckResult
-	// 3. [done] from primary flow as CheckResult if retry fails
-	// 4. [todo] from timeouts of the result store
-	// TODO: add preprocessor to check that recoverable is already in metadata
+) service.Recoverable {
+	preProcessors = append(preProcessors, preprocessors.NewProposalFilterer(metadataStore, ocr2keepers.LogTrigger))
+	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(metadataStore)
 
-	// the recovery observer doesn't do any processing on the identifiers
-	// so this function is just a pass-through
-	f := func(_ context.Context, ids ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
-		return ids, nil
-	}
-
-	// the recovery observer is just a pass-through to the metadata store
-	// add postprocessor for metatdata store
-	post := postprocessors.NewAddPayloadToMetadataStorePostprocessor(ms)
-
-	recoveryObserver := ocr2keepersv3.NewGenericObserver[ocr2keepers.UpkeepPayload, ocr2keepers.UpkeepPayload](
-		preprocessors,
-		post,
-		f,
+	observer := ocr2keepersv3.NewRunnableObserver(
+		preProcessors,
+		postprocessors,
+		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create a schedule ticker that pulls recoverable items from an outside
-	// source and provides point for recoverables to be pushed to the ticker
-	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
-		recoveryInterval,
-		recoveryObserver,
-		func(f func(string, ocr2keepers.UpkeepPayload) error) error {
-			// TODO: Pass in parent context to this function
-			ctx := context.Background()
-			// pull payloads from RecoverableProvider
-			recovers, err := rp.GetRecoveryProposals(ctx)
-			if err != nil {
-				return err
-			}
+	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return logRecoveryTick{logger: logger, logRecoverer: recoverableProvider}, nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+}
 
-			for _, rec := range recovers {
-				if err := f(rec.WorkID, rec); err != nil {
-					return err
-				}
-			}
+type logRecoveryTick struct {
+	logRecoverer ocr2keepers.RecoverableProvider
+	logger       *log.Logger
+}
 
-			return nil
-		},
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-recovery-proposal]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		configFuncs...,
-	)
+func (et logRecoveryTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	if et.logRecoverer == nil {
+		return nil, nil
+	}
 
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &scheduledRetryer{scheduler: ticker}
+	logs, err := et.logRecoverer.GetRecoveryProposals(ctx)
 
-	return ticker, retryer
+	et.logger.Printf("%d logs returned by log recoverer", len(logs))
+
+	return logs, err
 }

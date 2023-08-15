@@ -1,6 +1,10 @@
 package plugin
 
 import (
+	"log"
+	"sort"
+
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -11,24 +15,32 @@ type resultAndCount[T any] struct {
 }
 
 type performables struct {
-	threshold   int
-	resultCount map[string]resultAndCount[ocr2keepers.CheckResult]
+	limit         int
+	keyRandSource [16]byte
+	threshold     int
+	logger        *log.Logger
+	resultCount   map[string]resultAndCount[ocr2keepers.CheckResult]
 }
 
-func newPerformables(threshold int) *performables {
+// Performables gets quorum on agreed check results which should ultimately be
+// performed within a report. It assumes only valid observations are added to it
+// and simply adds all results which achieve the threshold quorum.
+// Results are agreed upon by their UniqueID() which contains all the data
+// withn the result.
+func newPerformables(threshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
 	return &performables{
-		threshold:   threshold,
-		resultCount: make(map[string]resultAndCount[ocr2keepers.CheckResult]),
+		threshold:     threshold,
+		limit:         limit,
+		keyRandSource: rSrc,
+		logger:        logger,
+		resultCount:   make(map[string]resultAndCount[ocr2keepers.CheckResult]),
 	}
 }
 
 func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 	for _, result := range observation.Performable {
-		if !result.Eligible {
-			continue
-		}
-
 		uid := result.UniqueID()
+		p.logger.Printf("Adding result (%+v) with uid %s", result, uid)
 		payloadCount, ok := p.resultCount[uid]
 		if !ok {
 			payloadCount = resultAndCount[ocr2keepers.CheckResult]{
@@ -44,13 +56,24 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
-	var performable []ocr2keepers.CheckResult
+	performable := make([]ocr2keepers.CheckResult, 0)
 
-	for _, payload := range p.resultCount {
+	for uid, payload := range p.resultCount {
 		if payload.count > p.threshold {
+			p.logger.Printf("Adding agreed performable over threshold %d with uid %s and count %d", p.threshold, uid, payload.count)
 			performable = append(performable, payload.result)
 		}
 	}
 
-	outcome.Performable = performable
+	// Sort by a shuffled workID.
+	sort.Slice(performable, func(i, j int) bool {
+		return util.ShuffleString(performable[i].WorkID, p.keyRandSource) < util.ShuffleString(performable[j].WorkID, p.keyRandSource)
+	})
+
+	if len(performable) > p.limit {
+		p.logger.Printf("Limiting new performables in outcome to %d", p.limit)
+		performable = performable[:p.limit]
+	}
+	p.logger.Printf("Setting outcome.AgreedPerformables with %d performables", len(performable))
+	outcome.AgreedPerformables = performable
 }

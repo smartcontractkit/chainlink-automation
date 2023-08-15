@@ -3,23 +3,17 @@ package plugin
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/coordinator"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/flows"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/build"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/hooks/prebuild"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/resultstore"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -30,12 +24,14 @@ func newPlugin(
 	logProvider ocr2keepers.LogEventProvider,
 	events ocr2keepers.TransmitEventProvider,
 	blockSource ocr2keepers.BlockSubscriber,
-	rp ocr2keepers.RecoverableProvider,
+	recoverablesProvider ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
-	ratio flows.Ratio,
+	ratio ocr2keepers.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
+	workIDGenerator ocr2keepers.WorkIDGenerator,
+	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater,
 	runnable ocr2keepers.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
@@ -48,19 +44,11 @@ func newPlugin(
 	}
 
 	// create the value stores
-	rs := resultstore.New(logger)
-	ms := store.NewMetadata(blockTicker)
-	is := instructions.NewStore()
-
-	// on plugin startup, begin broadcasting that block coordination should
-	// happen immediately
-	is.Set(instructions.ShouldCoordinateBlock)
-
-	// add recovery cache to metadata store with 24hr timeout
-	ms.Set(store.ProposalRecoveryMetadata, util.NewCache[ocr2keepers.CoordinatedProposal](24*time.Hour))
+	resultStore := stores.New(logger)
+	metadataStore := stores.NewMetadataStore(blockTicker, upkeepTypeGetter)
 
 	// create a new runner instance
-	rn, err := runner.NewRunner(
+	runner, err := runner.NewRunner(
 		logger,
 		runnable,
 		rConf,
@@ -70,42 +58,54 @@ func newPlugin(
 	}
 
 	// create the event coordinator
-	coord := coordinator.NewReportCoordinator(events, upkeepTypeGetter, conf, logger)
+	coord := coordinator.NewCoordinator(events, upkeepTypeGetter, conf, logger)
+
+	retryQ := stores.NewRetryQueue(logger)
+
+	retrySvc := flows.NewRetryFlow(coord, resultStore, runner, retryQ, flows.RetryCheckInterval, upkeepStateUpdater, logger)
+
+	proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 
 	// initialize the log trigger eligibility flow
-	ltFlow, svcs := flows.NewLogTriggerEligibility(
+	logTriggerFlows := flows.LogTriggerFlows(
 		coord,
-		rs,
-		ms,
-		rn,
+		resultStore,
+		metadataStore,
+		runner,
 		logProvider,
-		rp,
+		recoverablesProvider,
 		builder,
 		flows.LogCheckInterval,
-		flows.RecoveryCheckInterval,
+		flows.RecoveryProposalInterval,
+		flows.RecoveryFinalInterval,
+		retryQ,
+		proposalQ,
+		upkeepStateUpdater,
 		logger,
-		[]tickers.ScheduleTickerConfigFunc{ // retry configs
-			// TODO: provide configuration inputs
-			tickers.ScheduleTickerWithDefaults,
-		},
-		[]tickers.ScheduleTickerConfigFunc{ // recovery configs
-			func(c *tickers.ScheduleTickerConfig) {
-				// TODO: provide configuration inputs
-				c.SendDelay = 5 * time.Minute
-				c.MaxSendDuration = 24 * time.Hour
-			},
-		},
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(svcs, []service.Recoverable{rs, ms, coord, rn, blockTicker}...)
+	allSvcs := append(logTriggerFlows, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner, blockTicker}...)
 
-	cFlow, svcs, err := flows.NewConditionalEligibility(ratio, getter, blockSource, builder, rs, ms, rn, logger)
+	contionalFlows := flows.ConditionalTriggerFlows(
+		coord,
+		ratio,
+		getter,
+		blockSource,
+		builder,
+		resultStore,
+		metadataStore,
+		runner,
+		proposalQ,
+		retryQ,
+		upkeepStateUpdater,
+		logger,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	allSvcs = append(allSvcs, svcs...)
+	allSvcs = append(allSvcs, contionalFlows...)
 
 	recoverSvcs := []service.Recoverable{}
 
@@ -116,26 +116,22 @@ func newPlugin(
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
 	// data
 	plugin := &ocr3Plugin{
-		ConfigDigest: digest,
-		PrebuildHooks: []func(ocr2keepersv3.AutomationOutcome) error{
-			ltFlow.ProcessOutcome,
-			cFlow.ProcessOutcome,
-			prebuild.NewRemoveFromStaging(rs, logger).RunHook,
-			prebuild.NewCoordinateBlockHook(is, ms).RunHook,
-		},
-		BuildHooks: []func(*ocr2keepersv3.AutomationObservation) error{
-			build.NewAddFromStaging(rs, logger).RunHook,
-			// TODO: AUTO-4243 Finalize build hooks
-			//build.NewCoordinateBlockHook(is, ms).RunHook,
-			//build.NewAddFromRecoveryHook(ms).RunHook,
-			//build.NewAddFromSamplesHook(ms).RunHook,
-		},
-		ReportEncoder: encoder,
-		Coordinators:  []Coordinator{coord},
-		Services:      recoverSvcs,
-		Config:        conf,
-		F:             f,
-		Logger:        log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		ConfigDigest:                digest,
+		ReportEncoder:               encoder,
+		Coordinator:                 coord,
+		UpkeepTypeGetter:            upkeepTypeGetter,
+		WorkIDGenerator:             workIDGenerator,
+		RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+		RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
+		AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQ, logger),
+		AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+		AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coord, logger),
+		AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coord, logger),
+		AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coord, logger),
+		Services:                    recoverSvcs,
+		Config:                      conf,
+		F:                           f,
+		Logger:                      log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}
 
 	plugin.startServices()

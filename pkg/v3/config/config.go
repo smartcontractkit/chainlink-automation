@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	// TODO (AUTO-4184) Clean up config
 	// DefaultCacheExpiration is the default amount of time a key can remain
 	// in the cache before being eligible to be cleared
 	DefaultCacheExpiration = 20 * time.Minute
@@ -30,12 +31,12 @@ var (
 		validatePerformLockoutWindow,
 		validateTargetProbability,
 		validateTargetInRounds,
-		validateSamplingJobDuration,
+		// validateSamplingJobDuration,
 		validateMinConfirmations,
 		validateGasLimitPerReport,
 		validateGasOverheadPerUpkeep,
 		validateMaxUpkeepBatchSize,
-		validateReportBlockLag,
+		// validateReportBlockLag,
 	}
 )
 
@@ -46,7 +47,10 @@ type ReportingFactoryConfig struct {
 	ServiceQueueLength    int
 }
 
-// OffchainConfig ...
+// NOTE: Any changes to this struct should keep in mind existing production contracts
+// with deployed config. Additionally, offchain node upgrades can happen
+// out of sync and nodes should be compatible with each other during the upgrade
+// Please ensure to get a proper review along with an upgrade plan before changing this
 type OffchainConfig struct {
 	// Version is used by the plugin to switch feature sets based on the intent
 	// of the off-chain config
@@ -65,12 +69,14 @@ type OffchainConfig struct {
 	// calculated
 	TargetInRounds int `json:"targetInRounds"`
 
+	// TODO (AUTO-4184) Clean this up
 	// SamplingJobDuration is the time allowed for a sampling run to complete
 	// before forcing a new job on the latest block. Units are in milliseconds.
-	SamplingJobDuration int64 `json:"samplingJobDuration"`
+	// SamplingJobDuration int64 `json:"samplingJobDuration"`
 
-	// MinConfirmations limits registered log events to only those that have
+	// MinConfirmations limits registered transmit events to only those that have
 	// the provided number of confirmations.
+	// TODO (AUTO-4184) Clean this up: rename to minTransmitConfirmations?
 	MinConfirmations int `json:"minConfirmations"`
 
 	// GasLimitPerReport is the max gas that could be spent per one report.
@@ -83,11 +89,13 @@ type OffchainConfig struct {
 	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
 	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
 
+	// TODO (AUTO-4184) Clean this up
 	// ReportBlockLag is the number to subtract from median block number during report phase.
-	ReportBlockLag int `json:"reportBlockLag"`
+	//ReportBlockLag int `json:"reportBlockLag"`
 
+	// TODO (AUTO-4184) Clean this up
 	// MercuryLookup is a flag to use mercury lookup in the plugin
-	MercuryLookup bool `json:"mercuryLookup"`
+	//MercuryLookup bool `json:"mercuryLookup"`
 }
 
 // DecodeOffchainConfig decodes bytes into an OffchainConfig
@@ -137,6 +145,7 @@ func validateTargetInRounds(conf *OffchainConfig) error {
 	return nil
 }
 
+/* // TODO (AUTO-4184) Clean this up
 func validateSamplingJobDuration(conf *OffchainConfig) error {
 	if conf.SamplingJobDuration <= 0 {
 		// default of 3 seconds if not set
@@ -144,7 +153,7 @@ func validateSamplingJobDuration(conf *OffchainConfig) error {
 	}
 
 	return nil
-}
+}*/
 
 func validateMinConfirmations(conf *OffchainConfig) error {
 	if conf.MinConfirmations <= 0 {
@@ -180,10 +189,11 @@ func validateMaxUpkeepBatchSize(conf *OffchainConfig) error {
 	return nil
 }
 
+/* // TODO (AUTO-4184) Clean this up
 func validateReportBlockLag(conf *OffchainConfig) error {
 	if conf.ReportBlockLag < 0 {
 		conf.ReportBlockLag = 0
 	}
 
 	return nil
-}
+}*/

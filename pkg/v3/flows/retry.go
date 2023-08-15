@@ -1,6 +1,7 @@
 package flows
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -13,51 +14,60 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-func newRetryFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rs ResultStore,
-	rn ocr2keepersv3.Runner,
-	recoverer Retryer,
-	retryInterval time.Duration,
+const (
+	// These are the max number of payloads dequeued on every tick from the retry queue in the retry flow
+	RetryBatchSize = 10
+	// This is the ticker interval for retry flow
+	RetryCheckInterval = 5 * time.Second
+)
+
+func NewRetryFlow(
+	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	resultStore ocr2keepers.ResultStore,
+	runner ocr2keepersv3.Runner,
+	retryQ ocr2keepers.RetryQueue,
+	retryTickerInterval time.Duration,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
-	configFuncs ...tickers.ScheduleTickerConfigFunc,
-) (service.Recoverable, Retryer) {
-	// create observer
-	// leave postprocessor empty to start with
-	retryObserver := ocr2keepersv3.NewRunnableObserver(
+) service.Recoverable {
+	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	post := postprocessors.NewCombinedPostprocessor(
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "retry-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
+	)
+
+	obs := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		nil,
-		rn,
+		post,
+		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | retry-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create schedule ticker to manage retry interval
-	ticker := tickers.NewScheduleTicker[ocr2keepers.UpkeepPayload](
-		retryInterval,
-		retryObserver,
-		func(func(string, ocr2keepers.UpkeepPayload) error) error {
-			// this schedule ticker doesn't pull data from anywhere
-			return nil
-		},
-		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-retry]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		configFuncs...,
-	)
+	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](retryTickerInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return retryTick{logger: logger, q: retryQ, batchSize: RetryBatchSize}, nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | retry-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &scheduledRetryer{scheduler: ticker}
+	return timeTick
+}
 
-	// postprocessing is a combination of multiple smaller postprocessors
-	post := postprocessors.NewCombinedPostprocessor(
-		// create eligibility postprocessor with result store
-		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | retry-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
-		// create retry postprocessor
-		postprocessors.NewRetryPostProcessor(retryer, recoverer),
-	)
+type retryTick struct {
+	logger    *log.Logger
+	q         ocr2keepers.RetryQueue
+	batchSize int
+}
 
-	retryObserver.SetPostProcessor(post)
+func (t retryTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	if t.q == nil {
+		return nil, nil
+	}
 
-	// return retry ticker as a recoverable and retryer
-	return ticker, retryer
+	payloads, err := t.q.Dequeue(t.batchSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dequeue from retry queue: %w", err)
+	}
+	t.logger.Printf("%d payloads returned by retry queue", len(payloads))
+
+	return payloads, err
 }

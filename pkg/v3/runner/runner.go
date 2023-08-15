@@ -130,7 +130,10 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 	for _, payload := range payloads {
 
 		// if in cache, add to result
-		if res, ok := o.cache.Get(payload.WorkID); ok {
+		// TODO: Clean this up
+		if res, ok := o.cache.Get(payload.WorkID); ok &&
+			(res.Trigger.BlockNumber == payload.Trigger.BlockNumber) &&
+			(res.Trigger.BlockHash == payload.Trigger.BlockHash) {
 			result.Add(res)
 			continue
 		}
@@ -197,8 +200,8 @@ func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2ke
 			r.AddSuccesses(1)
 
 			for _, result := range results {
-				// only add to the cache if the result is not retryable
-				if !result.Retryable {
+				// only add to the cache if pipeline was successful
+				if result.PipelineExecutionState == 0 {
 					o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
 				}
 

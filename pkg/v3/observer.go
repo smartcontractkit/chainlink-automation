@@ -17,9 +17,9 @@ type PreProcessor[T any] interface {
 }
 
 // PostProcessor is the general interface for a processing function after checking eligibility status
-type PostProcessor[R any] interface {
+type PostProcessor[R, T any] interface {
 	// PostProcess takes a slice of results where eligibility status is known
-	PostProcess(context.Context, []R) error
+	PostProcess(context.Context, []R, []T) error
 }
 
 // Runner is the interface for an object that should determine eligibility state
@@ -32,7 +32,7 @@ type Observer[T any, R any] struct {
 	lggr *log.Logger
 
 	Preprocessors []PreProcessor[T]
-	Postprocessor PostProcessor[R]
+	Postprocessor PostProcessor[R, T]
 	processFunc   func(context.Context, ...T) ([]R, error)
 
 	// internal configurations
@@ -42,7 +42,7 @@ type Observer[T any, R any] struct {
 // NewRunnableObserver creates a new Observer with the given pre-processors, post-processor, and runner
 func NewRunnableObserver(
 	preprocessors []PreProcessor[ocr2keepers.UpkeepPayload],
-	postprocessor PostProcessor[ocr2keepers.CheckResult],
+	postprocessor PostProcessor[ocr2keepers.CheckResult, ocr2keepers.UpkeepPayload],
 	runner Runner,
 	processLimit time.Duration,
 	logger *log.Logger,
@@ -59,7 +59,7 @@ func NewRunnableObserver(
 // NewGenericObserver creates a new Observer with the given pre-processors, post-processor, and runner
 func NewGenericObserver[T any, R any](
 	preprocessors []PreProcessor[T],
-	postprocessor PostProcessor[R],
+	postprocessor PostProcessor[R, T],
 	processor func(context.Context, ...T) ([]R, error),
 	processLimit time.Duration,
 	logger *log.Logger,
@@ -106,15 +106,11 @@ func (o *Observer[T, R]) Process(ctx context.Context, tick tickers.Tick[[]T]) er
 	o.lggr.Printf("post-processing %d results", len(results))
 
 	// Run post-processor
-	if err := o.Postprocessor.PostProcess(pCtx, results); err != nil {
+	if err := o.Postprocessor.PostProcess(pCtx, results, value); err != nil {
 		return err
 	}
 
 	o.lggr.Printf("finished processing of %d results: %+v", len(results), results)
 
 	return nil
-}
-
-func (o *Observer[T, R]) SetPostProcessor(pp PostProcessor[R]) {
-	o.Postprocessor = pp
 }

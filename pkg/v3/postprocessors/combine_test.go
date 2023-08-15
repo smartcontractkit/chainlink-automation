@@ -12,84 +12,42 @@ import (
 )
 
 func TestCombinedPostprocessor(t *testing.T) {
-	t.Run("no error returned from any processors", func(t *testing.T) {
+	t.Run("no errors", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		one := new(MockPostProcessor)
 		two := new(MockPostProcessor)
 		tre := new(MockPostProcessor)
 
-		ctx := context.Background()
-		rst := []ocr2keepers.CheckResult{}
-
-		one.On("PostProcess", ctx, rst).Return(nil)
-		two.On("PostProcess", ctx, rst).Return(nil)
-		tre.On("PostProcess", ctx, rst).Return(nil)
-
 		cmb := NewCombinedPostprocessor(one, two, tre)
+		rst := []ocr2keepers.CheckResult{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1", Retryable: true}}
+		p := []ocr2keepers.UpkeepPayload{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1"}}
 
-		err := cmb.PostProcess(ctx, rst)
+		one.On("PostProcess", ctx, rst, p).Return(nil)
+		two.On("PostProcess", ctx, rst, p).Return(nil)
+		tre.On("PostProcess", ctx, rst, p).Return(nil)
 
-		assert.NoError(t, err, "no error expected from combined post processing")
-
-		one.AssertExpectations(t)
-		two.AssertExpectations(t)
-		tre.AssertExpectations(t)
+		assert.NoError(t, cmb.PostProcess(ctx, rst, p), "no error expected from combined post processing")
 	})
 
-	t.Run("error returned from single processor and all processors run", func(t *testing.T) {
+	t.Run("with errors", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		one := new(MockPostProcessor)
 		two := new(MockPostProcessor)
 		tre := new(MockPostProcessor)
 
-		ctx := context.Background()
-		rst := []ocr2keepers.CheckResult{}
-		tst := fmt.Errorf("test")
-
-		one.On("PostProcess", ctx, rst).Return(nil)
-		two.On("PostProcess", ctx, rst).Return(tst)
-		tre.On("PostProcess", ctx, rst).Return(nil)
-
 		cmb := NewCombinedPostprocessor(one, two, tre)
+		rst := []ocr2keepers.CheckResult{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1", Retryable: true}}
+		p := []ocr2keepers.UpkeepPayload{{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}), WorkID: "0x1"}}
 
-		err := cmb.PostProcess(ctx, rst)
+		one.On("PostProcess", ctx, rst, p).Return(nil)
+		two.On("PostProcess", ctx, rst, p).Return(fmt.Errorf("error"))
+		tre.On("PostProcess", ctx, rst, p).Return(fmt.Errorf("error"))
 
-		// expect one error to be surfaced
-		assert.ErrorIs(t, err, tst, "single error expected from combined post processing")
-
-		// all post processors should still run
-		one.AssertExpectations(t)
-		two.AssertExpectations(t)
-		tre.AssertExpectations(t)
-	})
-
-	t.Run("error returned from all processors", func(t *testing.T) {
-		one := new(MockPostProcessor)
-		two := new(MockPostProcessor)
-		tre := new(MockPostProcessor)
-
-		ctx := context.Background()
-		rst := []ocr2keepers.CheckResult{}
-
-		err1 := fmt.Errorf("test")
-		err2 := fmt.Errorf("test")
-		err3 := fmt.Errorf("test")
-
-		one.On("PostProcess", ctx, rst).Return(err1)
-		two.On("PostProcess", ctx, rst).Return(err2)
-		tre.On("PostProcess", ctx, rst).Return(err3)
-
-		cmb := NewCombinedPostprocessor(one, two, tre)
-
-		err := cmb.PostProcess(ctx, rst)
-
-		// expect one error to be surfaced
-		assert.ErrorIs(t, err, err1, "joined error expected from combined postprocessor")
-		assert.ErrorIs(t, err, err2, "joined error expected from combined postprocessor")
-		assert.ErrorIs(t, err, err3, "joined error expected from combined postprocessor")
-
-		// all post processors should still run
-		one.AssertExpectations(t)
-		two.AssertExpectations(t)
-		tre.AssertExpectations(t)
+		assert.Error(t, cmb.PostProcess(ctx, rst, p), "error expected from combined post processing")
 	})
 }
 
@@ -97,7 +55,7 @@ type MockPostProcessor struct {
 	mock.Mock
 }
 
-func (_m *MockPostProcessor) PostProcess(ctx context.Context, r []ocr2keepers.CheckResult) error {
-	ret := _m.Called(ctx, r)
+func (_m *MockPostProcessor) PostProcess(ctx context.Context, r []ocr2keepers.CheckResult, p []ocr2keepers.UpkeepPayload) error {
+	ret := _m.Called(ctx, r, p)
 	return ret.Error(0)
 }

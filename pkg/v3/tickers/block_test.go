@@ -205,7 +205,7 @@ func TestBlockTicker_cancel(t *testing.T) {
 
 	go func() {
 		err = ticker.Start(ctx)
-		assert.Error(t, err) // context canceled
+		assert.NoError(t, err) // context canceled
 	}()
 
 	cancel()

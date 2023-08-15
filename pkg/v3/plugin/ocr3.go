@@ -13,241 +13,177 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-const (
-	OutcomeHistoryLimit = 10
-	OutcomeSamplesLimit = 100
-)
-
 type AutomationReportInfo struct{}
 
-//go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin" --case underscore --filename coordinator.generated.go
-type Coordinator interface {
-	Accept(ocr2keepers.ReportedUpkeep) error
-	IsTransmissionConfirmed(ocr2keepers.ReportedUpkeep) bool
-}
-
 type ocr3Plugin struct {
-	ConfigDigest  types.ConfigDigest
-	PrebuildHooks []func(ocr2keepersv3.AutomationOutcome) error
-	BuildHooks    []func(*ocr2keepersv3.AutomationObservation) error
-	ReportEncoder ocr2keepers.Encoder
-	Coordinators  []Coordinator
-	Services      []service.Recoverable
-	Config        config.OffchainConfig
-	F             int
-	Logger        *log.Logger
+	ConfigDigest                types.ConfigDigest
+	ReportEncoder               ocr2keepers.Encoder
+	Coordinator                 ocr2keepers.Coordinator
+	UpkeepTypeGetter            ocr2keepers.UpkeepTypeGetter
+	WorkIDGenerator             ocr2keepers.WorkIDGenerator
+	RemoveFromStagingHook       hooks.RemoveFromStagingHook
+	RemoveFromMetadataHook      hooks.RemoveFromMetadataHook
+	AddToProposalQHook          hooks.AddToProposalQHook
+	AddBlockHistoryHook         hooks.AddBlockHistoryHook
+	AddFromStagingHook          hooks.AddFromStagingHook
+	AddConditionalProposalsHook hooks.AddConditionalProposalsHook
+	AddLogProposalsHook         hooks.AddLogProposalsHook
+	Services                    []service.Recoverable
+	Config                      config.OffchainConfig
+	F                           int
+	Logger                      *log.Logger
 }
 
 func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
 	return nil, nil
 }
 
-func (plugin *ocr3Plugin) Observation(ctx context.Context, outcome ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
+func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
+	plugin.Logger.Printf("inside Observation for seqNr %d", outctx.SeqNr)
 	// first round outcome will be nil or empty so no processing should be done
-	if outcome.PreviousOutcome != nil || len(outcome.PreviousOutcome) != 0 {
+	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
 		// Decode the outcome to AutomationOutcome
-		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outcome.PreviousOutcome)
+		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
-			return nil, err
-		}
-
-		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(automationOutcome); err != nil {
 			return nil, err
 		}
 
 		// Execute pre-build hooks
-		plugin.Logger.Printf("running pre-build hooks")
-		for _, hook := range plugin.PrebuildHooks {
-			err = errors.Join(err, hook(automationOutcome))
-		}
-		if err != nil {
-			return nil, err
-		}
+		plugin.RemoveFromStagingHook.RunHook(automationOutcome)
+		plugin.RemoveFromMetadataHook.RunHook(automationOutcome)
+		plugin.AddToProposalQHook.RunHook(automationOutcome)
 	}
-
 	// Create new AutomationObservation
-	observation := ocr2keepersv3.AutomationObservation{
-		Metadata: make(map[ocr2keepersv3.ObservationMetadataKey]interface{}),
+	observation := ocr2keepersv3.AutomationObservation{}
+
+	plugin.AddBlockHistoryHook.RunHook(&observation, ocr2keepersv3.ObservationBlockHistoryLimit)
+
+	if err := plugin.AddFromStagingHook.RunHook(&observation, ocr2keepersv3.ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+		return nil, err
 	}
-
-	// Execute build hooks
-	plugin.Logger.Printf("running build hooks")
-	for _, hook := range plugin.BuildHooks {
-		err := hook(&observation)
-		if err != nil {
-			return nil, err
-		}
+	if err := plugin.AddLogProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+		return nil, err
 	}
-
-	plugin.Logger.Printf("built an observation with %d performables", len(observation.Performable))
-
-	// Encode the observation to bytes
-	encoded, err := observation.Encode()
-	if err != nil {
+	if err := plugin.AddConditionalProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}
 
-	// Return the encoded bytes as ocr3 observation
-	return types.Observation(encoded), nil
+	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
+
+	// Encode the observation to bytes
+	return observation.Encode()
 }
 
 func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
-	o, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation)
-	if err != nil {
-		return err
-	}
-
-	return ocr2keepersv3.ValidateAutomationObservation(o)
+	plugin.Logger.Printf("inside ValidateObservation for seqNr %d", outctx.SeqNr)
+	_, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
+	return err
 }
 
 func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
-	p := newPerformables(plugin.F + 1)
-	c := newCoordinateBlock(len(attributedObservations) / 2)
-	s := newSamples(OutcomeSamplesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr))
-	r := newRecoverables(plugin.F + 1)
+	plugin.Logger.Printf("inside Outcome for seqNr %d", outctx.SeqNr)
+	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
+	c := newCoordinatedBlockProposals(plugin.F+1, ocr2keepersv3.OutcomeSurfacedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeSurfacedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
 
-	// extract observations and pass them on to evaluators
 	for _, attributedObservation := range attributedObservations {
-		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation)
+		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
-			return nil, err
-		}
-
-		if err := ocr2keepersv3.ValidateAutomationObservation(observation); err != nil {
-			plugin.Logger.Printf("invalid observation from oracle %d in sequence %d", attributedObservation.Observer, outctx.SeqNr)
-
-			// if the validation for an observation fails at this point, discard
-			// the observation and move to the next one
+			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
+			// Ignore this observation and continue with further observations. It is expected we will get
+			// atleast f+1 valid observations
 			continue
 		}
 
-		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables",
-			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable))
+		plugin.Logger.Printf("adding observation from oracle %d in sequence %d with %d performables, %d upkeep proposals and %d block history in seqNr %d",
+			attributedObservation.Observer, outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory), outctx.SeqNr)
 
 		p.add(observation)
 		c.add(observation)
-		s.add(observation)
-		r.add(observation)
 	}
 
-	outcome := ocr2keepersv3.AutomationOutcome{
-		BasicOutcome: ocr2keepersv3.BasicOutcome{
-			Metadata: make(map[ocr2keepersv3.OutcomeMetadataKey]interface{}),
-		},
-	}
-
-	p.set(&outcome)
-	c.set(&outcome)
-	s.set(&outcome)
-	r.set(&outcome)
-
-	var previous *ocr2keepersv3.AutomationOutcome
-	if outctx.SeqNr != 1 {
-		prev, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome)
+	outcome := ocr2keepersv3.AutomationOutcome{}
+	prevOutcome := ocr2keepersv3.AutomationOutcome{}
+	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
+		// Decode the outcome to AutomationOutcome
+		ao, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
 			return nil, err
 		}
-
-		// validate outcome (even though it is a signed outcome)
-		if err := ocr2keepersv3.ValidateAutomationOutcome(prev); err != nil {
-			return nil, err
-		}
-
-		previous = &prev
+		prevOutcome = ao
 	}
 
-	// set the latest value in the history
-	UpdateHistory(previous, &outcome, OutcomeHistoryLimit)
+	p.set(&outcome)
+	// Important to maintain the order here. Performables should be set before creating new proposals
+	c.set(&outcome, prevOutcome)
 
-	plugin.Logger.Printf("returning outcome with %d results", len(outcome.Performable))
+	newProposals := 0
+	if len(outcome.SurfacedProposals) > 0 {
+		newProposals = len(outcome.SurfacedProposals[0])
+	}
+	plugin.Logger.Printf("returning outcome with %d performables and %d new proposals in seqNr %d", len(outcome.AgreedPerformables), newProposals, outctx.SeqNr)
 
 	return outcome.Encode()
 }
 
 func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+	plugin.Logger.Printf("inside Reports for seqNr %d", seqNr)
 	var (
 		reports []ocr3types.ReportWithInfo[AutomationReportInfo]
 		outcome ocr2keepersv3.AutomationOutcome
 		err     error
 	)
-
-	if plugin.Config.MaxUpkeepBatchSize <= 0 {
-		return nil, fmt.Errorf("invalid max upkeep batch size: %d", plugin.Config.MaxUpkeepBatchSize)
-	}
-
-	if plugin.Config.GasLimitPerReport == 0 {
-		return nil, fmt.Errorf("invalid gas limit per report: %d", plugin.Config.GasLimitPerReport)
-	}
-
-	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw); err != nil {
+	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
 		return nil, err
 	}
-
-	// validate outcome (even though it is a signed outcome)
-	if err := ocr2keepersv3.ValidateAutomationOutcome(outcome); err != nil {
-		return nil, err
-	}
-
-	plugin.Logger.Printf("creating report from outcome with %d results; max batch size: %d; report gas limit %d", len(outcome.Performable), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
+	plugin.Logger.Printf("creating report from outcome with %d agreed performables; max batch size: %d; report gas limit %d", len(outcome.AgreedPerformables), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
 
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
+	seenUpkeepIDs := make(map[string]bool)
 
-	for i, result := range outcome.Performable {
-		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize || gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) {
-			if len(toPerform) > 0 {
-				// encode current collection
-				encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
-				err = errors.Join(err, encodeErr)
+	for i, result := range outcome.AgreedPerformables {
+		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
+			gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) ||
+			seenUpkeepIDs[result.UpkeepID.String()] {
 
-				if encodeErr == nil {
-					// add encoded data to reports
-					reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
-						Report: types.Report(encoded),
-					})
-
-					// reset collection
-					toPerform = []ocr2keepers.CheckResult{}
-					gasUsed = 0
-				}
+			// If report has reached capacity or has existing upkeepID, encode and append this report
+			report, err := plugin.getReportFromPerformables(toPerform)
+			if err != nil {
+				return reports, fmt.Errorf("error encountered while encoding: %w", err)
 			}
+			// append to reports and reset collection
+			reports = append(reports, report)
+			toPerform = []ocr2keepers.CheckResult{}
+			gasUsed = 0
+			seenUpkeepIDs = make(map[string]bool)
 		}
 
+		// Add the result to current report
 		gasUsed += result.GasAllocated + uint64(plugin.Config.GasOverheadPerUpkeep)
-		toPerform = append(toPerform, outcome.Performable[i])
+		toPerform = append(toPerform, outcome.AgreedPerformables[i])
+		seenUpkeepIDs[result.UpkeepID.String()] = true
 	}
 
 	// if there are still values to add
-	if len(toPerform) > 0 && gasUsed <= uint64(plugin.Config.GasLimitPerReport) {
-		// encode current collection
-		encoded, encodeErr := plugin.ReportEncoder.Encode(toPerform...)
-		err = errors.Join(err, encodeErr)
-
-		if encodeErr == nil {
-			// add encoded data to reports
-			reports = append(reports, ocr3types.ReportWithInfo[AutomationReportInfo]{
-				Report: types.Report(encoded),
-				Info:   AutomationReportInfo{},
-			})
+	if len(toPerform) > 0 {
+		report, err := plugin.getReportFromPerformables(toPerform)
+		if err != nil {
+			return reports, fmt.Errorf("error encountered while encoding: %w", err)
 		}
+		reports = append(reports, report)
 	}
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
-
-	if err != nil {
-		plugin.Logger.Printf("error encountered while encoding: %s", err)
-	}
-
 	return reports, nil
 }
 
 func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
-	plugin.Logger.Printf("inside should accept attested report for sequence number %d", seqNr)
+	plugin.Logger.Printf("inside ShouldAcceptAttestedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
@@ -255,20 +191,22 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 
 	plugin.Logger.Printf("%d upkeeps found in report for should accept attested for sequence number %d", len(upkeeps), seqNr)
 
+	accept := false
+	// If any upkeep can be accepted, then accept
 	for _, upkeep := range upkeeps {
-		plugin.Logger.Printf("accepting upkeep by id '%s'", upkeep.UpkeepID)
+		shouldAccept := plugin.Coordinator.Accept(upkeep)
+		plugin.Logger.Printf("checking shouldAccept of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldAccept)
 
-		for _, coord := range plugin.Coordinators {
-			if err := coord.Accept(upkeep); err != nil {
-				plugin.Logger.Printf("failed to accept upkeep by id '%s', error is %v", upkeep.UpkeepID, err)
-			}
+		if shouldAccept {
+			accept = true
 		}
 	}
 
-	return true, nil
+	return accept, nil
 }
 
 func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+	plugin.Logger.Printf("inside ShouldTransmitAcceptedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
 		return false, err
@@ -276,24 +214,18 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr 
 
 	plugin.Logger.Printf("%d upkeeps found in report for should transmit for sequence number %d", len(upkeeps), seqNr)
 
+	transmit := false
+	// If any upkeep should be transmitted, then transmit
 	for _, upkeep := range upkeeps {
-		// if any upkeep in the report does not have confirmations from all coordinators, attempt again
-		allConfirmationsFalse := true
-		for _, coord := range plugin.Coordinators {
-			if coord.IsTransmissionConfirmed(upkeep) {
-				allConfirmationsFalse = false
-			}
+		shouldTransmit := plugin.Coordinator.ShouldTransmit(upkeep)
+		plugin.Logger.Printf("checking transmit of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldTransmit)
 
-			plugin.Logger.Printf("checking transmit of upkeep '%s' %t", upkeep.UpkeepID, coord.IsTransmissionConfirmed(upkeep))
+		if shouldTransmit {
+			transmit = true
 		}
-
-		if allConfirmationsFalse {
-			return true, nil
-		}
-
 	}
 
-	return false, nil
+	return transmit, nil
 }
 
 func (plugin *ocr3Plugin) Close() error {
@@ -315,6 +247,13 @@ func (plugin *ocr3Plugin) startServices() {
 			}
 		}(plugin.Services[i])
 	}
+}
+
+func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
+	return ocr3types.ReportWithInfo[AutomationReportInfo]{
+		Report: types.Report(encoded),
+	}, err
 }
 
 // Generates a randomness source derived from the config and seq # so

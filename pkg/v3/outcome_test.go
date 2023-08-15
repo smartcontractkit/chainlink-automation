@@ -1,442 +1,155 @@
 package ocr2keepers
 
 import (
-	"encoding/json"
+	"math/big"
 	"testing"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/instructions"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateOutcomeMetadataKey(t *testing.T) {
-	tests := []struct {
-		key OutcomeMetadataKey
-		err error
-	}{
-		{key: CoordinatedBlockOutcomeKey},
-		{key: CoordinatedRecoveryProposalKey},
-		{key: CoordinatedSamplesProposalKey},
-		{
-			key: "invalid key",
-			err: ErrInvalidMetadataKey,
-		},
+func TestValidAutomationOutcome(t *testing.T) {
+	ao := AutomationOutcome{
+		AgreedPerformables: []types.CheckResult{validConditionalResult, validLogResult},
+		SurfacedProposals:  [][]types.CoordinatedBlockProposal{{validConditionalProposal, validLogProposal}},
 	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
-	for _, test := range tests {
-		t.Run(string(test.key), func(t *testing.T) {
-			err := ValidateOutcomeMetadataKey(test.key)
+	decoded, err := DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.NoError(t, err, "no error in decoding valid automation outcome")
 
-			if test.err == nil {
-				assert.NoError(t, err, "no error expected")
-			} else {
-				assert.ErrorIs(t, err, test.err, "error should be of expected type")
-			}
-		})
-	}
+	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
 }
 
-func TestAutomationOutcome_Encode_Decode(t *testing.T) {
-	// set non-default values to test encoding/decoding
-	input := AutomationOutcome{
-		BasicOutcome: BasicOutcome{
-			Metadata: map[OutcomeMetadataKey]interface{}{},
-			Performable: []ocr2keepers.CheckResult{
-				{
-					UpkeepID:    [32]byte{111},
-					Retryable:   true,
-					Eligible:    true,
-					PerformData: []byte("testing"),
-				},
-			},
-		},
-		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
+func TestLargeAgreedPerformables(t *testing.T) {
+	ao := AutomationOutcome{
+		AgreedPerformables: []types.CheckResult{},
+		SurfacedProposals:  [][]types.CoordinatedBlockProposal{{validConditionalProposal, validLogProposal}},
 	}
-
-	expected := AutomationOutcome{
-		BasicOutcome: BasicOutcome{
-			Metadata: map[OutcomeMetadataKey]interface{}{},
-			Performable: []ocr2keepers.CheckResult{
-				{
-					UpkeepID:    [32]byte{111},
-					Retryable:   true,
-					Eligible:    true,
-					PerformData: []byte("testing"),
-				},
-			},
-		},
-		Instructions: []instructions.Instruction{"instruction1", "instruction2"},
+	for i := 0; i < OutcomeAgreedPerformablesLimit+1; i++ {
+		newConditionalResult := validConditionalResult
+		newConditionalResult.Trigger.BlockNumber = types.BlockNumber(i + 1)
+		newConditionalResult.WorkID = mockWorkIDGenerator(newConditionalResult.UpkeepID, newConditionalResult.Trigger)
+		ao.AgreedPerformables = append(ao.AgreedPerformables, validConditionalResult)
 	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
 
-	jsonData, _ := json.Marshal(input)
-	data, err := input.Encode()
-
-	assert.Equal(t, jsonData, data, "json marshalling should return the same result")
-	assert.NoError(t, err, "no error from encoding")
-
-	result, err := DecodeAutomationOutcome(data)
-	assert.NoError(t, err, "no error from decoding")
-
-	assert.Equal(t, expected, result, "final result from encoding and decoding should match")
+	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "outcome performable length cannot be greater than")
 }
 
-func TestValidateAutomationOutcome(t *testing.T) {
-	t.Run("invalid instructions", func(t *testing.T) {
-		testData := AutomationOutcome{
-			Instructions: []instructions.Instruction{
-				"invalid instruction",
-			},
-		}
+func TestDuplicateAgreedPerformables(t *testing.T) {
+	ao := AutomationOutcome{
+		AgreedPerformables: []types.CheckResult{},
+		SurfacedProposals:  [][]types.CoordinatedBlockProposal{{validConditionalProposal, validLogProposal}},
+	}
+	for i := 0; i < 2; i++ {
+		ao.AgreedPerformables = append(ao.AgreedPerformables, validConditionalResult)
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
 
-		err := ValidateAutomationOutcome(testData)
-
-		assert.ErrorIs(t, err, instructions.ErrInvalidInstruction, "invalid instruction should return validation error")
-	})
-
-	t.Run("invalid metadata key", func(t *testing.T) {
-		testData := AutomationOutcome{
-			BasicOutcome: BasicOutcome{
-				Metadata: map[OutcomeMetadataKey]interface{}{
-					"invalid key": "string",
-				},
-			},
-		}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.ErrorIs(t, err, ErrInvalidMetadataKey, "invalid metadata key should return validation error")
-	})
-
-	t.Run("invalid check result", func(t *testing.T) {
-		testData := AutomationOutcome{
-			BasicOutcome: BasicOutcome{
-				Performable: []ocr2keepers.CheckResult{
-					{},
-				},
-			},
-		}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.NotNil(t, err, "invalid check result should return validation error")
-	})
-
-	t.Run("invalid ring buffer", func(t *testing.T) {
-		testData := AutomationOutcome{
-			History: []BasicOutcome{
-				{},
-			},
-			NextIdx: 3,
-		}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.NotNil(t, err, "invalid ring buffer index should return validation error")
-	})
-
-	t.Run("no error on empty", func(t *testing.T) {
-		testData := AutomationOutcome{}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.NoError(t, err, "no error should return from empty outcome")
-	})
-
-	t.Run("no error on valid", func(t *testing.T) {
-		testData := AutomationOutcome{
-			Instructions: []instructions.Instruction{
-				instructions.DoCoordinateBlock,
-			},
-			BasicOutcome: BasicOutcome{
-				Metadata: map[OutcomeMetadataKey]interface{}{
-					CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-						Number: 3,
-					},
-				},
-				Performable: []ocr2keepers.CheckResult{
-					{
-						Eligible:     true,
-						Retryable:    false,
-						GasAllocated: 1,
-						UpkeepID:     [32]byte{111},
-					},
-				},
-			},
-		}
-
-		err := ValidateAutomationOutcome(testData)
-
-		assert.NoError(t, err, "no error should return from a valid outcome")
-	})
+	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "agreed performable cannot have duplicate workIDs")
 }
 
-func TestRecoveryProposals(t *testing.T) {
-	tests := []struct {
-		name        string
-		outcome     AutomationOutcome
-		expected    []ocr2keepers.CoordinatedProposal
-		expectedErr error
-	}{
-		{
-			name:        "happy path - empty",
-			outcome:     AutomationOutcome{},
-			expected:    nil,
-			expectedErr: nil,
-		},
-		{
-			name: "happy path - with results",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedRecoveryProposalKey: []ocr2keepers.CoordinatedProposal{
-							{UpkeepID: [32]byte{7}},
-						},
-					},
-				},
-			},
-			expected: []ocr2keepers.CoordinatedProposal{
-				{UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{7})},
-			},
-			expectedErr: nil,
-		},
-		{
-			name: "error path - wrong type",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedRecoveryProposalKey: "wrong data type",
-					},
-				},
-			},
-			expected:    nil,
-			expectedErr: ErrWrongDataType,
-		},
+func TestLargeProposalHistory(t *testing.T) {
+	ao := AutomationOutcome{
+		AgreedPerformables: []types.CheckResult{validConditionalResult, validLogResult},
+		SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
 	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			prop, err := test.outcome.RecoveryProposals()
-
-			assert.Equal(t, test.expected, prop, "proposals should match expected")
-
-			if test.expectedErr == nil {
-				assert.NoError(t, err, "no error expected")
-			} else {
-				assert.ErrorIs(t, err, test.expectedErr, "error should be of expected type")
-			}
-		})
+	for i := 0; i < OutcomeSurfacedProposalsRoundHistoryLimit+1; i++ {
+		newProposal := validConditionalProposal
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 1)))
+		newProposal.UpkeepID = uid
+		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
+		ao.SurfacedProposals = append(ao.SurfacedProposals, []types.CoordinatedBlockProposal{newProposal})
 	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "number of rounds for surfaced proposals cannot be greater than")
 }
 
-func TestLatestCoordinatedBlock(t *testing.T) {
-	tests := []struct {
-		name        string
-		outcome     AutomationOutcome
-		expected    ocr2keepers.BlockKey
-		expectedErr error
-	}{
-		{
-			name:        "error path - block not available",
-			outcome:     AutomationOutcome{},
-			expected:    ocr2keepers.BlockKey{},
-			expectedErr: ErrBlockNotAvailable,
-		},
-		{
-			name: "error path - block in latest wrong data type",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: "wrong data type",
-					},
-				},
-			},
-			expected:    ocr2keepers.BlockKey{},
-			expectedErr: ErrWrongDataType,
-		},
-		{
-			name: "happy path - block in history wrong data type",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{},
-				History: []BasicOutcome{
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: "wrong data type",
-						},
-					},
-				},
-				NextIdx: 1,
-			},
-			expected:    ocr2keepers.BlockKey{},
-			expectedErr: ErrWrongDataType,
-		},
-		{
-			name: "happy path - block in latest",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-							Number: 2,
-						},
-					},
-				},
-			},
-			expected: ocr2keepers.BlockKey{
-				Number: 2,
-			},
-			expectedErr: nil,
-		},
-		{
-			name: "happy path - block in history",
-			outcome: AutomationOutcome{
-				BasicOutcome: BasicOutcome{},
-				History: []BasicOutcome{
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-								Number: 2,
-							},
-						},
-					},
-				},
-				NextIdx: 1,
-			},
-			expected: ocr2keepers.BlockKey{
-				Number: 2,
-			},
-			expectedErr: nil,
-		},
+func TestLargeSurfacedProposalInSingleRound(t *testing.T) {
+	ao := AutomationOutcome{
+		AgreedPerformables: []types.CheckResult{validConditionalResult, validLogResult},
+		SurfacedProposals:  [][]types.CoordinatedBlockProposal{{}},
 	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			block, err := test.outcome.LatestCoordinatedBlock()
-
-			assert.Equal(t, test.expected, block, "block key should match expected")
-
-			if test.expectedErr == nil {
-				assert.NoError(t, err, "no error expected")
-			} else {
-				assert.ErrorIs(t, err, test.expectedErr, "error should be of expected type")
-			}
-		})
+	for i := 0; i < OutcomeSurfacedProposalsLimit+1; i++ {
+		newProposal := validConditionalProposal
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 1)))
+		newProposal.UpkeepID = uid
+		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
+		ao.SurfacedProposals[0] = append(ao.SurfacedProposals[0], newProposal)
 	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "number of surfaced proposals in a round cannot be greater than")
 }
 
-func TestSortedHistory(t *testing.T) {
-	tests := []struct {
-		name     string
-		outcome  AutomationOutcome
-		expected []BasicOutcome
-	}{
-		{
-			name:     "happy path - no history",
-			outcome:  AutomationOutcome{},
-			expected: []BasicOutcome{},
-		},
-		{
-			name: "happy path - single item",
-			outcome: AutomationOutcome{
-				History: []BasicOutcome{
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{},
-					},
-				},
-				NextIdx: 1,
-			},
-			expected: []BasicOutcome{
-				{
-					Metadata: map[OutcomeMetadataKey]interface{}{},
-				},
-			},
-		},
-		{
-			name: "happy path - ring buffer sorted latest to oldest",
-			outcome: AutomationOutcome{
-				History: []BasicOutcome{
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-								Number: 4,
-							},
-						},
-					},
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-								Number: 5,
-							},
-						},
-					},
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-								Number: 1,
-							},
-						},
-					},
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-								Number: 2,
-							},
-						},
-					},
-					{
-						Metadata: map[OutcomeMetadataKey]interface{}{
-							CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-								Number: 3,
-							},
-						},
-					},
-				},
-				NextIdx: 2,
-			},
-			expected: []BasicOutcome{
-				{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-							Number: 5,
-						},
-					},
-				},
-				{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-							Number: 4,
-						},
-					},
-				},
-				{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-							Number: 3,
-						},
-					},
-				},
-				{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-							Number: 2,
-						},
-					},
-				},
-				{
-					Metadata: map[OutcomeMetadataKey]interface{}{
-						CoordinatedBlockOutcomeKey: ocr2keepers.BlockKey{
-							Number: 1,
-						},
-					},
-				},
-			},
-		},
+func TestDuplicateSurfaced(t *testing.T) {
+	ao := AutomationOutcome{
+		AgreedPerformables: []types.CheckResult{validConditionalResult, validLogResult},
+		SurfacedProposals:  [][]types.CoordinatedBlockProposal{{}},
 	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			history := test.outcome.SortedHistory()
-
-			assert.Equal(t, test.expected, history, "history should match expected")
-		})
+	for i := 0; i < 2; i++ {
+		ao.SurfacedProposals = append(ao.SurfacedProposals, []types.CoordinatedBlockProposal{validConditionalProposal})
 	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "proposals cannot have duplicate workIDs")
+}
+
+func TestLargeOutcomeSize(t *testing.T) {
+	ao := AutomationOutcome{
+		AgreedPerformables: []types.CheckResult{},
+		SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
+	}
+	largePerformData := [5001]byte{}
+	for i := 0; i < OutcomeAgreedPerformablesLimit; i++ {
+		newResult := validLogResult
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 10001)))
+		newResult.UpkeepID = uid
+		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
+		newResult.PerformData = largePerformData[:]
+		ao.AgreedPerformables = append(ao.AgreedPerformables, newResult)
+	}
+	for i := 0; i < OutcomeSurfacedProposalsRoundHistoryLimit; i++ {
+		round := []types.CoordinatedBlockProposal{}
+		for j := 0; j < OutcomeSurfacedProposalsLimit; j++ {
+			newProposal := validLogProposal
+			uid := types.UpkeepIdentifier{}
+			uid.FromBigInt(big.NewInt(int64(i*OutcomeSurfacedProposalsLimit + j + 1001)))
+			newProposal.UpkeepID = uid
+			newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
+			round = append(round, newProposal)
+		}
+		ao.SurfacedProposals = append(ao.SurfacedProposals, round)
+	}
+	encoded, err := ao.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
+
+	decoded, err := DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
+	assert.NoError(t, err, "no error in decoding valid automation outcome")
+
+	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
+
+	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
+	assert.Less(t, len(encoded), MaxOutcomeLength, "encoded observation should be less than maxObservationSize")
 }

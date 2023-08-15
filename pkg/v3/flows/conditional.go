@@ -2,176 +2,138 @@ package flows
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/store"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-//go:generate mockery --name Ratio --structname MockRatio --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/flows" --case underscore --filename ratio.generated.go
-type Ratio interface {
-	// OfInt should return n out of x such that n/x ~ r (ratio)
-	OfInt(int) int
-}
-
-// ConditionalEligibility is a flow controller that surfaces conditional upkeeps
-type ConditionalEligibility struct {
-	builder ocr2keepers.PayloadBuilder
-	mStore  MetadataStore
-	final   Retryer
-	logger  *log.Logger
-}
-
-// NewConditionalEligibility ...
-func NewConditionalEligibility(
-	ratio Ratio,
-	getter ocr2keepers.ConditionalUpkeepProvider,
-	subscriber ocr2keepers.BlockSubscriber,
-	builder ocr2keepers.PayloadBuilder,
-	rs ResultStore,
-	ms MetadataStore,
-	rn ocr2keepersv3.Runner,
-	logger *log.Logger,
-) (*ConditionalEligibility, []service.Recoverable, error) {
-	// TODO: add coordinator to preprocessor list
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{}
-
-	// runs full check pipeline on a coordinated block with coordinated upkeeps
-	svc0, point := newFinalConditionalFlow(preprocessors, rs, rn, time.Second, logger)
-
-	// the sampling proposal flow takes random samples of active upkeeps, checks
-	// them and surfaces the ids if the items are eligible
-	svc1, err := newSampleProposalFlow(preprocessors, ratio, getter, subscriber, ms, rn, logger)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &ConditionalEligibility{
-		mStore:  ms,
-		builder: builder,
-		final:   point,
-		logger:  logger,
-	}, []service.Recoverable{svc0, svc1}, err
-}
-
-func (flow *ConditionalEligibility) ProcessOutcome(outcome ocr2keepersv3.AutomationOutcome) error {
-	samples, err := outcome.UpkeepIdentifiers()
-	if err != nil {
-		if errors.Is(err, ocr2keepersv3.ErrWrongDataType) {
-			return err
-		}
-
-		flow.logger.Printf("%s", err)
-
-		return nil
-	}
-
-	if len(samples) == 0 {
-		return nil
-	}
-
-	// limit timeout to get all proposal data
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// merge block number and recoverables
-	for _, sample := range samples {
-		proposal := ocr2keepers.CoordinatedProposal{
-			UpkeepID: sample,
-		}
-
-		payloads, err := flow.builder.BuildPayloads(ctx, proposal)
-		if err != nil {
-			flow.logger.Printf("error encountered when building payload")
-			continue
-		}
-		if len(payloads) == 0 {
-			flow.logger.Printf("did not get any results when building payload")
-			continue
-		}
-		payload := payloads[0]
-
-		// pass to recoverer
-		if err := flow.final.Retry(ocr2keepers.CheckResult{
-			UpkeepID: payload.UpkeepID,
-			Trigger:  payload.Trigger,
-		}); err != nil {
-			continue
-		}
-	}
-
-	// reset samples in metadata
-	flow.mStore.Set(store.ProposalSampleMetadata, []ocr2keepers.UpkeepIdentifier{})
-
-	return nil
-}
+const (
+	// This is the ticker interval for sampling conditional flow
+	SamplingConditionInterval = 3 * time.Second
+	// This is the ticker interval for final conditional flow
+	FinalConditionalInterval = 1 * time.Second
+	// These are the maximum number of conditional upkeeps dequeued on every tick from proposal queue in FinalConditionalFlow
+	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
+	FinalConditionalBatchSize = 50
+)
 
 func newSampleProposalFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ratio Ratio,
+	pre []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	ratio ocr2keepers.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
-	subscriber ocr2keepers.BlockSubscriber,
-	ms MetadataStore,
-	rn ocr2keepersv3.Runner,
+	ms ocr2keepers.MetadataStore,
+	runner ocr2keepersv3.Runner,
+	interval time.Duration,
 	logger *log.Logger,
-) (service.Recoverable, error) {
-	// create a metadata store postprocessor
-	pp := postprocessors.NewAddSamplesToMetadataStorePostprocessor(ms)
+) service.Recoverable {
+	pre = append(pre, preprocessors.NewProposalFilterer(ms, ocr2keepers.LogTrigger))
+	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
 
-	// create observer
 	observer := ocr2keepersv3.NewRunnableObserver(
-		preprocessors,
-		pp,
-		rn,
+		pre,
+		postprocessors,
+		runner,
 		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	return tickers.NewSampleTicker(
-		ratio,
-		getter,
-		observer,
-		subscriber,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-sample-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
+	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return NewSampler(ratio, getter, logger), nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+}
+
+func NewSampler(
+	ratio ocr2keepers.Ratio,
+	getter ocr2keepers.ConditionalUpkeepProvider,
+	logger *log.Logger,
+) *sampler {
+	return &sampler{
+		logger:   logger,
+		getter:   getter,
+		ratio:    ratio,
+		shuffler: util.Shuffler[ocr2keepers.UpkeepPayload]{Source: util.NewCryptoRandSource()},
+	}
+}
+
+type shuffler[T any] interface {
+	Shuffle([]T) []T
+}
+
+type sampler struct {
+	logger *log.Logger
+
+	ratio    ocr2keepers.Ratio
+	getter   ocr2keepers.ConditionalUpkeepProvider
+	shuffler shuffler[ocr2keepers.UpkeepPayload]
+}
+
+func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	upkeeps, err := s.getter.GetActiveUpkeeps(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(upkeeps) == 0 {
+		return nil, nil
+	}
+
+	upkeeps = s.shuffler.Shuffle(upkeeps)
+	size := s.ratio.OfInt(len(upkeeps))
+
+	if size <= 0 {
+		return nil, nil
+	}
+	if len(upkeeps) < size {
+		size = len(upkeeps)
+	}
+	s.logger.Printf("sampled %d upkeeps", size)
+	return upkeeps[:size], nil
 }
 
 func newFinalConditionalFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rs ResultStore,
-	rn ocr2keepersv3.Runner,
+	resultStore ocr2keepers.ResultStore,
+	runner ocr2keepersv3.Runner,
 	interval time.Duration,
+	proposalQ ocr2keepers.ProposalQueue,
+	builder ocr2keepers.PayloadBuilder,
+	retryQ ocr2keepers.RetryQueue,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
-) (service.Recoverable, Retryer) {
-	// create observer that only pushes results to result store. everything at
+) service.Recoverable {
+	post := postprocessors.NewCombinedPostprocessor(
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "conditional-final-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "conditional-final-retryable-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "conditional-final-ineligible-postprocessor")),
+	)
+	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
-	// recovery proposals that originate from network agreements
+	// conditional proposals that originate from network agreements
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
-		postprocessors.NewEligiblePostProcessor(rs, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-eligible-postprocessor]", telemetry.ServiceName), telemetry.LogPkgStdFlags)),
-		rn,
+		post,
+		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	// create schedule ticker to manage retry interval
-	ticker := tickers.NewBasicTicker[ocr2keepers.UpkeepPayload](
-		interval,
-		observer,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
+	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return coordinatedProposalsTick{
+			logger:    logger,
+			builder:   builder,
+			q:         proposalQ,
+			utype:     ocr2keepers.ConditionTrigger,
+			batchSize: FinalConditionalBatchSize,
+		}, nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
-	// wrap schedule ticker as a Retryer
-	// this provides a common interface for processors and hooks
-	retryer := &basicRetryer{ticker: ticker}
-
-	return ticker, retryer
+	return ticker
 }

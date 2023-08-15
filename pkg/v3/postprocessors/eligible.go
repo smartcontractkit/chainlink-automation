@@ -2,8 +2,10 @@ package postprocessors
 
 import (
 	"context"
+	"fmt"
 	"log"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -17,7 +19,7 @@ type checkResultAdder interface {
 // status
 type PostProcessor interface {
 	// PostProcess takes a slice of results where eligibility status is known
-	PostProcess(context.Context, []ocr2keepers.CheckResult) error
+	PostProcess(context.Context, []ocr2keepers.CheckResult, []ocr2keepers.UpkeepPayload) error
 }
 
 type eligiblePostProcessor struct {
@@ -27,19 +29,19 @@ type eligiblePostProcessor struct {
 
 func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger) *eligiblePostProcessor {
 	return &eligiblePostProcessor{
-		lggr:         logger,
+		lggr:         log.New(logger.Writer(), fmt.Sprintf("[%s | eligible-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		resultsAdder: resultsAdder,
 	}
 }
 
-func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult) error {
+func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	eligible := 0
 	for _, res := range results {
-		if res.Eligible {
+		if res.PipelineExecutionState == 0 && res.Eligible {
 			eligible++
 			p.resultsAdder.Add(res)
 		}
 	}
-	p.lggr.Printf("[automation-ocr3/EligiblePostProcessor] post-processing %d results, %d eligible\n", len(results), eligible)
+	p.lggr.Printf("post-processing %d results, %d eligible\n", len(results), eligible)
 	return nil
 }

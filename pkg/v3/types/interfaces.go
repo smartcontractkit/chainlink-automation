@@ -4,7 +4,8 @@ import (
 	"context"
 )
 
-type UpkeepTypeGetter func(uid UpkeepIdentifier) UpkeepType
+type UpkeepTypeGetter func(UpkeepIdentifier) UpkeepType
+type WorkIDGenerator func(UpkeepIdentifier, Trigger) string
 
 //go:generate mockery --name Encoder --structname MockEncoder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename encoder.generated.go
 type Encoder interface {
@@ -35,7 +36,7 @@ type ConditionalUpkeepProvider interface {
 //go:generate mockery --name PayloadBuilder --structname MockPayloadBuilder --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename payloadbuilder.generated.go
 type PayloadBuilder interface {
 	// Can get payloads for a subset of proposals along with an error
-	BuildPayloads(context.Context, ...CoordinatedProposal) ([]UpkeepPayload, error)
+	BuildPayloads(context.Context, ...CoordinatedBlockProposal) ([]UpkeepPayload, error)
 }
 
 //go:generate mockery --name Runnable --structname MockRunnable --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename runnable.generated.go
@@ -44,6 +45,7 @@ type Runnable interface {
 	CheckUpkeeps(context.Context, ...UpkeepPayload) ([]CheckResult, error)
 }
 
+//go:generate mockery --name BlockSubscriber --structname MockBlockSubscriber --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename block_subscriber.generated.go
 type BlockSubscriber interface {
 	// Subscribe provides an identifier integer, a new channel, and potentially an error
 	Subscribe() (int, chan BlockHistory, error)
@@ -51,6 +53,57 @@ type BlockSubscriber interface {
 	Unsubscribe(int) error
 }
 
+//go:generate mockery --name UpkeepStateUpdater --structname MockUpkeepStateUpdater --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename upkeep_state_updater.generated.go
 type UpkeepStateUpdater interface {
 	SetUpkeepState(context.Context, CheckResult, UpkeepState) error
+}
+
+type RetryQueue interface {
+	// Enqueue adds new items to the queue
+	Enqueue(items ...UpkeepPayload) error
+	// Dequeue returns the next n items in the queue, considering retry time schedules
+	Dequeue(n int) ([]UpkeepPayload, error)
+}
+
+type ProposalQueue interface {
+	// Enqueue adds new items to the queue
+	Enqueue(items ...CoordinatedBlockProposal) error
+	// Dequeue returns the next n items in the queue, considering retry time schedules
+	Dequeue(t UpkeepType, n int) ([]CoordinatedBlockProposal, error)
+}
+
+//go:generate mockery --name ResultStore --structname MockResultStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename result_store.generated.go
+type ResultStore interface {
+	Add(...CheckResult)
+	Remove(...string)
+	View() ([]CheckResult, error)
+}
+
+//go:generate mockery --name Coordinator --structname MockCoordinator --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename coordinator.generated.go
+type Coordinator interface {
+	PreProcess(_ context.Context, payloads []UpkeepPayload) ([]UpkeepPayload, error)
+
+	Accept(ReportedUpkeep) bool
+	ShouldTransmit(ReportedUpkeep) bool
+	FilterResults([]CheckResult) ([]CheckResult, error)
+	FilterProposals([]CoordinatedBlockProposal) ([]CoordinatedBlockProposal, error)
+}
+
+//go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename metadatastore.generated.go
+type MetadataStore interface {
+	SetBlockHistory(BlockHistory)
+	GetBlockHistory() BlockHistory
+
+	AddProposals(proposals ...CoordinatedBlockProposal)
+	ViewProposals(utype UpkeepType) []CoordinatedBlockProposal
+	RemoveProposals(proposals ...CoordinatedBlockProposal)
+
+	Start(context.Context) error
+	Close() error
+}
+
+//go:generate mockery --name Ratio --structname MockRatio --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename ratio.generated.go
+type Ratio interface {
+	// OfInt should return n out of x such that n/x ~ r (ratio)
+	OfInt(int) int
 }

@@ -80,7 +80,10 @@ func (m *recoverer) Close() error {
 
 	err := m.service.Close()
 
-	m.stopped <- errServiceContextCancelled
+	select {
+	case m.stopped <- errServiceContextCancelled:
+	default:
+	}
 
 	return err
 }
