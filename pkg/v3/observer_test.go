@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sync"
 	"testing"
 	"time"
 
@@ -284,4 +285,53 @@ func TestObserve_Process(t *testing.T) {
 			tt.wantErr(t, o.Process(tt.args.ctx, tt.args.tick), fmt.Sprintf("Process(%v, %v)", tt.args.ctx, tt.args.tick))
 		})
 	}
+}
+
+type mockSlowProcessFunc struct {
+}
+
+func (m *mockSlowProcessFunc) Process(ctx context.Context, values ...int) ([]ocr2keepers.CheckResult, error) {
+	// Wait a bit to simulate a slow process
+	<-time.After(500 * time.Millisecond)
+	return []ocr2keepers.CheckResult{}, nil
+}
+
+func TestObserve_ConcurrentProcess(t *testing.T) {
+	// test that multiple calls to the observer.Process can be run concurrently with --race flag on
+	// Assumes that preProcessor, PostProcessor and ProcessFunc are all thread safe
+	ctx := context.Background()
+	expectedPayload := []int{1, 2, 3}
+	expectedCheckResults := []ocr2keepers.CheckResult{}
+	pre := new(mockPreprocessor)
+	pre.On("PreProcess", mock.Anything, expectedPayload).Return(expectedPayload, nil).Times(3)
+	post := new(mockPostprocessor)
+	post.On("PostProcess", mock.Anything, expectedCheckResults).Return(nil).Times(3)
+
+	o := &Observer[int]{
+		lggr:             log.New(io.Discard, "", 0),
+		Preprocessors:    []PreProcessor[int]{pre},
+		Postprocessor:    post,
+		processFunc:      new(mockSlowProcessFunc).Process,
+		processTimeLimit: 2 * time.Second,
+	}
+
+	var wg sync.WaitGroup
+
+	var tester func(w *sync.WaitGroup) = func(w *sync.WaitGroup) {
+		tick := new(mockTick)
+		tick.On("Value", mock.Anything).Return(expectedPayload, nil).Times(3)
+
+		err := o.Process(ctx, tick)
+		assert.NoError(t, err, "no error should be encountered during upkeep checking")
+
+		w.Done()
+	}
+
+	wg.Add(3)
+
+	go tester(&wg)
+	go tester(&wg)
+	go tester(&wg)
+
+	wg.Wait()
 }
