@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 )
 
@@ -19,6 +20,15 @@ type Trigger struct {
 	BlockHash [32]byte
 	// LogTriggerExtension is the extension for log triggers
 	LogTriggerExtension *LogTriggerExtension
+}
+
+func (r Trigger) String() string {
+	res := fmt.Sprintf(`{"BlockNumber":%d,"BlockHash":"%s"`, r.BlockNumber, hex.EncodeToString(r.BlockHash[:]))
+	if r.LogTriggerExtension != nil {
+		res += fmt.Sprintf(`,"LogTriggerExtension":%s`, r.LogTriggerExtension)
+	}
+	res += "}"
+	return res
 }
 
 // NewTrigger returns a new basic trigger w/o extension
@@ -65,4 +75,11 @@ func (e LogTriggerExtension) LogIdentifier() []byte {
 		e.TxHash[:],
 		[]byte(fmt.Sprintf("%d", e.Index)),
 	}, []byte{})
+}
+
+func (e LogTriggerExtension) String() string {
+	return fmt.Sprintf(
+		`{"BlockHash":"%s","BlockNumber":%d,"Index":%d,"TxHash":"%s"}`,
+		hex.EncodeToString(e.BlockHash[:]), e.BlockNumber, e.Index, hex.EncodeToString(e.TxHash[:]),
+	)
 }
