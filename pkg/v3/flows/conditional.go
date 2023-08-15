@@ -94,6 +94,7 @@ func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 	if len(upkeeps) < size {
 		size = len(upkeeps)
 	}
+	s.logger.Printf("sampled %d upkeeps", size)
 	return upkeeps[:size], nil
 }
 
