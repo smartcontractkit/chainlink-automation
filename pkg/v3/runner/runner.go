@@ -128,9 +128,7 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 
 	toRun := make([]ocr2keepers.UpkeepPayload, 0, len(payloads))
 	for _, payload := range payloads {
-
-		// if in cache, add to result
-		// TODO: Clean this up
+		// if workID is in cache for the given trigger blocknum/hash, add to result directly
 		if res, ok := o.cache.Get(payload.WorkID); ok &&
 			(res.Trigger.BlockNumber == payload.Trigger.BlockNumber) &&
 			(res.Trigger.BlockHash == payload.Trigger.BlockHash) {
@@ -202,7 +200,11 @@ func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2ke
 			for _, result := range results {
 				// only add to the cache if pipeline was successful
 				if result.PipelineExecutionState == 0 {
-					o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
+					c, ok := o.cache.Get(result.WorkID)
+					if !ok || result.Trigger.BlockNumber > c.Trigger.BlockNumber {
+						// Add to cache if the workID didn't exist before or if we got a result on a higher checkBlockNumber
+						o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
+					}
 				}
 
 				r.Add(result)
