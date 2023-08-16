@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -31,7 +30,9 @@ func (r expiringRecord) expired(expr time.Duration) bool {
 }
 
 type metadataStore struct {
-	blocks               *tickers.BlockTicker
+	chID                 int
+	ch                   chan types.BlockHistory
+	subscriber           types.BlockSubscriber
 	blockHistory         types.BlockHistory
 	blockHistoryMutex    sync.RWMutex
 	conditionalProposals orderedMap
@@ -44,15 +45,22 @@ type metadataStore struct {
 	typeGetter types.UpkeepTypeGetter
 }
 
-func NewMetadataStore(blocks *tickers.BlockTicker, typeGetter types.UpkeepTypeGetter) *metadataStore {
+func NewMetadataStore(subscriber types.BlockSubscriber, typeGetter types.UpkeepTypeGetter) (*metadataStore, error) {
+	chID, ch, err := subscriber.Subscribe()
+	if err != nil {
+		return nil, err
+	}
+
 	return &metadataStore{
-		blocks:               blocks,
+		chID:                 chID,
+		ch:                   ch,
+		subscriber:           subscriber,
 		blockHistory:         types.BlockHistory{},
 		conditionalProposals: newOrderedMap(),
 		logRecoveryProposals: newOrderedMap(),
 		stopCh:               make(chan struct{}, 1),
 		typeGetter:           typeGetter,
-	}
+	}, nil
 }
 
 func (m *metadataStore) SetBlockHistory(blockHistory types.BlockHistory) {
@@ -111,7 +119,7 @@ func (m *metadataStore) Start(ctx context.Context) error {
 
 	for {
 		select {
-		case h := <-m.blocks.C:
+		case h := <-m.ch:
 			m.SetBlockHistory(h)
 		case <-ctx.Done():
 			return m.Close()
@@ -124,6 +132,10 @@ func (m *metadataStore) Start(ctx context.Context) error {
 func (m *metadataStore) Close() error {
 	if !m.running.Load() {
 		return fmt.Errorf("service not running")
+	}
+
+	if err := m.subscriber.Unsubscribe(m.chID); err != nil {
+		return err
 	}
 
 	m.stopCh <- struct{}{}

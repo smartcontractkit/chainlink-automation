@@ -15,7 +15,6 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/stores"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -38,14 +37,12 @@ func newPlugin(
 	f int,
 	logger *log.Logger,
 ) (ocr3types.ReportingPlugin[AutomationReportInfo], error) {
-	blockTicker, err := tickers.NewBlockTicker(blockSource)
+	// create the value stores
+	resultStore := stores.New(logger)
+	metadataStore, err := stores.NewMetadataStore(blockSource, upkeepTypeGetter)
 	if err != nil {
 		return nil, err
 	}
-
-	// create the value stores
-	resultStore := stores.New(logger)
-	metadataStore := stores.NewMetadataStore(blockTicker, upkeepTypeGetter)
 
 	// create a new runner instance
 	runner, err := runner.NewRunner(
@@ -85,7 +82,7 @@ func newPlugin(
 	)
 
 	// create service recoverers to provide panic recovery on dependent services
-	allSvcs := append(logTriggerFlows, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner, blockTicker}...)
+	allSvcs := append(logTriggerFlows, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner}...)
 
 	contionalFlows := flows.ConditionalTriggerFlows(
 		coord,

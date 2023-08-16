@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -92,15 +93,15 @@ func TestNewRecoverableService(t *testing.T) {
 	})
 
 	t.Run("a running service is stopped by the underlying service returning an error", func(t *testing.T) {
-		callCount := 0
+		callCount := atomic.Int32{}
 		ch := make(chan struct{})
 
 		svc := NewRecoverer(&testService{
 			DoFn: func(_ context.Context) error {
-				callCount++
-				if callCount == 1 {
+				callCount.Add(1)
+				if callCount.Load() == 1 {
 					return errServiceStopped
-				} else if callCount > 1 {
+				} else if callCount.Load() > 1 {
 					ch <- struct{}{}
 				}
 				return nil
@@ -123,7 +124,7 @@ func TestNewRecoverableService(t *testing.T) {
 		<-ch
 
 		assert.NoError(t, svc.Close())
-		assert.Equal(t, callCount, 2)
+		assert.Equal(t, callCount.Load(), int32(2))
 
 		wg.Wait()
 	})
