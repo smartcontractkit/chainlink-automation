@@ -14,6 +14,30 @@ type MockPayloadBuilder struct {
 	mock.Mock
 }
 
+// BuildPayload provides a mock function with given fields: _a0, _a1
+func (_m *MockPayloadBuilder) BuildPayload(_a0 context.Context, _a1 types.CoordinatedBlockProposal) (types.UpkeepPayload, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 types.UpkeepPayload
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, types.CoordinatedBlockProposal) (types.UpkeepPayload, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, types.CoordinatedBlockProposal) types.UpkeepPayload); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		r0 = ret.Get(0).(types.UpkeepPayload)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, types.CoordinatedBlockProposal) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // BuildPayloads provides a mock function with given fields: _a0, _a1
 func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...types.CoordinatedBlockProposal) ([]types.UpkeepPayload, error) {
 	_va := make([]interface{}, len(_a1))

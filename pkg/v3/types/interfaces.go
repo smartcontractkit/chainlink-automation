@@ -37,6 +37,7 @@ type ConditionalUpkeepProvider interface {
 type PayloadBuilder interface {
 	// Can get payloads for a subset of proposals along with an error
 	BuildPayloads(context.Context, ...CoordinatedBlockProposal) ([]UpkeepPayload, error)
+	BuildPayload(context.Context, CoordinatedBlockProposal) (UpkeepPayload, error)
 }
 
 //go:generate mockery --name Runnable --structname MockRunnable --srcpkg "github.com/smartcontractkit/ocr2keepers/pkg/v3/types" --case underscore --filename runnable.generated.go
