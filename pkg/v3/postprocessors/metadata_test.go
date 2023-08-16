@@ -11,9 +11,11 @@ import (
 )
 
 func TestMetadataAddSamples(t *testing.T) {
-	ms := stores.NewMetadataStore(nil, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+	ch := make(chan ocr2keepers.BlockHistory)
+	ms, err := stores.NewMetadataStore(&mockBlockSubscriber{ch: ch}, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 		return ocr2keepers.ConditionTrigger
 	})
+	assert.NoError(t, err)
 
 	values := []ocr2keepers.CheckResult{
 		{
@@ -34,7 +36,7 @@ func TestMetadataAddSamples(t *testing.T) {
 	}
 
 	pp := NewAddProposalToMetadataStorePostprocessor(ms)
-	err := pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{
+	err = pp.PostProcess(context.Background(), values, []ocr2keepers.UpkeepPayload{
 		{
 			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
 			WorkID:   "workID1",
@@ -52,4 +54,16 @@ func TestMetadataAddSamples(t *testing.T) {
 	assert.NoError(t, err, "no error expected from post processor")
 
 	assert.Equal(t, 2, len(ms.ViewProposals(ocr2keepers.ConditionTrigger)))
+}
+
+type mockBlockSubscriber struct {
+	ch chan ocr2keepers.BlockHistory
+}
+
+func (_m *mockBlockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error) {
+	return 0, _m.ch, nil
+}
+
+func (_m *mockBlockSubscriber) Unsubscribe(int) error {
+	return nil
 }

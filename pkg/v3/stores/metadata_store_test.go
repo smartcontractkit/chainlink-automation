@@ -2,25 +2,44 @@ package stores
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 func TestNewMetadataStore(t *testing.T) {
+	t.Run("creating the metadata store errors when subscribing to the block subscriber errors", func(t *testing.T) {
+		blockSubscriber := &mockBlockSubscriber{
+			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				return 0, nil, errors.New("subscribe boom")
+			},
+		}
+
+		_, err := NewMetadataStore(blockSubscriber, nil)
+		assert.Error(t, err)
+		assert.Equal(t, "subscribe boom", err.Error())
+
+	})
+
 	t.Run("the metadata store starts, reads from the block ticker, and stops without erroring", func(t *testing.T) {
 		canClose := make(chan struct{}, 1)
 		finished := make(chan struct{}, 1)
+		ch := make(chan types.BlockHistory)
 		blockSubscriber := &mockBlockSubscriber{
-			ch: make(chan types.BlockHistory),
+			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				return 1, ch, nil
+			},
+			UnsubscribeFn: func(i int) error {
+				return nil
+			},
 		}
 
 		go func() {
-			blockSubscriber.ch <- types.BlockHistory{
+			ch <- types.BlockHistory{
 				types.BlockKey{
 					Number: 4,
 				},
@@ -30,14 +49,8 @@ func TestNewMetadataStore(t *testing.T) {
 			}
 		}()
 
-		blockTicker, err := tickers.NewBlockTicker(blockSubscriber)
+		store, err := NewMetadataStore(blockSubscriber, nil)
 		assert.NoError(t, err)
-		go func() {
-			err2 := blockTicker.Start(context.Background())
-			assert.NoError(t, err2)
-		}()
-
-		store := NewMetadataStore(blockTicker, nil)
 
 		go func() {
 			err = store.Start(context.Background())
@@ -63,15 +76,43 @@ func TestNewMetadataStore(t *testing.T) {
 		<-finished
 	})
 
+	t.Run("closing the metadata store errors when unsubscribing from the block subscriber errors", func(t *testing.T) {
+		ch := make(chan types.BlockHistory)
+		blockSubscriber := &mockBlockSubscriber{
+			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				return 1, ch, nil
+			},
+			UnsubscribeFn: func(i int) error {
+				return errors.New("unsubscribe boom")
+			},
+		}
+
+		store, err := NewMetadataStore(blockSubscriber, nil)
+		assert.NoError(t, err)
+
+		store.running.Store(true)
+
+		closeErr := store.Close()
+		assert.Error(t, closeErr)
+		assert.Equal(t, "unsubscribe boom", closeErr.Error())
+
+	})
+
 	t.Run("the metadata store starts, reads from the block ticker, and stops via a cancelled context without erroring", func(t *testing.T) {
 		canClose := make(chan struct{}, 1)
 		finished := make(chan struct{}, 1)
+		ch := make(chan types.BlockHistory)
 		blockSubscriber := &mockBlockSubscriber{
-			ch: make(chan types.BlockHistory),
+			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				return 1, ch, nil
+			},
+			UnsubscribeFn: func(i int) error {
+				return nil
+			},
 		}
 
 		go func() {
-			blockSubscriber.ch <- types.BlockHistory{
+			ch <- types.BlockHistory{
 				types.BlockKey{
 					Number: 4,
 				},
@@ -81,15 +122,8 @@ func TestNewMetadataStore(t *testing.T) {
 			}
 		}()
 
-		blockTicker, err := tickers.NewBlockTicker(blockSubscriber)
+		store, err := NewMetadataStore(blockSubscriber, nil)
 		assert.NoError(t, err)
-
-		go func() {
-			err2 := blockTicker.Start(context.Background())
-			assert.NoError(t, err2)
-		}()
-
-		store := NewMetadataStore(blockTicker, nil)
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		go func() {
@@ -116,14 +150,26 @@ func TestNewMetadataStore(t *testing.T) {
 	})
 
 	t.Run("starting an already started metadata store returns an error", func(t *testing.T) {
-		store := NewMetadataStore(nil, nil)
+		ch := make(chan types.BlockHistory)
+		blockSubscriber := &mockBlockSubscriber{
+			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				return 1, ch, nil
+			},
+		}
+		store, _ := NewMetadataStore(blockSubscriber, nil)
 		store.running.Store(true)
 		err := store.Start(context.Background())
 		assert.Error(t, err)
 	})
 
 	t.Run("closing an already closed metadata store returns an error", func(t *testing.T) {
-		store := NewMetadataStore(nil, nil)
+		ch := make(chan types.BlockHistory)
+		blockSubscriber := &mockBlockSubscriber{
+			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				return 1, ch, nil
+			},
+		}
+		store, _ := NewMetadataStore(blockSubscriber, nil)
 		store.running.Store(false)
 		err := store.Close()
 		assert.Error(t, err)
@@ -266,7 +312,16 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 				timeFn = oldTimeFn
 			}()
 
-			store := NewMetadataStore(nil, nil)
+			ch := make(chan types.BlockHistory)
+			blockSubscriber := &mockBlockSubscriber{
+				SubscribeFn: func() (int, chan types.BlockHistory, error) {
+					return 1, ch, nil
+				},
+			}
+
+			store, err := NewMetadataStore(blockSubscriber, nil)
+			assert.NoError(t, err)
+
 			for _, proposal := range tc.addProposals {
 				store.addConditionalProposal(proposal...)
 			}
@@ -425,8 +480,16 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 			defer func() {
 				timeFn = oldTimeFn
 			}()
+			ch := make(chan types.BlockHistory)
+			blockSubscriber := &mockBlockSubscriber{
+				SubscribeFn: func() (int, chan types.BlockHistory, error) {
+					return 1, ch, nil
+				},
+			}
 
-			store := NewMetadataStore(nil, tc.typeGetter)
+			store, err := NewMetadataStore(blockSubscriber, tc.typeGetter)
+			assert.NoError(t, err)
+
 			for _, proposal := range tc.addProposals {
 				store.AddProposals(proposal...)
 			}
@@ -441,13 +504,14 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 }
 
 type mockBlockSubscriber struct {
-	ch chan types.BlockHistory
+	SubscribeFn   func() (int, chan types.BlockHistory, error)
+	UnsubscribeFn func(int) error
 }
 
 func (_m *mockBlockSubscriber) Subscribe() (int, chan types.BlockHistory, error) {
-	return 0, _m.ch, nil
+	return _m.SubscribeFn()
 }
 
-func (_m *mockBlockSubscriber) Unsubscribe(int) error {
-	return nil
+func (_m *mockBlockSubscriber) Unsubscribe(i int) error {
+	return _m.UnsubscribeFn(i)
 }
