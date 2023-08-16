@@ -64,6 +64,7 @@ func (t *timeTicker[T]) Start(pctx context.Context) error {
 			}
 			// observer.Process can be a heavy call taking upto ObservationProcessLimit seconds
 			// so it is run in a separate goroutine to not block further ticks
+			// Exploratory: Add some control to limit the number of goroutines spawned
 			go func(c context.Context, t Tick[T], o observer[T], l *log.Logger) {
 				if err := o.Process(c, t); err != nil {
 					l.Printf("error processing observer: %s", err.Error())
