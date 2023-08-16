@@ -62,10 +62,14 @@ func (t *timeTicker[T]) Start(pctx context.Context) error {
 			if err != nil {
 				t.logger.Printf("error fetching tick: %s", err.Error())
 			}
-
-			if err := t.observer.Process(ctx, tick); err != nil {
-				t.logger.Printf("error processing observer: %s", err.Error())
-			}
+			// observer.Process can be a heavy call taking upto ObservationProcessLimit seconds
+			// so it is run in a separate goroutine to not block further ticks
+			// Exploratory: Add some control to limit the number of goroutines spawned
+			go func(c context.Context, t Tick[T], o observer[T], l *log.Logger) {
+				if err := o.Process(c, t); err != nil {
+					l.Printf("error processing observer: %s", err.Error())
+				}
+			}(ctx, tick, t.observer, t.logger)
 		case <-ctx.Done():
 			return nil
 		}

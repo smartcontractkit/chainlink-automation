@@ -127,6 +127,83 @@ func TestRunnerCache(t *testing.T) {
 	results, err = runner.CheckUpkeeps(context.Background(), payloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
+
+	mr.AssertExpectations(t)
+}
+
+func TestRunnerCacheDifferentTriggerBlock(t *testing.T) {
+	logger := log.New(io.Discard, "", 0)
+	mr := new(mocks.MockRunnable)
+
+	conf := RunnerConfig{
+		Workers:           2,
+		WorkerQueueLength: 1000,
+		CacheExpire:       5 * time.Second,
+		CacheClean:        5 * time.Second,
+	}
+
+	runner, err := NewRunner(logger, mr, conf)
+	assert.NoError(t, err, "no error should be encountered during runner creation")
+
+	payloads := []ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			Trigger: ocr2keepers.Trigger{
+				BlockNumber: 1,
+				BlockHash:   [32]byte{1},
+			},
+			WorkID: "workID1",
+		},
+	}
+
+	newerBlockPayloads := []ocr2keepers.UpkeepPayload{
+		{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			Trigger: ocr2keepers.Trigger{
+				BlockNumber: 2,
+				BlockHash:   [32]byte{1},
+			},
+			WorkID: "workID1",
+		},
+	}
+
+	expected := make([]ocr2keepers.CheckResult, len(payloads))
+	for i := range payloads {
+		expected[i] = ocr2keepers.CheckResult{
+			UpkeepID: payloads[i].UpkeepID,
+			Trigger:  payloads[i].Trigger,
+			WorkID:   payloads[i].WorkID,
+		}
+	}
+	newerExpected := make([]ocr2keepers.CheckResult, len(newerBlockPayloads))
+	for i := range newerBlockPayloads {
+		newerExpected[i] = ocr2keepers.CheckResult{
+			UpkeepID: newerBlockPayloads[i].UpkeepID,
+			Trigger:  newerBlockPayloads[i].Trigger,
+			WorkID:   newerBlockPayloads[i].WorkID,
+		}
+	}
+
+	// ensure that context and payloads are passed through to the runnable
+	// return results that should be cached
+	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(payloads...)...)...).Return(expected, nil).Once().After(500 * time.Millisecond)
+	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
+	assert.NoError(t, err, "no error should be encountered during upkeep checking")
+	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
+
+	// ensure that a call with the same workID but different trigger block causes a new call to CheckUpkeeps
+	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(newerBlockPayloads...)...)...).Return(newerExpected, nil).Once().After(500 * time.Millisecond)
+	results, err = runner.CheckUpkeeps(context.Background(), newerBlockPayloads...)
+	assert.NoError(t, err, "no error should be encountered during upkeep checking")
+	assert.Equal(t, newerExpected, results, "results should be returned without changes from the runnable")
+
+	// ensure that the higher checkBlock overwrote the cache, so another call with same payload does not call CheckUpkeeps
+	results, err = runner.CheckUpkeeps(context.Background(), newerBlockPayloads...)
+	assert.NoError(t, err, "no error should be encountered during upkeep checking")
+	assert.Equal(t, newerExpected, results, "results should be returned without changes from the runnable")
+
+	mr.AssertExpectations(t)
+
 }
 
 func TestRunnerBatching(t *testing.T) {
