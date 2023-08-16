@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type mockTick struct {
@@ -27,7 +28,7 @@ type mockProcessFunc struct {
 	mock.Mock
 }
 
-func (m *mockProcessFunc) Process(ctx context.Context, values ...int) ([]int64, error) {
+func (m *mockProcessFunc) Process(ctx context.Context, values ...int) ([]ocr2keepers.CheckResult, error) {
 	var ret mock.Arguments
 	if len(values) > 0 {
 		ret = m.Called(ctx, values)
@@ -35,7 +36,7 @@ func (m *mockProcessFunc) Process(ctx context.Context, values ...int) ([]int64, 
 		ret = m.Called(ctx)
 	}
 
-	return ret.Get(0).([]int64), ret.Error(1)
+	return ret.Get(0).([]ocr2keepers.CheckResult), ret.Error(1)
 }
 
 type mockPreprocessor struct {
@@ -51,7 +52,7 @@ type mockPostprocessor struct {
 	mock.Mock
 }
 
-func (m *mockPostprocessor) PostProcess(ctx context.Context, results []int64, payloads []int) error {
+func (m *mockPostprocessor) PostProcess(ctx context.Context, results []ocr2keepers.CheckResult, payloads []int) error {
 	ret := m.Called(ctx, results)
 	return ret.Error(0)
 }
@@ -61,8 +62,8 @@ func TestNewGenericObserver(t *testing.T) {
 
 	type args struct {
 		preprocessors []PreProcessor[int]
-		postprocessor PostProcessor[int64, int]
-		runner        func(context.Context, ...int) ([]int64, error)
+		postprocessor PostProcessor[int]
+		runner        func(context.Context, ...int) ([]ocr2keepers.CheckResult, error)
 		limit         time.Duration
 		logger        *log.Logger
 	}
@@ -70,7 +71,7 @@ func TestNewGenericObserver(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want Observer[int, int64]
+		want Observer[int]
 	}{
 		{
 			name: "should return an Observer",
@@ -81,7 +82,7 @@ func TestNewGenericObserver(t *testing.T) {
 				limit:         50 * time.Millisecond,
 				logger:        log.New(io.Discard, "", 0),
 			},
-			want: Observer[int, int64]{
+			want: Observer[int]{
 				Preprocessors:    []PreProcessor[int]{new(mockPreprocessor)},
 				Postprocessor:    new(mockPostprocessor),
 				processFunc:      new(mockProcessFunc).Process,
@@ -92,7 +93,7 @@ func TestNewGenericObserver(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			want := Observer[int, int64]{
+			want := Observer[int]{
 				Preprocessors:    tt.args.preprocessors,
 				Postprocessor:    tt.args.postprocessor,
 				processFunc:      tt.args.runner,
@@ -115,7 +116,7 @@ func TestNewGenericObserver(t *testing.T) {
 func TestObserve_Process(t *testing.T) {
 	type fields struct {
 		Preprocessors []PreProcessor[int]
-		Postprocessor PostProcessor[int64, int]
+		Postprocessor PostProcessor[int]
 		Processor     *mockProcessFunc
 	}
 
@@ -127,7 +128,7 @@ func TestObserve_Process(t *testing.T) {
 	type expectations struct {
 		tickReturn         []int
 		tickErr            error
-		runnerReturn       []int64
+		runnerReturn       []ocr2keepers.CheckResult
 		runnerErr          error
 		preprocessorReturn []int
 		preprocessorErr    error
@@ -135,7 +136,7 @@ func TestObserve_Process(t *testing.T) {
 	}
 
 	expectedPayload := []int{}
-	expectedCheckResults := []int64{}
+	expectedCheckResults := []ocr2keepers.CheckResult{}
 	tests := []struct {
 		name         string
 		fields       fields
@@ -257,7 +258,7 @@ func TestObserve_Process(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := &Observer[int, int64]{
+			o := &Observer[int]{
 				lggr:             log.New(io.Discard, "", 0),
 				Preprocessors:    tt.fields.Preprocessors,
 				Postprocessor:    tt.fields.Postprocessor,

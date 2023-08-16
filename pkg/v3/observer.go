@@ -17,9 +17,9 @@ type PreProcessor[T any] interface {
 }
 
 // PostProcessor is the general interface for a processing function after checking eligibility status
-type PostProcessor[R, T any] interface {
+type PostProcessor[T any] interface {
 	// PostProcess takes a slice of results where eligibility status is known
-	PostProcess(context.Context, []R, []T) error
+	PostProcess(context.Context, []ocr2keepers.CheckResult, []T) error
 }
 
 // Runner is the interface for an object that should determine eligibility state
@@ -28,12 +28,12 @@ type Runner interface {
 	CheckUpkeeps(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
 }
 
-type Observer[T any, R any] struct {
+type Observer[T any] struct {
 	lggr *log.Logger
 
 	Preprocessors []PreProcessor[T]
-	Postprocessor PostProcessor[R, T]
-	processFunc   func(context.Context, ...T) ([]R, error)
+	Postprocessor PostProcessor[T]
+	processFunc   func(context.Context, ...T) ([]ocr2keepers.CheckResult, error)
 
 	// internal configurations
 	processTimeLimit time.Duration
@@ -42,12 +42,12 @@ type Observer[T any, R any] struct {
 // NewRunnableObserver creates a new Observer with the given pre-processors, post-processor, and runner
 func NewRunnableObserver(
 	preprocessors []PreProcessor[ocr2keepers.UpkeepPayload],
-	postprocessor PostProcessor[ocr2keepers.CheckResult, ocr2keepers.UpkeepPayload],
+	postprocessor PostProcessor[ocr2keepers.UpkeepPayload],
 	runner Runner,
 	processLimit time.Duration,
 	logger *log.Logger,
-) *Observer[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult] {
-	return &Observer[ocr2keepers.UpkeepPayload, ocr2keepers.CheckResult]{
+) *Observer[ocr2keepers.UpkeepPayload] {
+	return &Observer[ocr2keepers.UpkeepPayload]{
 		lggr:             logger,
 		Preprocessors:    preprocessors,
 		Postprocessor:    postprocessor,
@@ -57,14 +57,14 @@ func NewRunnableObserver(
 }
 
 // NewGenericObserver creates a new Observer with the given pre-processors, post-processor, and runner
-func NewGenericObserver[T any, R any](
+func NewGenericObserver[T any](
 	preprocessors []PreProcessor[T],
-	postprocessor PostProcessor[R, T],
-	processor func(context.Context, ...T) ([]R, error),
+	postprocessor PostProcessor[T],
+	processor func(context.Context, ...T) ([]ocr2keepers.CheckResult, error),
 	processLimit time.Duration,
 	logger *log.Logger,
-) *Observer[T, R] {
-	return &Observer[T, R]{
+) *Observer[T] {
+	return &Observer[T]{
 		lggr:             logger,
 		Preprocessors:    preprocessors,
 		Postprocessor:    postprocessor,
@@ -74,7 +74,7 @@ func NewGenericObserver[T any, R any](
 }
 
 // Process - receives a tick and runs it through the eligibility pipeline. Calls all pre-processors, runs the check pipeline, and calls the post-processor.
-func (o *Observer[T, R]) Process(ctx context.Context, tick tickers.Tick[[]T]) error {
+func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error {
 	pCtx, cancel := context.WithTimeout(ctx, o.processTimeLimit)
 
 	defer cancel()
