@@ -85,7 +85,21 @@ func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.Upke
 	}
 	t.logger.Printf("%d proposals returned from queue", len(proposals))
 
-	return t.builder.BuildPayloads(ctx, proposals...)
+	builtPayloads, err := t.builder.BuildPayloads(ctx, proposals...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build payloads from proposals: %w", err)
+	}
+	payloads := []ocr2keepers.UpkeepPayload{}
+	filtered := 0
+	for _, p := range builtPayloads {
+		if p.IsEmpty() {
+			filtered++
+			continue
+		}
+		payloads = append(payloads, p)
+	}
+	t.logger.Printf("%d payloads built from %d proposals, %d filtered", len(payloads), len(proposals), filtered)
+	return payloads, nil
 }
 
 func newRecoveryProposalFlow(
