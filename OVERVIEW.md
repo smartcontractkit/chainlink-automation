@@ -1,7 +1,7 @@
 # Pseudocode
 
-The following attempts to capture the general logic of the Automation OCR2 
-implementation using pseudocode. It is divided first by the OCR2 interface 
+The following attempts to capture the general logic of the Automation OCR2
+implementation using pseudocode. It is divided first by the OCR2 interface
 followed by descriptions of secondary services.
 
 ## How an Observation is Constructed
@@ -10,7 +10,7 @@ An automation OCR2 observation is constructed of a block number and a shuffled
 list of upkeep IDs (big.Int), json encoded to a limit of max bytes. The list
 should only include eligible upkeeps (covered in a later section). Shuffling
 is done using a randomness source derived from the config digest, epoch, and
-block number. This ensure all nodes have the same source, but the results are
+block number. This ensures all nodes have the same source, but the results are
 random across different OCR rounds if an observation is repeated.
 
 > shuffling is done to ensure that all upkeeps have a chance at being sent in an
@@ -28,12 +28,12 @@ call ocr.Observation with [ReportTimestamp]
     for each (upkeepStateResults)
         if (upkeepState) is Eligible
             add (upkeepID) to (upkeepIDList)
-        
+
     call shuffle with (upkeepIDList) and [randomSourceFromReportTimestamp]
 
     define [observation]
     add (blockNumber) to (observation)
-    
+
     define [observationBytes]
     for each (upkeepIDList)
         add (upkeepID) to (observation)
@@ -65,15 +65,15 @@ checks include:
 - report capacity is based on max upkeeps per report (currently configured as 1), though there exists report gas limit checks too
 
 All upkeep ids are combined into a single list, duplicates removed, in-flight
-upkeeps removed, and finally shuffled using the report timestamp such that a 
+upkeeps removed, and finally shuffled using the report timestamp such that a
 shuffled result is random between rounds, but identical across all nodes for the
 same list of upkeeps in the same round.
 
-All upkeep ids are checked at the median block number by doing RPC calls to 
+All upkeep ids are checked at the median block number by doing RPC calls to
 chain state to verify eligibility.
 
 Finally all eligible upkeeps are packaged into a report with consideration to
-the gas required per upkeep, the maximum gas allowed per report, and the 
+the gas required per upkeep, the maximum gas allowed per report, and the
 configured maximum number of upkeeps allowed in a report.
 
 ### Median Block Number
@@ -81,7 +81,7 @@ configured maximum number of upkeeps allowed in a report.
 All observations report a block number they observed upkeeps at along with the
 upkeeps observed, if any. Since there should always be a block number in every
 observation, the median is selected for constructing upkeep keys. The way the
-median is selected is not a true median AND finally a configurable lag is 
+median is selected is not a true median AND finally a configurable lag is
 subtracted from the resulting median that puts the final checks behind the head
 block even further.
 
@@ -121,7 +121,7 @@ call ocr.Report with [ReportTimestamp] and [observationList]
     for each (allUpkeepIDs)
         call combine with (medianBlockNumber) and (upkeepID): return [upkeepKey]
             add (upkeepKey) to (upkeepKeys)
-    
+
     call dedupe with (upkeepKeys)
 
     for each (upkeepKeys)
@@ -142,7 +142,7 @@ call ocr.Report with [ReportTimestamp] and [observationList]
         call CheckUpkeep with [upkeepKey]: return [upkeepStateResult]
             if [upkeepState] is not Eligible
                 continue
-            
+
             if [reportCapacity]+[upkeepGasUsed] > [maxReportGas]
                 continue
 
@@ -235,17 +235,17 @@ call ocr.ShouldTransmitAcceptedReport with [ReportTimestamp] and [ReportBytes]
 ### Poller
 
 This service interfaces with the registry contract and pulls a list of active
-upkeeps for every block. It is up to the registry to maintain the list of 
+upkeeps for every block. It is up to the registry to maintain the list of
 active upkeeps either by itself polling the contract or by listening for logs.
 
 **Sampling Ratio**
 
 The sampling ratio is defined as the ratio of upkeeps a single node MUST check
-at random such that `n` good nodes have `p` probability of checking all upkeeps 
+at random such that `n` good nodes have `p` probability of checking all upkeeps
 at least once over `r` range of blocks.
 
-This limits the workload of individual nodes and attempts to distribute the 
-total workload equally to all nodes while synchronizing only on `n`, `p`, 
+This limits the workload of individual nodes and attempts to distribute the
+total workload equally to all nodes while synchronizing only on `n`, `p`,
 and `r`.
 
 Faulty node limit `f` is included in the calculation of the sampling ratio.
@@ -303,8 +303,8 @@ return (blockNumber), (upkeepResults), and no error
 
 ### Filter
 
-The filter is a coordinator between observations, building reports, and 
-transmitting reports. It runs as a service, checking logs emitted from the 
+The filter is a coordinator between observations, building reports, and
+transmitting reports. It runs as a service, checking logs emitted from the
 contract to evaluate the pending state of each upkeep.
 
 **Accepting as In-flight**
@@ -355,8 +355,8 @@ allowable value. In this case, the block number for the `upkeepKey` will always
 be before the last transmit block number resulting in filtering out the upkeep
 from observations.
 
-When an `upkeepKey` is compared against a recently performed upkeep, the 
-transmit block number will be the one indicated in the perform log and the 
+When an `upkeepKey` is compared against a recently performed upkeep, the
+transmit block number will be the one indicated in the perform log and the
 block number from the `upkeepKey` will be compared against the perform log's
 transmit number. If an observed `upkeepKey` occured at a block previous to the
 last transmit block number, the key will be filtered out of the observation.
@@ -393,9 +393,9 @@ else
 Logs are polled every second and passed through the following:
 
 Perform log entries indicate that a perform exists on chain in some capacity.
-The existance of an entry means that the transaction was broadcast by at least 
+The existance of an entry means that the transaction was broadcast by at least
 one node. Reorgs can still happen causing performs to get moved to a later block
-or change to reorg logs. Higher minConfirmations setting reduces the chances of 
+or change to reorg logs. Higher minConfirmations setting reduces the chances of
 this happening.
 
 We do two things upon receiving a perform log:
@@ -426,7 +426,7 @@ for each (performLogs)
                 set (upkeepID) in (blockedIDs) with (blockNumber) and (performBlockNumber)
             else
                 if (upkeepID) is in (blockedIDs) and
-                    (blockNumber) == [blockedIDBlockNumber] and 
+                    (blockNumber) == [blockedIDBlockNumber] and
                     (performBlockNumber) != [blockedIDBlockNumber]
 
                     set (upkeepID) in (blockedIDs) with (blockNumber) and (performBlockNumber)
@@ -441,13 +441,13 @@ confirmed on chain something changes and it becomes stale. Current scenarios are
 - There's a massive gas spike and upkeep does not have sufficient funds when report gets on chain
 
 In such cases the upkeep is not performed and the contract emits a log
-indicating the staleness reason instead of UpkeepPerformed log. We don't have 
+indicating the staleness reason instead of UpkeepPerformed log. We don't have
 different behaviours for different staleness reasons and just want to unlock the
 upkeep when we receive such log.
 
 For these logs we do not have the exact key which generated this log. Hence we
-are not able to mark the key responsible as transmitted which will result in 
-some wasted gas if this node tries to transmit it again, however we prioritize 
+are not able to mark the key responsible as transmitted which will result in
+some wasted gas if this node tries to transmit it again, however we prioritize
 the upkeep performance and clear the idBlocks for this upkeep.
 
 ```
@@ -476,7 +476,7 @@ for each (performLogs)
                 set (upkeepID) in (blockedIDs) with (blockNumber) and (nextBlock)
             else
                 if (upkeepID) is in (blockedIDs) and
-                    (blockNumber) == [blockedIDBlockNumber] and 
+                    (blockNumber) == [blockedIDBlockNumber] and
                     (performBlockNumber) != [blockedIDBlockNumber]
 
                     set (upkeepID) in (blockedIDs) with (blockNumber) and (nextBlock)

@@ -44,13 +44,13 @@ The strategy of logging in this repo is to have two types of outcomes from logs:
 1. actionable - errors and panics (which should be handled by the chainlink node itself)
 2. debug info - extra log info about inner workings of the plugin (optional based on provided ocr logger settings)
 
-If an error cannot be handled, it should be bubbled up. If it cannot be bubbled up, it should panic. The plugin shouldn't be concerned with managing runtime errors, log severity, or panic recovery unless it cannot be handled by the chainlink node process. An example might be a background service that is created a plugin startup but not managed by the chainlink node. If there is such a service, it should handle its own recovery within the context of a Start/Stop service.
+If an error cannot be handled, it should be bubbled up. If it cannot be bubbled up, it should panic. The plugin shouldn't be concerned with managing runtime errors, log severity, or panic recovery unless it cannot be handled by the chainlink node process. An example might be a background service that is created by a plugin startup but not managed by the chainlink node. If there is such a service, it should handle its own recovery within the context of a Start/Stop service.
 
 ## Simulator V2
 
 The goal of the simulator is to complete a full run of the automation plugin
 without using a chain, p2p network, RPC providers, or chainlink node as
-dependencies. What is being tested in this simulator is how the plugin 
+dependencies. What is being tested in this simulator is how the plugin
 interfaces with `libOCR` and how multiple instances interact to acheive a quorum
 on tasks.
 
@@ -65,7 +65,7 @@ as p2p network latency, block production, upkeep schedules, and more.
 The current iteration of the simulator requires a full build before a run as the
 simulator doesn't run binaries of the plugin, but instead the plugin is built
 within the simulator binary. The current limitation is that multiple custom
-builds cannot be run as part of a combined network. All instances in the 
+builds cannot be run as part of a combined network. All instances in the
 simulated network will be identical.
 
 Outputs can be directed to a specific directory, which is advised since each
@@ -148,7 +148,7 @@ The maximum delay in in milliseconds that an RPC would deliver a new block.
 
 The average response latency of a simulated RPC call. All latency calculations
 have a baseline of 50 milliseconds with an added latency calculated as a
-binomial distribution of the configuration where `N = conf * 2` and `P = 0.4`. 
+binomial distribution of the configuration where `N = conf * 2` and `P = 0.4`.
 
 *rpcDetail.errorRate*
 [float]
