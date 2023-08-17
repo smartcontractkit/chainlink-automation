@@ -2,10 +2,13 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTriggerUnmarshal(t *testing.T) {
@@ -48,6 +51,42 @@ func TestTriggerUnmarshal(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, output, "decoding should leave extension in its raw encoded state")
+}
+
+func TestTriggerString(t *testing.T) {
+	input := Trigger{
+		BlockNumber: 5,
+		BlockHash:   [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+		LogTriggerExtension: &LogTriggerExtension{
+			TxHash: [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+			Index:  99,
+		},
+	}
+
+	stringified := fmt.Sprintf("%v", input)
+	expected := `
+		{
+			"BlockNumber":5,
+			"BlockHash":"0102030401020304010203040102030401020304010203040102030401020304",
+			"LogTriggerExtension": {
+				"BlockHash":"0000000000000000000000000000000000000000000000000000000000000000",
+				"BlockNumber":0,
+				"Index":99,
+				"TxHash":"0102030401020304010203040102030401020304010203040102030401020304"
+			}
+		}`
+
+	assertJSONEqual(t, expected, stringified)
+
+	input = Trigger{
+		BlockNumber: 5,
+		BlockHash:   [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+	}
+
+	stringified = fmt.Sprintf("%v", input)
+	expected = `{"BlockNumber":5,"BlockHash":"0102030401020304010203040102030401020304010203040102030401020304"}`
+
+	assertJSONEqual(t, expected, stringified)
 }
 
 func TestTriggerUnmarshal_EmptyExtension(t *testing.T) {
@@ -155,5 +194,89 @@ func TestUpkeepIdentifier_BigInt(t *testing.T) {
 				assert.Equal(t, tc.id.String(), uid.BigInt().String())
 			}
 		})
+	}
+}
+
+func TestCheckResultString(t *testing.T) {
+	input := CheckResult{
+		PipelineExecutionState: 1,
+		Retryable:              true,
+		Eligible:               true,
+		IneligibilityReason:    10,
+		UpkeepID:               UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
+		Trigger: Trigger{
+			BlockNumber: 5,
+			BlockHash:   [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+			LogTriggerExtension: &LogTriggerExtension{
+				TxHash: [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+				Index:  99,
+			},
+		},
+		WorkID:       "work id",
+		GasAllocated: 1001,
+		PerformData:  []byte{1, 2, 3, 4, 5, 6},
+		FastGasWei:   big.NewInt(12),
+		LinkNative:   big.NewInt(13),
+	}
+
+	result := fmt.Sprintf("%v", input)
+	expected := `
+		{
+			"PipelineExecutionState":1,
+			"Retryable":true,
+			"Eligible":true,
+			"IneligibilityReason":10,
+			"UpkeepID":455867356320691211288303676705517652851520854420902457558325773249309310976,
+			"Trigger": {
+				"BlockHash":"0102030401020304010203040102030401020304010203040102030401020304",
+				"BlockNumber":5,
+				"LogTriggerExtension": {
+					"BlockHash":"0000000000000000000000000000000000000000000000000000000000000000",
+					"BlockNumber":0,
+					"Index":99,
+					"TxHash":"0102030401020304010203040102030401020304010203040102030401020304"
+				}
+			},
+			"WorkID":"work id",
+			"GasAllocated":1001,
+			"PerformData":"010203040506",
+			"FastGasWei":12,
+			"LinkNative":13
+		}
+	`
+	assertJSONEqual(t, expected, result)
+	assertJSONContainsAllStructFields(t, result, input)
+}
+
+func assertJSONEqual(t *testing.T, expected, actual string) {
+	var expectedMap, actualMap map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(expected), &expectedMap), "expected is invalid json")
+	require.NoError(t, json.Unmarshal([]byte(actual), &actualMap), "actual is invalid json")
+	assert.True(t, reflect.DeepEqual(expectedMap, actualMap), "expected and result json strings do not match")
+}
+
+func assertJSONContainsAllStructFields(t *testing.T, jsonString string, anyStruct interface{}) {
+	// if fields are added to the struct in the future, but omitted from the "pretty" string template, this test will fail
+	var jsonMap map[string]interface{}
+	var structMap map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(jsonString), &jsonMap), "jsonString is invalid json")
+	structJson, err := json.Marshal(anyStruct)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(structJson, &structMap))
+	assertCongruentKeyStructure(t, structMap, jsonMap)
+}
+
+func assertCongruentKeyStructure(t *testing.T, structMap, jsonMap map[string]interface{}) {
+	// this functions asserts that the two inputs have congruent key shapes, while disregarding
+	// the values
+	for k := range structMap {
+		assert.True(t, jsonMap[k] != nil, "json string does not contain field %s", k)
+		if nested1, ok := structMap[k].(map[string]interface{}); ok {
+			if nested2, ok := jsonMap[k].(map[string]interface{}); ok {
+				assertCongruentKeyStructure(t, nested1, nested2)
+			} else {
+				assert.Fail(t, "maps do not contain the same type for key %s", k)
+			}
+		}
 	}
 }

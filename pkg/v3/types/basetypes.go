@@ -1,9 +1,31 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strings"
 )
+
+var checkResultStringTemplate = `{
+	"PipelineExecutionState":%d,
+	"Retryable":%v,
+	"Eligible":%v,
+	"IneligibilityReason":%d,
+	"UpkeepID":%s,
+	"Trigger":%s,
+	"WorkID":"%s",
+	"GasAllocated":%d,
+	"PerformData":"%s",
+	"FastGasWei":%s,
+	"LinkNative":%s
+}`
+
+func init() {
+	checkResultStringTemplate = strings.Replace(checkResultStringTemplate, " ", "", -1)
+	checkResultStringTemplate = strings.Replace(checkResultStringTemplate, "\t", "", -1)
+	checkResultStringTemplate = strings.Replace(checkResultStringTemplate, "\n", "", -1)
+}
 
 type UpkeepType uint8
 
@@ -37,6 +59,7 @@ const (
 // UpkeepIdentifier is a unique identifier for the upkeep, represented as uint256 in the contract.
 type UpkeepIdentifier [32]byte
 
+// String returns a base 10 numerical string representation of the upkeep identifier.
 func (u UpkeepIdentifier) String() string {
 	return u.BigInt().String()
 }
@@ -148,6 +171,14 @@ func (r CheckResult) UniqueID() string {
 	resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
 	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
 	return fmt.Sprintf("%x", resultBytes)
+}
+
+func (r CheckResult) String() string {
+	return fmt.Sprintf(
+		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.Eligible,
+		r.IneligibilityReason, r.UpkeepID, r.Trigger, r.WorkID, r.GasAllocated,
+		hex.EncodeToString(r.PerformData), r.FastGasWei, r.LinkNative,
+	)
 }
 
 // BlockHistory is a list of block keys
