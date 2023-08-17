@@ -203,6 +203,11 @@ type UpkeepPayload struct {
 	CheckData []byte
 }
 
+// Determines whether the payload is empty, used within filtering
+func (p UpkeepPayload) IsEmpty() bool {
+	return p.WorkID == ""
+}
+
 // CoordinatedBlockProposal is used to represent a unit of work that can be performed
 // after a check block has been coordinated between nodes.
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
