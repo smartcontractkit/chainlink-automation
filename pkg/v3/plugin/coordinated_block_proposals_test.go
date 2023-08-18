@@ -234,8 +234,8 @@ func Test_newCoordinatedBlockProposals_add(t *testing.T) {
 				{Number: 4, Hash: [32]byte{4}}: 1,
 			},
 			wantQuorumBlock: types.BlockKey{
-				Number: 3,
-				Hash:   [32]byte{3},
+				Number: 4,
+				Hash:   [32]byte{4},
 			},
 			wantQuorum: true,
 		},
@@ -260,7 +260,7 @@ func Test_newCoordinatedBlockProposals_add(t *testing.T) {
 					},
 				},
 			},
-			quorumBlockthreshold: 1,
+			quorumBlockthreshold: 2,
 			wantAllNewProposals: []types.CoordinatedBlockProposal{
 				{
 					UpkeepID: [32]byte{1},

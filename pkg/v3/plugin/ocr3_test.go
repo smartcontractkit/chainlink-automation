@@ -1026,7 +1026,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 				return "workID1"
 			},
 			prevOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"Eligible":true,"GasAllocated":1,"FastGasWei":0,"LinkNative":0,"WorkID":"workID1"}],"SurfacedProposals":[[{"WorkID":"workID1"}]]}`)),
-			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[],"SurfacedProposals":[[{"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1"}]]}`)),
+			wantOutcome: ocr3types.Outcome([]byte(`{"AgreedPerformables":[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":0,"LinkNative":0}],"SurfacedProposals":[[]]}`)),
 		},
 		{
 			name: "processing a malformed observation with a previous outcome generates an new outcome",
