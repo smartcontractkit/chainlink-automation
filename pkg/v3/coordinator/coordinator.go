@@ -158,9 +158,10 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 		return err
 	}
 
+	skipped := 0
 	for _, event := range events {
 		if event.Confirmations < int64(c.minimumConfirmations) {
-			c.logger.Printf("Skipping event in transaction %s as confirmations (%d) is less than minimum confirmations (%d)", event.TransactionHash, event.Confirmations, c.minimumConfirmations)
+			skipped++
 			continue
 		}
 
@@ -186,6 +187,7 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 			}
 		}
 	}
+	c.logger.Printf("Skipped %d events as confirmations are less than minimum confirmations (%d)", skipped, c.minimumConfirmations)
 
 	return nil
 }
