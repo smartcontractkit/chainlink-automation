@@ -38,9 +38,9 @@ func newPerformables(threshold int, limit int, rSrc [16]byte, logger *log.Logger
 }
 
 func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
+	initialCount := len(p.resultCount)
 	for _, result := range observation.Performable {
 		uid := result.UniqueID()
-		p.logger.Printf("Adding result (%+v) with uid %s", result, uid)
 		payloadCount, ok := p.resultCount[uid]
 		if !ok {
 			payloadCount = resultAndCount[ocr2keepers.CheckResult]{
@@ -53,17 +53,20 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 
 		p.resultCount[uid] = payloadCount
 	}
+	p.logger.Printf("Added %d new results from %d performables", len(p.resultCount)-initialCount, len(observation.Performable))
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	performable := make([]ocr2keepers.CheckResult, 0)
 
-	for uid, payload := range p.resultCount {
+	added := 0
+	for _, payload := range p.resultCount {
 		if payload.count > p.threshold {
-			p.logger.Printf("Adding agreed performable over threshold %d with uid %s and count %d", p.threshold, uid, payload.count)
+			added++
 			performable = append(performable, payload.result)
 		}
 	}
+	p.logger.Printf("Adding %d agreed performables over threshold %d", added, p.threshold)
 
 	// Sort by a shuffled workID.
 	sort.Slice(performable, func(i, j int) bool {

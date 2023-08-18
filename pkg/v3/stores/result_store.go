@@ -50,7 +50,7 @@ func (s *resultStore) Start(pctx context.Context) error {
 	ctx, cancel := context.WithCancel(pctx)
 	defer cancel()
 
-	s.lggr.Println("starting result store")
+	s.lggr.Println("Starting result store")
 
 	ticker := time.NewTicker(gcInterval)
 	defer ticker.Stop()
@@ -60,10 +60,10 @@ func (s *resultStore) Start(pctx context.Context) error {
 		case <-ticker.C:
 			s.gc()
 		case <-ctx.Done():
-			s.lggr.Println("result store context done, stopping gc")
+			s.lggr.Println("Result store context done, stopping gc")
 			return nil
 		case <-s.close:
-			s.lggr.Println("result store close signal received, stopping gc")
+			s.lggr.Println("Result store close signal received, stopping gc")
 			s.closedCh <- struct{}{}
 			return nil
 		}
@@ -84,11 +84,11 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 		v, ok := s.data[r.WorkID]
 		if !ok {
 			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
-			s.lggr.Printf("result added for upkeep id '%s' and trigger '%+v'", r.UpkeepID.String(), r.Trigger)
+			s.lggr.Printf("Result added for upkeep id '%s' and trigger '%+v'", r.UpkeepID.String(), r.Trigger)
 		} else if v.data.Trigger.BlockNumber < r.Trigger.BlockNumber {
 			// result is newer -> replace existing data
 			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
-			s.lggr.Printf("result updated for upkeep id '%s' to higher check block from (%d) to trigger '%+v'", r.UpkeepID.String(), v.data.Trigger.BlockNumber, r.Trigger)
+			s.lggr.Printf("Result updated for upkeep id '%s' to higher check block from (%d) to trigger '%+v'", r.UpkeepID.String(), v.data.Trigger.BlockNumber, r.Trigger)
 		}
 	}
 }
@@ -101,7 +101,7 @@ func (s *resultStore) Remove(ids ...string) {
 	for _, id := range ids {
 		s.remove(id)
 
-		s.lggr.Printf("result removed from result store for key '%s'", id)
+		s.lggr.Printf("Result removed from result store for key '%s'", id)
 	}
 }
 
@@ -124,9 +124,8 @@ func (s *resultStore) viewResults() []ocr2keepers.CheckResult {
 		}
 
 		results = append(results, r.data)
-
-		s.lggr.Printf("result with upkeep id '%s' and trigger id '%s' viewed", r.data.UpkeepID.String(), r.data.WorkID)
 	}
+	s.lggr.Printf("Viewed %d results", len(results))
 	return results
 }
 
@@ -134,13 +133,13 @@ func (s *resultStore) gc() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.lggr.Println("garbage collecting result store")
+	s.lggr.Println("Garbage collecting result store")
 
 	for k, v := range s.data {
 		if time.Since(v.addedAt) > storeTTL {
 			delete(s.data, k)
 
-			s.lggr.Printf("value evicted from result store for upkeep id '%s' and work id '%s'", v.data.UpkeepID.String(), v.data.WorkID)
+			s.lggr.Printf("Value evicted from result store for upkeep id '%s' and work id '%s'", v.data.UpkeepID.String(), v.data.WorkID)
 		}
 	}
 }

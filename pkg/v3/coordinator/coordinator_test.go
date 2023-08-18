@@ -187,7 +187,7 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 				},
 			},
 			expectsMessage: true,
-			wantMessage:    "Skipping event in transaction",
+			wantMessage:    "Skipped 1 events",
 		},
 		{
 			name: "if a transmit event has a lower check block number than the corresponding record in the cache, a message is logged",
