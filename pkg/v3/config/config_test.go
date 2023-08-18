@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO (AUTO-4184) Clean up config
 func TestDecodeOffchainConfig(t *testing.T) {
 	for _, tc := range []struct {
 		Name              string
@@ -36,13 +35,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				PerformLockoutWindow: 1000,
 				TargetProbability:    "0.999",
 				TargetInRounds:       1,
-				//SamplingJobDuration:  1000,
 				MinConfirmations:     10,
 				GasLimitPerReport:    10,
 				GasOverheadPerUpkeep: 100,
 				MaxUpkeepBatchSize:   100,
-				//ReportBlockLag:       100,
-				//MercuryLookup:        true,
 			},
 		},
 		{
@@ -65,12 +61,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				PerformLockoutWindow: 1000,
 				TargetProbability:    "0.999",
 				TargetInRounds:       1,
-				//SamplingJobDuration:  1000,
 				MinConfirmations:     10,
 				GasLimitPerReport:    10,
 				GasOverheadPerUpkeep: 100,
 				MaxUpkeepBatchSize:   100,
-				//MercuryLookup:        false,
 			},
 		},
 		{
@@ -81,13 +75,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				PerformLockoutWindow: 1200000,
 				TargetProbability:    "0.99999",
 				TargetInRounds:       1,
-				//SamplingJobDuration:  3000,
 				MinConfirmations:     0,
 				GasLimitPerReport:    5_300_000,
 				GasOverheadPerUpkeep: 300_000,
 				MaxUpkeepBatchSize:   1,
-				//ReportBlockLag:       0,
-				//MercuryLookup:        false,
 			},
 		},
 		{
@@ -110,13 +101,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				PerformLockoutWindow: 1200000,
 				TargetProbability:    "0.999",
 				TargetInRounds:       1,
-				//SamplingJobDuration:  3000,
 				MinConfirmations:     0,
 				GasLimitPerReport:    5_300_000,
 				GasOverheadPerUpkeep: 300_000,
 				MaxUpkeepBatchSize:   1,
-				//ReportBlockLag:       0,
-				//MercuryLookup:        false,
 			},
 		},
 		{
