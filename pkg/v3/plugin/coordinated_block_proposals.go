@@ -132,7 +132,7 @@ func (c *coordinatedBlockProposals) getLatestQuorumBlock() (ocr2keepers.BlockKey
 	for block, count := range c.recentBlocks {
 		// Perhaps an honest node could be tricked into seeing an illegitimate
 		// blockhash by an eclipse attack?
-		if count > int(c.quorumBlockthreshold) {
+		if count >= int(c.quorumBlockthreshold) {
 			if (mostRecent.Hash == zeroHash) || // First consensus hash
 				(block.Number > mostRecent.Number) || // later height
 				(block.Number == mostRecent.Number && // Matching heights
