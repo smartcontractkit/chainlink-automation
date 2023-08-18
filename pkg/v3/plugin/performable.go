@@ -15,25 +15,25 @@ type resultAndCount[T any] struct {
 }
 
 type performables struct {
-	limit         int
-	keyRandSource [16]byte
-	threshold     int
-	logger        *log.Logger
-	resultCount   map[string]resultAndCount[ocr2keepers.CheckResult]
+	limit           int
+	keyRandSource   [16]byte
+	quorumThreshold int
+	logger          *log.Logger
+	resultCount     map[string]resultAndCount[ocr2keepers.CheckResult]
 }
 
 // Performables gets quorum on agreed check results which should ultimately be
 // performed within a report. It assumes only valid observations are added to it
-// and simply adds all results which achieve the threshold quorum.
+// and simply adds all results which achieve the quorumThreshold.
 // Results are agreed upon by their UniqueID() which contains all the data
 // withn the result.
-func newPerformables(threshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
+func newPerformables(quorumThreshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
 	return &performables{
-		threshold:     threshold,
-		limit:         limit,
-		keyRandSource: rSrc,
-		logger:        logger,
-		resultCount:   make(map[string]resultAndCount[ocr2keepers.CheckResult]),
+		quorumThreshold: quorumThreshold,
+		limit:           limit,
+		keyRandSource:   rSrc,
+		logger:          logger,
+		resultCount:     make(map[string]resultAndCount[ocr2keepers.CheckResult]),
 	}
 }
 
@@ -61,12 +61,12 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 
 	added := 0
 	for _, payload := range p.resultCount {
-		if payload.count > p.threshold {
+		if payload.count >= p.quorumThreshold {
 			added++
 			performable = append(performable, payload.result)
 		}
 	}
-	p.logger.Printf("Adding %d agreed performables over threshold %d", added, p.threshold)
+	p.logger.Printf("Adding %d agreed performables reaching quorumThreshold %d", added, p.quorumThreshold)
 
 	// Sort by a shuffled workID.
 	sort.Slice(performable, func(i, j int) bool {
