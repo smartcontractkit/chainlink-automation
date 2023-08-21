@@ -310,6 +310,60 @@ func TestPerformables(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "Duplicate work IDs with different UIDs reaching threshold",
+			threshold: 2,
+			limit:     3,
+			observations: []ocr2keepers.AutomationObservation{
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					Performable: []types.CheckResult{
+						{WorkID: "1", FastGasWei: big.NewInt(10), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					// Same workID but different fastGasWei
+					Performable: []types.CheckResult{
+						{WorkID: "1", FastGasWei: big.NewInt(20), LinkNative: big.NewInt(10)},
+					},
+				},
+				{
+					// Same workID but different fastGasWei
+					Performable: []types.CheckResult{
+						{WorkID: "1", FastGasWei: big.NewInt(20), LinkNative: big.NewInt(10)},
+					},
+				},
+			},
+			expectedOutcomeWorkIDs: []types.CheckResult{
+				{
+					WorkID:     "1",
+					FastGasWei: big.NewInt(10),
+					LinkNative: big.NewInt(10),
+				},
+			},
+			wantResultCount: map[string]resultAndCount[types.CheckResult]{
+				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
+					result: types.CheckResult{
+						WorkID:     "1",
+						FastGasWei: big.NewInt(10),
+						LinkNative: big.NewInt(10),
+					},
+					count: 2,
+				},
+				"0066616c736566616c7365000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000031140a": {
+					result: types.CheckResult{
+						WorkID:     "1",
+						FastGasWei: big.NewInt(20),
+						LinkNative: big.NewInt(10),
+					},
+					count: 2,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
