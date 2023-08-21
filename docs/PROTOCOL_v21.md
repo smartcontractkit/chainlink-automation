@@ -16,23 +16,16 @@ This document aims to give a high level overview of a full e2e protocol for auto
         - [Retry](#retry-flow)
         - [Log Recovery Proposal](#log-recovery-proposal-flow)
         - [Log Recovery Finalization](#log-recovery-finalization-flow)
-  - [Visuals](#visuals)
   - [Components](#components)
-    - Common:
         - [Registry](#registry)
         - [Runner](#runner)
         - [Transmit Event Provider](#transmit-event-provider)
         - [Coordinator](#coordinator)   
         - [Result Store](#result-store)
         - [Metadata Store](#metadata-store)
-        - [Block Ticker](#block-ticker)
-    - Conditional Triggers:
-        - [Samples Observer](#samples-observer)
-        - [Conditional Observer](#conditional-observer)
-    - Log Triggers:
-        - [Log Observer](#log-observer)
-        - [Retry Observer](#retry-observer)
-        - [Recovery Observer](#recovery-observer)
+        - [Observers](#observers)
+            - [Proposal Observers](#proposal-observers)
+            - [Finalization Observers](#finalization-observers)
         - [Log Provider](#log-provider)
         - [Log Recoverer](#log-recoverer)
         - [Upkeep States](#upkeep-states)
@@ -47,7 +40,10 @@ This document aims to give a high level overview of a full e2e protocol for auto
 
 ## Overview
 
-The idea behind the protocol is to provide a decentralized execution engine to automate smart contract interaction, with a general infrastructure to support future triggers from other sources.
+The Automation plugin is designed to provide a way to automate smart contract interaction.
+
+The idea behind the protocol is to provide a decentralized execution engine, 
+with a general infrastructure to support future triggers from other sources.
 
 ## Boundaries
 
@@ -149,21 +145,16 @@ The payloads will then go into log observer to be checked again.
 Eligible results will go into the results store and later on into a report and those 
 that were agreed by at least f+1=3 nodes will be performed on chain.
 
-## Visuals
-
-The diagrams below shows the data flow between components. The diagrams are simplified to show only the relevant components for each trigger and the corresponding flows.
-
-💡 Note: source is available [here](https://miro.com/app/board/uXjVPntyh4E=/).
-
-Conditional triggers:
-
-![Conditional Triggers Diagram](./images/block_ocr3_conditional_triggers.png)
-
-Log triggers:
-
-![Log Triggers Diagram](./images/block_ocr3_log_triggers.png)
 
 ## Components
+
+An abstracted view of the common protocol components looks as follows:
+
+![Automation Block Diagram](./images/automation_ocr3_block.jpg)
+
+<aside>
+💡 Note: source is available [here](https://miro.com/app/board/uXjVPntyh4E=/).
+</aside>
 
 ### Registry
 
