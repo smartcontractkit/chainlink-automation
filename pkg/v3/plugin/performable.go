@@ -59,14 +59,23 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 	performable := make([]ocr2keepers.CheckResult, 0)
 
-	added := 0
-	for _, payload := range p.resultCount {
-		if payload.count >= p.quorumThreshold {
-			added++
+	// Added workIDs
+	addedWid := make(map[string]bool)
+	uids := make([]string, 0, len(p.resultCount))
+	for uid := range p.resultCount {
+		uids = append(uids, uid)
+	}
+	sort.Strings(uids)
+	for _, uid := range uids {
+		// Traverse in sorted order of UID
+		payload := p.resultCount[uid]
+		// For every payload that reaches threshold and workID has not been added before, add it to performables
+		if payload.count >= p.quorumThreshold && !addedWid[payload.result.WorkID] {
+			addedWid[payload.result.WorkID] = true
 			performable = append(performable, payload.result)
 		}
 	}
-	p.logger.Printf("Adding %d agreed performables reaching quorumThreshold %d", added, p.quorumThreshold)
+	p.logger.Printf("Adding %d agreed performables reaching quorumThreshold %d", len(performable), p.quorumThreshold)
 
 	// Sort by a shuffled workID.
 	sort.Slice(performable, func(i, j int) bool {
