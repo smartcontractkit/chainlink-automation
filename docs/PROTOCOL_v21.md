@@ -73,10 +73,11 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 - `upkeepID`: Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
 - `trigger`: Used to represent the trigger for a particular upkeep performance, and is represented as: `(checkBlockNum, checkBlockHash,extension)` where the extension is based on the trigger type:
     - Conditionals: no extension 
-    - Log triggers: `(logTxHash, logIndex, logBlockNum, logBlockHash)`.
+    - Log triggers: `(logTxHash, logIndex, logBlockNum, logBlockHash)`. \
     NOTE: `logBlockNum` and `logBlockHash` might not be present in the trigger, in which case they are set to 0 and empty respectively. In such cases the log block will be resolved the given tx hash.
 - `logIdentifier`: unique identifier for a log → `(logTxHash, logIndex)`
-- `workID`: Unique 256 bit identifier for a unit of work that is used across the system. `(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
+- `workID`: Unique 256 bit identifier for a unit of work that is used across the system. \
+`(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
     - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
     - Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
 - `upkeepPayload`: Input information to process a unit of work for an upkeep → `(upkeepID, trigger, checkData)`
