@@ -405,20 +405,14 @@ This component’s purpose is to surface latest logs for registered upkeeps. It 
 - Listening for log filter config changes from Registry: 
     - sync log poller with the filters
     - sync the local filter store with changes in filters
-- Provides a simple interface `getLatestLogs` to provide new **unseen** logs across all upkeeps within a limit
+- Provides a simple interface `getLatestPayloads` to provide new **unseen** logs across all upkeeps within a limit
     - Repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` (200) blocks. Stores them in the log buffer (see below)
     - Handles load balancing and rate limiting across upkeeps
-    - `getLatestLogs` limits the number of logs returned per upkeep in a single call. If there are more logs present, then the provider gives the logs starting from an offset (`latestBlock-latestBlock%lookbackBlocks`). Offset is calculated such that the nodes try to choose the same logs from big pool of logs so they can get agreement
+    - `getLatestPayloads` limits the number of logs returned per upkeep in a single call. If there are more logs present, then the provider gives the logs starting from an offset (`latestBlock-latestBlock%lookbackBlocks`). Offset is calculated such that the nodes try to choose the same logs from big pool of logs so they can get agreement
 
 <aside>
-💡 Note: `getLatestLogs` might miss logs when there is a surge of logs which lasts longer than `lookbackBlocks`. Upon node restarts it can **miss logs** when it restarts after a gap, or **provide same logs again** when it quickly restarts
+💡 Note: `getLatestPayloads` might miss logs when there is a surge of logs which lasts longer than `lookbackBlocks`. Upon node restarts it can **miss logs** when it restarts after a gap, or **provide same logs again** when it quickly restarts
 </aside>
-
-- Provides an interface `getPayloadLog` to build an upkeep payload for a particular log on demand by giving a trigger as in input.
-- It does not return a payload for a newer log to ensure recovery logs are isolated from latest logs. It verifies that the log is part of the filters for that upkeep and it is still present on chain
-- It checks whether the log has been already processed within the upkeepState. If so then doesn't return a payload
-- It gets the required log from log poller. This is used by the recovery flow
-
 
 #### Log Buffer
 
@@ -449,13 +443,33 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 - Logs that are older than 24hr are ignored, therefore `lastRePollBlock` starts at `latestBlock - (24hr block)` in case it was not populated before.
 - `lastRePollBlock` is updated in case there are no logs in a specific range, otherwise will wait for performed events to know that all logs in that range were processed before updating `lastRePollBlock`.
 
+**Proposal Data**
+
+The recoverer provides an interface `getProposalData` to be called when buildubg an upkeep payload for a particular log on demand by giving a trigger as in input.
+
+The payload building process does the following:
+- Does not return a payload for a newer log to ensure recovery logs are isolated from latest logs. 
+- Verifies that the log is part of the filters for that upkeep and it is still present on chain
+- Checks whether the log has been already processed within the upkeepState. If so then doesn't return a payload
+- Gets the required log from log poller
+- Packs the log for the payload
+
 ### Upkeep States
 
 The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system, to avoid redundant work by the recoverer. Enables to select by (upkeepID, logIdentifier) is used as a key to store the state of a log upkeep.
 
-The state is updated by the coordinator when the upkeep is performed or after ineligible check by observer.
+The state is updated after ineligible check by observer.
+Perform events scanner updates the states cache lazily/on-demand, by reading `DedupKeyAdded` events.
 
-The states will be persisted to so the latest state to be restored when the node starts up.
+The states (only ineligible) will be persisted in DB so the latest state to be restored when the node starts up.
+
+<aside>
+💡 Note: Performed states are not persisted in DB, as they are already present in log events that are stored in DB.
+</aside>
+
+<aside>
+💡 Note: Using a DB might introduce inconsistencies across the nodes in the network, e.g. in case of node restarts.
+</aside>
 
 ### Plugin
 
