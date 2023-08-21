@@ -75,7 +75,7 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 			performable = append(performable, payload.result)
 		}
 	}
-	p.logger.Printf("Adding %d agreed performables reaching quorumThreshold %d", len(addedWid), p.quorumThreshold)
+	p.logger.Printf("Adding %d agreed performables reaching quorumThreshold %d", len(performable), p.quorumThreshold)
 
 	// Sort by a shuffled workID.
 	sort.Slice(performable, func(i, j int) bool {
