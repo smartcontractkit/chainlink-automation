@@ -9,12 +9,13 @@ This document aims to give a high level overview of a full e2e protocol for auto
   - [Definitions](#definitions)
   - [Eligibility Flows](#eligibility-flows)
     - [Conditional Triggers Flows](#1-conditional-triggers-flows)
-        - [Sampling Flow](#sampling-flow)
-        - [Coordination Flow](#coordination-flow)
+        - [Conditional Proposal](#conditional-proposal-flow)
+        - [Conditional Finalization](#conditional-finalization-flow)
     - [Log Triggers](#2-log-triggers)
-        - [Log Trigger Flow](#log-trigger-flow)
-        - [Log Recovery Proposal Flow](#log-recovery-proposal-flow)
-        - [Log Recovery Finalization Flow](#log-recovery-finalization-flow)
+        - [Log Trigger](#log-trigger-flow)
+        - [Retry](#retry-flow)
+        - [Log Recovery Proposal](#log-recovery-proposal-flow)
+        - [Log Recovery Finalization](#log-recovery-finalization-flow)
   - [Visuals](#visuals)
   - [Components](#components)
     - Common:
@@ -90,21 +91,24 @@ The eligibility flows are the sequence of events and procedures used to determin
 The protocol supports two types of triggers:
 
 ### 1. Conditional Triggers Flows
-#### Sampling Flow
+#### Conditional Proposal Flow
 
 The sampling flow is used to determine if an upkeep is eligible to perform. It is
 triggered by a ticker that provides samples of upkeeps to check. The samples are
-collected, filtered, and checked. The results are then pushed into the metadata store with `EligibleSample` [instruction](#instructions). 
-The plugin will then collect the instructions and push them into the outcome to be processed in next rounds, where they will go into coordination flow.
+collected, filtered, and checked. The results are then pushed into the metadata store as proposals. 
+The plugin will then collect these proposals and push them into the outcome to be processed in next rounds, where they will go into conditional finalization flow.
 
 <aside>
-A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated upkeeps is kept for 30 rounds. A node can process coorindated upkeeps for upto last 30 rounds.
+A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
+
+`1sec` is the expected OCR round time, so the timeout for a coordinated proposal is `~20sec`.
+It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
 </aside>
 
-#### Coordination Flow
+#### Conditional Finalization Flow 
 
-The coordination flow is used to come to agreement among nodes on what upkeepPayloads to check, based on the results of the sampling flow. It is triggered by a ticker that provides
-payloads based on a coordinated block and upkeepIDs. 
+The conditional finalization flow is used to come to agreement among nodes on what upkeepPayloads to check, based on the results of the proposal flow. It is triggered by a ticker that provides payloads based on a coordinated block and upkeepIDs.
+
 The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
 
 ### 2. Log Triggers
@@ -113,23 +117,36 @@ The results are collected, filtered, and checked again. Eligible results will go
 The log trigger flow is used to determine if a log needs to be perform. It is triggered by a ticker that get the latest logs from log event provider.
 The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
 
-In cases of retryable failures, the payloads are scheduled to be retried into the retry ticker.
+In cases of retryable failures, the payloads are pushed into the retry queue.
+
+#### Retry Flow
+
+The retry flow is used to retry payloads that failed with retryable errors. It is triggered by a ticker that gets payloads from the retry queue.
+
+The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
 
 #### Log Recovery Proposal Flow
 
 The log recovery flow is used to recover logs that were missed by the log trigger flow. It is triggered by a ticker that gets missed logs from log recoverer.
-The missed logs are pushed into the metadata store with `RecoveredLog` [instruction](#instructions). 
-The plugin will then collect the instructions and push them into the outcome to be processed in next rounds where they gets picked up into recovery finalization flow. 
+The missed logs are pushed into the metadata store as recovery proposals. 
+The plugin will then collect these proposals and push them into the outcome to be processed in next rounds where they gets picked up into recovery finalization flow. 
 
 <aside>
-Similar to coordinated upkeeps in conditional flow, A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of RecoveredLogs is kept for 30 rounds. A node can process recovered logs for upto last 30 rounds.
+A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
+
+`1sec` is the expected OCR round time, so the timeout for a coordinated proposal is `~20sec`.
+It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
 </aside>
 
 #### Log Recovery Finalization Flow
 
 The recovery finalization flow takes recoverable payloads merged with the latest check blocks and runs the pipeline for them.
 
-The recovery finalization ticker will call log provider to build payloads with the latest logs. The log provider does necessary checks to ensure that the log should actually be recovered (To protect against malicious nodes surfacing wrong logs for recovery). The payloads will then go into log observer to be checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
+The recovery finalization ticker will call the payload builder to build payloads with the latest logs. 
+The log recoverer does necessary checks to ensure that the log should actually be recovered, to protect against malicious nodes surfacing wrong logs for recovery. 
+The payloads will then go into log observer to be checked again. 
+Eligible results will go into the results store and later on into a report and those 
+that were agreed by at least f+1=3 nodes will be performed on chain.
 
 ## Visuals
 
