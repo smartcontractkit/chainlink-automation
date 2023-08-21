@@ -4,61 +4,67 @@ This document aims to give a high level overview of a full e2e protocol for auto
 
 ## Table of Contents
 
+- [Offchain protocol overview v2.1](#offchain-protocol-overview-v21)
+  - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
   - [Boundaries](#boundaries)
+    - [Reliability Guarantees](#reliability-guarantees)
+    - [Security Guarantees](#security-guarantees)
   - [Definitions](#definitions)
   - [Eligibility Flows](#eligibility-flows)
-    - [Conditional Triggers Flows](#1-conditional-triggers-flows)
-        - [Sampling Flow](#sampling-flow)
-        - [Coordination Flow](#coordination-flow)
-    - [Log Triggers](#2-log-triggers)
-        - [Log Trigger Flow](#log-trigger-flow)
-        - [Log Recovery Proposal Flow](#log-recovery-proposal-flow)
-        - [Log Recovery Finalization Flow](#log-recovery-finalization-flow)
+    - [1. Conditional Triggers Flows](#1-conditional-triggers-flows)
+      - [Sampling Flow](#sampling-flow)
+      - [Coordination Flow](#coordination-flow)
+    - [2. Log Triggers](#2-log-triggers)
+      - [Log Trigger Flow](#log-trigger-flow)
+      - [Log Recovery Proposal Flow](#log-recovery-proposal-flow)
+      - [Log Recovery Finalization Flow](#log-recovery-finalization-flow)
   - [Visuals](#visuals)
   - [Components](#components)
-    - Common:
-        - [Registry](#registry)
-        - [Runner](#runner)
-        - [Transmit Event Provider](#transmit-event-provider)
-        - [Coordinator](#coordinator)   
-        - [Result Store](#result-store)
-        - [Metadata Store](#metadata-store)
-        - [Block Ticker](#block-ticker)
-    - Conditional Triggers:
-        - [Samples Observer](#samples-observer)
-        - [Conditional Observer](#conditional-observer)
-    - Log Triggers:
-        - [Log Observer](#log-observer)
-        - [Retry Observer](#retry-observer)
-        - [Recovery Observer](#recovery-observer)
-        - [Log Provider](#log-provider)
-        - [Log Recoverer](#log-recoverer)
-        - [Upkeep States](#upkeep-states)
-    - [OCR3 Plugin](#plugin)
-        - [Observation](#observation)
-        - [Outcome](#outcome)
-        - [Reports](#reports)
-        - [ShouldAcceptFinalizedReport](#shouldacceptfinalizedreport)
-        - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
+    - [Registry](#registry)
+    - [Runner](#runner)
+    - [Transmit Event Provider](#transmit-event-provider)
+    - [Coordinator](#coordinator)
+      - [Conditional Coordinator](#conditional-coordinator)
+      - [Log Trigger Coordinator](#log-trigger-coordinator)
+    - [Result Store](#result-store)
+    - [Metadata Store](#metadata-store)
+      - [Instructions](#instructions)
+    - [Block Ticker](#block-ticker)
+    - [Samples Observer](#samples-observer)
+    - [Conditional Observer](#conditional-observer)
+    - [Log Observer](#log-observer)
+    - [Retry Observer](#retry-observer)
+    - [Recovery Observer](#recovery-observer)
+    - [Log Provider](#log-provider)
+      - [Log Buffer](#log-buffer)
+      - [Log Filter Store](#log-filter-store)
+    - [Log Recoverer](#log-recoverer)
+    - [Upkeep States](#upkeep-states)
+    - [Plugin](#plugin)
+      - [Observation](#observation)
+      - [Outcome](#outcome)
+      - [Reports](#reports)
+      - [ShouldAcceptFinalizedReport](#shouldacceptfinalizedreport)
+      - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
 
 <br />
 
 ## Overview
 
-The idea behind the protocol is to provide a decentralized execution engine to automate smart contract interaction, with a general infrastructure to support future triggers from other sources.
+The OCR-Keepers protocol is a decentralized execution engine for automating smart contracts, with a generic and extensible triggering mechanism.
 
 ## Boundaries
 
-The protocol works with n=10 nodes, handling upto f=2 arbitrary malicious nodes. It aims to give the following guarantees:
+The protocol works with n=10 nodes, handling upto f=2 arbitrarily malicious nodes. It aims to give the following guarantees:
 
 ### Reliability Guarantees
 
 **Log triggers** 
-Out of n=10 nodes every node listens to configured user log, as soon f+1=3 nodes see the log and agree on checkPipeline, it will be performed on chain. We can handle up to 7 nodes missing a log and handle capacity of upto 10 log trigger upkeeps with rate limit per upkeep of 5 logs per second.
+Out of n=10 nodes every node listens to configured user logs As soon f+1=3 nodes observe the log and agree on a checkPipeline result, it will be performed on chain. We can handle up to 7 nodes missing a log and handle capacity of upto 10 log trigger upkeeps with rate limit per upkeep of 5 logs per second.
 
 **Conditionals** 
-Every upkeep’s condition will be checked at least once by the network every ~3 seconds, handling up to f+1=3 nodes being down. Once condition is eligible, every node evaluates the checkPipeline, as soon as f+1=3 nodes agree, it will be performed on chain. We can handle capacity of upto 500 conditional upkeeps.
+Every upkeep’s condition will be checked at least once by the network every ~3 seconds, handling up to f+1=3 nodes being down. Once condition is eligible, every node evaluates the checkPipeline, as soon as f+1=3 nodes agree, it will be performed on chain. We can handle capacity of up to 500 conditional upkeeps.
     
 The protocol will be functional as long as > 6 ((n+f)/2) nodes are alive and participating within the p2p network (required for ocr3 consensus).
 
@@ -73,8 +79,9 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 - `trigger`: Used to represent the trigger for a particular upkeep performance
     - For conditionals: (checkBlockNum, checkBlockHash)
     - For log triggers: (checkBlockNum, checkBlockHash, logTxHash, logIndex)
-- `logIdentifier`: unique identifier for a log → (logTxHash, logIndex)
-- `upkeepPayload`: Input information to process a unit of work for an upkeep → (upkeepID, trigger, checkData)
+- `logIdentifier`: unique identifier for a log: hash(logTxHash, logIndex)
+- `workID`: unique identifier for a unit of work: hash(upkeepID, trigger)
+- `upkeepPayload`: Input information to process a unit of work for an upkeep → (upkeepID, trigger, workID) // TODO
     - For conditionals checkData is empty (derived onchain in checkUpkeep)
     - For log: checkData is log information
 - `upkeepTriggerID`: Uniquely identifies an `upkeepPayload` and is represented as: `keccak256(upkeepID, abi.encode(trigger))` for evm chains.
