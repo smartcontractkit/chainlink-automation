@@ -19,7 +19,7 @@ with a general infrastructure to support future triggers from other sources.
 
  An abstracted view of the common protocol components looks as follows:
 
-![Automation Block Diagram](./images/block_ocr3_base.png)
+![Automation Block Diagram](./images/automation_ocr3_block.jpg)
 
 **Plugin** process OCR3 instances in isolated thread/s, implements the interface for the OCR3 protocol.
 
