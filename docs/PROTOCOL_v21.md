@@ -42,7 +42,18 @@ This document aims to give a high level overview of a full e2e protocol for auto
 
 ## Overview
 
-The OCR-Keepers protocol is a decentralized execution engine for automating smart contracts, with a generic and extensible triggering mechanism.
+The OCR-Keepers protocol is a decentralized execution engine for automating smart contracts interaction, with a generic and extensible triggering mechanism.
+
+The protocol is composed of offchain components which we will discuss in this document, and onchain contracts.
+
+The offchain components are responsible for the following:
+
+- **State management** - keeping track of the state of the system, including upkeeps, triggers, and results
+- **Triggering** - listening to external events and triggering the execution of smart contracts based on those events
+- **Eligibility** - determining whether a upkeep+trigger is eligible to perform
+based on on-chain check pipeline.
+- **Consensus** - coming to agreement among nodes on what upkeeps are eligible to perform
+- **Execution** - executing the agreed, eligible upkeeps on-chain
 
 ## Boundaries
 
