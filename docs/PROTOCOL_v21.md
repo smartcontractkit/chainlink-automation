@@ -52,7 +52,7 @@ The offchain components are responsible for the following:
 - **Triggering** - listening to external events and triggering the execution of smart contracts based on those events
 - **Eligibility** - determining whether a upkeep+trigger is eligible to perform
 based on on-chain check pipeline.
-- **Consensus** - coming to agreement among nodes on what upkeeps are eligible to perform
+- **Threshold Agreement** - coming to agreement among f+1 nodes on what upkeeps are eligible to perform
 - **Execution** - executing the agreed, eligible upkeeps on-chain
 
 ## Boundaries
