@@ -42,7 +42,7 @@ This document aims to give a high level overview of a full e2e protocol for auto
 
 ## Overview
 
-The OCR-Keepers protocol is a decentralized execution engine for automating smart contracts interaction, with a generic and extensible triggering mechanism.
+Chainlink Automation is a decentralized execution engine for automating smart contracts, with a generic and extensible triggering mechanism.
 
 The protocol is composed of offchain components which we will discuss in this document, and onchain contracts.
 
