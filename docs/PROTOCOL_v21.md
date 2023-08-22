@@ -6,9 +6,11 @@ This document aims to give a high level overview of a full e2e protocol for auto
 
   - [Overview](#overview)
   - [Boundaries](#boundaries)
+    - [Reliability Guarantees](#reliability-guarantees)
+    - [Security Guarantees](#security-guarantees)
   - [Definitions](#definitions)
   - [Eligibility Flows](#eligibility-flows)
-    - [Conditional Triggers Flows](#1-conditional-triggers-flows)
+    - [Conditional Triggers](#1-conditional-triggers-flows)
         - [Conditional Proposal](#conditional-proposal-flow)
         - [Conditional Finalization](#conditional-finalization-flow)
     - [Log Triggers](#2-log-triggers)
@@ -33,7 +35,7 @@ This document aims to give a high level overview of a full e2e protocol for auto
         - [Observation](#observation)
         - [Outcome](#outcome)
         - [Reports](#reports)
-        - [ShouldAcceptFinalizedReport](#shouldacceptfinalizedreport)
+        - [ShouldAcceptAttestedReport](#shouldacceptattestedreport)
         - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
 
 <br />
@@ -498,7 +500,7 @@ Batching is subject to upkeep gas limit, and preconfigured reportGasLimit and ga
 
 For a list of upkeepResults, we only need to send one fastGasWei, linkNative to chain in the report. This is taken from the result which has the highest checkBlockNum
 
-#### ShouldAcceptFinalizedReport
+#### ShouldAcceptAttestedReport
 
 Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
 
