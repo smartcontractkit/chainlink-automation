@@ -6,9 +6,11 @@ This document aims to give a high level overview of a full e2e protocol for auto
 
   - [Overview](#overview)
   - [Boundaries](#boundaries)
+    - [Reliability Guarantees](#reliability-guarantees)
+    - [Security Guarantees](#security-guarantees)
   - [Definitions](#definitions)
   - [Eligibility Flows](#eligibility-flows)
-    - [Conditional Triggers Flows](#1-conditional-triggers-flows)
+    - [Conditional Triggers](#1-conditional-triggers-flows)
         - [Conditional Proposal](#conditional-proposal-flow)
         - [Conditional Finalization](#conditional-finalization-flow)
     - [Log Triggers](#2-log-triggers)
@@ -33,14 +35,25 @@ This document aims to give a high level overview of a full e2e protocol for auto
         - [Observation](#observation)
         - [Outcome](#outcome)
         - [Reports](#reports)
-        - [ShouldAcceptFinalizedReport](#shouldacceptfinalizedreport)
+        - [ShouldAcceptAttestedReport](#shouldacceptattestedreport)
         - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
 
 <br />
 
 ## Overview
 
-The OCR-Keepers protocol is a decentralized execution engine for automating smart contracts, with a generic and extensible triggering mechanism.
+Chainlink Automation is a decentralized execution engine for automating smart contracts, with a generic and extensible triggering mechanism.
+
+The protocol is composed of offchain components which we will discuss in this document, and onchain contracts.
+
+The offchain components are responsible for the following:
+
+- **State management** - keeping track of the state of the system, including upkeeps, triggers, and results
+- **Triggering** - listening to external events and triggering the execution of smart contracts based on those events
+- **Eligibility** - determining whether a upkeep+trigger is eligible to perform
+based on on-chain check pipeline.
+- **Threshold Agreement** - coming to agreement among f+1 nodes on what upkeeps are eligible to perform
+- **Execution** - executing the agreed, eligible upkeeps on-chain
 
 ## Boundaries
 
@@ -213,24 +226,23 @@ This component serves to transmit events from log poller, to other components in
 
 ### Coordinator
 
-This component stores in-flight & confirmed reports in memory, and allows other components in the system to query that information.
+Stores in-flight & confirmed reports in memory and helps to coordinate the execution and transmission of upkeeps across multiple components in the system.
 
-The coordinator stores inflight reports, in case of conflict - a new report is seen for the same key, it waits on the higher `checkBlockNumber`. The `Accept` function is called from the `shouldAccept` on the plugin.
+The coordinator stores reports by workID, in case of conflict - a new report is seen for the same key, it waits on the higher `checkBlockNumber`. 
 
 All keys stored expire after TTL. In case an item is not marked as performed within TTL, it is assumed that the tx got lost. Conditionals and Log upkeeps recover from such scenarios through different logic.
 
-#### Conditional Coordinator
+**Conditionals**
 
-The coordinator for conditional triggers ensures that an upkeep is performed at progressively higher blocks and tracks 'in-flight' status on transmits. This variant sets the last performed block higher in a local cache for an upkeepId on every transmit event.
+The coordinator ensures that an upkeep is performed at progressively higher blocks and tracks 'in-flight' status on transmits. This variant sets the last performed block higher in a local cache for an upkeepId on every transmit event.
 
 The coordinator stores inflight reports per `upkeepID` and an associated `upkeepTriggerID` for identifying transmit events.
 
-#### Log Trigger Coordinator
+**Log Triggers**
 
-The coordinator for log triggers ensures that a triggered log is performed exactly once. It tracks 'in-flight' status when a report is generated and registers transmit events such as performed or staleReport or reorg.
+The coordinator ensures that a triggered log is performed exactly once. It tracks 'in-flight' status when a report is generated and registers transmit events such as performed or staleReport or reorg.
 
 The coordinator stores inflight reports per `(upkeepID, logIdentifier)` and an associated `upkeepTriggerID` for identifying transmit events.
-
 
 **Transmit Events**
 
@@ -252,26 +264,31 @@ The coordinator listens to transmit event logs (stale / reorged / cancelled / in
     - Logs are expected to be picked up again by the log recoverer
 - Cancelled Upkeep - the `upkeepTriggerID` is removed. No recovery is needed as upkeep is cancelled
 
-**Is Transmission Confirmed**
+**Coordinator API**
 
-Provides additional read API to check whether some reported upkeep can be transmitted.
+**Accept**
+
+The coordinator exposes an `Accept` function to mark an upkeep as pending for transmission. It is used during `shouldAccept` step by the plugin.
+
+**Should Transmit**
+
+To check whether some reported upkeep can be transmitted, the plugin calls to `shouldTransmit` on the coordinator.
 It expects the full trigger as input, i.e. with concrete checkBlockNum and checkBlockHash:
-`isTransmissionConfirmed(upkeepID, trigger)`.
+`shouldTransmit(upkeepID, trigger)`.
 
-An item is considered confirmed if:
-- was not seen yet, or removed by the coordinator (e.g. reorged)
-- marked as confirmed by the coordinator
+An item is considered confirmed for transmission if it was accepted by the coordinator (i.e. we expect it to be performed) but was yet transmitted.
 
 **Should Process**
 
-Provides additional read API to check whether an upkeep should be processed which is used for pre-processing / filtering to prevent duplicate reports.
-    - For conditional: shouldProcess(upkeepID, blockNum)
-        - False if report is inflight for upkeepID
-        - False if report has been confirmed after blockNum (This can happen when network latest block is lagging this node’s logs)
-        - True otherwise
-    - For log: shouldProcess(upkeepID, logIdentifier)
-        - False if report is inflight or has been confirmed
-        - True otherwise
+`shouldProcess(upkeepID, trigger)` is used to check whether an upkeep should be processed which is used for pre-processing / filtering to prevent duplicate reports.
+
+For conditionals
+    - False if report is inflight for upkeepID
+    - False if report has been confirmed after blockNum (This can happen when network latest block is lagging this node’s logs)
+
+For log triggers
+    - False if report is inflight or has been confirmed
+    - True otherwise
 
 ### Result Store
 
@@ -494,7 +511,7 @@ Batching is subject to upkeep gas limit, and preconfigured reportGasLimit and ga
 
 For a list of upkeepResults, we only need to send one fastGasWei, linkNative to chain in the report. This is taken from the result which has the highest checkBlockNum
 
-#### ShouldAcceptFinalizedReport
+#### ShouldAcceptAttestedReport
 
 Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
 
