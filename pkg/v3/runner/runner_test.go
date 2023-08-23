@@ -2,10 +2,12 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -66,7 +68,6 @@ var (
 
 func TestRunnerCache(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
-	mr := new(mocks.MockRunnable)
 
 	conf := RunnerConfig{
 		Workers:           2,
@@ -74,9 +75,6 @@ func TestRunnerCache(t *testing.T) {
 		CacheExpire:       500 * time.Millisecond,
 		CacheClean:        1 * time.Second,
 	}
-
-	runner, err := NewRunner(logger, mr, conf)
-	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
 		{
@@ -115,9 +113,17 @@ func TestRunnerCache(t *testing.T) {
 		}
 	}
 
-	// ensure that context and payloads are passed through to the runnable
-	// return results that should be cached
-	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(payloads...)...)...).Return(expected, nil).Once().After(500 * time.Millisecond)
+	count := atomic.Int32{}
+	mr := &mockRunnable{
+		CheckUpkeepsFn: func(ctx context.Context, payload ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+			count.Add(1)
+			time.Sleep(500 * time.Millisecond)
+			return expected, nil
+		},
+	}
+
+	runner, err := NewRunner(logger, mr, conf)
+	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
@@ -127,13 +133,11 @@ func TestRunnerCache(t *testing.T) {
 	results, err = runner.CheckUpkeeps(context.Background(), payloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
-
-	mr.AssertExpectations(t)
+	assert.Equal(t, int32(1), count.Load())
 }
 
 func TestRunnerCacheDifferentTriggerBlock(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
-	mr := new(mocks.MockRunnable)
 
 	conf := RunnerConfig{
 		Workers:           2,
@@ -141,9 +145,6 @@ func TestRunnerCacheDifferentTriggerBlock(t *testing.T) {
 		CacheExpire:       5 * time.Second,
 		CacheClean:        5 * time.Second,
 	}
-
-	runner, err := NewRunner(logger, mr, conf)
-	assert.NoError(t, err, "no error should be encountered during runner creation")
 
 	payloads := []ocr2keepers.UpkeepPayload{
 		{
@@ -184,15 +185,29 @@ func TestRunnerCacheDifferentTriggerBlock(t *testing.T) {
 		}
 	}
 
+	count := atomic.Int32{}
+	mr := &mockRunnable{
+		CheckUpkeepsFn: func(ctx context.Context, payload ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+			time.Sleep(500 * time.Millisecond)
+			count.Add(1)
+			if count.Load() == int32(1) {
+				return expected, nil
+			} else if count.Load() == int32(2) {
+				return newerExpected, nil
+			}
+			return nil, errors.New("unexpected call")
+		},
+	}
+	runner, err := NewRunner(logger, mr, conf)
+	assert.NoError(t, err, "no error should be encountered during runner creation")
+
 	// ensure that context and payloads are passed through to the runnable
 	// return results that should be cached
-	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(payloads...)...)...).Return(expected, nil).Once().After(500 * time.Millisecond)
 	results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, expected, results, "results should be returned without changes from the runnable")
 
 	// ensure that a call with the same workID but different trigger block causes a new call to CheckUpkeeps
-	mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, toInterfaces(newerBlockPayloads...)...)...).Return(newerExpected, nil).Once().After(500 * time.Millisecond)
 	results, err = runner.CheckUpkeeps(context.Background(), newerBlockPayloads...)
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, newerExpected, results, "results should be returned without changes from the runnable")
@@ -202,8 +217,7 @@ func TestRunnerCacheDifferentTriggerBlock(t *testing.T) {
 	assert.NoError(t, err, "no error should be encountered during upkeep checking")
 	assert.Equal(t, newerExpected, results, "results should be returned without changes from the runnable")
 
-	mr.AssertExpectations(t)
-
+	assert.Equal(t, int32(2), count.Load())
 }
 
 func TestRunnerBatching(t *testing.T) {
@@ -377,7 +391,14 @@ func TestRunnerErr(t *testing.T) {
 
 	t.Run("Multiple Runnable Errors Bubble Up", func(t *testing.T) {
 		logger := log.New(io.Discard, "", log.LstdFlags)
-		mr := new(mocks.MockRunnable)
+
+		count := atomic.Int32{}
+		mr := &mockRunnable{
+			CheckUpkeepsFn: func(ctx context.Context, payload ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+				count.Add(1)
+				return nil, fmt.Errorf("test error")
+			},
+		}
 
 		conf := RunnerConfig{
 			Workers:           2,
@@ -409,14 +430,11 @@ func TestRunnerErr(t *testing.T) {
 			mVals = append(mVals, mock.Anything)
 		}
 
-		mr.On("CheckUpkeeps", append([]interface{}{mock.Anything}, mVals...)...).Return(nil, fmt.Errorf("test error")).Times(2)
-
 		results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 
 		assert.ErrorIs(t, err, ErrTooManyErrors, "runner should only return error when all runnable calls fail")
 		assert.Len(t, results, 0, "result length should be zero")
-
-		mr.AssertExpectations(t)
+		assert.Equal(t, int32(2), count.Load())
 	})
 }
 
@@ -426,4 +444,12 @@ func toInterfaces(payloads ...ocr2keepers.UpkeepPayload) []interface{} {
 		asInter = append(asInter, payloads[i])
 	}
 	return asInter
+}
+
+type mockRunnable struct {
+	CheckUpkeepsFn func(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
+}
+
+func (r *mockRunnable) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+	return r.CheckUpkeepsFn(ctx, payloads...)
 }
