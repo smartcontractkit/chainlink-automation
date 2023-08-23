@@ -58,7 +58,7 @@ func LogTriggerFlows(
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network
 	// votes on the proposed values
-	rcvProposal := newRecoveryProposalFlow(preprocessors, runner, metadataStore, rp, recoveryProposalInterval, logger)
+	rcvProposal := newRecoveryProposalFlow(preprocessors, runner, metadataStore, rp, recoveryProposalInterval, stateUpdater, logger)
 
 	// the final recovery flow takes recoverable payloads merged with the latest
 	// blocks and runs the pipeline for them. these values to run are derived

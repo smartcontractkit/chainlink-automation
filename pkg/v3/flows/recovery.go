@@ -108,10 +108,14 @@ func newRecoveryProposalFlow(
 	metadataStore ocr2keepers.MetadataStore,
 	recoverableProvider ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
+	stateUpdater ocr2keepers.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
 	preProcessors = append(preProcessors, preprocessors.NewProposalFilterer(metadataStore, ocr2keepers.LogTrigger))
-	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(metadataStore)
+	postprocessors := postprocessors.NewCombinedPostprocessor(
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, logger),
+		postprocessors.NewAddProposalToMetadataStorePostprocessor(metadataStore),
+	)
 
 	observer := ocr2keepersv3.NewRunnableObserver(
 		preProcessors,

@@ -181,7 +181,8 @@ func TestRecoveryProposal(t *testing.T) {
 	// set the ticker time lower to reduce the test time
 	interval := 50 * time.Millisecond
 	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
-	svc := newRecoveryProposalFlow(pre, runner, mStore, recoverer, interval, logger)
+	stateUpdater := &mockStateUpdater{}
+	svc := newRecoveryProposalFlow(pre, runner, mStore, recoverer, interval, stateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -201,4 +202,8 @@ func TestRecoveryProposal(t *testing.T) {
 	coord.AssertExpectations(t)
 
 	wg.Wait()
+}
+
+type mockStateUpdater struct {
+	ocr2keepers.UpkeepStateUpdater
 }
