@@ -425,11 +425,6 @@ func TestRunnerErr(t *testing.T) {
 			}
 		}
 
-		mVals := []interface{}{}
-		for range payloads {
-			mVals = append(mVals, mock.Anything)
-		}
-
 		results, err := runner.CheckUpkeeps(context.Background(), payloads...)
 
 		assert.ErrorIs(t, err, ErrTooManyErrors, "runner should only return error when all runnable calls fail")
