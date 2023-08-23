@@ -372,13 +372,13 @@ Finalization observers takes input from the corresponding ticker, process it and
 There are 4 types of finalization observers:
 
 #### 1. Conditional Finalization
-Processes agreed eligible samples from previous observations.
+Processes agreed eligible samples from previous observations, served via the proposal queue.
 
 #### 2. Log Trigger
 Processes log triggers that were found by log provider.
 
 #### 3. Log Recovery Finalization
-Processes agreed eligible recovery logs from previous observations.
+Processes agreed eligible recovery logs from previous observations, served via the proposal queue.
 
 #### 4. Retry
 Processes retryable payloads from the retry queue.
