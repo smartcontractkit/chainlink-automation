@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -87,6 +88,20 @@ func TestTriggerString(t *testing.T) {
 	expected = `{"BlockNumber":5,"BlockHash":"0102030401020304010203040102030401020304010203040102030401020304"}`
 
 	assertJSONEqual(t, expected, stringified)
+}
+
+func TestLogIdentifier(t *testing.T) {
+	input := Trigger{
+		BlockNumber: 5,
+		BlockHash:   [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+		LogTriggerExtension: &LogTriggerExtension{
+			TxHash: [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+			Index:  99,
+		},
+	}
+
+	logIdentifier := input.LogTriggerExtension.LogIdentifier()
+	assert.Equal(t, hex.EncodeToString(logIdentifier), "010203040102030401020304010203040102030401020304010203040102030400000063")
 }
 
 func TestTriggerUnmarshal_EmptyExtension(t *testing.T) {
