@@ -23,6 +23,8 @@ const (
 	MaxObservationLength = 1_000_000
 )
 
+var uint256Max, _ = big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+
 // AutomationObservation models the local automation view sent by a single node
 // to the network upon which they later get agreement
 // NOTE: Any change to this structure should keep backwards compatibility in mind
@@ -137,7 +139,6 @@ func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 	}
 	// PerformData is a []byte, no validation needed. Length constraint is handled
 	// by maxObservationSize
-	uint256Max, _ := big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
 	if r.FastGasWei == nil {
 		return fmt.Errorf("fast gas wei must be present")
 	}
@@ -153,6 +154,19 @@ func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 	return nil
 }
 
+func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+	// No validation is done on Trigger.BlockNumber and Trigger.BlockHash because those
+	// get updated with a coordinated quorum block
+	ut := utg(p.UpkeepID)
+	if err := validateTriggerExtensionType(p.Trigger, ut); err != nil {
+		return err
+	}
+	if generatedWorkID := wg(p.UpkeepID, p.Trigger); generatedWorkID != p.WorkID {
+		return fmt.Errorf("incorrect workID within proposal")
+	}
+	return nil
+}
+
 // Validate validates the trigger fields, and any extensions if present.
 func validateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
 	switch ut {
@@ -164,19 +178,6 @@ func validateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepTy
 		if t.LogTriggerExtension == nil {
 			return fmt.Errorf("log trigger extension cannot be empty for log upkeep")
 		}
-	}
-	return nil
-}
-
-func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
-	// No validation is done on Trigger.BlockNumber and Trigger.BlockHash because those
-	// get udpated with a coordinated quorum block
-	ut := utg(p.UpkeepID)
-	if err := validateTriggerExtensionType(p.Trigger, ut); err != nil {
-		return err
-	}
-	if generatedWorkID := wg(p.UpkeepID, p.Trigger); generatedWorkID != p.WorkID {
-		return fmt.Errorf("incorrect workID within proposal")
 	}
 	return nil
 }

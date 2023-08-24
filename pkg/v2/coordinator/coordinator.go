@@ -267,8 +267,8 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 				rc.updateIdBlock(string(id), idBlocker{
 					CheckBlockNumber:    logCheckBlockKey,
 					TransmitBlockNumber: nextKey, // Removes the id from filters after logCheckBlockKey+1
-					// We add one here as this filter is applied on RPC checkBlockNumber (which will be atleast logCheckBlockKey+1+1)
-					// resulting in atleast report checkBlockNumber of logCheckBlockKey+1
+					// We add one here as this filter is applied on RPC checkBlockNumber (which will be at least logCheckBlockKey+1+1)
+					// resulting in at least report checkBlockNumber of logCheckBlockKey+1
 				})
 			}
 
