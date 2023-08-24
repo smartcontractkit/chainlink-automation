@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 )
@@ -71,9 +72,11 @@ type LogTriggerExtension struct {
 // LogIdentifier returns a unique identifier for the log event,
 // composed of the transaction hash and the log index bytes.
 func (e LogTriggerExtension) LogIdentifier() []byte {
+	indexBytes := make([]byte, 4) // uint32 is 4 bytes
+	binary.BigEndian.PutUint32(indexBytes, e.Index)
 	return bytes.Join([][]byte{
 		e.TxHash[:],
-		[]byte(fmt.Sprintf("%d", e.Index)),
+		indexBytes,
 	}, []byte{})
 }
 
