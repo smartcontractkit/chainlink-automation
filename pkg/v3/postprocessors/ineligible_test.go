@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -99,7 +98,6 @@ upkeep state boom`),
 				assert.Equal(t, tc.wantErr.Error(), err.Error())
 			} else {
 				assert.NoError(t, err)
-				fmt.Println(buf.String())
 				assert.True(t, strings.Contains(buf.String(), tc.wantLog))
 			}
 		})
