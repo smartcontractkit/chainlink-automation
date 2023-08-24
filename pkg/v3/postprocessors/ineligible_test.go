@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -35,7 +36,7 @@ func TestNewIneligiblePostProcessor(t *testing.T) {
 					Eligible:               false,
 				},
 			},
-			wantLog: "post-processing 1 results, 0 ineligible",
+			wantLog: "post-processing 1 results, 1 ineligible",
 		},
 		{
 			name: "upkeep state is updated as per multiple check results",
@@ -58,7 +59,7 @@ func TestNewIneligiblePostProcessor(t *testing.T) {
 					Eligible:               false,
 				},
 			},
-			wantLog: "post-processing 3 results, 0 ineligible",
+			wantLog: "post-processing 3 results, 3 ineligible",
 		},
 		{
 			name: "upkeep state errors",
@@ -98,6 +99,7 @@ upkeep state boom`),
 				assert.Equal(t, tc.wantErr.Error(), err.Error())
 			} else {
 				assert.NoError(t, err)
+				fmt.Println(buf.String())
 				assert.True(t, strings.Contains(buf.String(), tc.wantLog))
 			}
 		})

@@ -29,9 +29,10 @@ func (p *ineligiblePostProcessor) PostProcess(ctx context.Context, results []ocr
 		if res.PipelineExecutionState == 0 && !res.Eligible {
 			err := p.stateUpdater.SetUpkeepState(ctx, res, ocr2keepers.Ineligible)
 			if err != nil {
-				ineligible++
+				merr = errors.Join(merr, err)
+				continue
 			}
-			merr = errors.Join(merr, err)
+			ineligible++
 		}
 	}
 	p.lggr.Printf("post-processing %d results, %d ineligible\n", len(results), ineligible)
