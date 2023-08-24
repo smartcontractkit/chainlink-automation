@@ -25,18 +25,20 @@ const (
 	// MaxReportLength limits the total length of bytes for a single report.
 	MaxReportLength = 1_000_000
 	// MaxReportCount limits the total number of reports allowed to be produced
-	// by the OCR protocol in a single round. This should be atleast the number
+	// by the OCR protocol in a single round. This should be at least the number
 	// of allowed agreed performables in a single round.
 	MaxReportCount = OutcomeAgreedPerformablesLimit
 )
 
 // AutomationOutcome represents agreed upon state by the network, derived from
 // a collection of AutomationObservations with applied quorum thresholds
+// A byzQuorem # of nodes must agree that at least f+1 nodes sent the same AgreedPerformable
+// or SurfacedProposal to include that item in an outcome
 // NOTE: Any change to this structure should keep backwards compatibility in mind
 // as different nodes would upgrade at different times and would need to understand
 // each others' outcome meanwhile
 type AutomationOutcome struct {
-	// These are the upkeeps that got quorum that they should be performed on chain
+	// These are the upkeeps that achieved quorum, meaning should be performed on chain
 	// These require quorum of f+1 nodes
 	AgreedPerformables []ocr2keepers.CheckResult
 	// These are the proposals with a coordinated block that should be run through the

@@ -41,6 +41,14 @@ func newCoordinatedBlockProposals(quorumBlockthreshold int, roundHistoryLimit in
 //  6. New proposals surfaced in this round are deduped, filtered from existing
 //     proposals and performables and then added to the outcome with quorum block
 //
+// Example of proposal coordination:
+// Round        1           2           3           4
+// Performables []          []          [A]         [B, C, E, F]
+// Proposals    [A, B]      [C, D]      [E, F]      []
+// ...                      [A, B]      [C, D]      []
+// ...                                  [B]         [D]
+// ...                                              []
+//
 // NOTE: Quorum is NOT applied on surfaced proposals apart from the block number
 // A single node can surface a malicious proposal, it is expected that the nodes
 // when acting on proposals will keep that in account when processing them.
@@ -130,8 +138,6 @@ func (c *coordinatedBlockProposals) getLatestQuorumBlock() (ocr2keepers.BlockKey
 	)
 
 	for block, count := range c.recentBlocks {
-		// Perhaps an honest node could be tricked into seeing an illegitimate
-		// blockhash by an eclipse attack?
 		if count >= int(c.quorumBlockthreshold) {
 			if (mostRecent.Hash == zeroHash) || // First consensus hash
 				(block.Number > mostRecent.Number) || // later height

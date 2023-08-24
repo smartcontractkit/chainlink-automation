@@ -9,8 +9,8 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type resultAndCount[T any] struct {
-	result T
+type resultAndCount struct {
+	result ocr2keepers.CheckResult
 	count  int
 }
 
@@ -19,21 +19,21 @@ type performables struct {
 	keyRandSource   [16]byte
 	quorumThreshold int
 	logger          *log.Logger
-	resultCount     map[string]resultAndCount[ocr2keepers.CheckResult]
+	resultCount     map[string]resultAndCount
 }
 
 // Performables gets quorum on agreed check results which should ultimately be
 // performed within a report. It assumes only valid observations are added to it
 // and simply adds all results which achieve the quorumThreshold.
 // Results are agreed upon by their UniqueID() which contains all the data
-// withn the result.
+// within the result.
 func newPerformables(quorumThreshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
 	return &performables{
 		quorumThreshold: quorumThreshold,
 		limit:           limit,
 		keyRandSource:   rSrc,
 		logger:          logger,
-		resultCount:     make(map[string]resultAndCount[ocr2keepers.CheckResult]),
+		resultCount:     make(map[string]resultAndCount),
 	}
 }
 
@@ -43,7 +43,7 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 		uid := result.UniqueID()
 		payloadCount, ok := p.resultCount[uid]
 		if !ok {
-			payloadCount = resultAndCount[ocr2keepers.CheckResult]{
+			payloadCount = resultAndCount{
 				result: result,
 				count:  1,
 			}

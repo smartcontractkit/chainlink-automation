@@ -19,7 +19,7 @@ func TestPerformables(t *testing.T) {
 		limit                  int
 		observations           []ocr2keepers.AutomationObservation
 		expectedOutcomeWorkIDs []types.CheckResult
-		wantResultCount        map[string]resultAndCount[types.CheckResult]
+		wantResultCount        map[string]resultAndCount
 	}{
 		{
 			name:                   "No eligible results",
@@ -27,7 +27,7 @@ func TestPerformables(t *testing.T) {
 			limit:                  3,
 			observations:           []ocr2keepers.AutomationObservation{},
 			expectedOutcomeWorkIDs: []types.CheckResult{},
-			wantResultCount:        map[string]resultAndCount[types.CheckResult]{},
+			wantResultCount:        map[string]resultAndCount{},
 		},
 		{
 			name:      "No threshold met results",
@@ -51,7 +51,7 @@ func TestPerformables(t *testing.T) {
 				},
 			},
 			expectedOutcomeWorkIDs: []types.CheckResult{},
-			wantResultCount: map[string]resultAndCount[types.CheckResult]{
+			wantResultCount: map[string]resultAndCount{
 				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",
@@ -111,7 +111,7 @@ func TestPerformables(t *testing.T) {
 					LinkNative: big.NewInt(10),
 				},
 			},
-			wantResultCount: map[string]resultAndCount[types.CheckResult]{
+			wantResultCount: map[string]resultAndCount{
 				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",
@@ -178,7 +178,7 @@ func TestPerformables(t *testing.T) {
 					LinkNative: big.NewInt(10),
 				},
 			},
-			wantResultCount: map[string]resultAndCount[types.CheckResult]{
+			wantResultCount: map[string]resultAndCount{
 				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",
@@ -267,7 +267,7 @@ func TestPerformables(t *testing.T) {
 					LinkNative: big.NewInt(10),
 				},
 			},
-			wantResultCount: map[string]resultAndCount[types.CheckResult]{
+			wantResultCount: map[string]resultAndCount{
 				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",
@@ -345,7 +345,7 @@ func TestPerformables(t *testing.T) {
 					LinkNative: big.NewInt(10),
 				},
 			},
-			wantResultCount: map[string]resultAndCount[types.CheckResult]{
+			wantResultCount: map[string]resultAndCount{
 				"0066616c736566616c73650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000310a0a": {
 					result: types.CheckResult{
 						WorkID:     "1",

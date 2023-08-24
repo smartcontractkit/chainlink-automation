@@ -95,7 +95,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 		if err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
 			// Ignore this observation and continue with further observations. It is expected we will get
-			// atleast f+1 valid observations
+			// at least f+1 valid observations
 			continue
 		}
 
