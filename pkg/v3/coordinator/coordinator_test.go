@@ -8,6 +8,7 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -125,9 +126,12 @@ func TestNewCoordinator(t *testing.T) {
 
 		c := NewCoordinator(eventProvider, upkeepTypeGetter, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, logger)
 
+		var wg sync.WaitGroup
+		wg.Add(1)
 		go func() {
 			err := c.Start(context.Background())
 			assert.NoError(t, err)
+			wg.Done()
 		}()
 
 		// wait for one full run of the coordinator before closing
@@ -136,6 +140,7 @@ func TestNewCoordinator(t *testing.T) {
 		err := c.Close()
 		assert.NoError(t, err)
 
+		wg.Wait()
 		assert.True(t, strings.Contains(memLog.String(), "check database indexes and other performance improvements"))
 	})
 
