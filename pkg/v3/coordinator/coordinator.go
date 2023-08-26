@@ -74,7 +74,7 @@ func (c *coordinator) ShouldTransmit(reportedUpkeep ocr2keepers.ReportedUpkeep) 
 		// We already accepted a report for a higher checkBlockNumber, so don't try to transmit
 		return false
 	} else if reportedUpkeep.Trigger.BlockNumber == v.checkBlockNumber {
-		return true
+		return v.isTransmissionPending
 	} else {
 		// We never saw this report for such a high block number, so don't try to transmit
 		// Can happen in edge cases when plugin restarts after shouldAccept was called

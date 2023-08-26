@@ -471,10 +471,11 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 			shouldTransmit: false,
 		},
 		{
-			name: "if the given work ID does exist in the cache, and the reported upkeep's check block is equal to the cached check block, we should transmit",
+			name: "if the given work ID does exist in the cache, and the reported upkeep's check block is equal to the cached check block, and transmission is pending, we should transmit",
 			cacheInit: map[string]record{
 				"workID1": {
-					checkBlockNumber: 200,
+					checkBlockNumber:      200,
+					isTransmissionPending: true,
 				},
 			},
 			reportedUpkeep: ocr2keepers.ReportedUpkeep{
@@ -484,6 +485,22 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 				},
 			},
 			shouldTransmit: true,
+		},
+		{
+			name: "if the given work ID does exist in the cache, and the reported upkeep's check block is equal to the cached check block, and transmission is not pending, we should transmit",
+			cacheInit: map[string]record{
+				"workID1": {
+					checkBlockNumber:      200,
+					isTransmissionPending: false,
+				},
+			},
+			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+				WorkID: "workID1",
+				Trigger: ocr2keepers.Trigger{
+					BlockNumber: 200,
+				},
+			},
+			shouldTransmit: false,
 		},
 		{
 			name: "if the given work ID does exist in the cache, and the reported upkeep's check block is greater than the cached check block, we should not transmit",
