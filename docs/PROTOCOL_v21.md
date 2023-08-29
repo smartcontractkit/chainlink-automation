@@ -474,7 +474,7 @@ The states (only ineligible) will be persisted in DB so the latest state to be r
 </aside>
 
 <aside>
-💡 Note: Using a DB might introduce inconsistencies across the nodes in the network, e.g. in case of node restarts.
+💡 Note: Using a local DB might introduce inconsistencies across the nodes in the network, e.g. in case of node restarts.
 </aside>
 
 ### OCR Plugin

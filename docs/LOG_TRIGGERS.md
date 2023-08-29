@@ -1,6 +1,6 @@
-# EVM Log Events
+# EVM Log Triggers
 
-This document describes the design for evm log triggers components.
+This document describes the architecture and design of EVM log triggers.
 
 <br />
 
@@ -36,7 +36,7 @@ The **log recoverer** is responsible for reading older logs, to do rescanning an
 
 The following block diagram describes the involved components:
 
-![Log Event Provider Diagram](./images/block_log_event_provider.png)
+![Log Event Provider Diagram](./images/automation_log_triggers_block.png)
 
 <br />
 
@@ -163,8 +163,6 @@ In case of multiple upkeeps with the same filter, we will have multiple entries 
 
 The log buffer is implemented with capped slice that is allocated upon buffer creation or restart, and a rw mutex for thread safety.
 
-![Log Buffer Diagram](./images/log_buffer.png)
-
 <br />
 
 ## Log Recoverer
@@ -186,52 +184,38 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 
 <br/>
 
-### Upkeep States
-
-The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system,
-to avoid redundant work by the recoverer.
-
-The states will be persisted to so the latest state to be restored when the node starts up.
-
-<aside>
-💡 Note: starting with an in memory storage, and will be persisted to DB in the future.
-A dedicated table will be used, to avoid overloading the existing tables (log poller). 
-</aside>
-
-The states are saved with a key that is composed of the upkeep id and trigger.
-
-The following struct is used to represent the state:
-
-```go
-type upkeepState struct {
-	payload  *ocr2keepers.UpkeepPayload
-	state    *ocr2keepers.UpkeepState // (ineligible, performed)
-	block    int64
-	upkeepId string
-}
-```
-
-<br />
-
 ## Configuration
 
 The following configurations are used by the log event provider:
 
-**TBD:** Chain specific defaults
+| Name | Description | Default | Notes |
+| --- | --- | --- | --- |
+| `LookbackBlocks` | Number of blocks the provider will look back for logs. The recoverer will scan for logs up to this depth. while it's also the newest logs the recoverer reads. | `200` | Will be auto-set to be greater-or-equal to the chain's finality depth. |
+| `ReadInterval` | Interval between provider reads | `1s` | |
+| `BlockRateLimit` | Max number of blocks to query per upkeep | `1/sec` | |
+| `BlockLimitBurst` | Burst of blocks to query per upkeep | `LookbackBlocks` | |
 
-| Config | Description | Default |
-| --- | --- | --- |
-| `LookbackBlocks` | Number of blocks that we consider as blocks that could contain **latest logs**, `latest-lookbackBlocks` is the oldest logs read by the provider, while it's also the newest logs the recoverer reads. | `200` |
-| `LogRetention` | Time to keep logs in DB | `24hr` |
-| `LogBufferSize` | Number of blocks to keep in buffer | `LookbackBlocks` |
-| `BufferMaxBlockSize` | Max number of logs per block | `1000` |
-| `AllowedLogsPerBlock` | Max number of logs per block & upkeep | `100` |
-| `ReadInterval` | Interval between reads | `1s` |
-| `ReadMaxBatchSize` | Max number of items in one read batch / partition | `100` |
-| `LookbackBuffer` | Number of blocks to add to the range | `32` |
-| `BlockRateLimit` | Max number of blocks to query per upkeep | `1/sec` |
-| `BlockLimitBurst` | Burst of blocks to query per upkeep | `128` |
-| `UpkeepLogsLimit` | The number of logs allowed for upkeep per second | `5` |
+#### Log Provider Config
+
+| Name | Description | Default | Notes |
+| `logRetention` | Time to keep logs in DB | `24hr` | |
+| `readMaxBatchSize` | Max number of items in one read batch / partition | `32` | |
+| `reorgBuffer` | The number of blocks to add as a buffer to the block range when reading logs | `32` | |
+| `allowedLogsPerUpkeep` | The number of logs allowed for upkeep per call to the provider | `5` | |
+
+#### Log Buffer Config
+
+| Name | Description | Default | Notes |
+| `logBufferSize` | Number of blocks to keep in buffer | `LookbackBlocks` | |
+| `bufferMaxBlockSize` | The maximum number of logs per block in the buffer | `1024` | |
+| `allowedLogsPerBlock` | The maximum number of logs allowed per upkeep in a block | `128` | |
+
+#### Log Recoverer Config
+
+| Name | Description | Default | Notes |
+| `recoveryInterval` | Interval between recoverer reads | `5s` | |
+| `recoveryBatchSize` | Max number of items in one read batch | `10` | |
+| `recoveryLogsBuffer` | The number of blocks to add as a buffer to the block range when reading logs | `50` | |
 
 <br />
 
@@ -244,7 +228,6 @@ Unfunding is an horizontal problem for both log and condional upkeeps.
 Current ideas are that unfunded upkeep will automatically get paused when we add offchain charge, 
 so this component likely doesn't need to worry about it.
 Another idea is to handle this on subscription level cross chainlink services.
-- [ ] Simplify/abstract configurations and add chain specific defaults
 - [ ] Dropped logs - in cases of fast chains or slow OCR rounds we might need to drop logs.
 The buffer size can be increased to allow bursting, but if the consumer (OCR) is slow for a while then some logs might be dropped.
 - [ ] Call log poller once per contract address - currently the filters are grouped by contract address, but we call log poller for each upkeep separately. 
