@@ -17,7 +17,6 @@ This document describes the architecture and design of EVM log triggers.
 - [Log Filters Life-Cycle](#log-filters-life-cycle)
 - [Configuration](#configuration)
     - [Log Provider](#log-provider-config)
-    - [Log Buffer](#log-buffer-config)
     - [Log Recoverer](#log-recoverer-config)
 - [Open Issues / TODOs](#open-issues--todos)
 - [Rational / Q&A](#rational--qa)
@@ -201,6 +200,8 @@ In the future, migrated upkeeps might require to update the filter in log poller
 therefore we first remove the old filter and then add the new one that was created post migration.
 The same applies for config updates, where a new filter might be needed.
 
+<br />
+
 ## Configuration
 
 The following configurations are used by the log event provider:
@@ -215,14 +216,16 @@ The following configurations are used by the log event provider:
 #### Log Provider Config
 
 | Name | Description | Default | Notes |
+|--|--|--|--|
 | `logRetention` | Time to keep logs in DB | `24hr` | |
 | `readMaxBatchSize` | Max number of items in one read batch / partition | `32` | |
 | `reorgBuffer` | The number of blocks to add as a buffer to the block range when reading logs | `32` | |
 | `allowedLogsPerUpkeep` | The number of logs allowed for upkeep per call to the provider | `5` | |
 
-#### Log Buffer Config
+**Log Buffer**
 
 | Name | Description | Default | Notes |
+|--|--|--|--|
 | `logBufferSize` | Number of blocks to keep in buffer | `LookbackBlocks` | |
 | `bufferMaxBlockSize` | The maximum number of logs per block in the buffer | `1024` | |
 | `allowedLogsPerBlock` | The maximum number of logs allowed per upkeep in a block | `128` | |
@@ -230,6 +233,7 @@ The following configurations are used by the log event provider:
 #### Log Recoverer Config
 
 | Name | Description | Default | Notes |
+|--|--|--|--|
 | `recoveryInterval` | Interval between recoverer reads | `5s` | |
 | `recoveryBatchSize` | Max number of items in one read batch | `10` | |
 | `recoveryLogsBuffer` | The number of blocks to add as a buffer to the block range when reading logs | `50` | |
