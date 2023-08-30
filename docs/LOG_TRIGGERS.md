@@ -8,14 +8,17 @@ This document describes the architecture and design of EVM log triggers.
 
 - [Overview](#overview)
 - [Log Event Provider](#log-event-provider)
-    - [Log Buffer](#log-buffer)
-    - [Log Filters Life-Cycle](#log-filters-life-cycle)
+    - [Reading Logs](#provider---reading-logs-from-db)
     - [Blocks Range](#blocks-range)
     - [Rate Limiting](#rate-limiting)
     - [Log Retention](#log-retention)
+    - [Log Buffer](#log-buffer)
 - [Log Recoverer](#log-recoverer)
-    - [Upkeep States](#upkeep-states)
+- [Log Filters Life-Cycle](#log-filters-life-cycle)
 - [Configuration](#configuration)
+    - [Log Provider](#log-provider-config)
+    - [Log Buffer](#log-buffer-config)
+    - [Log Recoverer](#log-recoverer-config)
 - [Open Issues / TODOs](#open-issues--todos)
 - [Rational / Q&A](#rational--qa)
 
@@ -34,9 +37,22 @@ and storing them in the **log buffer** for future processing as part of the log 
 
 The **log recoverer** is responsible for reading older logs, to do rescanning and pick up logs that were missed by the log event provider.
 
-The following block diagram describes the involved components:
+The following block diagram describes the block window for each component,
+shown as a snapshot of blocks and their corresponding logs:
 
-![Log Event Provider Diagram](./images/automation_log_triggers_block.png)
+![Block Range Diagram](./images/automation_log_window.jpg)
+
+The following diagram describes the major components and their interactions:
+
+![Log Triggers Diagram](./images/automation_log_triggers_input.jpg)
+
+<aside>
+💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
+</aside>
+
+<aside>
+💡 Note: Arrows in the diagrams are directed by data flow.
+</aside>
 
 <br />
 
@@ -49,19 +65,7 @@ The buffer ensures that logs will be kept for a certain amount of time, and to b
 
 In addition, the provider also manages the log filters life-cycle. 
 
-### Log Filters Life-Cycle
-
-Upon registration or unpausing of an upkeep, the provider registers the corresponding filter in `LogPoller`, while upon canceled or paused upkeep we unregister the filter to avoid overloading the DB with redundant filters.
-
-In case of an **unfunded upkeep**, the filter is kept in log poller, but we don't read logs for it
-(see [TBD](#open-issues--todos)) for more info).
-
-In the future, migrated upkeeps might require to update the filter in log poller, 
-therefore we first remove the old filter and then add the new one that was created post migration.
-The same applies for config updates, where a new filter might be needed.
-
-
-### Reading Logs from DB
+### Provider - Reading Logs from DB
 
 The provider reads logs from the log poller continouosly in the background and stores them (once per upkeep+log pair) in the [log buffer](#log-buffer).
 
@@ -135,7 +139,7 @@ Each upkeep has a rate limiter for blocks in order to control the amount of quer
 
 Upon initial read/restart the burst is automatically increased as we ask for `LookbackBlocks` blocks.
 
-Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `AllowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
+Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `allowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
 
 **Upkeep**
 
@@ -149,7 +153,7 @@ Logs are saved in DB for `LogRetention` amount of time.
 
 <br/>
 
-## Log Buffer
+### Log Buffer
 
 A circular/ring buffer of blocks and their corresponding logs.
 The block number is calculated as `blockNumber % LogBufferSize`.
@@ -172,9 +176,9 @@ It does that by running a background process for re-scanning of logs and putting
 
 Logs will be considered as missed if they are older than `latestBlock - LookbackBlocks` and has not been performed or successfully checked already (eligible).
 
-While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, up to `latestBlock - LookbackBlocks`, newer blocks will be under the provider's lookback window.
+While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, starting from `latestBlock-24h` up to `latestBlock - LookbackBlocks`, newer blocks will be under the provider's lookback window.
 
-**Recoverer scanning process**
+**Recovery scanning process**
 
 - The recoverer maintains a `lastRePollBlock` for each upkeep, .i.e. the last block it scanned for that upkeep.
 - Every second, the recoverer will scan logs for a subset of `n=10` upkeeps, where `n/2` upkeeps are randomly chosen and `n/2` upkeeps are chosen by the oldest `lastRePollBlock`.
@@ -183,6 +187,19 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 - The recoverer will query upkeep states to check if the upkeep was already performed or is currently inflight, and the log buffer to check if we read the log already.
 
 <br/>
+
+## Log Filters Life-Cycle
+
+Upon registration or unpausing of an upkeep, the provider registers the corresponding filter in `LogPoller`, while upon canceled or paused upkeep we unregister the filter to avoid overloading the DB with redundant filters.
+
+In addition, the filters are maintained in the filter store - an in memory store of (active) filters. Both the recoverer and the provider read from the filter store, while the only the provider updates it.
+
+In case of an **unfunded upkeep**, the filter is kept in log poller, but we don't read logs for it
+(see [TBD](#open-issues--todos)) for more info).
+
+In the future, migrated upkeeps might require to update the filter in log poller, 
+therefore we first remove the old filter and then add the new one that was created post migration.
+The same applies for config updates, where a new filter might be needed.
 
 ## Configuration
 

@@ -156,7 +156,6 @@ The recovery finalization ticker will call the payload builder to build payloads
 The log recoverer does necessary checks to ensure that the log should actually be recovered, to protect against malicious nodes surfacing wrong logs for recovery. 
 The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
 
-
 ## Components
 
 An abstracted view of the common protocol components looks as follows:
@@ -164,7 +163,7 @@ An abstracted view of the common protocol components looks as follows:
 ![Automation Block Diagram](./images/automation_ocr3_block.jpg)
 
 <aside>
-💡 Note: source is available [here](https://miro.com/app/board/uXjVPntyh4E=/).
+💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
 </aside>
 
 ### Registry
@@ -215,7 +214,12 @@ This component is responsible for parallelizing upkeep executions and providing 
 
 ### Transmit Event Provider
 
-This component serves to transmit events from log poller, to other components in the system (coordinator). Transmit events are the events that can happen when a report is sent onchain to the contract:
+This component serves to transmit events from log poller, to other components in the system (coordinator). 
+
+**Transmit Events** 
+
+Are emitted when a report is sent onchain to the contract.
+The following events are used:
 
 - `UpkeepPerformed`: Report successfully performed for an upkeep 
 (for log triggers `(upkeepID, logIdentifier)`)
