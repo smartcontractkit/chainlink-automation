@@ -61,10 +61,6 @@ The protocol works with n=10 nodes, handling upto f=2 arbitrary malicious nodes.
 
 ### Reliability Guarantees
 
-**OCR 3.0**
-
-TODO
-
 **Log triggers** 
 Out of n=10 nodes every node listens to configured user log, as soon f+1=3 nodes observe the log and agree on a checkPipeline result, it will be performed on chain. We can handle up to 7 nodes missing a log and handle capacity of upto 10 log trigger upkeeps with rate limit per upkeep of 5 logs per second.
 
