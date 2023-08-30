@@ -165,6 +165,10 @@ An abstracted view of the common protocol components looks as follows:
 <aside>
 💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
 </aside>
+<br />
+<aside>
+💡 Note: Arrows in the diagrams are directed by data flow.
+</aside>
 
 ### Registry
 
@@ -476,7 +480,7 @@ The states (only ineligible) will be persisted in DB so the latest state to be r
 <aside>
 💡 Note: Performed states are not persisted in DB, as they are already present in log events that are stored in DB.
 </aside>
-
+<br />
 <aside>
 💡 Note: Using a local DB might introduce inconsistencies across the nodes in the network, e.g. in case of node restarts.
 </aside>

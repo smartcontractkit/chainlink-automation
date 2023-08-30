@@ -49,6 +49,8 @@ The following diagram describes the major components and their interactions:
 💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
 </aside>
 
+<br />
+
 <aside>
 💡 Note: Arrows in the diagrams are directed by data flow.
 </aside>
