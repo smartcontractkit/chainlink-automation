@@ -86,9 +86,9 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 `(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
     - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
     - Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
-- `upkeepPayload`: Input information to process a unit of work for an upkeep → `(upkeepID, trigger, checkData)`
-    - For conditionals checkData is empty (derived onchain in checkUpkeep)
-    - For log: checkData is log information
+- `upkeepPayload`: Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
+    - For conditionals triggerData is empty (derived onchain in checkUpkeep)
+    - For log: triggerData is the log information
 - `upkeepResult`: Output information to perform an upkeep. Same across both types: `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
 
 ## Eligibility Workflows
