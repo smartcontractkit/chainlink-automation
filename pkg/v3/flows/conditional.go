@@ -112,7 +112,6 @@ func newFinalConditionalFlow(
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "conditional-final-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "conditional-final-retryable-postprocessor")),
-		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "conditional-final-ineligible-postprocessor")),
 	)
 	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
