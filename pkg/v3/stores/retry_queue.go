@@ -69,7 +69,7 @@ func (q *retryQueue) Enqueue(payloads ...types.UpkeepPayload) error {
 				createdAt: now,
 			}
 		}
-		if payload.Trigger.BlockNumber > record.payload.Trigger.BlockNumber {
+		if payload.Trigger.BlockNumber >= record.payload.Trigger.BlockNumber {
 			// new item is newer -> replace payload
 			q.lggr.Printf("updating payload for workID %s on block %d", payload.WorkID, payload.Trigger.BlockNumber)
 			record.payload = payload

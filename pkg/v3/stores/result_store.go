@@ -85,7 +85,7 @@ func (s *resultStore) Add(results ...ocr2keepers.CheckResult) {
 		if !ok {
 			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
 			s.lggr.Printf("Result added for upkeep id '%s' and trigger '%+v'", r.UpkeepID.String(), r.Trigger)
-		} else if v.data.Trigger.BlockNumber < r.Trigger.BlockNumber {
+		} else if v.data.Trigger.BlockNumber <= r.Trigger.BlockNumber {
 			// result is newer -> replace existing data
 			s.data[r.WorkID] = result{data: r, addedAt: time.Now()}
 			s.lggr.Printf("Result updated for upkeep id '%s' to higher check block from (%d) to trigger '%+v'", r.UpkeepID.String(), v.data.Trigger.BlockNumber, r.Trigger)
