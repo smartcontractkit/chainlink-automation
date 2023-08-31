@@ -1,6 +1,6 @@
-# EVM Log Events
+# EVM Log Triggers
 
-This document describes the design for evm log triggers components.
+This document describes the architecture and design of EVM log triggers.
 
 <br />
 
@@ -8,14 +8,16 @@ This document describes the design for evm log triggers components.
 
 - [Overview](#overview)
 - [Log Event Provider](#log-event-provider)
-    - [Log Buffer](#log-buffer)
-    - [Log Filters Life-Cycle](#log-filters-life-cycle)
+    - [Reading Logs](#provider---reading-logs-from-db)
     - [Blocks Range](#blocks-range)
     - [Rate Limiting](#rate-limiting)
     - [Log Retention](#log-retention)
+    - [Log Buffer](#log-buffer)
 - [Log Recoverer](#log-recoverer)
-    - [Upkeep States](#upkeep-states)
+- [Log Filters Life-Cycle](#log-filters-life-cycle)
 - [Configuration](#configuration)
+    - [Log Provider](#log-provider-config)
+    - [Log Recoverer](#log-recoverer-config)
 - [Open Issues / TODOs](#open-issues--todos)
 - [Rational / Q&A](#rational--qa)
 
@@ -34,9 +36,24 @@ and storing them in the **log buffer** for future processing as part of the log 
 
 The **log recoverer** is responsible for reading older logs, to do rescanning and pick up logs that were missed by the log event provider.
 
-The following block diagram describes the involved components:
+The following block diagram describes the block window for each component,
+shown as a snapshot of blocks and their corresponding logs:
 
-![Log Event Provider Diagram](./images/block_log_event_provider.png)
+![Block Range Diagram](./images/automation_log_window.jpg)
+
+The following diagram describes the major components and their interactions:
+
+![Log Triggers Diagram](./images/automation_log_triggers_input.jpg)
+
+<aside>
+💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
+</aside>
+
+<br />
+
+<aside>
+💡 Note: Arrows in the diagrams are directed by data flow.
+</aside>
 
 <br />
 
@@ -49,19 +66,7 @@ The buffer ensures that logs will be kept for a certain amount of time, and to b
 
 In addition, the provider also manages the log filters life-cycle. 
 
-### Log Filters Life-Cycle
-
-Upon registration or unpausing of an upkeep, the provider registers the corresponding filter in `LogPoller`, while upon canceled or paused upkeep we unregister the filter to avoid overloading the DB with redundant filters.
-
-In case of an **unfunded upkeep**, the filter is kept in log poller, but we don't read logs for it
-(see [TBD](#open-issues--todos)) for more info).
-
-In the future, migrated upkeeps might require to update the filter in log poller, 
-therefore we first remove the old filter and then add the new one that was created post migration.
-The same applies for config updates, where a new filter might be needed.
-
-
-### Reading Logs from DB
+### Provider - Reading Logs from DB
 
 The provider reads logs from the log poller continouosly in the background and stores them (once per upkeep+log pair) in the [log buffer](#log-buffer).
 
@@ -135,7 +140,7 @@ Each upkeep has a rate limiter for blocks in order to control the amount of quer
 
 Upon initial read/restart the burst is automatically increased as we ask for `LookbackBlocks` blocks.
 
-Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `AllowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
+Besides the number of blocks, we limit the amount of logs we process per upkeep in a block with `allowedLogsPerBlock` that in configured in the buffer (see [Log Buffer](#log-buffer)).
 
 **Upkeep**
 
@@ -149,7 +154,7 @@ Logs are saved in DB for `LogRetention` amount of time.
 
 <br/>
 
-## Log Buffer
+### Log Buffer
 
 A circular/ring buffer of blocks and their corresponding logs.
 The block number is calculated as `blockNumber % LogBufferSize`.
@@ -163,8 +168,6 @@ In case of multiple upkeeps with the same filter, we will have multiple entries 
 
 The log buffer is implemented with capped slice that is allocated upon buffer creation or restart, and a rw mutex for thread safety.
 
-![Log Buffer Diagram](./images/log_buffer.png)
-
 <br />
 
 ## Log Recoverer
@@ -174,9 +177,9 @@ It does that by running a background process for re-scanning of logs and putting
 
 Logs will be considered as missed if they are older than `latestBlock - LookbackBlocks` and has not been performed or successfully checked already (eligible).
 
-While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, up to `latestBlock - LookbackBlocks`, newer blocks will be under the provider's lookback window.
+While the provider is scanning latest logs, the recoverer is scanning older logs in ascending order, starting from `latestBlock-24h` up to `latestBlock - LookbackBlocks`, newer blocks will be under the provider's lookback window.
 
-**Recoverer scanning process**
+**Recovery scanning process**
 
 - The recoverer maintains a `lastRePollBlock` for each upkeep, .i.e. the last block it scanned for that upkeep.
 - Every second, the recoverer will scan logs for a subset of `n=10` upkeeps, where `n/2` upkeeps are randomly chosen and `n/2` upkeeps are chosen by the oldest `lastRePollBlock`.
@@ -186,30 +189,18 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 
 <br/>
 
-### Upkeep States
+## Log Filters Life-Cycle
 
-The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system,
-to avoid redundant work by the recoverer.
+Upon registration or unpausing of an upkeep, the provider registers the corresponding filter in `LogPoller`, while upon canceled or paused upkeep we unregister the filter to avoid overloading the DB with redundant filters.
 
-The states will be persisted to so the latest state to be restored when the node starts up.
+In addition, the filters are maintained in the filter store - an in memory store of (active) filters. Both the recoverer and the provider read from the filter store, while the only the provider updates it.
 
-<aside>
-💡 Note: starting with an in memory storage, and will be persisted to DB in the future.
-A dedicated table will be used, to avoid overloading the existing tables (log poller). 
-</aside>
+In case of an **unfunded upkeep**, the filter is kept in log poller, but we don't read logs for it
+(see [TBD](#open-issues--todos)) for more info).
 
-The states are saved with a key that is composed of the upkeep id and trigger.
-
-The following struct is used to represent the state:
-
-```go
-type upkeepState struct {
-	payload  *ocr2keepers.UpkeepPayload
-	state    *ocr2keepers.UpkeepState // (ineligible, performed)
-	block    int64
-	upkeepId string
-}
-```
+In the future, migrated upkeeps might require to update the filter in log poller, 
+therefore we first remove the old filter and then add the new one that was created post migration.
+The same applies for config updates, where a new filter might be needed.
 
 <br />
 
@@ -217,21 +208,37 @@ type upkeepState struct {
 
 The following configurations are used by the log event provider:
 
-**TBD:** Chain specific defaults
+| Name | Description | Default | Notes |
+| --- | --- | --- | --- |
+| `LookbackBlocks` | Number of blocks the provider will look back for logs. The recoverer will scan for logs up to this depth. while it's also the newest logs the recoverer reads. | `200` | Will be auto-set to be greater-or-equal to the chain's finality depth. |
+| `ReadInterval` | Interval between provider reads | `1s` | |
+| `BlockRateLimit` | Max number of blocks to query per upkeep | `1/sec` | |
+| `BlockLimitBurst` | Burst of blocks to query per upkeep | `LookbackBlocks` | |
 
-| Config | Description | Default |
-| --- | --- | --- |
-| `LookbackBlocks` | Number of blocks that we consider as blocks that could contain **latest logs**, `latest-lookbackBlocks` is the oldest logs read by the provider, while it's also the newest logs the recoverer reads. | `200` |
-| `LogRetention` | Time to keep logs in DB | `24hr` |
-| `LogBufferSize` | Number of blocks to keep in buffer | `LookbackBlocks` |
-| `BufferMaxBlockSize` | Max number of logs per block | `1000` |
-| `AllowedLogsPerBlock` | Max number of logs per block & upkeep | `100` |
-| `ReadInterval` | Interval between reads | `1s` |
-| `ReadMaxBatchSize` | Max number of items in one read batch / partition | `100` |
-| `LookbackBuffer` | Number of blocks to add to the range | `32` |
-| `BlockRateLimit` | Max number of blocks to query per upkeep | `1/sec` |
-| `BlockLimitBurst` | Burst of blocks to query per upkeep | `128` |
-| `UpkeepLogsLimit` | The number of logs allowed for upkeep per second | `5` |
+#### Log Provider Config
+
+| Name | Description | Default | Notes |
+|--|--|--|--|
+| `logRetention` | Time to keep logs in DB | `24hr` | |
+| `readMaxBatchSize` | Max number of items in one read batch / partition | `32` | |
+| `reorgBuffer` | The number of blocks to add as a buffer to the block range when reading logs | `32` | |
+| `allowedLogsPerUpkeep` | The number of logs allowed for upkeep per call to the provider | `5` | |
+
+**Log Buffer**
+
+| Name | Description | Default | Notes |
+|--|--|--|--|
+| `logBufferSize` | Number of blocks to keep in buffer | `LookbackBlocks` | |
+| `bufferMaxBlockSize` | The maximum number of logs per block in the buffer | `1024` | |
+| `allowedLogsPerBlock` | The maximum number of logs allowed per upkeep in a block | `128` | |
+
+#### Log Recoverer Config
+
+| Name | Description | Default | Notes |
+|--|--|--|--|
+| `recoveryInterval` | Interval between recoverer reads | `5s` | |
+| `recoveryBatchSize` | Max number of items in one read batch | `10` | |
+| `recoveryLogsBuffer` | The number of blocks to add as a buffer to the block range when reading logs | `50` | |
 
 <br />
 
@@ -244,7 +251,6 @@ Unfunding is an horizontal problem for both log and condional upkeeps.
 Current ideas are that unfunded upkeep will automatically get paused when we add offchain charge, 
 so this component likely doesn't need to worry about it.
 Another idea is to handle this on subscription level cross chainlink services.
-- [ ] Simplify/abstract configurations and add chain specific defaults
 - [ ] Dropped logs - in cases of fast chains or slow OCR rounds we might need to drop logs.
 The buffer size can be increased to allow bursting, but if the consumer (OCR) is slow for a while then some logs might be dropped.
 - [ ] Call log poller once per contract address - currently the filters are grouped by contract address, but we call log poller for each upkeep separately. 
