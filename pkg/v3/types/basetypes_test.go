@@ -263,6 +263,226 @@ func TestCheckResultString(t *testing.T) {
 	assertJSONContainsAllStructFields(t, result, input)
 }
 
+func TestCheckResult_UniqueID(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		result CheckResult
+		wantID string
+	}{
+		{
+			name: "empty check result",
+			result: CheckResult{
+				PipelineExecutionState: 0,
+				Retryable:              false,
+				Eligible:               false,
+				IneligibilityReason:    0,
+				UpkeepID:               UpkeepIdentifier{},
+				Trigger:                Trigger{},
+				WorkID:                 "",
+				GasAllocated:           0,
+				PerformData:            nil,
+				FastGasWei:             nil,
+				LinkNative:             nil,
+			},
+			wantID: "000966616c73650966616c736509000900000000000000000000000000000000000000000000000000000000000000000900000000000000000000000000000000000000000000000000000000000000000909090909090909",
+		},
+		{
+			name: "errored execution state",
+			result: CheckResult{
+				PipelineExecutionState: 1,
+				Retryable:              false,
+				Eligible:               false,
+				IneligibilityReason:    0,
+				UpkeepID:               UpkeepIdentifier{},
+				Trigger:                Trigger{},
+				WorkID:                 "",
+				GasAllocated:           0,
+				PerformData:            nil,
+				FastGasWei:             nil,
+				LinkNative:             nil,
+			},
+			wantID: "010966616c73650966616c736509000900000000000000000000000000000000000000000000000000000000000000000900000000000000000000000000000000000000000000000000000000000000000909090909090909",
+		},
+		{
+			name: "retryable errored execution state",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               false,
+				IneligibilityReason:    0,
+				UpkeepID:               UpkeepIdentifier{},
+				Trigger:                Trigger{},
+				WorkID:                 "",
+				GasAllocated:           0,
+				PerformData:            nil,
+				FastGasWei:             nil,
+				LinkNative:             nil,
+			},
+			wantID: "0209747275650966616c736509000900000000000000000000000000000000000000000000000000000000000000000900000000000000000000000000000000000000000000000000000000000000000909090909090909",
+		},
+		{
+			name: "retryable eligible errored execution state",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    0,
+				UpkeepID:               UpkeepIdentifier{},
+				Trigger:                Trigger{},
+				WorkID:                 "",
+				GasAllocated:           0,
+				PerformData:            nil,
+				FastGasWei:             nil,
+				LinkNative:             nil,
+			},
+			wantID: "020974727565097472756509000900000000000000000000000000000000000000000000000000000000000000000900000000000000000000000000000000000000000000000000000000000000000909090909090909",
+		},
+		{
+			name: "retryable eligible errored execution state with non zero ineligibilty reason",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    6,
+				UpkeepID:               UpkeepIdentifier{},
+				Trigger:                Trigger{},
+				WorkID:                 "",
+				GasAllocated:           0,
+				PerformData:            nil,
+				FastGasWei:             nil,
+				LinkNative:             nil,
+			},
+			wantID: "020974727565097472756509060900000000000000000000000000000000000000000000000000000000000000000900000000000000000000000000000000000000000000000000000000000000000909090909090909",
+		},
+		{
+			name: "retryable eligible errored execution state with non zero ineligibilty reason and upkeep ID",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    6,
+				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
+				Trigger:                Trigger{},
+				WorkID:                 "",
+				GasAllocated:           0,
+				PerformData:            nil,
+				FastGasWei:             nil,
+				LinkNative:             nil,
+			},
+			wantID: "020974727565097472756509060909090909000000000000000000000000000000000000000000000000000000000900000000000000000000000000000000000000000000000000000000000000000909090909090909",
+		},
+		{
+			name: "retryable eligible errored execution state with non zero ineligibilty reason, upkeep ID, and trigger",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    6,
+				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
+				Trigger: Trigger{
+					BlockNumber: BlockNumber(44),
+					BlockHash:   [32]byte{8, 8, 8, 8},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash:      [32]byte{7, 7, 7, 7},
+						Index:       63,
+						BlockHash:   [32]byte{6, 6, 6, 6},
+						BlockNumber: BlockNumber(55),
+					},
+				},
+				WorkID:       "",
+				GasAllocated: 0,
+				PerformData:  nil,
+				FastGasWei:   nil,
+				LinkNative:   nil,
+			},
+			wantID: "02097472756509747275650906090909090900000000000000000000000000000000000000000000000000000000090808080800000000000000000000000000000000000000000000000000000000092c097b22426c6f636b48617368223a2230363036303630363030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22426c6f636b4e756d626572223a35352c22496e646578223a36332c22547848617368223a2230373037303730373030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030227d090909090909",
+		},
+		{
+			name: "retryable eligible errored execution state with non zero ineligibilty reason, upkeep ID, trigger, and workID",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    6,
+				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
+				Trigger: Trigger{
+					BlockNumber: BlockNumber(44),
+					BlockHash:   [32]byte{8, 8, 8, 8},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash:      [32]byte{7, 7, 7, 7},
+						Index:       63,
+						BlockHash:   [32]byte{6, 6, 6, 6},
+						BlockNumber: BlockNumber(55),
+					},
+				},
+				WorkID:       "abcdef",
+				GasAllocated: 0,
+				PerformData:  nil,
+				FastGasWei:   nil,
+				LinkNative:   nil,
+			},
+			wantID: "02097472756509747275650906090909090900000000000000000000000000000000000000000000000000000000090808080800000000000000000000000000000000000000000000000000000000092c097b22426c6f636b48617368223a2230363036303630363030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22426c6f636b4e756d626572223a35352c22496e646578223a36332c22547848617368223a2230373037303730373030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030227d096162636465660909090909",
+		},
+		{
+			name: "retryable eligible errored execution state with non zero ineligibilty reason, upkeep ID, trigger, and workID",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    6,
+				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
+				Trigger: Trigger{
+					BlockNumber: BlockNumber(44),
+					BlockHash:   [32]byte{8, 8, 8, 8},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash:      [32]byte{7, 7, 7, 7},
+						Index:       63,
+						BlockHash:   [32]byte{6, 6, 6, 6},
+						BlockNumber: BlockNumber(55),
+					},
+				},
+				WorkID:       "abcdef",
+				GasAllocated: 543,
+				PerformData:  []byte("xyz"),
+				FastGasWei:   nil,
+				LinkNative:   nil,
+			},
+			wantID: "02097472756509747275650906090909090900000000000000000000000000000000000000000000000000000000090808080800000000000000000000000000000000000000000000000000000000092c097b22426c6f636b48617368223a2230363036303630363030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22426c6f636b4e756d626572223a35352c22496e646578223a36332c22547848617368223a2230373037303730373030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030227d0961626364656609021f0978797a090909",
+		},
+		{
+			name: "all fields",
+			result: CheckResult{
+				PipelineExecutionState: 2,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    6,
+				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
+				Trigger: Trigger{
+					BlockNumber: BlockNumber(44),
+					BlockHash:   [32]byte{8, 8, 8, 8},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash:      [32]byte{7, 7, 7, 7},
+						Index:       63,
+						BlockHash:   [32]byte{6, 6, 6, 6},
+						BlockNumber: BlockNumber(55),
+					},
+				},
+				WorkID:       "abcdef",
+				GasAllocated: 543,
+				PerformData:  []byte("xyz"),
+				FastGasWei:   big.NewInt(456),
+				LinkNative:   big.NewInt(789),
+			},
+			wantID: "02097472756509747275650906090909090900000000000000000000000000000000000000000000000000000000090808080800000000000000000000000000000000000000000000000000000000092c097b22426c6f636b48617368223a2230363036303630363030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22426c6f636b4e756d626572223a35352c22496e646578223a36332c22547848617368223a2230373037303730373030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030227d0961626364656609021f0978797a0901c809031509",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			id := tc.result.UniqueID()
+			assert.Equal(t, tc.wantID, id)
+		})
+	}
+}
+
 func assertJSONEqual(t *testing.T, expected, actual string) {
 	var expectedMap, actualMap map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(expected), &expectedMap), "expected is invalid json")

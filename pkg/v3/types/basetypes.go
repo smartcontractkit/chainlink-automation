@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+const (
+	checkResultDelimiter = 0x09
+)
+
 var checkResultStringTemplate = `{
 	"PipelineExecutionState":%d,
 	"Retryable":%v,
@@ -152,24 +156,55 @@ type CheckResult struct {
 // It is used to achieve quorum on results before being sent within a report.
 func (r CheckResult) UniqueID() string {
 	var resultBytes []byte
+
 	resultBytes = append(resultBytes, r.PipelineExecutionState)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Retryable))...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Eligible))...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, r.IneligibilityReason)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, r.UpkeepID[:]...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, r.Trigger.BlockHash[:]...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, big.NewInt(int64(r.Trigger.BlockNumber)).Bytes()...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	if r.Trigger.LogTriggerExtension != nil {
 		// Note: We encode the whole trigger extension so the behaiour of
 		// LogTriggerExtentsion.BlockNumber and LogTriggerExtentsion.BlockHash should be
 		// consistent across nodes when sending observations
 		resultBytes = append(resultBytes, []byte(fmt.Sprintf("%+v", r.Trigger.LogTriggerExtension))...)
 	}
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, r.WorkID[:]...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, big.NewInt(int64(r.GasAllocated)).Bytes()...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	resultBytes = append(resultBytes, r.PerformData[:]...)
-	resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
-	resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
+	if r.FastGasWei != nil {
+		resultBytes = append(resultBytes, r.FastGasWei.Bytes()...)
+	}
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
+	if r.LinkNative != nil {
+		resultBytes = append(resultBytes, r.LinkNative.Bytes()...)
+	}
+	resultBytes = append(resultBytes, checkResultDelimiter)
+
 	return fmt.Sprintf("%x", resultBytes)
 }
 
