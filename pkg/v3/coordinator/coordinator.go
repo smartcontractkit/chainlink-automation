@@ -168,7 +168,7 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 
 		if v, ok := c.cache.Get(event.WorkID); ok {
 			if event.CheckBlock < v.checkBlockNumber {
-				c.logger.Printf("Ignoring event in transaction %s from older report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.CheckBlock, v.checkBlockNumber)
+				c.logger.Printf("Ignoring event in transaction %s of type %d for workID %s from older report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.WorkID, event.CheckBlock, v.checkBlockNumber)
 			} else if event.CheckBlock == v.checkBlockNumber {
 				c.logger.Printf("Got event in transaction %s of type %d for workID %s and check block %v", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.WorkID, event.CheckBlock)
 				c.cache.Set(event.WorkID, record{
@@ -178,7 +178,7 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 					transmitBlockNumber:   event.TransmitBlock,
 				}, util.DefaultCacheExpiration)
 			} else {
-				c.logger.Printf("Got event in transaction %s from newer report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.CheckBlock, v.checkBlockNumber)
+				c.logger.Printf("Got event in transaction %s of type %d for workID %s from newer report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.WorkID, event.CheckBlock, v.checkBlockNumber)
 				c.cache.Set(event.WorkID, record{
 					checkBlockNumber:      event.CheckBlock,
 					isTransmissionPending: false,
@@ -187,6 +187,7 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 				}, util.DefaultCacheExpiration)
 			}
 		}
+		c.logger.Printf("Ignoring event in transaction %s of type %d for workID %s as it was not found in cache", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.WorkID)
 	}
 	c.logger.Printf("Skipped %d events as confirmations are less than minimum confirmations (%d)", skipped, c.minimumConfirmations)
 
