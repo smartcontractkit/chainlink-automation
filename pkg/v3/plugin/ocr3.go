@@ -195,7 +195,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 	// If any upkeep can be accepted, then accept
 	for _, upkeep := range upkeeps {
 		shouldAccept := plugin.Coordinator.Accept(upkeep)
-		plugin.Logger.Printf("checking shouldAccept of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldAccept)
+		plugin.Logger.Printf("checking shouldAccept of upkeep '%s', trigger %s in sequence number %d returned %t", upkeep.UpkeepID, upkeep.Trigger, seqNr, shouldAccept)
 
 		if shouldAccept {
 			accept = true
@@ -218,7 +218,7 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr 
 	// If any upkeep should be transmitted, then transmit
 	for _, upkeep := range upkeeps {
 		shouldTransmit := plugin.Coordinator.ShouldTransmit(upkeep)
-		plugin.Logger.Printf("checking transmit of upkeep '%s' in sequence number %d returned %t", upkeep.UpkeepID, seqNr, shouldTransmit)
+		plugin.Logger.Printf("checking transmit of upkeep '%s', trigger %s in sequence number %d returned %t", upkeep.UpkeepID, upkeep.Trigger, seqNr, shouldTransmit)
 
 		if shouldTransmit {
 			transmit = true
