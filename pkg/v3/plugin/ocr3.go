@@ -2,18 +2,17 @@ package plugin
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-	"golang.org/x/crypto/sha3"
 
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -257,16 +256,8 @@ func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.Chec
 }
 
 // Generates a randomness source derived from the config and seq # so
-// that it's the same across the network for the same round
+// that it's the same across the network for the same round.
+// similar key building as libocr transmit selector.
 func getRandomKeySource(cd types.ConfigDigest, seqNr uint64) [16]byte {
-	// similar key building as libocr transmit selector
-	hash := sha3.NewLegacyKeccak256()
-	hash.Write(cd[:])
-	temp := make([]byte, 8)
-	binary.LittleEndian.PutUint64(temp, seqNr)
-	hash.Write(temp)
-
-	var keyRandSource [16]byte
-	copy(keyRandSource[:], hash.Sum(nil))
-	return keyRandSource
+	return random.GetRandomKeySource(cd[:], seqNr)
 }

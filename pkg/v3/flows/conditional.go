@@ -6,10 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/preprocessors"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
@@ -60,7 +60,7 @@ func NewSampler(
 		logger:   logger,
 		getter:   getter,
 		ratio:    ratio,
-		shuffler: util.Shuffler[ocr2keepers.UpkeepPayload]{Source: util.NewCryptoRandSource()},
+		shuffler: random.Shuffler[ocr2keepers.UpkeepPayload]{Source: random.NewCryptoRandSource()},
 	}
 }
 
