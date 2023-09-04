@@ -108,10 +108,9 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		newProposal.Trigger.BlockNumber = latestQuorumBlock.Number
 		newProposal.Trigger.BlockHash = latestQuorumBlock.Hash
 		if newProposal.Trigger.LogTriggerExtension != nil {
-			// Zero out blocknumber/hash for log triggers as these fields are not used
-			// in the proposal
+			// Zero out blocknumber for log triggers as this field is not included
+			// in workID
 			newProposal.Trigger.LogTriggerExtension.BlockNumber = 0
-			newProposal.Trigger.LogTriggerExtension.BlockHash = [32]byte{}
 		}
 
 		c.logger.Printf("Adding new coordinated proposal to outcome %+v", newProposal)
