@@ -5,8 +5,8 @@ import (
 	"log"
 	"sort"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
@@ -41,7 +41,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	// send the same subset of workIDs if they are available, while giving different priority
 	// to workIDs in different rounds.
 	sort.Slice(results, func(i, j int) bool {
-		return util.ShuffleString(results[i].WorkID, rSrc) < util.ShuffleString(results[j].WorkID, rSrc)
+		return random.ShuffleString(results[i].WorkID, rSrc) < random.ShuffleString(results[j].WorkID, rSrc)
 	})
 	if len(results) > limit {
 		results = results[:limit]
