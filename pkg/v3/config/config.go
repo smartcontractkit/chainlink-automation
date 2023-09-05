@@ -23,18 +23,6 @@ var (
 	// simultaneous RPC calls. The default is based on the number of CPUs
 	// available to the current process.
 	DefaultMaxServiceWorkers = 10 * runtime.GOMAXPROCS(0)
-	// each field should be validated and default values set, if any
-	// if a value is invalid, return an error but don't override it with the
-	// default
-	defaults = []defaulter{
-		defaultPerformLockoutWindow,
-		defaultTargetProbability,
-		defaultTargetInRounds,
-		defaultMinConfirmations,
-		defaultGasLimitPerReport,
-		defaultGasOverheadPerUpkeep,
-		defaultMaxUpkeepBatchSize,
-	}
 )
 
 type ReportingFactoryConfig struct {
@@ -91,73 +79,35 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		return config, err
 	}
 
-	// go through all defaults and return an error immediately if encountered
-	for _, v := range defaults {
-		if err := v(&config); err != nil {
-			return config, err
-		}
-	}
+	// ensure the defaults are applied at a minimum, for any values below the acceptable lower bound
+	ensureDefaults(&config)
 
 	return config, nil
 }
 
-type defaulter func(*OffchainConfig) error
-
-func defaultPerformLockoutWindow(conf *OffchainConfig) error {
+func ensureDefaults(conf *OffchainConfig) {
 	if conf.PerformLockoutWindow <= 0 {
 		// default of 20 minutes (100 blocks on eth)
 		conf.PerformLockoutWindow = 20 * 60 * 1000
 	}
-
-	return nil
-}
-
-func defaultTargetProbability(conf *OffchainConfig) error {
 	if len(conf.TargetProbability) == 0 {
 		conf.TargetProbability = "0.99999"
 	}
-
-	return nil
-}
-
-func defaultTargetInRounds(conf *OffchainConfig) error {
 	if conf.TargetInRounds <= 0 {
 		conf.TargetInRounds = 1
 	}
-
-	return nil
-}
-
-func defaultMinConfirmations(conf *OffchainConfig) error {
 	if conf.MinConfirmations <= 0 {
 		conf.MinConfirmations = 0
 	}
-
-	return nil
-}
-
-func defaultGasLimitPerReport(conf *OffchainConfig) error {
 	// defined as uint so cannot be < 0
 	if conf.GasLimitPerReport == 0 {
 		conf.GasLimitPerReport = 5_300_000
 	}
-
-	return nil
-}
-
-func defaultGasOverheadPerUpkeep(conf *OffchainConfig) error {
 	// defined as uint so cannot be < 0
 	if conf.GasOverheadPerUpkeep == 0 {
 		conf.GasOverheadPerUpkeep = 300_000
 	}
-
-	return nil
-}
-
-func defaultMaxUpkeepBatchSize(conf *OffchainConfig) error {
 	if conf.MaxUpkeepBatchSize <= 0 {
 		conf.MaxUpkeepBatchSize = 1
 	}
-
-	return nil
 }
