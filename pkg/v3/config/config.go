@@ -27,13 +27,13 @@ var (
 	// if a value is invalid, return an error but don't override it with the
 	// default
 	validators = []validator{
-		validatePerformLockoutWindow,
-		validateTargetProbability,
-		validateTargetInRounds,
-		validateMinConfirmations,
-		validateGasLimitPerReport,
-		validateGasOverheadPerUpkeep,
-		validateMaxUpkeepBatchSize,
+		defaultPerformLockoutWindow,
+		defaultTargetProbability,
+		defaultTargetInRounds,
+		defaultMinConfirmations,
+		defaultGasLimitPerReport,
+		defaultGasOverheadPerUpkeep,
+		defaultMaxUpkeepBatchSize,
 	}
 )
 
@@ -103,7 +103,7 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 
 type validator func(*OffchainConfig) error
 
-func validatePerformLockoutWindow(conf *OffchainConfig) error {
+func defaultPerformLockoutWindow(conf *OffchainConfig) error {
 	if conf.PerformLockoutWindow <= 0 {
 		// default of 20 minutes (100 blocks on eth)
 		conf.PerformLockoutWindow = 20 * 60 * 1000
@@ -112,7 +112,7 @@ func validatePerformLockoutWindow(conf *OffchainConfig) error {
 	return nil
 }
 
-func validateTargetProbability(conf *OffchainConfig) error {
+func defaultTargetProbability(conf *OffchainConfig) error {
 	if len(conf.TargetProbability) == 0 {
 		conf.TargetProbability = "0.99999"
 	}
@@ -120,7 +120,7 @@ func validateTargetProbability(conf *OffchainConfig) error {
 	return nil
 }
 
-func validateTargetInRounds(conf *OffchainConfig) error {
+func defaultTargetInRounds(conf *OffchainConfig) error {
 	if conf.TargetInRounds <= 0 {
 		conf.TargetInRounds = 1
 	}
@@ -128,7 +128,7 @@ func validateTargetInRounds(conf *OffchainConfig) error {
 	return nil
 }
 
-func validateMinConfirmations(conf *OffchainConfig) error {
+func defaultMinConfirmations(conf *OffchainConfig) error {
 	if conf.MinConfirmations <= 0 {
 		conf.MinConfirmations = 0
 	}
@@ -136,7 +136,7 @@ func validateMinConfirmations(conf *OffchainConfig) error {
 	return nil
 }
 
-func validateGasLimitPerReport(conf *OffchainConfig) error {
+func defaultGasLimitPerReport(conf *OffchainConfig) error {
 	// defined as uint so cannot be < 0
 	if conf.GasLimitPerReport == 0 {
 		conf.GasLimitPerReport = 5_300_000
@@ -145,7 +145,7 @@ func validateGasLimitPerReport(conf *OffchainConfig) error {
 	return nil
 }
 
-func validateGasOverheadPerUpkeep(conf *OffchainConfig) error {
+func defaultGasOverheadPerUpkeep(conf *OffchainConfig) error {
 	// defined as uint so cannot be < 0
 	if conf.GasOverheadPerUpkeep == 0 {
 		conf.GasOverheadPerUpkeep = 300_000
@@ -154,7 +154,7 @@ func validateGasOverheadPerUpkeep(conf *OffchainConfig) error {
 	return nil
 }
 
-func validateMaxUpkeepBatchSize(conf *OffchainConfig) error {
+func defaultMaxUpkeepBatchSize(conf *OffchainConfig) error {
 	if conf.MaxUpkeepBatchSize <= 0 {
 		conf.MaxUpkeepBatchSize = 1
 	}
