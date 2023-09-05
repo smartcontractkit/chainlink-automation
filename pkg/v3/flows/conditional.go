@@ -94,7 +94,7 @@ func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 		return nil, nil
 	}
 	if size > MaxSampledConditionals {
-		s.logger.Printf("Required sample size %d exceeds max sampled conditionals %d, limiting to max", size, MaxSampledConditionals)
+		s.logger.Printf("Required sample size %d exceeds max allowed conditional samples %d, limiting to max", size, MaxSampledConditionals)
 		size = MaxSampledConditionals
 	}
 	if len(upkeeps) < size {
