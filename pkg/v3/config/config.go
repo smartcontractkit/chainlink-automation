@@ -26,7 +26,7 @@ var (
 	// each field should be validated and default values set, if any
 	// if a value is invalid, return an error but don't override it with the
 	// default
-	validators = []validator{
+	defaults = []defaulter{
 		defaultPerformLockoutWindow,
 		defaultTargetProbability,
 		defaultTargetInRounds,
@@ -91,8 +91,8 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 		return config, err
 	}
 
-	// go through all validators and return an error immediately if encountered
-	for _, v := range validators {
+	// go through all defaults and return an error immediately if encountered
+	for _, v := range defaults {
 		if err := v(&config); err != nil {
 			return config, err
 		}
@@ -101,7 +101,7 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 	return config, nil
 }
 
-type validator func(*OffchainConfig) error
+type defaulter func(*OffchainConfig) error
 
 func defaultPerformLockoutWindow(conf *OffchainConfig) error {
 	if conf.PerformLockoutWindow <= 0 {

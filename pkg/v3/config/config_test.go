@@ -138,14 +138,14 @@ func TestDecodeOffchainConfig(t *testing.T) {
 }
 
 func TestDecodeOffchainConfig_validator(t *testing.T) {
-	oldValidators := validators
-	validators = []validator{
+	oldValidators := defaults
+	defaults = []defaulter{
 		func(config *OffchainConfig) error {
 			return errors.New("validation failure")
 		},
 	}
 	defer func() {
-		validators = oldValidators
+		defaults = oldValidators
 	}()
 
 	_, err := DecodeOffchainConfig([]byte(`
