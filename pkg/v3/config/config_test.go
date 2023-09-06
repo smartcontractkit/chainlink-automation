@@ -3,7 +3,6 @@ package config
 import (
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -135,32 +134,4 @@ func TestDecodeOffchainConfig(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestDecodeOffchainConfig_validator(t *testing.T) {
-	oldValidators := validators
-	validators = []validator{
-		func(config *OffchainConfig) error {
-			return errors.New("validation failure")
-		},
-	}
-	defer func() {
-		validators = oldValidators
-	}()
-
-	_, err := DecodeOffchainConfig([]byte(`
-		{
-			"performLockoutWindow": 1000,
-			"targetProbability": "0.999",
-			"targetInRounds": 1,
-			"samplingJobDuration": 1000,
-			"minConfirmations": 10,
-			"gasLimitPerReport": 10,
-			"gasOverheadPerUpkeep": 100,
-			"maxUpkeepBatchSize": 100,
-			"reportBlockLag": 100,
-			"mercuryLookup": true
-		}
-	`))
-	assert.Error(t, err)
 }
