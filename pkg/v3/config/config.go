@@ -80,12 +80,12 @@ func DecodeOffchainConfig(b []byte) (OffchainConfig, error) {
 	}
 
 	// ensure the defaults are applied at a minimum, for any values below the acceptable lower bound
-	ensureDefaults(&config)
+	ensureMinimumDefaults(&config)
 
 	return config, nil
 }
 
-func ensureDefaults(conf *OffchainConfig) {
+func ensureMinimumDefaults(conf *OffchainConfig) {
 	if conf.PerformLockoutWindow <= 0 {
 		// default of 20 minutes (100 blocks on eth)
 		conf.PerformLockoutWindow = 20 * 60 * 1000
