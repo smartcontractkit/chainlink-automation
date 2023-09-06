@@ -73,8 +73,8 @@ func (e LogTriggerExtension) LogIdentifier() []byte {
 	indexBytes := make([]byte, 4) // uint32 is 4 bytes
 	binary.BigEndian.PutUint32(indexBytes, e.Index)
 	return bytes.Join([][]byte{
-		e.TxHash[:],
 		e.BlockHash[:],
+		e.TxHash[:],
 		indexBytes,
 	}, []byte{})
 }
