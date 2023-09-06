@@ -5,23 +5,22 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/blocks"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulators"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type upkeepStatsBuilder struct {
-	src              []simulators.SimulatedUpkeep
+	src              []chain.SimulatedUpkeep
 	performsByID     map[string][]string
 	eligiblesByID    map[string][]string
 	checksByID       map[string][]string
-	trsByID          map[string][]blocks.TransmitEvent
+	trsByID          map[string][]chain.TransmitEvent
 	accountTransmits map[string]int
 }
 
 func newUpkeepStatsBuilder(
-	upkeeps []simulators.SimulatedUpkeep,
-	transmits []blocks.TransmitEvent,
+	upkeeps []chain.SimulatedUpkeep,
+	transmits []chain.TransmitEvent,
 	checks map[string][]string,
 	encoder ocr2keepers.Encoder,
 ) (*upkeepStatsBuilder, error) {
@@ -31,7 +30,7 @@ func newUpkeepStatsBuilder(
 
 	// each perform by id
 	performsByID := make(map[string][]string)
-	trsByID := make(map[string][]blocks.TransmitEvent)
+	trsByID := make(map[string][]chain.TransmitEvent)
 
 	for _, tr := range transmits {
 		block, ok := new(big.Int).SetString(tr.InBlock, 10)
@@ -121,8 +120,8 @@ func (b *upkeepStatsBuilder) Performs(id string) []string {
 	return ids
 }
 
-func (b *upkeepStatsBuilder) TransmitEvents(id string) []blocks.TransmitEvent {
-	ids := []blocks.TransmitEvent{}
+func (b *upkeepStatsBuilder) TransmitEvents(id string) []chain.TransmitEvent {
+	ids := []chain.TransmitEvent{}
 
 	x, ok := b.trsByID[id]
 	if ok {

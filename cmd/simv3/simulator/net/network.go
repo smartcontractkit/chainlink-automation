@@ -1,4 +1,4 @@
-package simulators
+package net
 
 import (
 	"math/rand"

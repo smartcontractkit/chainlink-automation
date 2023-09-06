@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
 )
 
@@ -23,7 +24,7 @@ func (g *Group) ReportResults() {
 		}
 	}
 
-	ub, err := newUpkeepStatsBuilder(g.upkeeps, g.transmitter.Results(), keyIDLookup, g.encoder)
+	ub, err := newUpkeepStatsBuilder(g.upkeeps, g.transmitter.Results(), keyIDLookup, upkeep.Util{})
 	if err != nil {
 		g.logger.Printf("stats builder failure: %s", err)
 	}
@@ -76,7 +77,7 @@ func (g *Group) ReportResults() {
 
 			by := []string{}
 			for _, tr := range ub.TransmitEvents(id) {
-				v := fmt.Sprintf("[address=%s, epoch=%d, round=%d, block=%s]", tr.SendingAddress, tr.Epoch, tr.Round, tr.InBlock)
+				v := fmt.Sprintf("[address=%s, round=%d, block=%s]", tr.SendingAddress, tr.Round, tr.InBlock)
 				by = append(by, v)
 			}
 			g.logger.Printf("%s transactions %s", id, strings.Join(by, ", "))

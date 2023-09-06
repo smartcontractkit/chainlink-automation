@@ -1,4 +1,4 @@
-package simulators
+package upkeep
 
 import (
 	"fmt"
@@ -6,11 +6,13 @@ import (
 
 	"github.com/Maldris/mathparse"
 	"github.com/shopspring/decimal"
+
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
 )
 
-func GenerateSimulatedUpkeeps(rb config.RunBook) ([]SimulatedUpkeep, error) {
-	generated := []SimulatedUpkeep{}
+func GenerateConditionals(rb config.RunBook) ([]chain.SimulatedUpkeep, error) {
+	generated := []chain.SimulatedUpkeep{}
 	limit := new(big.Int).Add(rb.BlockCadence.Genesis, big.NewInt(int64(rb.BlockCadence.Duration)))
 
 	for _, upkeep := range rb.Upkeeps {
@@ -18,7 +20,7 @@ func GenerateSimulatedUpkeeps(rb config.RunBook) ([]SimulatedUpkeep, error) {
 		p.Resolve()
 
 		for y := 1; y <= upkeep.Count; y++ {
-			sym := SimulatedUpkeep{
+			sym := chain.SimulatedUpkeep{
 				ID:         new(big.Int).Add(upkeep.StartID, big.NewInt(int64(y))),
 				EligibleAt: make([]*big.Int, 0),
 			}
@@ -48,6 +50,16 @@ func GenerateSimulatedUpkeeps(rb config.RunBook) ([]SimulatedUpkeep, error) {
 	return generated, nil
 }
 
+func GenerateLogTriggeredUpkeeps(rb config.RunBook) ([]chain.SimulatedUpkeep, error) {
+
+	return nil, nil
+}
+
+func GenerateLogTriggers(rb config.RunBook) ([]chain.SimulatedLog, error) {
+
+	return nil, nil
+}
+
 func operate(a, b decimal.Decimal, op string) decimal.Decimal {
 	switch op {
 	case "+":
@@ -62,7 +74,7 @@ func operate(a, b decimal.Decimal, op string) decimal.Decimal {
 	return decimal.Zero
 }
 
-func generateEligibles(upkeep *SimulatedUpkeep, genesis *big.Int, limit *big.Int, f string) error {
+func generateEligibles(upkeep *chain.SimulatedUpkeep, genesis *big.Int, limit *big.Int, f string) error {
 	p := mathparse.NewParser(f)
 	p.Resolve()
 

@@ -3,40 +3,35 @@ package node
 import (
 	"io"
 	"log"
-	"time"
 
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/blocks"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
 	simio "github.com/smartcontractkit/ocr2keepers/cmd/simv3/io"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulators"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/net"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/ocr"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type GroupConfig struct {
-	Digester      types.OffchainConfigDigester
-	Cadence       config.Blocks
-	Encoder       ocr2keepers.Encoder
-	Upkeeps       []simulators.SimulatedUpkeep
-	ConfigEvents  []config.ConfigEvent
-	RPCConfig     config.RPC
-	AvgNetLatency time.Duration
-	Collectors    []telemetry.Collector
-	Logger        *log.Logger
+	Runbook    config.RunBook
+	Digester   types.OffchainConfigDigester
+	Upkeeps    []chain.SimulatedUpkeep
+	Collectors []telemetry.Collector
+	Logger     *log.Logger
 }
 
 type Group struct {
 	nodes       map[string]*Simulator
-	network     *simulators.SimulatedNetwork
+	network     *net.SimulatedNetwork
 	digester    types.OffchainConfigDigester
-	blockSrc    *blocks.BlockBroadcaster
-	encoder     ocr2keepers.Encoder
-	transmitter *blocks.TransmitLoader
-	confLoader  *blocks.ConfigLoader
-	upkeeps     []simulators.SimulatedUpkeep
+	blockSrc    *chain.BlockBroadcaster
+	transmitter *ocr.OCR3TransmitLoader
+	confLoader  *ocr.OCR3ConfigLoader
+	upkeeps     []chain.SimulatedUpkeep
 	monitor     commontypes.MonitoringEndpoint
 	rpcConf     config.RPC
 	collectors  []telemetry.Collector
@@ -44,23 +39,39 @@ type Group struct {
 }
 
 func NewGroup(conf GroupConfig) *Group {
-	transmit := blocks.NewTransmitLoader()
-	confLoad := blocks.NewConfigLoader(conf.ConfigEvents, conf.Digester)
-
 	// TODO: monitor data is not text so not sure what to do with this yet
 	monitor := simio.NewMonitorToWriter(io.Discard)
 
+	lTransmit := ocr.NewOCR3TransmitLoader(conf.Runbook, conf.Logger)
+	lOCR3Config := ocr.NewOCR3ConfigLoader(conf.Runbook, conf.Digester, conf.Logger)
+
+	lUpkeep, err := upkeep.NewUpkeepConfigLoader(conf.Runbook)
+	if err != nil {
+		panic(err)
+	}
+
+	lLogTriggers, err := upkeep.NewLogTriggerLoader(conf.Runbook)
+	if err != nil {
+		panic(err)
+	}
+
+	loaders := []chain.BlockLoaderFunc{
+		lTransmit.Load,
+		lOCR3Config.Load,
+		lUpkeep.Load,
+		lLogTriggers.Load,
+	}
+
 	return &Group{
 		nodes:       make(map[string]*Simulator),
-		network:     simulators.NewSimulatedNetwork(conf.AvgNetLatency),
+		network:     net.NewSimulatedNetwork(conf.Runbook.AvgNetworkLatency.Value()),
 		digester:    conf.Digester,
-		blockSrc:    blocks.NewBlockBroadcaster(conf.Cadence, conf.RPCConfig.MaxBlockDelay, transmit, confLoad),
-		encoder:     conf.Encoder,
-		transmitter: transmit,
-		confLoader:  confLoad,
+		blockSrc:    chain.NewBlockBroadcaster(conf.Runbook.BlockCadence, conf.Runbook.RPCDetail.MaxBlockDelay, conf.Logger, loaders...),
+		transmitter: lTransmit,
+		confLoader:  lOCR3Config,
 		upkeeps:     conf.Upkeeps,
 		monitor:     monitor,
-		rpcConf:     conf.RPCConfig,
+		rpcConf:     conf.Runbook.RPCDetail,
 		collectors:  conf.Collectors,
 		logger:      conf.Logger,
 	}

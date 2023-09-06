@@ -1,52 +1,72 @@
-package simulators
+package upkeep
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"math/big"
-	"sync"
 
-	"go.uber.org/multierr"
-
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
-type SimulatedUpkeep struct {
-	ID         *big.Int
-	EligibleAt []*big.Int
-	Performs   map[string]ocr2keepers.TransmitEvent // performs at block number
+type CheckPipeline struct {
+	// provided dependencies
+	listener *chain.Listener
+	active   *ActiveTracker
+	logger   *log.Logger
 }
 
-func (ct *SimulatedContract) GetActiveUpkeepIDs(ctx context.Context) ([]ocr2keepers.UpkeepIdentifier, error) {
-
-	ct.mu.RLock()
-	ct.logger.Printf("getting keys at block %s", ct.lastBlock)
-
-	keys := []ocr2keepers.UpkeepIdentifier{}
-
-	// TODO: filter out cancelled upkeeps
-	for key := range ct.upkeeps {
-		b := [32]byte{}
-		copy(b[:], []byte(key))
-		keys = append(keys, ocr2keepers.UpkeepIdentifier(b))
+// TODO: provide upkeep configurations to this component
+// NewCheckPipeline ...
+func NewCheckPipeline(listener *chain.Listener, active *ActiveTracker, logger *log.Logger) *CheckPipeline {
+	return &CheckPipeline{
+		listener: listener,
+		active:   active,
+		logger:   logger,
 	}
-	ct.mu.RUnlock()
-
-	// call to GetState
-	err := <-ct.rpc.Call(ctx, "getState")
-	if err != nil {
-		return nil, err
-	}
-	// call to GetActiveIDs
-	// TODO: batch size is hard coded at 10_000, if the number of keys is more
-	// than this, simulate another rpc call
-	err = <-ct.rpc.Call(ctx, "getActiveIDs")
-	if err != nil {
-		return nil, err
-	}
-
-	return keys, nil
 }
+
+// TODO: finish retry/error conditions in check pipeline
+// CheckUpkeeps simulates a check pipeline run and may return whether a result
+// is eligible or retryable based on pipeline return cases. Multiple assumptions
+// are made within this simulation and any changes to the production pipeline
+// should be reflected here.
+func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+	results := make([]ocr2keepers.CheckResult, len(payloads))
+
+	for i, payload := range payloads {
+
+		// 1. verify check block and hash are valid
+		// 1a. check block too old: no failure reason, not retryable, not eligible,
+
+		// 1. upkeep active status
+		// _, ok := cp.active.GetByID(payload.UpkeepID.BigInt())
+		//if !ok {
+		results[i] = ocr2keepers.CheckResult{
+			PipelineExecutionState: 0,
+			Retryable:              false,
+			Eligible:               true,
+			IneligibilityReason:    0,
+			UpkeepID:               payload.UpkeepID,
+			Trigger:                payload.Trigger,
+			WorkID:                 payload.WorkID,
+			GasAllocated:           5_000_000, // TODO: update from config
+			PerformData:            []byte{},  // TODO: update from config
+			FastGasWei:             big.NewInt(1_000_000),
+			LinkNative:             big.NewInt(1_000_000),
+		}
+		//}
+
+		// 2. log triggered status; was the payload triggered by a log (if log trigger type)
+		// 3. eligibility status
+		// 4. performed status
+	}
+
+	return results, nil
+}
+
+/*
+
 
 func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	ct.mu.RLock()
@@ -131,3 +151,4 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 
 	return output, nil
 }
+*/

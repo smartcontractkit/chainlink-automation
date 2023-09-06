@@ -29,6 +29,9 @@ parallel: dependencies fmt
 simulator: dependencies fmt
 	go build -o $(GOBIN)/simv2 ./cmd/simv2/*.go || exit
 
+simulatorv3: dependencies fmt
+	go build -o $(GOBIN)/simv3 ./cmd/simv3/*.go || exit
+
 fmt:
 	gofmt -w .
 

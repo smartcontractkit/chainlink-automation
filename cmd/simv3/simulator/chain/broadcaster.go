@@ -1,4 +1,4 @@
-package blocks
+package chain
 
 import (
 	"log"
@@ -11,43 +11,91 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
 )
 
-type BlockLoader interface {
-	Load(*config.SymBlock)
-}
+type BlockLoaderFunc func(*Block)
 
 type BlockBroadcaster struct {
-	nextBlock     *big.Int
-	cadence       time.Duration
-	maxDelay      int
-	limit         *big.Int
-	start         sync.Once
+	// provided dependencies
+	loaders []BlockLoaderFunc
+	logger  *log.Logger
+
+	// configuration
+	maxDelay int
+	limit    *big.Int
+	cadence  time.Duration
+	jitter   time.Duration
+
+	// internal state
 	mu            sync.Mutex
-	done          chan struct{}
-	subscriptions map[int]chan config.SymBlock
+	nextBlock     *big.Int
+	subscriptions map[int]chan Block
 	delays        map[int]bool
-	loaders       []BlockLoader
-	jitter        time.Duration
 	subCount      int
 	activeSubs    int
+
+	// service state
+	start sync.Once
+	done  chan struct{}
 }
 
-func NewBlockBroadcaster(conf config.Blocks, maxDelay int, loaders ...BlockLoader) *BlockBroadcaster {
+func NewBlockBroadcaster(conf config.Blocks, maxDelay int, logger *log.Logger, loaders ...BlockLoaderFunc) *BlockBroadcaster {
 	limit := new(big.Int).Add(conf.Genesis, big.NewInt(int64(conf.Duration)))
 
 	// add a block padding to allow all transmits to come through
 	limit = new(big.Int).Add(limit, big.NewInt(int64(conf.EndPadding)))
 
 	return &BlockBroadcaster{
-		nextBlock:     conf.Genesis,
-		cadence:       conf.Cadence.Value(),
-		maxDelay:      maxDelay,
 		loaders:       loaders,
+		logger:        log.New(logger.Writer(), "[block-broadcaster] ", log.Ldate|log.Ltime|log.Lshortfile),
+		maxDelay:      maxDelay,
 		limit:         limit,
+		cadence:       conf.Cadence.Value(),
 		jitter:        conf.Jitter.Value(),
-		done:          make(chan struct{}),
-		subscriptions: make(map[int]chan config.SymBlock),
+		nextBlock:     conf.Genesis,
+		subscriptions: make(map[int]chan Block),
 		delays:        make(map[int]bool),
+		done:          make(chan struct{}),
 	}
+}
+
+func (bb *BlockBroadcaster) Subscribe(delay bool) (int, chan Block) {
+	bb.mu.Lock()
+	defer bb.mu.Unlock()
+
+	bb.subCount++
+	bb.activeSubs++
+	bb.subscriptions[bb.subCount] = make(chan Block)
+	bb.delays[bb.subCount] = delay
+
+	return bb.subCount, bb.subscriptions[bb.subCount]
+}
+
+func (bb *BlockBroadcaster) Unsubscribe(subscriptionId int) {
+	bb.mu.Lock()
+	defer bb.mu.Unlock()
+
+	sub, ok := bb.subscriptions[subscriptionId]
+	if ok {
+		bb.activeSubs--
+		close(sub)
+	}
+
+	delete(bb.subscriptions, subscriptionId)
+	delete(bb.delays, subscriptionId)
+}
+
+func (bb *BlockBroadcaster) Start() chan struct{} {
+	bb.start.Do(func() {
+		go bb.run()
+	})
+
+	return bb.done
+}
+
+func (bb *BlockBroadcaster) Stop() {
+	bb.mu.Lock()
+	defer bb.mu.Unlock()
+
+	close(bb.done)
 }
 
 func (bb *BlockBroadcaster) run() {
@@ -62,13 +110,15 @@ func (bb *BlockBroadcaster) run() {
 			bb.mu.Lock()
 			bb.nextBlock = new(big.Int).Add(bb.nextBlock, big.NewInt(1))
 			bb.mu.Unlock()
-			log.Printf("next block: %s", bb.nextBlock)
+
+			bb.logger.Printf("next block: %s", bb.nextBlock)
 
 			if bb.nextBlock.Cmp(bb.limit) > 0 {
 				bb.done <- struct{}{}
 			} else {
 				bb.broadcast()
 			}
+
 			timer.Reset(bb.cadenceWithJitter())
 		case <-bb.done:
 			timer.Stop()
@@ -91,25 +141,23 @@ func (bb *BlockBroadcaster) cadenceWithJitter() time.Duration {
 }
 
 func (bb *BlockBroadcaster) broadcast() {
-	msg := config.SymBlock{
-		BlockNumber: new(big.Int),
+	msg := Block{
+		Number: new(big.Int).Set(bb.nextBlock),
 	}
 
-	*msg.BlockNumber = *bb.nextBlock
-
 	for _, loader := range bb.loaders {
-		loader.Load(&msg)
+		loader(&msg)
 	}
 
 	for sub, chSub := range bb.subscriptions {
-		go func(ch chan config.SymBlock, delay bool) {
+		go func(ch chan Block, delay bool) {
 			defer func() {
 				if err := recover(); err != nil {
 					log.Println(err)
 				}
 			}()
 
-			if delay {
+			if delay && bb.maxDelay > 0 {
 				// add up to a 2 second delay at random
 				r := rand.Intn(bb.maxDelay)
 				<-time.After(time.Duration(int64(r)) * time.Millisecond)
@@ -117,42 +165,4 @@ func (bb *BlockBroadcaster) broadcast() {
 			ch <- msg
 		}(chSub, bb.delays[sub])
 	}
-}
-
-func (bb *BlockBroadcaster) Subscribe(delay bool) (int, chan config.SymBlock) {
-	bb.mu.Lock()
-	defer bb.mu.Unlock()
-
-	bb.subCount++
-	bb.activeSubs++
-	bb.subscriptions[bb.subCount] = make(chan config.SymBlock)
-	bb.delays[bb.subCount] = delay
-	return bb.subCount, bb.subscriptions[bb.subCount]
-}
-
-func (bb *BlockBroadcaster) Unsubscribe(subscriptionId int) {
-	bb.mu.Lock()
-	defer bb.mu.Unlock()
-
-	sub, ok := bb.subscriptions[subscriptionId]
-	if ok {
-		bb.activeSubs--
-		close(sub)
-	}
-	delete(bb.subscriptions, subscriptionId)
-	delete(bb.delays, subscriptionId)
-}
-
-func (bb *BlockBroadcaster) Start() chan struct{} {
-	bb.start.Do(func() {
-		go bb.run()
-	})
-	return bb.done
-}
-
-func (bb *BlockBroadcaster) Stop() {
-	bb.mu.Lock()
-	defer bb.mu.Unlock()
-
-	close(bb.done)
 }

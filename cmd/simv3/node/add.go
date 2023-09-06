@@ -12,12 +12,12 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	simio "github.com/smartcontractkit/ocr2keepers/cmd/simv3/io"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator"
 	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulators"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
 )
 
@@ -68,38 +68,9 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 		gLogger = log.New(io.Discard, "[general] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 	}
 
-	ct := simulators.NewSimulatedContract(
-		g.blockSrc,
-		g.digester,
-		g.upkeeps,
-		g.encoder,
-		g.transmitter,
-		g.rpcConf.AverageLatency,
-		onchainRing.PKString(),
-		g.rpcConf.ErrorRate,
-		g.rpcConf.RateLimitThreshold,
-		ctrTel.ContractEventCollectorNode(net.PeerID()),
-		rpcTel.RPCCollectorNode(net.PeerID()),
-		cLogger)
-	db := simulators.NewSimulatedDatabase()
-
-	runr, _ := runner.NewRunner(
-		gLogger,
-		ct,
-		runner.RunnerConfig{
-			Workers:           maxWorkers,
-			WorkerQueueLength: maxQueueSize,
-			CacheExpire:       pluginconfig.DefaultCacheExpiration,
-			CacheClean:        pluginconfig.DefaultCacheClearInterval,
-		},
-	)
-
 	dConfig := plugin.DelegateConfig{
 		BinaryNetworkEndpointFactory: net,
 		V2Bootstrappers:              []commontypes.BootstrapperLocator{},
-		ContractConfigTracker:        ct,
-		ContractTransmitter:          ct,
-		KeepersDatabase:              db,
 		LocalConfig: types.LocalConfig{
 			BlockchainTimeout:                  time.Second,
 			ContractConfigConfirmations:        1,
@@ -109,10 +80,6 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 			DatabaseTimeout:                    time.Second,
 			DevelopmentMode:                    "",
 		},
-		LogProvider:            ct,
-		EventProvider:          ct,
-		Runnable:               runr,
-		Encoder:                g.encoder,
 		Logger:                 slogger,
 		MonitoringEndpoint:     g.monitor,
 		OffchainConfigDigester: g.digester,
@@ -122,20 +89,33 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 		ServiceQueueLength:     maxQueueSize,
 	}
 
+	_ = simulator.HydrateConfig(net.PeerID(), &dConfig, g.blockSrc, g.transmitter, cLogger)
+
+	runr, _ := runner.NewRunner(
+		gLogger,
+		dConfig.Runnable,
+		runner.RunnerConfig{
+			Workers:           maxWorkers,
+			WorkerQueueLength: maxQueueSize,
+			CacheExpire:       pluginconfig.DefaultCacheExpiration,
+			CacheClean:        pluginconfig.DefaultCacheClearInterval,
+		},
+	)
+
+	dConfig.Runnable = runr
+
 	service, err := plugin.NewDelegate(dConfig)
 	if err != nil {
 		panic(err)
 	}
 
 	g.nodes[net.PeerID()] = &Simulator{
-		Service:  service,
-		Contract: ct,
+		Service: service,
 	}
 
 	g.logger.Println("starting new node")
 
 	_ = service.Start(context.Background())
-	ct.Start()
 
 	g.confLoader.AddSigner(net.PeerID(), onchainRing, offchainRing)
 }
@@ -162,7 +142,6 @@ func (g *Group) Start(ctx context.Context, count int, maxWorkers int, maxQueueSi
 		if err := node.Service.Close(); err != nil {
 			log.Printf("error encountered while attempting to close down node '%s': %s", id, err)
 		}
-		node.Contract.Stop()
 	}
 
 	for _, col := range g.collectors {

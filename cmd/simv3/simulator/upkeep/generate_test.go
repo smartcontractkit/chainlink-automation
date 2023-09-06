@@ -1,4 +1,4 @@
-package simulators
+package upkeep
 
 import (
 	"math/big"
@@ -6,10 +6,11 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateSimulatedUpkeeps(t *testing.T) {
+func TestGenerateConditionals(t *testing.T) {
 	rb := config.RunBook{
 		BlockCadence: config.Blocks{
 			Genesis:  big.NewInt(128_943_862),
@@ -20,13 +21,13 @@ func TestGenerateSimulatedUpkeeps(t *testing.T) {
 		},
 	}
 
-	gu, err := GenerateSimulatedUpkeeps(rb)
+	gu, err := GenerateConditionals(rb)
 	assert.NoError(t, err)
 	assert.Len(t, gu, 15)
 }
 
 func TestGenerateEligibles(t *testing.T) {
-	up := SimulatedUpkeep{}
+	up := chain.SimulatedUpkeep{}
 	err := generateEligibles(&up, big.NewInt(9), big.NewInt(50), "4x + 5")
 	expected := []int64{14, 18, 22, 26, 30, 34, 38, 42, 46}
 

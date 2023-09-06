@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/node"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/run"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulators"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
 )
 
@@ -61,27 +61,20 @@ func main() {
 
 	// ----- create simulated upkeeps from runbook
 	procLog.Println("generating simulated upkeeps ...")
-	upkeeps, err := simulators.GenerateSimulatedUpkeeps(rb)
+	upkeeps, err := upkeep.GenerateConditionals(rb)
 	if err != nil {
 		procLog.Printf("failed to generate simulated upkeeps: %s", err)
 		os.Exit(1)
 	}
 
-	// generic report encoder for testing evm encoding/decoding
-	enc := fullEncoder{}
-
 	ngConf := node.GroupConfig{
+		Runbook: rb,
 		// Digester is a generic offchain digester
 		Digester: evmutil.EVMOffchainConfigDigester{
 			ChainID:         1,
 			ContractAddress: common.BigToAddress(big.NewInt(12)),
 		},
-		Cadence:       rb.BlockCadence,
-		Encoder:       enc,
-		Upkeeps:       upkeeps,
-		ConfigEvents:  rb.ConfigEvents,
-		RPCConfig:     rb.RPCDetail,
-		AvgNetLatency: rb.AvgNetworkLatency.Value(),
+		Upkeeps: upkeeps,
 		Collectors: []telemetry.Collector{
 			outputs.RPCCollector,
 			outputs.LogCollector,
@@ -130,8 +123,4 @@ func main() {
 
 	cancel()
 	wg.Wait()
-}
-
-type fullEncoder struct {
-	simulators.SimulatedReportEncoder
 }

@@ -1,4 +1,4 @@
-package simulators
+package util
 
 import (
 	"crypto/rand"
@@ -7,7 +7,7 @@ import (
 
 type cryptoRandSource struct{}
 
-func newCryptoRandSource() cryptoRandSource {
+func NewCryptoRandSource() cryptoRandSource {
 	return cryptoRandSource{}
 }
 
