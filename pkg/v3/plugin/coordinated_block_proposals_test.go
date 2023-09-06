@@ -798,7 +798,7 @@ func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 							BlockNumber: 3,
 							BlockHash:   [32]byte{3},
 							LogTriggerExtension: &types.LogTriggerExtension{
-								BlockHash:   [32]byte{},
+								BlockHash:   [32]byte{2},
 								BlockNumber: 0,
 							},
 						},
@@ -810,7 +810,7 @@ func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 							BlockNumber: 3,
 							BlockHash:   [32]byte{3},
 							LogTriggerExtension: &types.LogTriggerExtension{
-								BlockHash:   [32]byte{},
+								BlockHash:   [32]byte{2},
 								BlockNumber: 0,
 							},
 						},
@@ -914,7 +914,7 @@ func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 							BlockNumber: 3,
 							BlockHash:   [32]byte{3},
 							LogTriggerExtension: &types.LogTriggerExtension{
-								BlockHash:   [32]byte{},
+								BlockHash:   [32]byte{2},
 								BlockNumber: 0,
 							},
 						},
