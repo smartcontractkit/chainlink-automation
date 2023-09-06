@@ -4,8 +4,8 @@ import (
 	"log"
 	"sort"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -79,7 +79,7 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 
 	// Sort by a shuffled workID.
 	sort.Slice(performable, func(i, j int) bool {
-		return util.ShuffleString(performable[i].WorkID, p.keyRandSource) < util.ShuffleString(performable[j].WorkID, p.keyRandSource)
+		return random.ShuffleString(performable[i].WorkID, p.keyRandSource) < random.ShuffleString(performable[j].WorkID, p.keyRandSource)
 	})
 
 	if len(performable) > p.limit {

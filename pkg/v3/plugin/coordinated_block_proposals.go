@@ -4,8 +4,8 @@ import (
 	"log"
 	"sort"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -120,7 +120,7 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 
 	// Sort by a shuffled workID.
 	sort.Slice(latestProposals, func(i, j int) bool {
-		return util.ShuffleString(latestProposals[i].WorkID, c.keyRandSource) < util.ShuffleString(latestProposals[j].WorkID, c.keyRandSource)
+		return random.ShuffleString(latestProposals[i].WorkID, c.keyRandSource) < random.ShuffleString(latestProposals[j].WorkID, c.keyRandSource)
 	})
 	if len(latestProposals) > c.perRoundLimit {
 		c.logger.Printf("Limiting new proposals in outcome to %d", c.perRoundLimit)

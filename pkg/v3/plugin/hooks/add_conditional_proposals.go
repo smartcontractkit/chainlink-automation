@@ -5,8 +5,8 @@ import (
 	"log"
 	"math/rand"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -36,7 +36,7 @@ func (h *AddConditionalProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObser
 
 	// Do random shuffling. Sorting isn't done here as we don't require multiple nodes
 	// to agree on the same proposal, hence each node just sends a random subset of its proposals
-	rand.New(util.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(conditionals), func(i, j int) {
+	rand.New(random.NewKeyedCryptoRandSource(rSrc)).Shuffle(len(conditionals), func(i, j int) {
 		conditionals[i], conditionals[j] = conditionals[j], conditionals[i]
 	})
 

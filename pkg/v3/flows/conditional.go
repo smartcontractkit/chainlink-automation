@@ -6,10 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
 	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/preprocessors"
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/tickers"
@@ -19,6 +19,8 @@ import (
 const (
 	// This is the ticker interval for sampling conditional flow
 	SamplingConditionInterval = 3 * time.Second
+	// Maximum number of upkeeps to be sampled in every round
+	MaxSampledConditionals = 300
 	// This is the ticker interval for final conditional flow
 	FinalConditionalInterval = 1 * time.Second
 	// These are the maximum number of conditional upkeeps dequeued on every tick from proposal queue in FinalConditionalFlow
@@ -60,7 +62,7 @@ func NewSampler(
 		logger:   logger,
 		getter:   getter,
 		ratio:    ratio,
-		shuffler: util.Shuffler[ocr2keepers.UpkeepPayload]{Source: util.NewCryptoRandSource()},
+		shuffler: random.Shuffler[ocr2keepers.UpkeepPayload]{Source: random.NewCryptoRandSource()},
 	}
 }
 
@@ -90,6 +92,10 @@ func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 
 	if size <= 0 {
 		return nil, nil
+	}
+	if size > MaxSampledConditionals {
+		s.logger.Printf("Required sample size %d exceeds max allowed conditional samples %d, limiting to max", size, MaxSampledConditionals)
+		size = MaxSampledConditionals
 	}
 	if len(upkeeps) < size {
 		size = len(upkeeps)
