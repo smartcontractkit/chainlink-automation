@@ -60,12 +60,10 @@ type LogTriggerExtension struct {
 	// Index is the index of the log event in the transaction
 	Index uint32
 	// BlockHash is the block hash in which the event occurred
-	// NOTE: This field might be empty. If relying on this field check
-	// it is non empty, if it's empty derive from txHash
 	BlockHash [32]byte
 	// BlockNumber is the block number in which the event occurred
 	// NOTE: This field might be empty. If relying on this field check
-	// it is non empty, if it's empty derive from txHash
+	// it is non empty, if it's empty derive from BlockHash
 	BlockNumber BlockNumber
 }
 
@@ -75,6 +73,7 @@ func (e LogTriggerExtension) LogIdentifier() []byte {
 	indexBytes := make([]byte, 4) // uint32 is 4 bytes
 	binary.BigEndian.PutUint32(indexBytes, e.Index)
 	return bytes.Join([][]byte{
+		e.BlockHash[:],
 		e.TxHash[:],
 		indexBytes,
 	}, []byte{})
