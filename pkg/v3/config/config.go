@@ -37,10 +37,6 @@ type ReportingFactoryConfig struct {
 // out of sync and nodes should be compatible with each other during the upgrade
 // Please ensure to get a proper review along with an upgrade plan before changing this
 type OffchainConfig struct {
-	// Version is used by the plugin to switch feature sets based on the intent
-	// of the off-chain config
-	Version string `json:"version"`
-
 	// PerformLockoutWindow is the window in which a single upkeep cannot be
 	// performed again while waiting for a confirmation. Standard setting is
 	// 100 blocks * average block time. Units are in milliseconds
