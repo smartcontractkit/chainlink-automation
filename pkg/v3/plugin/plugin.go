@@ -107,7 +107,7 @@ func newPlugin(
 	recoverSvcs := []service.Recoverable{}
 
 	for i := range allSvcs {
-		recoverSvcs = append(recoverSvcs, service.NewRecoverer(allSvcs[i], logger))
+		recoverSvcs = append(recoverSvcs, service.NewServiceRecoverer(allSvcs[i], logger))
 	}
 
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
