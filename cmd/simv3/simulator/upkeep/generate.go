@@ -93,7 +93,7 @@ func generateEligibles(upkeep *chain.SimulatedUpkeep, genesis *big.Int, limit *b
 		tokens := p.GetTokens()
 
 		for nextValue.Cmp(limit) < 0 {
-			if nextValue.Int64() > 0 {
+			if nextValue.Cmp(genesis) >= 0 {
 				upkeep.EligibleAt = append(upkeep.EligibleAt, nextValue)
 			}
 
