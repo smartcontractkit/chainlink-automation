@@ -80,7 +80,7 @@ func main() {
 			outputs.LogCollector,
 			outputs.EventCollector,
 		},
-		Logger: procLog,
+		Logger: outputs.SimulationLog,
 	}
 	ng := node.NewGroup(ngConf)
 

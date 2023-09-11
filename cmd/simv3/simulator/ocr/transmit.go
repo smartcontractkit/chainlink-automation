@@ -1,12 +1,13 @@
 package ocr
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/gob"
 	"fmt"
 	"log"
-	"math/big"
 	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
@@ -18,23 +19,21 @@ import (
 )
 
 type OCR3TransmitLoader struct {
+	// provided dependencies
+	logger *log.Logger
+
 	// internal state values
 	mu          sync.RWMutex
-	queue       []chain.TransmitEvent
-	transmitted map[string]chain.TransmitEvent
+	queue       []*chain.TransmitEvent
+	transmitted map[string]*chain.TransmitEvent
 }
 
 // NewOCR3TransmitLoader ...
-func NewOCR3TransmitLoader(rb config.RunBook, logger *log.Logger) *OCR3TransmitLoader {
-	eventLookup := make(map[*big.Int]config.ConfigEvent)
-
-	for _, event := range rb.ConfigEvents {
-		eventLookup[event.Block] = event
-	}
-
+func NewOCR3TransmitLoader(_ config.RunBook, logger *log.Logger) *OCR3TransmitLoader {
 	return &OCR3TransmitLoader{
-		queue:       make([]chain.TransmitEvent, 0),
-		transmitted: make(map[string]chain.TransmitEvent),
+		logger:      log.New(logger.Writer(), "[ocr3-transmit-loader] ", log.Ldate|log.Ltime|log.Lshortfile),
+		queue:       make([]*chain.TransmitEvent, 0),
+		transmitted: make(map[string]*chain.TransmitEvent),
 	}
 }
 
@@ -48,13 +47,14 @@ func (tl *OCR3TransmitLoader) Load(block *chain.Block) {
 
 	transmits := make([]chain.TransmitEvent, len(tl.queue))
 
-	copy(transmits, tl.queue)
+	for i := range tl.queue {
+		tl.queue[i].BlockNumber = block.Number
+		tl.queue[i].BlockHash = block.Hash
 
-	tl.queue = []chain.TransmitEvent{}
-
-	for _, r := range tl.queue {
-		r.InBlock = block.Number.String()
+		transmits = append(transmits, *tl.queue[i])
 	}
+
+	tl.queue = []*chain.TransmitEvent{}
 
 	block.Transactions = append(block.Transactions, chain.PerformUpkeepTransaction{
 		Transmits: transmits,
@@ -65,22 +65,35 @@ func (tl *OCR3TransmitLoader) Transmit(from string, reportBytes []byte, round ui
 	tl.mu.Lock()
 	defer tl.mu.Unlock()
 
-	reportHash := hash(reportBytes)
+	report := chain.TransmitEvent{
+		Report: reportBytes,
+		Round:  round,
+	}
 
-	if _, ok := tl.transmitted[reportHash]; ok {
+	var idHashBts bytes.Buffer
+	if err := gob.NewEncoder(&idHashBts).Encode(report); err != nil {
+		return err
+	}
+
+	transmitKey := hash(idHashBts.Bytes())
+
+	report.SendingAddress = from
+
+	var bts bytes.Buffer
+	if err := gob.NewEncoder(&bts).Encode(report); err != nil {
+		return err
+	}
+
+	report.Hash = hash(bts.Bytes())
+
+	if _, ok := tl.transmitted[transmitKey]; ok {
 		return fmt.Errorf("report already transmitted")
 	}
 
-	report := chain.TransmitEvent{
-		InBlock:        "0",
-		SendingAddress: from,
-		Report:         reportBytes,
-		Hash:           reportHash,
-		Round:          round,
-	}
+	tl.logger.Printf("transmit sent from %s in round %d", from, round)
 
-	tl.queue = append(tl.queue, report)
-	tl.transmitted[reportHash] = report
+	tl.queue = append(tl.queue, &report)
+	tl.transmitted[transmitKey] = &report
 
 	return nil
 }
@@ -91,8 +104,10 @@ func (tl *OCR3TransmitLoader) Results() []chain.TransmitEvent {
 
 	events := []chain.TransmitEvent{}
 	for _, r := range tl.transmitted {
-		events = append(events, r)
+		events = append(events, *r)
 	}
+
+	tl.logger.Printf("%d transmits returned in final results", len(events))
 
 	return events
 }

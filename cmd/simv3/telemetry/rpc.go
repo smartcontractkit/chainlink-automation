@@ -275,7 +275,7 @@ type WrappedRPCCollector struct {
 	calls []rpcDataPoint
 }
 
-func (wc *WrappedRPCCollector) RegisterCall(name string, latency time.Duration, err error) {
+func (wc *WrappedRPCCollector) Register(name string, latency time.Duration, err error) {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 

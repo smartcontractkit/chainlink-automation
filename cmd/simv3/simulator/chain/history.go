@@ -101,13 +101,10 @@ func (ht *BlockHistoryTracker) broadcast() {
 	keys := ht.history.Keys(DefaultHistoryDepth)
 	for _, key := range keys {
 		block, _ := ht.history.Get(key)
-		hBlock := [32]byte{}
-
-		copy(hBlock[:], block.Hash)
 
 		history = append(history, ocr2keepers.BlockKey{
 			Number: ocr2keepers.BlockNumber(block.Number.Uint64()),
-			Hash:   hBlock,
+			Hash:   block.Hash,
 		})
 	}
 

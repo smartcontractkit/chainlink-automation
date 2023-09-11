@@ -1,7 +1,6 @@
 package upkeep
 
 import (
-	"math/big"
 	"sync"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
@@ -14,7 +13,7 @@ import (
 type UpkeepConfigLoader struct {
 	mu           sync.RWMutex
 	conditionals []chain.SimulatedUpkeep
-	events       map[*big.Int][]interface{}
+	events       map[string][]interface{}
 }
 
 // NewUpkeepConfigLoader ...
@@ -35,11 +34,16 @@ func NewUpkeepConfigLoader(rb config.RunBook) (*UpkeepConfigLoader, error) {
 	// TODO: create more event types (create, cancel, pause, etc)
 	// the only currently supported type is create and will create on the genesis
 	// block
-	events := make(map[*big.Int][]interface{})
+	events := make(map[string][]interface{})
 	for _, upkeep := range allUpkeeps {
-		events[rb.BlockCadence.Genesis] = []interface{}{chain.UpkeepCreatedTransaction{
+		evts, ok := events[rb.BlockCadence.Genesis.String()]
+		if !ok {
+			evts = []interface{}{}
+		}
+
+		events[rb.BlockCadence.Genesis.String()] = append(evts, chain.UpkeepCreatedTransaction{
 			Upkeep: upkeep,
-		}}
+		})
 	}
 
 	return &UpkeepConfigLoader{
@@ -54,7 +58,7 @@ func (ucl *UpkeepConfigLoader) Load(block *chain.Block) {
 	ucl.mu.RLock()
 	defer ucl.mu.RUnlock()
 
-	if events, ok := ucl.events[block.Number]; ok {
+	if events, ok := ucl.events[block.Number.String()]; ok {
 		block.Transactions = append(block.Transactions, events...)
 	}
 }
@@ -62,7 +66,7 @@ func (ucl *UpkeepConfigLoader) Load(block *chain.Block) {
 // LogTriggerLoader ...
 type LogTriggerLoader struct {
 	mu       sync.RWMutex
-	triggers map[*big.Int][]interface{}
+	triggers map[string][]interface{}
 }
 
 // NewLogTriggerLoader ...
@@ -72,15 +76,15 @@ func NewLogTriggerLoader(rb config.RunBook) (*LogTriggerLoader, error) {
 		return nil, err
 	}
 
-	events := make(map[*big.Int][]interface{})
+	events := make(map[string][]interface{})
 	for _, logEvt := range logs {
 		for _, trigger := range logEvt.TriggerAt {
-			existing, ok := events[trigger]
+			existing, ok := events[trigger.String()]
 			if !ok {
 				existing = []interface{}{}
 			}
 
-			events[trigger] = append(existing, chain.Log{
+			events[trigger.String()] = append(existing, chain.Log{
 				TriggerValue: logEvt.TriggerValue,
 			})
 		}
@@ -97,7 +101,7 @@ func (ltl *LogTriggerLoader) Load(block *chain.Block) {
 	ltl.mu.RLock()
 	defer ltl.mu.RUnlock()
 
-	if events, ok := ltl.triggers[block.Number]; ok {
+	if events, ok := ltl.triggers[block.Number.String()]; ok {
 		block.Transactions = append(block.Transactions, events...)
 	}
 }

@@ -25,6 +25,7 @@ type GroupConfig struct {
 }
 
 type Group struct {
+	conf        config.RunBook
 	nodes       map[string]*Simulator
 	network     *net.SimulatedNetwork
 	digester    types.OffchainConfigDigester
@@ -33,7 +34,6 @@ type Group struct {
 	confLoader  *ocr.OCR3ConfigLoader
 	upkeeps     []chain.SimulatedUpkeep
 	monitor     commontypes.MonitoringEndpoint
-	rpcConf     config.RPC
 	collectors  []telemetry.Collector
 	logger      *log.Logger
 }
@@ -63,6 +63,7 @@ func NewGroup(conf GroupConfig) *Group {
 	}
 
 	return &Group{
+		conf:        conf.Runbook,
 		nodes:       make(map[string]*Simulator),
 		network:     net.NewSimulatedNetwork(conf.Runbook.AvgNetworkLatency.Value()),
 		digester:    conf.Digester,
@@ -71,7 +72,6 @@ func NewGroup(conf GroupConfig) *Group {
 		confLoader:  lOCR3Config,
 		upkeeps:     conf.Upkeeps,
 		monitor:     monitor,
-		rpcConf:     conf.Runbook.RPCDetail,
 		collectors:  conf.Collectors,
 		logger:      conf.Logger,
 	}

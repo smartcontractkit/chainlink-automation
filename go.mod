@@ -12,6 +12,7 @@ require (
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/go-echarts/go-echarts/v2 v2.2.6
 	github.com/google/uuid v1.3.0
+	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/smartcontractkit/libocr v0.0.0-20230816220705-665e93233ae5
@@ -35,8 +36,10 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/stretchr/objx v0.5.0 // indirect

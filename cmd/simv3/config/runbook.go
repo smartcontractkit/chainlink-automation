@@ -70,24 +70,26 @@ type ConfigEvent struct {
 	// Offchain is the json encoded off chain config data
 	Offchain string `json:"offchainConfigJSON"`
 	// Rmax is the maximum number of rounds in an epoch
-	Rmax uint8 `json:"maxRoundsPerEpoch"`
+	Rmax uint64 `json:"maxRoundsPerEpoch"`
 	// DeltaProgress is the OCR setting for round leader progress before forcing
 	// a new epoch and leader
 	DeltaProgress Duration `json:"deltaProgress"`
 	// DeltaResend ...
 	DeltaResend Duration `json:"deltaResend"`
+	// DeltaInitial ...
+	DeltaInitial Duration `json:"deltaInitial"`
 	// DeltaRound is the approximate time a round should complete in
 	DeltaRound Duration `json:"deltaRound"`
 	// DeltaGrace ...
 	DeltaGrace Duration `json:"deltaGrace"`
+	// DeltaRequest ...
+	DeltaRequest Duration `json:"deltaCertifiedCommitRequest"`
 	// DeltaStage is the time OCR waits before attempting a followup transmit
 	DeltaStage Duration `json:"deltaStage"`
 	// MaxQuery ...
 	MaxQuery Duration `json:"maxQueryTime"`
 	// MaxObservation is the maximum amount of time to provide observation to complete
 	MaxObservation Duration `json:"maxObservationTime"`
-	// MaxReport is the maximum amount of time to provide report to complete
-	MaxReport Duration `json:"maxReportTime"`
 	// MaxAccept ...
 	MaxAccept Duration `json:"maxShouldAcceptTime"`
 	// MaxTransmit ...

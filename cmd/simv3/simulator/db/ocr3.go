@@ -53,7 +53,7 @@ func (d *SimulatedOCR3Database) ReadProtocolState(ctx context.Context, configDig
 	// might need to check against latest config digest or scope to digest
 	val, ok := d.protoState[key]
 	if !ok {
-		return nil, fmt.Errorf("state not found for key: %s", key)
+		return nil, nil
 	}
 
 	return val, nil

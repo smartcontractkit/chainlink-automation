@@ -1,6 +1,9 @@
 package chain
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
 	"log"
 	"math"
 	"math/big"
@@ -148,6 +151,12 @@ func (bb *BlockBroadcaster) broadcast() {
 	for _, loader := range bb.loaders {
 		loader(&msg)
 	}
+
+	// do a hash of total block
+	var bts bytes.Buffer
+	_ = gob.NewEncoder(&bts).Encode(msg)
+
+	msg.Hash = sha256.Sum256(bts.Bytes())
 
 	for sub, chSub := range bb.subscriptions {
 		go func(ch chan Block, delay bool) {

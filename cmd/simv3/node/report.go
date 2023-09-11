@@ -6,9 +6,38 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/util"
 )
+
+func (g *Group) WriteTransmitChart() {
+	tw := table.NewWriter()
+	tw.SetTitle("Transmitted Results")
+	tw.AppendHeader(table.Row{"Block Number", "Round", "Sender", "Upkeep ID", "Check Block"})
+
+	transmits := g.transmitter.Results()
+
+	for _, transmit := range transmits {
+		report, _ := util.DecodeCheckResultsFromReportBytes(transmit.Report)
+		for _, result := range report {
+			tw.AppendRow(
+				table.Row{
+					transmit.BlockNumber.String(),
+					transmit.Round,
+					shorten(transmit.SendingAddress, 5),
+					shorten(result.UpkeepID.String(), 8),
+					result.Trigger.BlockNumber,
+				})
+		}
+	}
+
+	fmt.Fprint(g.logger.Writer(), tw.Render())
+	// the render function does not put a newline after the chart
+	fmt.Fprint(g.logger.Writer(), "\n\n")
+}
 
 func (g *Group) ReportResults() {
 	var keyIDLookup map[string][]string
@@ -72,18 +101,18 @@ func (g *Group) ReportResults() {
 		}
 
 		if stats.Missed != 0 {
-			g.logger.Printf("%s was missed %d times", id, stats.Missed)
-			g.logger.Printf("%s was eligible at %s", id, strings.Join(ub.Eligibles(id), ", "))
+			g.logger.Printf("%s was missed %d times", shorten(id, 8), stats.Missed)
+			g.logger.Printf("%s was eligible at %s", shorten(id, 8), strings.Join(ub.Eligibles(id), ", "))
 
 			by := []string{}
 			for _, tr := range ub.TransmitEvents(id) {
-				v := fmt.Sprintf("[address=%s, round=%d, block=%s]", tr.SendingAddress, tr.Round, tr.InBlock)
+				v := fmt.Sprintf("[address=%s, round=%d, block=%s]", shorten(tr.SendingAddress, 5), tr.Round, tr.BlockNumber)
 				by = append(by, v)
 			}
-			g.logger.Printf("%s transactions %s", id, strings.Join(by, ", "))
+			g.logger.Printf("%s transactions %s", shorten(id, 8), strings.Join(by, ", "))
 
 			if checked {
-				g.logger.Printf("%s was checked at %s", id, strings.Join(checks, ", "))
+				g.logger.Printf("%s was checked at %s", shorten(id, 8), strings.Join(checks, ", "))
 			}
 		}
 	}
@@ -154,4 +183,14 @@ func (g *Group) ReportResults() {
 	g.logger.Printf("total performs in a transaction: %d", totalPerforms)
 	g.logger.Printf("total confirmed misses: %d", totalMisses)
 	g.logger.Println("================ end ================")
+}
+
+func shorten(full string, outLen int) string {
+	rFull := []rune(full)
+
+	if len(rFull) < outLen {
+		return full
+	}
+
+	return string(rFull[:outLen])
 }

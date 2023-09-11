@@ -4,25 +4,53 @@ import (
 	"context"
 	"log"
 	"math/big"
+	"sync"
 
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/net"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
+type CheckTelemetry interface {
+	CheckID(string, uint64, [32]byte)
+}
+
 type CheckPipeline struct {
 	// provided dependencies
-	listener *chain.Listener
-	active   *ActiveTracker
-	logger   *log.Logger
+	listener       *chain.Listener
+	active         *ActiveTracker
+	performs       *PerformTracker
+	rpc            *net.SimulatedNetworkService
+	checkTelemetry CheckTelemetry
+	logger         *log.Logger
 }
 
 // TODO: provide upkeep configurations to this component
 // NewCheckPipeline ...
-func NewCheckPipeline(listener *chain.Listener, active *ActiveTracker, logger *log.Logger) *CheckPipeline {
+func NewCheckPipeline(
+	conf config.RunBook,
+	listener *chain.Listener,
+	active *ActiveTracker,
+	performs *PerformTracker,
+	netTelemetry net.NetTelemetry,
+	conTelemetry CheckTelemetry,
+	logger *log.Logger,
+) *CheckPipeline {
+	service := net.NewSimulatedNetworkService(
+		conf.RPCDetail.ErrorRate,
+		conf.RPCDetail.RateLimitThreshold,
+		conf.RPCDetail.AverageLatency,
+		netTelemetry,
+	)
+
 	return &CheckPipeline{
-		listener: listener,
-		active:   active,
-		logger:   logger,
+		listener:       listener,
+		active:         active,
+		performs:       performs,
+		rpc:            service,
+		checkTelemetry: conTelemetry,
+		logger:         log.New(logger.Writer(), "[check-pipeline] ", log.Ldate|log.Ltime|log.Lshortfile),
 	}
 }
 
@@ -31,6 +59,7 @@ func NewCheckPipeline(listener *chain.Listener, active *ActiveTracker, logger *l
 // is eligible or retryable based on pipeline return cases. Multiple assumptions
 // are made within this simulation and any changes to the production pipeline
 // should be reflected here.
+/*
 func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	results := make([]ocr2keepers.CheckResult, len(payloads))
 
@@ -64,68 +93,47 @@ func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepe
 
 	return results, nil
 }
+*/
 
-/*
-
-
-func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-	ct.mu.RLock()
-	defer ct.mu.RUnlock()
-
+func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	var (
 		mErr    error
 		wg      sync.WaitGroup
 		results = make([]ocr2keepers.CheckResult, len(payloads))
 	)
 
-	for i, payload := range payloads {
+	for idx, payload := range payloads {
 		wg.Add(1)
-		go func(i int, key ocr2keepers.UpkeepPayload, en ocr2keepers.Encoder) {
+		go func(resultIdx int, key ocr2keepers.UpkeepPayload) {
 			defer wg.Done()
 
 			block := new(big.Int).SetInt64(int64(key.Trigger.BlockNumber))
+			performs := cp.performs.PerformsForUpkeepID(key.UpkeepID.String())
 
-			up, ok := ct.upkeeps[key.UpkeepID.String()]
-			if !ok {
-				mErr = multierr.Append(mErr, fmt.Errorf("upkeep not registered"))
-				return
+			cp.checkTelemetry.CheckID(key.UpkeepID.String(), uint64(key.Trigger.BlockNumber), key.Trigger.BlockHash)
+
+			results[resultIdx] = ocr2keepers.CheckResult{
+				PipelineExecutionState: 0,
+				Retryable:              false,
+				Eligible:               false,
+				IneligibilityReason:    0,
+				UpkeepID:               key.UpkeepID,
+				Trigger:                key.Trigger,
+				WorkID:                 key.WorkID,
+				GasAllocated:           5_000_000, // TODO: make this configurable
+				PerformData:            []byte{},  // TODO: add perform data from configuration
+				FastGasWei:             big.NewInt(1_000_000),
+				LinkNative:             big.NewInt(1_000_000),
 			}
 
-			results[i] = ocr2keepers.CheckResult{
-				Eligible:     false,
-				Retryable:    false,
-				GasAllocated: 5_000_000, // TODO: make this configurable
-				UpkeepID:     key.UpkeepID,
-				Trigger:      key.Trigger,
-				PerformData:  []byte{}, // TODO: add perform data from configuration
+			if simulated, ok := cp.active.GetByUpkeepID(key.UpkeepID); ok {
+				results[resultIdx].Eligible = isConditionalEligible(simulated.EligibleAt, performs, block)
+
+				cp.logger.Printf("%s eligibility %t at block %d", key.UpkeepID, results[resultIdx].Eligible, block)
+			} else {
+				cp.logger.Printf("%s is not active", key.UpkeepID)
 			}
-
-			// start at the highest blocks eligible. the first eligible will be a block
-			// lower than the current
-			for j := len(up.EligibleAt) - 1; j >= 0; j-- {
-				e := up.EligibleAt[j]
-
-				if block.Cmp(e) >= 0 {
-					results[i].Eligible = true
-
-					// check that upkeep has not been recently performed between two
-					// points of eligibility
-					// is there a log between eligible and block
-					var t int64
-					diff := new(big.Int).Sub(block, e).Int64()
-					for t = 0; t <= diff; t++ {
-						c := new(big.Int).Add(e, big.NewInt(t))
-						_, ok := up.Performs[c.String()]
-						if ok {
-							results[i].Eligible = false
-							return
-						}
-					}
-
-					return
-				}
-			}
-		}(i, payload, ct.enc)
+		}(idx, payload)
 	}
 
 	wg.Wait()
@@ -135,13 +143,13 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 	}
 
 	// call to CheckUpkeep
-	err := <-ct.rpc.Call(ctx, "checkUpkeep")
+	err := <-cp.rpc.Call(ctx, "checkUpkeep")
 	if err != nil {
 		return nil, err
 	}
 
 	// call to SimulatePerform
-	err = <-ct.rpc.Call(ctx, "simulatePerform")
+	err = <-cp.rpc.Call(ctx, "simulatePerform")
 	if err != nil {
 		return nil, err
 	}
@@ -151,4 +159,34 @@ func (ct *SimulatedContract) CheckUpkeeps(ctx context.Context, payloads ...ocr2k
 
 	return output, nil
 }
-*/
+
+func isConditionalEligible(eligibles, performs []*big.Int, block *big.Int) bool {
+	var eligible bool
+
+	// start at the highest blocks eligible. the first eligible will be a block
+	// lower than the current
+	for eligibleIdx := len(eligibles) - 1; eligibleIdx >= 0; eligibleIdx-- {
+		eligibleBlock := eligibles[eligibleIdx]
+
+		if block.Cmp(eligibleBlock) >= 0 {
+			// check that upkeep has not been recently performed between two
+			// points of eligibility
+			// is there a log between eligible and block
+			blockRange := new(big.Int).Sub(block, eligibleBlock).Int64()
+
+			for rangePoint := int64(0); rangePoint <= blockRange; rangePoint++ {
+				checkBlock := new(big.Int).Add(eligibleBlock, big.NewInt(rangePoint))
+
+				for _, performBlock := range performs {
+					if performBlock.Cmp(checkBlock) == 0 {
+						return false
+					}
+				}
+			}
+
+			return true
+		}
+	}
+
+	return eligible
+}

@@ -1,10 +1,9 @@
 package upkeep
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -18,13 +17,12 @@ type Util struct {
 }
 
 func (u Util) Encode(results ...ocr2keepers.CheckResult) ([]byte, error) {
-	return json.Marshal(results)
+	return util.EncodeCheckResultsToReportBytes(results)
 }
 
 func (u Util) Extract(b []byte) ([]ocr2keepers.ReportedUpkeep, error) {
-	var results []ocr2keepers.CheckResult
-
-	if err := json.Unmarshal(b, &results); err != nil {
+	results, err := util.DecodeCheckResultsFromReportBytes(b)
+	if err != nil {
 		return nil, err
 	}
 
@@ -41,21 +39,12 @@ func (u Util) Extract(b []byte) ([]ocr2keepers.ReportedUpkeep, error) {
 	return reported, nil
 }
 
-// BuildPayloads creates payloads from proposals.
-func (u Util) BuildPayloads(context.Context, ...ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.UpkeepPayload, error) {
-	// TODO: consider optionally checking for valid active and performable upkeeps
-
-	return nil, nil
-}
-
 // GetType returns the upkeep type from an identifier.
-func (u Util) GetType(ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-
-	return 0
+func (u Util) GetType(id ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+	return util.GetUpkeepType(id)
 }
 
 // GenerateWorkID creates a unique work id from an identifier and trigger.
-func (u Util) GenerateWorkID(ocr2keepers.UpkeepIdentifier, ocr2keepers.Trigger) string {
-
-	return ""
+func (u Util) GenerateWorkID(id ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
+	return util.UpkeepWorkID(id, trigger)
 }

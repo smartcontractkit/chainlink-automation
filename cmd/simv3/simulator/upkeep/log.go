@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 // LogTriggerTracker ...
@@ -15,26 +14,27 @@ type LogTriggerTracker struct {
 	// provided dependencies
 	listener *chain.Listener
 	active   *ActiveTracker
+	performs *PerformTracker
 	logger   *log.Logger
 
 	// internal state props
 	mu        sync.RWMutex
 	triggered []triggeredUpkeep
 	read      []triggeredUpkeep
-	performed map[string]bool
 
 	// service values
 	chDone chan struct{}
 }
 
 // NewLogTriggerTracker ...
-func NewLogTriggerTracker(listener *chain.Listener, active *ActiveTracker, logger *log.Logger) *LogTriggerTracker {
+func NewLogTriggerTracker(listener *chain.Listener, active *ActiveTracker, performs *PerformTracker, logger *log.Logger) *LogTriggerTracker {
 	src := &LogTriggerTracker{
 		listener:  listener,
+		active:    active,
+		performs:  performs,
 		logger:    log.New(logger.Writer(), "[log-trigger-tracker]", log.LstdFlags),
 		triggered: make([]triggeredUpkeep, 0),
 		read:      make([]triggeredUpkeep, 0),
-		performed: make(map[string]bool),
 		chDone:    make(chan struct{}),
 	}
 
@@ -80,8 +80,10 @@ func (ltt *LogTriggerTracker) GetAfter(number *big.Int) []triggeredUpkeep {
 	// triggered upkeeps are stored oldest to newest. start at the end and
 	// read backward
 	for x := len(ltt.read) - 1; x >= 0; x-- {
-		payload := makeLogPayloadFromUpkeep(ltt.read[x])
-		_, ok := ltt.performed[payload.WorkID]
+		// only the payload workID is needed from this so the latest block number
+		// is fine to provide to the payload build function
+		payload := makeLogPayloadFromUpkeep(ltt.read[x], ltt.active.GetLatestBlock())
+		ok := ltt.performs.IsWorkIDPerformed(payload.WorkID)
 
 		if ltt.read[x].blockNumber.Cmp(number) > 0 && !ok {
 			output = append(output, ltt.read[x])
@@ -92,7 +94,7 @@ func (ltt *LogTriggerTracker) GetAfter(number *big.Int) []triggeredUpkeep {
 }
 
 func (ltt *LogTriggerTracker) run() {
-	chEvents := ltt.listener.Subscribe(chain.LogTriggerChannel, chain.PerformUpkeepChannel)
+	chEvents := ltt.listener.Subscribe(chain.LogTriggerChannel)
 
 	for {
 		select {
@@ -100,8 +102,6 @@ func (ltt *LogTriggerTracker) run() {
 			switch evt := event.Event.(type) {
 			case chain.Log:
 				ltt.createLogUpkeeps(event.BlockNumber, event.BlockHash, evt)
-			case chain.PerformUpkeepTransaction:
-				ltt.registerTransmitted(evt.Transmits...)
 			}
 		case <-ltt.chDone:
 			return
@@ -113,7 +113,7 @@ func (ltt *LogTriggerTracker) stop() {
 	close(ltt.chDone)
 }
 
-func (ltt *LogTriggerTracker) createLogUpkeeps(number *big.Int, hash []byte, chainLog chain.Log) {
+func (ltt *LogTriggerTracker) createLogUpkeeps(number *big.Int, hash [32]byte, chainLog chain.Log) {
 	upkeeps := ltt.active.GetAllByType(chain.LogTriggerType)
 	if len(upkeeps) == 0 {
 		return
@@ -134,32 +134,13 @@ func (ltt *LogTriggerTracker) createLogUpkeeps(number *big.Int, hash []byte, cha
 	}
 }
 
-func (ltt *LogTriggerTracker) registerTransmitted(transmits ...chain.TransmitEvent) {
-	ltt.mu.Lock()
-	defer ltt.mu.Unlock()
-
-	results := make([]ocr2keepers.CheckResult, len(transmits))
-	for i, transmit := range transmits {
-		results[i] = resultFromEvent(transmit)
-	}
-
-	for _, result := range results {
-		ltt.performed[result.WorkID] = true
-	}
-}
-
 func logTriggersUpkeep(chainLog chain.Log, upkeep chain.SimulatedUpkeep) bool {
 	return chainLog.TriggerValue == upkeep.TriggeredBy
-}
-
-// TODO: complete this
-func resultFromEvent(chain.TransmitEvent) ocr2keepers.CheckResult {
-	return ocr2keepers.CheckResult{}
 }
 
 type triggeredUpkeep struct {
 	upkeep      chain.SimulatedUpkeep
 	blockNumber *big.Int
-	blockHash   []byte
+	blockHash   [32]byte
 	chainLog    chain.Log
 }

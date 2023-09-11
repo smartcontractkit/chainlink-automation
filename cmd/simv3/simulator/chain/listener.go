@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"encoding/hex"
 	"log"
 	"math/big"
 	"runtime"
@@ -22,7 +23,7 @@ const (
 
 type ChainEvent struct {
 	BlockNumber *big.Int
-	BlockHash   []byte
+	BlockHash   [32]byte
 	Event       interface{}
 }
 
@@ -74,9 +75,7 @@ func (cl *Listener) Subscribe(channels ...EventChannel) <-chan ChainEvent {
 	for _, channel := range channels {
 		subs, ok := cl.subscriptions[channel]
 		if !ok {
-			cl.subscriptions[channel] = []chan ChainEvent{chNew}
-
-			return chNew
+			subs = []chan ChainEvent{}
 		}
 
 		cl.subscriptions[channel] = append(subs, chNew)
@@ -139,7 +138,9 @@ func (cl *Listener) saveBlock(block Block) {
 	cl.mu.Lock()
 	defer cl.mu.Unlock()
 
-	cl.blocks[string(block.Hash)] = block
+	key := hex.EncodeToString(block.Hash[:])
+
+	cl.blocks[key] = block
 	cl.lastBlock = block.Number
 }
 

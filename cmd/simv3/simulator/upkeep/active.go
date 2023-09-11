@@ -1,6 +1,7 @@
 package upkeep
 
 import (
+	"encoding/hex"
 	"log"
 	"math/big"
 	"runtime"
@@ -16,8 +17,9 @@ type ActiveTracker struct {
 
 	// internal state props
 	mu       sync.RWMutex
-	active   map[chain.UpkeepType][]*big.Int
-	idLookup map[*big.Int]chain.SimulatedUpkeep
+	active   map[chain.UpkeepType][]string    // maps types to a list of UpkeepID as hex values
+	idLookup map[string]chain.SimulatedUpkeep // maps UpkeepID as a hex value to a simulated upkeep
+	latest   chain.Block
 
 	// service values
 	chDone chan struct{}
@@ -26,10 +28,13 @@ type ActiveTracker struct {
 func NewActiveTracker(listener *chain.Listener, logger *log.Logger) *ActiveTracker {
 	src := &ActiveTracker{
 		listener: listener,
-		logger:   log.New(logger.Writer(), "[active-upkeep-tracker]", log.LstdFlags),
-		active:   make(map[chain.UpkeepType][]*big.Int),
-		idLookup: make(map[*big.Int]chain.SimulatedUpkeep),
-		chDone:   make(chan struct{}),
+		logger:   log.New(logger.Writer(), "[active-upkeep-tracker] ", log.Ldate|log.Ltime|log.Lshortfile),
+		active:   make(map[chain.UpkeepType][]string),
+		idLookup: make(map[string]chain.SimulatedUpkeep),
+		latest: chain.Block{
+			Number: big.NewInt(0),
+		},
+		chDone: make(chan struct{}),
 	}
 
 	go src.run()
@@ -59,19 +64,29 @@ func (at *ActiveTracker) GetAllByType(upkeepType chain.UpkeepType) []chain.Simul
 	return upkeeps
 }
 
-func (at *ActiveTracker) GetByID(numericID *big.Int) (chain.SimulatedUpkeep, bool) {
+// GetByID returns a simulated upkeep identified by a unique hash value
+func (at *ActiveTracker) GetByUpkeepID(uniqueID [32]byte) (chain.SimulatedUpkeep, bool) {
 	at.mu.RLock()
 	defer at.mu.RUnlock()
 
-	if upkeep, ok := at.idLookup[numericID]; ok {
+	key := hex.EncodeToString(uniqueID[:])
+
+	if upkeep, ok := at.idLookup[key]; ok {
 		return upkeep, true
 	}
 
 	return chain.SimulatedUpkeep{}, false
 }
 
+func (at *ActiveTracker) GetLatestBlock() chain.Block {
+	at.mu.RLock()
+	defer at.mu.RUnlock()
+
+	return at.latest
+}
+
 func (at *ActiveTracker) run() {
-	chEvents := at.listener.Subscribe(chain.CreateUpkeepChannel)
+	chEvents := at.listener.Subscribe(chain.CreateUpkeepChannel, chain.BlockChannel)
 
 	for {
 		select {
@@ -79,6 +94,8 @@ func (at *ActiveTracker) run() {
 			switch evt := event.Event.(type) {
 			case chain.UpkeepCreatedTransaction:
 				at.addSimulatedUpkeep(evt.Upkeep)
+			case chain.Block:
+				at.setLatestBlock(evt)
 			}
 		case <-at.chDone:
 			return
@@ -96,11 +113,20 @@ func (at *ActiveTracker) addSimulatedUpkeep(upkeep chain.SimulatedUpkeep) {
 
 	upkeepIDs, ok := at.active[upkeep.Type]
 	if !ok {
-		upkeepIDs = []*big.Int{}
+		upkeepIDs = []string{}
 	}
 
-	upkeepIDs = append(upkeepIDs, upkeep.ID)
+	key := hex.EncodeToString(upkeep.UpkeepID[:])
+
+	upkeepIDs = append(upkeepIDs, key)
 
 	at.active[upkeep.Type] = upkeepIDs
-	at.idLookup[upkeep.ID] = upkeep
+	at.idLookup[key] = upkeep
+}
+
+func (at *ActiveTracker) setLatestBlock(block chain.Block) {
+	at.mu.Lock()
+	defer at.mu.Unlock()
+
+	at.latest = block
 }

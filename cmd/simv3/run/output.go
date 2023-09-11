@@ -31,9 +31,9 @@ func (out *Outputs) Close() error {
 
 func SetupOutput(path string, simulate bool, runbook config.RunBook) (*Outputs, error) {
 	var (
-		lgg  *log.Logger
-		lggF *os.File
-		err  error
+		logger *log.Logger
+		lggF   *os.File
+		err    error
 	)
 
 	// always setup the output directory
@@ -46,7 +46,7 @@ func SetupOutput(path string, simulate bool, runbook config.RunBook) (*Outputs, 
 	// only when running a simulation is the simulation log needed
 	// if a simulation has already been run, don't write out the current runbook
 	if simulate {
-		lgg, lggF, err = openSimulationLog(path)
+		logger, lggF, err = openSimulationLog(path)
 		if err != nil {
 			return nil, err
 		}
@@ -57,10 +57,10 @@ func SetupOutput(path string, simulate bool, runbook config.RunBook) (*Outputs, 
 	}
 
 	return &Outputs{
-		SimulationLog:           lgg,
+		SimulationLog:           logger,
 		RPCCollector:            telemetry.NewNodeRPCCollector(path),
 		LogCollector:            telemetry.NewNodeLogCollector(path),
-		EventCollector:          telemetry.NewContractEventCollector(path),
+		EventCollector:          telemetry.NewContractEventCollector(path, logger),
 		simulationLogFileHandle: lggF,
 	}, nil
 }

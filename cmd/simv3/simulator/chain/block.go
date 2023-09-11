@@ -7,12 +7,16 @@ import (
 )
 
 type Block struct {
-	Hash         []byte
+	Hash         [32]byte
 	Number       *big.Int
 	Transactions []interface{}
 }
 
 type Log struct {
+	TxHash       [32]byte
+	BlockNumber  *big.Int
+	BlockHash    [32]byte
+	Idx          uint32
 	TriggerValue string
 }
 
@@ -38,9 +42,11 @@ const (
 
 type SimulatedUpkeep struct {
 	ID          *big.Int
+	UpkeepID    [32]byte
 	Type        UpkeepType
 	EligibleAt  []*big.Int
 	TriggeredBy string
+	CheckData   []byte
 }
 
 type SimulatedLog struct {
@@ -53,5 +59,6 @@ type TransmitEvent struct {
 	Report         []byte
 	Hash           string
 	Round          uint64
-	InBlock        string
+	BlockNumber    *big.Int
+	BlockHash      [32]byte
 }

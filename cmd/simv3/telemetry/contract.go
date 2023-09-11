@@ -3,41 +3,52 @@ package telemetry
 import (
 	"fmt"
 	"io"
+	"log"
 	"sync"
-
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
 type ContractEventCollector struct {
 	baseCollector
+
+	// dependencies
+	logger *log.Logger
+
+	// configuration
 	filePath string
-	nodes    map[string]*WrappedContractCollector
+
+	// internal state properties
+	mu    sync.RWMutex
+	nodes map[string]*WrappedContractCollector
 }
 
-func NewContractEventCollector(path string) *ContractEventCollector {
+func NewContractEventCollector(path string, logger *log.Logger) *ContractEventCollector {
 	return &ContractEventCollector{
 		baseCollector: baseCollector{
 			t:        NodeLogType,
 			io:       []io.WriteCloser{},
 			ioLookup: make(map[string]int),
 		},
+		logger:   log.New(logger.Writer(), "[contract-event-collector]", log.Ldate|log.Ltime|log.Lshortfile),
 		filePath: path,
 		nodes:    make(map[string]*WrappedContractCollector),
 	}
 }
 
 func (c *ContractEventCollector) ContractEventCollectorNode(node string) *WrappedContractCollector {
-	wc, ok := c.nodes[node]
-	if !ok {
-		panic("node not available")
+	if wc, ok := c.nodes[node]; ok {
+		return wc
 	}
 
-	return wc
+	panic("node not available")
 }
 
 func (c *ContractEventCollector) Data() (map[string]int, map[string][]string) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	// keyChecks is per id per block
 	allKeyChecks := make(map[string]int)
+
 	// idLookup is id checked in blocks
 	allKeyIDLookup := make(map[string][]string)
 
@@ -78,7 +89,12 @@ func (c *ContractEventCollector) Data() (map[string]int, map[string][]string) {
 }
 
 func (c *ContractEventCollector) AddNode(node string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	wc := &WrappedContractCollector{
+		name:        node,
+		logger:      c.logger,
 		keyChecks:   make(map[string]int),
 		keyIDLookup: make(map[string][]string),
 	}
@@ -89,34 +105,45 @@ func (c *ContractEventCollector) AddNode(node string) error {
 }
 
 type WrappedContractCollector struct {
+	// provided dependencies
+	name   string
+	logger *log.Logger
+
+	// internal state properties
 	mu          sync.Mutex
 	keyChecks   map[string]int
 	keyIDLookup map[string][]string
 }
 
-func (wc *WrappedContractCollector) CheckID(id string, block ocr2keepers.BlockKey) {
+func (wc *WrappedContractCollector) CheckID(upkeepID string, number uint64, _ [32]byte) {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
-	_, ok := wc.keyChecks[id]
-	if !ok {
-		wc.keyChecks[id] = 0
-	}
-	wc.keyChecks[id]++
+	wc.logger.Printf("upkeep %s checked at block %d by node %s", upkeepID, number, wc.name)
 
-	val, ok := wc.keyIDLookup[id]
-	if !ok {
-		wc.keyIDLookup[id] = []string{fmt.Sprintf("%d", block.Number)}
-	} else {
+	if _, ok := wc.keyChecks[upkeepID]; !ok {
+		wc.keyChecks[upkeepID] = 0
+	}
+
+	wc.keyChecks[upkeepID]++
+
+	strBlock := fmt.Sprintf("%d", number)
+
+	if blocks, ok := wc.keyIDLookup[upkeepID]; ok {
 		var found bool
-		for _, v := range val {
-			if v == fmt.Sprintf("%d", block.Number) {
+
+		for _, block := range blocks {
+			if block == strBlock {
 				found = true
 			}
 		}
 
 		if !found {
-			wc.keyIDLookup[id] = append(val, fmt.Sprintf("%d", block.Number))
+			wc.keyIDLookup[upkeepID] = append(blocks, strBlock)
 		}
+
+		return
 	}
+
+	wc.keyIDLookup[upkeepID] = []string{strBlock}
 }

@@ -109,10 +109,9 @@ func NewEVMKeyring(material io.Reader) (*EvmKeyring, error) {
 	return &EvmKeyring{privateKey: *ecdsaKey}, nil
 }
 
-// XXX: PublicKey returns the address of the public key not the public key itself
+// PublicKey returns the address of the public key not the public key itself
 func (ok *EvmKeyring) PublicKey() types.OnchainPublicKey {
-	address := ok.signingAddress()
-	return address[:]
+	return ok.signingAddress().Bytes()
 }
 
 // XXX: PublicKey returns the address of the public key not the public key itself

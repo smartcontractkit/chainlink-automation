@@ -22,7 +22,7 @@ import (
 )
 
 func (g *Group) Add(maxWorkers int, maxQueueSize int) {
-	net := g.network.NewFactory()
+	simNet := g.network.NewFactory()
 
 	var rpcTel *telemetry.RPCCollector
 	var logTel *telemetry.NodeLogCollector
@@ -49,9 +49,9 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 		panic(err)
 	}
 
-	_ = logTel.AddNode(net.PeerID())
-	_ = rpcTel.AddNode(net.PeerID())
-	_ = ctrTel.AddNode(net.PeerID())
+	_ = logTel.AddNode(simNet.PeerID())
+	_ = rpcTel.AddNode(simNet.PeerID())
+	_ = ctrTel.AddNode(simNet.PeerID())
 
 	// general logger
 	var slogger *simio.SimpleLogger
@@ -59,9 +59,9 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 	var gLogger *log.Logger
 
 	if logTel != nil {
-		slogger = simio.NewSimpleLogger(logTel.GeneralLog(net.PeerID()), simio.Debug)
-		cLogger = log.New(logTel.ContractLog(net.PeerID()), "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
-		gLogger = log.New(logTel.GeneralLog(net.PeerID()), "[general] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+		slogger = simio.NewSimpleLogger(logTel.GeneralLog(simNet.PeerID()), simio.Debug)
+		cLogger = log.New(logTel.ContractLog(simNet.PeerID()), "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+		gLogger = log.New(logTel.GeneralLog(simNet.PeerID()), "[general] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 	} else {
 		slogger = simio.NewSimpleLogger(io.Discard, simio.Critical)
 		cLogger = log.New(io.Discard, "[contract] ", log.Ldate|log.Ltime|log.Lmicroseconds)
@@ -69,7 +69,7 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 	}
 
 	dConfig := plugin.DelegateConfig{
-		BinaryNetworkEndpointFactory: net,
+		BinaryNetworkEndpointFactory: simNet,
 		V2Bootstrappers:              []commontypes.BootstrapperLocator{},
 		LocalConfig: types.LocalConfig{
 			BlockchainTimeout:                  time.Second,
@@ -89,7 +89,16 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 		ServiceQueueLength:     maxQueueSize,
 	}
 
-	_ = simulator.HydrateConfig(net.PeerID(), &dConfig, g.blockSrc, g.transmitter, cLogger)
+	_ = simulator.HydrateConfig(
+		onchainRing.PKString(),
+		&dConfig,
+		g.blockSrc,
+		g.transmitter,
+		g.conf,
+		rpcTel.RPCCollectorNode(simNet.PeerID()),
+		ctrTel.ContractEventCollectorNode(simNet.PeerID()),
+		cLogger,
+	)
 
 	runr, _ := runner.NewRunner(
 		gLogger,
@@ -109,7 +118,7 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 		panic(err)
 	}
 
-	g.nodes[net.PeerID()] = &Simulator{
+	g.nodes[simNet.PeerID()] = &Simulator{
 		Service: service,
 	}
 
@@ -117,7 +126,7 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 
 	_ = service.Start(context.Background())
 
-	g.confLoader.AddSigner(net.PeerID(), onchainRing, offchainRing)
+	g.confLoader.AddSigner(simNet.PeerID(), onchainRing, offchainRing)
 }
 
 func (g *Group) Start(ctx context.Context, count int, maxWorkers int, maxQueueSize int) error {
@@ -127,7 +136,7 @@ func (g *Group) Start(ctx context.Context, count int, maxWorkers int, maxQueueSi
 		g.Add(maxWorkers, maxQueueSize)
 	}
 
-	log.Print("starting simulation")
+	g.logger.Print("starting simulation")
 	select {
 	case <-g.blockSrc.Start():
 		err = fmt.Errorf("block duration ended")
@@ -136,6 +145,7 @@ func (g *Group) Start(ctx context.Context, count int, maxWorkers int, maxQueueSi
 		err = fmt.Errorf("SIGTERM event stopping process")
 	}
 
+	g.WriteTransmitChart()
 	g.ReportResults()
 
 	for id, node := range g.nodes {

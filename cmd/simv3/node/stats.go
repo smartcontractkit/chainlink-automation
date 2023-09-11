@@ -33,16 +33,13 @@ func newUpkeepStatsBuilder(
 	trsByID := make(map[string][]chain.TransmitEvent)
 
 	for _, tr := range transmits {
-		block, ok := new(big.Int).SetString(tr.InBlock, 10)
-		if !ok {
-			return nil, fmt.Errorf("block '%s' not parsable as big int", tr.InBlock)
-		}
+		block := tr.BlockNumber
 
 		// increment the number of transactions for this transaction's address
-		_, ok = accTr[tr.SendingAddress]
-		if !ok {
+		if _, ok := accTr[tr.SendingAddress]; !ok {
 			accTr[tr.SendingAddress] = 0
 		}
+
 		accTr[tr.SendingAddress]++
 
 		reported, err := encoder.Extract(tr.Report)
@@ -66,7 +63,7 @@ func newUpkeepStatsBuilder(
 			el[i] = e.String()
 		}
 
-		elByID[u.ID.String()] = el
+		elByID[ocr2keepers.UpkeepIdentifier(u.UpkeepID).String()] = el
 	}
 
 	return &upkeepStatsBuilder{
@@ -80,22 +77,26 @@ func newUpkeepStatsBuilder(
 }
 
 func (b *upkeepStatsBuilder) UpkeepIDs() []string {
-	ids := []string{}
+	allIDs := []string{}
 
-	for _, u := range b.src {
+	for _, upkeep := range b.src {
 		var found bool
-		for _, id := range ids {
-			if id == u.ID.String() {
+
+		srcUpkeepID := ocr2keepers.UpkeepIdentifier(upkeep.UpkeepID)
+
+		for _, upkeepID := range allIDs {
+
+			if upkeepID == srcUpkeepID.String() {
 				found = true
 			}
 		}
 
 		if !found {
-			ids = append(ids, u.ID.String())
+			allIDs = append(allIDs, srcUpkeepID.String())
 		}
 	}
 
-	return ids
+	return allIDs
 }
 
 func (b *upkeepStatsBuilder) Eligibles(id string) []string {
@@ -143,7 +144,6 @@ func (b *upkeepStatsBuilder) Checks(id string) []string {
 }
 
 func (b *upkeepStatsBuilder) UpkeepStats(id string) upkeepStats {
-
 	eligible := []string{}
 	performed := []string{}
 	checked := []string{}
@@ -171,6 +171,7 @@ func (b *upkeepStatsBuilder) UpkeepStats(id string) upkeepStats {
 	var cDelay float64 = -1
 	var pStartAt int
 	var cStartAt int
+
 	for i := 0; i < len(eligible); i++ {
 		if pStartAt < len(performed) {
 			diff := -1

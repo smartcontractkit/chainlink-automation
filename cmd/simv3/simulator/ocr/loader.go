@@ -2,10 +2,10 @@ package ocr
 
 import (
 	"log"
-	"math/big"
 	"sync"
 
 	ocr2config "github.com/smartcontractkit/libocr/offchainreporting2plus/confighelper"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3confighelper"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
@@ -36,19 +36,19 @@ type OCR3ConfigLoader struct {
 	mu      sync.Mutex
 	count   uint64
 	oracles []ocr2config.OracleIdentityExtra
-	events  map[*big.Int]config.ConfigEvent
+	events  map[string]config.ConfigEvent
 }
 
 // NewOCR3ConfigLoader ...
 func NewOCR3ConfigLoader(rb config.RunBook, digest Digester, logger *log.Logger) *OCR3ConfigLoader {
-	eventLookup := make(map[*big.Int]config.ConfigEvent)
+	eventLookup := make(map[string]config.ConfigEvent)
 
 	for _, event := range rb.ConfigEvents {
-		eventLookup[event.Block] = event
+		eventLookup[event.Block.String()] = event
 	}
 
 	return &OCR3ConfigLoader{
-		logger:  log.New(logger.Writer(), "[ocr3-config-loader]", log.LstdFlags),
+		logger:  log.New(logger.Writer(), "[ocr3-config-loader] ", log.Ldate|log.Ltime|log.Lshortfile),
 		digest:  digest,
 		events:  eventLookup,
 		oracles: []ocr2config.OracleIdentityExtra{},
@@ -62,15 +62,15 @@ func (l *OCR3ConfigLoader) Load(block *chain.Block) {
 	defer l.mu.Unlock()
 
 	// check if new block indicates a new config event should be loaded
-	if evt, ok := l.events[block.Number]; ok {
-		l.logger.Printf("number of oracles in loaded config: %d", len(l.oracles))
-
+	if evt, ok := l.events[block.Number.String()]; ok {
 		conf, err := buildConfig(evt, l.oracles, l.digest, l.count+1)
 		if err != nil {
 			l.logger.Printf("error building config: %s", err)
 
 			return
 		}
+
+		l.logger.Printf("config loaded at %s with %d oracles", block.Number, len(l.oracles))
 
 		block.Transactions = append(block.Transactions, chain.OCR3ConfigTransaction{
 			Config: conf,
@@ -86,8 +86,8 @@ func (l *OCR3ConfigLoader) AddSigner(id string, onKey KeySourcer, offKey Offchai
 
 	newOracle := ocr2config.OracleIdentityExtra{
 		OracleIdentity: ocr2config.OracleIdentity{
-			OnchainPublicKey:  onKey.PublicKey(),
 			OffchainPublicKey: offKey.OffchainPublicKey(),
+			OnchainPublicKey:  onKey.PublicKey(),
 			PeerID:            id,
 			TransmitAccount:   types.Account(onKey.PKString()),
 		},
@@ -103,20 +103,21 @@ func buildConfig(conf config.ConfigEvent, oracles []ocr2config.OracleIdentityExt
 		S[i] = 1
 	}
 
-	signerOnchainPublicKeys, transmitterAccounts, f, onchainConfig, offchainConfigVersion, offchainConfig, err := ocr2config.ContractSetConfigArgsForTests(
+	signerOnchainPublicKeys, transmitterAccounts, f, onchainConfig, offchainConfigVersion, offchainConfig, err := ocr3confighelper.ContractSetConfigArgsForTests(
 		conf.DeltaProgress.Value(),  // deltaProgress time.Duratioonfn,
 		conf.DeltaResend.Value(),    // deltaResend time.Duration,
+		conf.DeltaInitial.Value(),   // deltaInitial time.Duration
 		conf.DeltaRound.Value(),     // deltaRound time.Duration,
 		conf.DeltaGrace.Value(),     // deltaGrace time.Duration,
-		conf.DeltaStage.Value(),     // deltaStage time.Duration,
-		conf.Rmax,                   // rMax uint8,
+		conf.DeltaRequest.Value(),   // deltaCertifiedCommitRequest time.Duration
+		conf.DeltaStage.Value(),     // deltaStage time.Duration
+		conf.Rmax,                   // rMax uint64
 		S,                           // s []int,
 		oracles,                     // oracles []OracleIdentityExtra,
 		[]byte(conf.Offchain),       // reportingPluginConfig []byte,
 		conf.MaxQuery.Value(),       // maxDurationQuery time.Duration,
 		conf.MaxObservation.Value(), // maxDurationObservation time.Duration,
-		conf.MaxReport.Value(),      // maxDurationReport time.Duration,
-		conf.MaxAccept.Value(),      // maxDurationShouldAcceptFinalizedReport time.Duration,
+		conf.MaxAccept.Value(),      // maxDurationShouldAcceptAttestedReport time.Duration
 		conf.MaxTransmit.Value(),    // maxDurationShouldTransmitAcceptedReport time.Duration,
 		conf.F,                      // f int,
 		nil,                         // onchainConfig []byte,
