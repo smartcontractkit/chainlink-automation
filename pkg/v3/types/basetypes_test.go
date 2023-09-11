@@ -95,13 +95,14 @@ func TestLogIdentifier(t *testing.T) {
 		BlockNumber: 5,
 		BlockHash:   [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
 		LogTriggerExtension: &LogTriggerExtension{
-			TxHash: [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
-			Index:  99,
+			TxHash:    [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+			Index:     99,
+			BlockHash: [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
 		},
 	}
 
 	logIdentifier := input.LogTriggerExtension.LogIdentifier()
-	assert.Equal(t, hex.EncodeToString(logIdentifier), "010203040102030401020304010203040102030401020304010203040102030400000063")
+	assert.Equal(t, hex.EncodeToString(logIdentifier), "0102030401020304010203040102030401020304010203040102030401020304010203040102030401020304010203040102030401020304010203040102030400000063")
 }
 
 func TestTriggerUnmarshal_EmptyExtension(t *testing.T) {
