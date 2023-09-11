@@ -14,6 +14,7 @@ func NewCache[T any](expiration time.Duration) *Cache[T] {
 	return &Cache[T]{
 		defaultExpiration: expiration,
 		data:              make(map[string]CacheItem[T]),
+		stop:              make(chan struct{}),
 	}
 }
 
@@ -26,6 +27,27 @@ type Cache[T any] struct {
 	defaultExpiration time.Duration
 	mu                sync.RWMutex
 	data              map[string]CacheItem[T]
+	stop              chan struct{}
+}
+
+// Start starts the garbage collector for this cache.
+func (c *Cache[T]) Start(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.ClearExpired()
+		case <-c.stop:
+			return
+		}
+	}
+}
+
+// Stop stops the garbage collector for this cache.
+func (c *Cache[T]) Stop() {
+	close(c.stop)
 }
 
 func (c *Cache[T]) Set(key string, value T, expire time.Duration) {
