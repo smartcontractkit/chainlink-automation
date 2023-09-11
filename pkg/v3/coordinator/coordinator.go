@@ -178,13 +178,13 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 		if ok {
 			continue
 		}
-		c.visited.Set(visitedID, true, c.performLockoutWindow)
 
 		v, ok := c.cache.Get(event.WorkID)
 		if !ok {
 			c.logger.Printf("Ignoring event in transaction %s of type %d for upkeepID %s, workID %s as it was not found in cache", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID)
 			continue
 		}
+		c.visited.Set(visitedID, true, c.performLockoutWindow)
 		r := record{
 			isTransmissionPending: false,
 			transmitType:          event.Type,
