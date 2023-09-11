@@ -12,8 +12,8 @@
     "blockDetail": {
         "genesisBlock": 128943862,
         "blockCadence": "1s",
-        "durationInBlocks": 30,
-        "endPadding": 10
+        "durationInBlocks": 60,
+        "endPadding": 20
     },
     "configEvents": [
         {
@@ -36,10 +36,10 @@
     ],
     "upkeeps": [
         {
-            "_comment": "~4 performs per upkeep",
+            "_comment": "~3 performs per upkeep",
             "count": 10,
             "startID": 200,
-            "generateFunc": "10x - 15",
+            "generateFunc": "30x - 15",
             "offsetFunc": "2x + 1"
         }
     ]

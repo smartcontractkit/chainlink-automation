@@ -43,20 +43,25 @@ func (m *SortedKeyMap[T]) Get(key string) (T, bool) {
 	return getZero[T](), false
 }
 
-func (m *SortedKeyMap[T]) Keys(l int) []string {
+// Keys returns the specified number of keys sorted highest to lowest.
+func (m *SortedKeyMap[T]) Keys(count int) []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	if l > len(m.keys) {
-		l = len(m.keys)
+	keysLen := len(m.keys)
+
+	if count > keysLen {
+		count = keysLen
 	}
 
-	// keys are sorted ascending by block number
-	// only return the last 'l' keys
-	keys := make([]string, l)
+	// only return the last 'count' keys
+	keys := make([]string, count)
+
+	// keys are sorted internally in ascending order but the return
+	// should be decending
 	// loop starting at 1 so the first insert can be l-1, or the last item
-	for i := 1; i <= l; i++ {
-		keys[i-1] = m.keys[l-i]
+	for i := 1; i <= count; i++ {
+		keys[i-1] = m.keys[keysLen-i]
 	}
 
 	return keys

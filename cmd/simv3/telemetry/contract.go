@@ -119,8 +119,6 @@ func (wc *WrappedContractCollector) CheckID(upkeepID string, number uint64, _ [3
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
-	wc.logger.Printf("upkeep %s checked at block %d by node %s", upkeepID, number, wc.name)
-
 	if _, ok := wc.keyChecks[upkeepID]; !ok {
 		wc.keyChecks[upkeepID] = 0
 	}

@@ -57,7 +57,7 @@ type SimulatedLog struct {
 type TransmitEvent struct {
 	SendingAddress string
 	Report         []byte
-	Hash           string
+	Hash           [32]byte
 	Round          uint64
 	BlockNumber    *big.Int
 	BlockHash      [32]byte

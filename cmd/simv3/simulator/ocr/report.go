@@ -13,16 +13,19 @@ import (
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
+const (
+	ReportTrackerBlockRange = 100
+)
+
 type ReportTracker struct {
 	// provided dependencies
 	listener *chain.Listener
 	logger   *log.Logger
 
 	// internal state props
-	mu     sync.RWMutex
-	events []chain.TransmitEvent
-	read   []chain.TransmitEvent
-	latest *chain.Block
+	mu          sync.RWMutex
+	blockEvents *util.SortedKeyMap[[]chain.TransmitEvent]
+	latest      *chain.Block
 
 	// service values
 	chDone chan struct{}
@@ -31,11 +34,10 @@ type ReportTracker struct {
 // NewReportTracker ...
 func NewReportTracker(listener *chain.Listener, logger *log.Logger) *ReportTracker {
 	src := &ReportTracker{
-		listener: listener,
-		logger:   log.New(logger.Writer(), "[report-tracker]", log.LstdFlags),
-		events:   make([]chain.TransmitEvent, 0),
-		read:     make([]chain.TransmitEvent, 0),
-		chDone:   make(chan struct{}),
+		listener:    listener,
+		logger:      log.New(logger.Writer(), "[report-tracker] ", log.Ldate|log.Ltime|log.Lshortfile),
+		blockEvents: util.NewSortedKeyMap[[]chain.TransmitEvent](),
+		chDone:      make(chan struct{}),
 	}
 
 	go src.run()
@@ -45,28 +47,33 @@ func NewReportTracker(listener *chain.Listener, logger *log.Logger) *ReportTrack
 	return src
 }
 
-// GetLatestEvents returns a list of events that are after a specified block
-// threshold. Returns each event exactly once.
+// GetLatestEvents returns a list of events within a lookback range. Events
+// returned from this function should follow an 'at least once' delivery.
 func (rt *ReportTracker) GetLatestEvents(_ context.Context) ([]ocr2keepers.TransmitEvent, error) {
 	if rt.latest == nil {
+		rt.logger.Println("encountered nil block")
+
 		return nil, nil
 	}
 
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
 
-	events := make([]ocr2keepers.TransmitEvent, 0, len(rt.events))
-	for _, event := range rt.events {
-		transmits, err := createPluginTransmitEvents(event, *rt.latest)
-		if err != nil {
-			rt.logger.Println(err)
+	events := make([]ocr2keepers.TransmitEvent, 0)
+
+	blockKeys := rt.blockEvents.Keys(ReportTrackerBlockRange)
+	for _, blockKey := range blockKeys {
+		evts, _ := rt.blockEvents.Get(blockKey)
+
+		for _, event := range evts {
+			transmits, err := createPluginTransmitEvents(event, *rt.latest)
+			if err != nil {
+				rt.logger.Println(err)
+			}
+
+			events = append(events, transmits...)
 		}
-
-		events = append(events, transmits...)
 	}
-
-	rt.read = append(rt.read, rt.events...)
-	rt.events = []chain.TransmitEvent{}
 
 	return events, nil
 }
@@ -81,7 +88,7 @@ func (rt *ReportTracker) run() {
 			case chain.PerformUpkeepTransaction:
 				rt.logger.Printf("%d transmit events detected on block %s", len(evt.Transmits), event.BlockNumber)
 
-				rt.saveTransmits(evt.Transmits)
+				rt.blockEvents.Set(event.BlockNumber.String(), evt.Transmits)
 			case chain.Block:
 				rt.updateBlock(evt)
 			}
@@ -93,13 +100,6 @@ func (rt *ReportTracker) run() {
 
 func (rt *ReportTracker) stop() {
 	close(rt.chDone)
-}
-
-func (rt *ReportTracker) saveTransmits(transmits []chain.TransmitEvent) {
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
-
-	rt.events = append(rt.events, transmits...)
 }
 
 func (rt *ReportTracker) updateBlock(block chain.Block) {
@@ -118,18 +118,15 @@ func createPluginTransmitEvents(chainEvent chain.TransmitEvent, latest chain.Blo
 	}
 
 	var (
-		trHash [32]byte
 		events []ocr2keepers.TransmitEvent
 	)
-
-	copy(trHash[:], chainEvent.Hash[:32])
 
 	for _, result := range results {
 		event := ocr2keepers.TransmitEvent{
 			Type:            ocr2keepers.PerformEvent,
 			TransmitBlock:   ocr2keepers.BlockNumber(chainEvent.BlockNumber.Uint64()),
 			Confirmations:   new(big.Int).Sub(latest.Number, chainEvent.BlockNumber).Int64(),
-			TransactionHash: trHash,
+			TransactionHash: chainEvent.Hash,
 			UpkeepID:        result.UpkeepID,
 			WorkID:          result.WorkID,
 			CheckBlock:      result.Trigger.BlockNumber,

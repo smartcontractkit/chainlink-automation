@@ -84,7 +84,7 @@ func (tl *OCR3TransmitLoader) Transmit(from string, reportBytes []byte, round ui
 		return err
 	}
 
-	report.Hash = hash(bts.Bytes())
+	report.Hash = rawHash(bts.Bytes())
 
 	if _, ok := tl.transmitted[transmitKey]; ok {
 		return fmt.Errorf("report already transmitted")
@@ -144,6 +144,17 @@ func (tr *OCR3Transmitter) FromAccount() (types.Account, error) {
 	defer tr.mu.RUnlock()
 
 	return types.Account(tr.transmitterID), nil
+}
+
+func rawHash(b []byte) [32]byte {
+	hasher := sha256.New()
+	hasher.Write(b)
+
+	var sum [32]byte
+
+	copy(sum[:], hasher.Sum(nil)[:])
+
+	return sum
 }
 
 func hash(b []byte) string {
