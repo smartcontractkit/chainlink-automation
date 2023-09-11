@@ -28,7 +28,7 @@ type BlockBroadcaster struct {
 	jitter   time.Duration
 
 	// internal state
-	mu            sync.Mutex
+	mu            sync.RWMutex
 	nextBlock     *big.Int
 	subscriptions map[int]chan Block
 	delays        map[int]bool
@@ -144,6 +144,9 @@ func (bb *BlockBroadcaster) cadenceWithJitter() time.Duration {
 }
 
 func (bb *BlockBroadcaster) broadcast() {
+	bb.mu.RLock()
+	defer bb.mu.RUnlock()
+
 	msg := Block{
 		Number: new(big.Int).Set(bb.nextBlock),
 	}
