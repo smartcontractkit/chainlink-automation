@@ -5,9 +5,6 @@ import (
 	"time"
 )
 
-// NOTE: this is used within v2.
-// TODO: remove this on v2 cleanup
-
 type Cleanable[T any] interface {
 	ClearExpired()
 }

@@ -7,7 +7,22 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestCache_Cleanup(t *testing.T) {
+	expr := time.Millisecond * 10
+	c := NewCache[int](expr)
+
+	c.Set("key1", 10, DefaultCacheExpiration)
+	c.Set("key2", 20, expr/4)
+
+	go c.Start(time.Millisecond)
+
+	// wait for items to expire
+	<-time.After(expr / 2)
+	require.Equal(t, 1, len(c.Keys()), "cache should contain 1 key")
+}
 
 func TestNewCache(t *testing.T) {
 	c := NewCache[int](time.Second)

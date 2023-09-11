@@ -34,15 +34,12 @@ type Runner struct {
 	// injected dependencies
 	logger   *log.Logger
 	runnable ocr2keepers.Runnable
-
 	// initialized by the constructor
-	workers      *pkgutil.WorkerGroup[[]ocr2keepers.CheckResult]        // parallelizer
-	cache        *pkgutil.Cache[ocr2keepers.CheckResult]                // result cache
-	cacheCleaner *pkgutil.IntervalCacheCleaner[ocr2keepers.CheckResult] // autmatic cache cleaner
-
+	workers *pkgutil.WorkerGroup[[]ocr2keepers.CheckResult] // parallelizer
+	cache   *pkgutil.Cache[ocr2keepers.CheckResult]         // result cache
 	// configurations
 	workerBatchLimit int // the maximum number of items in RPC batch call
-
+	cacheGcInterval  time.Duration
 	// run state data
 	running atomic.Bool
 	chClose chan struct{}
@@ -68,7 +65,7 @@ func NewRunner(
 		runnable:         runnable,
 		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.CheckResult](conf.Workers, conf.WorkerQueueLength),
 		cache:            pkgutil.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
-		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[ocr2keepers.CheckResult](conf.CacheClean),
+		cacheGcInterval:  conf.CacheClean,
 		workerBatchLimit: WorkerBatchLimit,
 		chClose:          make(chan struct{}, 1),
 	}, nil
@@ -96,7 +93,7 @@ func (o *Runner) Start(_ context.Context) error {
 	o.running.Swap(true)
 	o.logger.Println("starting service")
 
-	go o.cacheCleaner.Run(o.cache)
+	go o.cache.Start(o.cacheGcInterval)
 
 	<-o.chClose
 
@@ -109,7 +106,7 @@ func (o *Runner) Close() error {
 		return fmt.Errorf("not running")
 	}
 
-	o.cacheCleaner.Stop()
+	o.cache.Stop()
 	o.workers.Stop()
 	o.running.Swap(false)
 

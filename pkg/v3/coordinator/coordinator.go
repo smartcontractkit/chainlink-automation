@@ -25,10 +25,8 @@ type coordinator struct {
 	eventsProvider   ocr2keepers.TransmitEventProvider
 	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 
-	cache          *util.Cache[record]
-	cacheCleaner   util.CacheCleaner
-	visited        *util.Cache[bool]
-	visitedCleaner util.CacheCleaner
+	cache   *util.Cache[record]
+	visited *util.Cache[bool]
 
 	minimumConfirmations int
 	performLockoutWindow time.Duration
@@ -50,9 +48,7 @@ func NewCoordinator(transmitEventProvider ocr2keepers.TransmitEventProvider, upk
 		eventsProvider:       transmitEventProvider,
 		upkeepTypeGetter:     upkeepTypeGetter,
 		cache:                util.NewCache[record](performLockoutWindow),
-		cacheCleaner:         util.NewCacheCleaner(defaultCacheClean),
 		visited:              util.NewCache[bool](performLockoutWindow),
-		visitedCleaner:       util.NewCacheCleaner(defaultCacheClean),
 		minimumConfirmations: conf.MinConfirmations,
 		performLockoutWindow: performLockoutWindow,
 	}
@@ -249,8 +245,8 @@ func (c *coordinator) Start(pctx context.Context) error {
 		return fmt.Errorf("process already running")
 	}
 
-	go c.cacheCleaner.Start(c.cache)
-	go c.visitedCleaner.Start(c.visited)
+	go c.cache.Start(defaultCacheClean)
+	go c.visited.Start(defaultCacheClean)
 
 	c.run(ctx)
 
@@ -263,8 +259,8 @@ func (c *coordinator) Close() error {
 		return fmt.Errorf("process not running")
 	}
 
-	c.cacheCleaner.Stop()
-	c.visitedCleaner.Stop()
+	c.cache.Stop()
+	c.visited.Stop()
 
 	return nil
 }
