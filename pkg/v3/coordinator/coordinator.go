@@ -19,13 +19,19 @@ const (
 )
 
 type coordinator struct {
-	closer               internalutil.Closer
-	logger               *log.Logger
-	eventsProvider       ocr2keepers.TransmitEventProvider
-	upkeepTypeGetter     ocr2keepers.UpkeepTypeGetter
-	cache                *util.Cache[record]
-	cacheCleaner         *util.IntervalCacheCleaner[record]
+	closer internalutil.Closer
+	logger *log.Logger
+
+	eventsProvider   ocr2keepers.TransmitEventProvider
+	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+
+	cache          *util.Cache[record]
+	cacheCleaner   util.CacheCleaner
+	visited        *util.Cache[bool]
+	visitedCleaner util.CacheCleaner
+
 	minimumConfirmations int
+	performLockoutWindow time.Duration
 }
 
 var _ ocr2keepers.Coordinator = (*coordinator)(nil)
@@ -38,13 +44,17 @@ type record struct {
 }
 
 func NewCoordinator(transmitEventProvider ocr2keepers.TransmitEventProvider, upkeepTypeGetter ocr2keepers.UpkeepTypeGetter, conf config.OffchainConfig, logger *log.Logger) *coordinator {
+	performLockoutWindow := time.Duration(conf.PerformLockoutWindow) * time.Millisecond
 	return &coordinator{
 		logger:               logger,
 		eventsProvider:       transmitEventProvider,
 		upkeepTypeGetter:     upkeepTypeGetter,
-		cache:                util.NewCache[record](time.Duration(conf.PerformLockoutWindow) * time.Millisecond),
-		cacheCleaner:         util.NewIntervalCacheCleaner[record](defaultCacheClean),
+		cache:                util.NewCache[record](performLockoutWindow),
+		cacheCleaner:         util.NewCacheCleaner(defaultCacheClean),
+		visited:              util.NewCache[bool](performLockoutWindow),
+		visitedCleaner:       util.NewCacheCleaner(defaultCacheClean),
 		minimumConfirmations: conf.MinConfirmations,
+		performLockoutWindow: performLockoutWindow,
 	}
 }
 
@@ -166,29 +176,34 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 			continue
 		}
 
-		if v, ok := c.cache.Get(event.WorkID); ok {
-			if event.CheckBlock < v.checkBlockNumber {
-				c.logger.Printf("Ignoring event in transaction %s of type %d for upkeepID %s, workID %s from older report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID, event.CheckBlock, v.checkBlockNumber)
-			} else if event.CheckBlock == v.checkBlockNumber {
-				c.logger.Printf("Got event in transaction %s of type %d for upkeepID %s, workID %s and check block %v", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID, event.CheckBlock)
-				c.cache.Set(event.WorkID, record{
-					checkBlockNumber:      v.checkBlockNumber,
-					isTransmissionPending: false,
-					transmitType:          event.Type,
-					transmitBlockNumber:   event.TransmitBlock,
-				}, util.DefaultCacheExpiration)
-			} else {
-				c.logger.Printf("Got event in transaction %s of type %d for upkeepID %s, workID %s from newer report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID, event.CheckBlock, v.checkBlockNumber)
-				c.cache.Set(event.WorkID, record{
-					checkBlockNumber:      event.CheckBlock,
-					isTransmissionPending: false,
-					transmitType:          event.Type,
-					transmitBlockNumber:   event.TransmitBlock,
-				}, util.DefaultCacheExpiration)
-			}
-		} else {
-			c.logger.Printf("Ignoring event in transaction %s of type %d for upkeepID %s, workID %s as it was not found in cache", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID)
+		// ensure we don't process the same event twice
+		visitedID := c.visitedID(event)
+		_, ok := c.visited.Get(visitedID)
+		if ok {
+			continue
 		}
+		c.visited.Set(visitedID, true, c.performLockoutWindow)
+
+		v, ok := c.cache.Get(event.WorkID)
+		if !ok {
+			c.logger.Printf("Ignoring event in transaction %s of type %d for upkeepID %s, workID %s as it was not found in cache", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID)
+			continue
+		}
+		r := record{
+			isTransmissionPending: false,
+			transmitType:          event.Type,
+			transmitBlockNumber:   event.TransmitBlock,
+		}
+		if event.CheckBlock == v.checkBlockNumber {
+			c.logger.Printf("Got event in transaction %s of type %d for upkeepID %s, workID %s and check block %v", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID, event.CheckBlock)
+			r.checkBlockNumber = v.checkBlockNumber
+			c.cache.Set(event.WorkID, r, util.DefaultCacheExpiration)
+		} else if event.CheckBlock > v.checkBlockNumber {
+			c.logger.Printf("Got event in transaction %s of type %d for upkeepID %s, workID %s from newer report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID, event.CheckBlock, v.checkBlockNumber)
+			r.checkBlockNumber = event.CheckBlock
+			c.cache.Set(event.WorkID, r, util.DefaultCacheExpiration)
+		}
+		// otherwise this is an old event, ignore it
 	}
 	c.logger.Printf("Skipped %d events as confirmations are less than minimum confirmations (%d)", skipped, c.minimumConfirmations)
 
@@ -234,7 +249,8 @@ func (c *coordinator) Start(pctx context.Context) error {
 		return fmt.Errorf("process already running")
 	}
 
-	go c.cacheCleaner.Run(c.cache)
+	go c.cacheCleaner.Start(c.cache)
+	go c.visitedCleaner.Start(c.visited)
 
 	c.run(ctx)
 
@@ -248,6 +264,11 @@ func (c *coordinator) Close() error {
 	}
 
 	c.cacheCleaner.Stop()
+	c.visitedCleaner.Stop()
 
 	return nil
+}
+
+func (c *coordinator) visitedID(e ocr2keepers.TransmitEvent) string {
+	return fmt.Sprintf("%s_%x", e.WorkID, e.TransactionHash)
 }

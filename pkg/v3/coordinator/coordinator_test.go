@@ -164,6 +164,7 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
 		eventProvider    ocr2keepers.TransmitEventProvider
 		cacheInit        map[string]record
+		visitedInit      map[string]struct{}
 		wantCache        map[string]record
 		expectsErr       bool
 		wantErr          error
@@ -195,6 +196,26 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 			wantMessage:    "Skipped 1 events",
 		},
 		{
+			name: "visited transmit events are skipped",
+			eventProvider: &mockEventProvider{
+				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+					return []ocr2keepers.TransmitEvent{
+						{
+							Confirmations:   2,
+							TransactionHash: [32]byte{1, 1, 1, 1},
+							CheckBlock:      ocr2keepers.BlockNumber(99),
+							WorkID:          "workID1",
+						},
+					}, nil
+				},
+			},
+			visitedInit: map[string]struct{}{
+				"workID1": {},
+			},
+			expectsMessage: false,
+			wantCache:      map[string]record{},
+		},
+		{
 			name: "if a transmit event has a lower check block number than the corresponding record in the cache, a message is logged",
 			eventProvider: &mockEventProvider{
 				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
@@ -213,8 +234,14 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 					transmitType:     ocr2keepers.PerformEvent,
 				},
 			},
+			wantCache: map[string]record{
+				"workID1": {
+					checkBlockNumber: 100,
+					transmitType:     ocr2keepers.PerformEvent,
+				},
+			},
+			visitedInit:    map[string]struct{}{},
 			expectsMessage: true,
-			wantMessage:    "Ignoring event in transaction",
 		},
 		{
 			name: "if a transmit event has a matching block number with the corresponding record in the cache, the record is updated",
@@ -254,11 +281,12 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
 					return []ocr2keepers.TransmitEvent{
 						{
-							Confirmations: 2,
-							Type:          ocr2keepers.PerformEvent,
-							CheckBlock:    ocr2keepers.BlockNumber(200),
-							WorkID:        "workID1",
-							TransmitBlock: ocr2keepers.BlockNumber(99),
+							Confirmations:   2,
+							TransactionHash: [32]byte{1, 1, 1, 1},
+							Type:            ocr2keepers.PerformEvent,
+							CheckBlock:      ocr2keepers.BlockNumber(200),
+							WorkID:          "workID1",
+							TransmitBlock:   ocr2keepers.BlockNumber(99),
 						},
 					}, nil
 				},
@@ -291,6 +319,9 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 			for k, v := range tc.cacheInit {
 				c.cache.Set(k, v, util.DefaultCacheExpiration)
 			}
+			for k := range tc.visitedInit {
+				c.visited.Set(k, true, util.DefaultCacheExpiration)
+			}
 
 			err := c.checkEvents(context.Background())
 			if tc.expectsErr {
@@ -304,13 +335,11 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 				assert.True(t, strings.Contains(memLog.String(), tc.wantMessage))
 			}
 
-			if len(tc.wantCache) > 0 {
-				assert.Equal(t, len(tc.wantCache), len(c.cache.Keys()))
-				for k, v := range tc.wantCache {
-					cachedValue, ok := c.cache.Get(k)
-					assert.True(t, ok)
-					assert.Equal(t, v, cachedValue)
-				}
+			assert.Equal(t, len(tc.wantCache), len(c.cache.Keys()))
+			for k, v := range tc.wantCache {
+				cachedValue, ok := c.cache.Get(k)
+				assert.True(t, ok)
+				assert.Equal(t, v, cachedValue)
 			}
 		})
 	}
