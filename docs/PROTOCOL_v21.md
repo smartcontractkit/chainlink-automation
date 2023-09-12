@@ -9,11 +9,11 @@ This document aims to give a high level overview of a full e2e protocol for auto
     - [Reliability Guarantees](#reliability-guarantees)
     - [Security Guarantees](#security-guarantees)
   - [Definitions](#definitions)
-  - [Eligibility Workflows](#eligibility-workflows)
-    - [Conditional Triggers](#1-conditional-triggers-workflows)
+  - [Workflows](#workflows)
+    - [Conditional Triggers](#1-conditional-triggers)
         - [Conditional Proposal](#conditional-proposal-workflow)
         - [Conditional Finalization](#conditional-finalization-workflow)
-    - [Log Triggers](#2-log-triggers-workflows)
+    - [Log Triggers](#2-log-triggers)
         - [Log Trigger](#log-trigger-workflow)
         - [Retry](#retry-workflow)
         - [Log Recovery Proposal](#log-recovery-proposal-workflow)
@@ -91,18 +91,18 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
     - For log: triggerData is the log information
 - `upkeepResult`: Output information to perform an upkeep. Same across both types: `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
 
-## Eligibility Workflows
+## Workflows
 
-The eligibility workflows are the sequence of events and procedures used to determine if an upkeep is considered eligible to perform.
+Workflows are the sequence of events and procedures used to determine if an upkeep is considered eligible to perform.
 
 The protocol supports two types of triggers, each brings a set of workflows:
 
-### 1. Conditional Triggers Workflows
-#### Conditional Proposal Workflow
+### 1. Conditional Triggers
+### Conditional Proposal Workflow
 
-The conditional proposal workflow is used to determine if an upkeep is eligible to perform. It is triggered by a ticker that provides samples of upkeeps to check. The samples are
-collected, filtered, and checked. The results are then pushed into the metadata store as proposals. 
-The plugin will then collect these proposals and push them into the outcome to be processed in next rounds, where they will go into conditional finalization workflow.
+The conditional proposal workflow checks random samples of active upkeeps, 
+and adds the eligibile ones to the metadata store, denoted as `proposals`.
+The plugin will include them in the outcome, and they will be added in the next round to the proposal queue to be processed by the conditional finalization workflow.
 
 <aside>
 A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
@@ -111,31 +111,34 @@ A node can be temporarily down and miss some rounds and associated actions on ou
 It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
 </aside>
 
-#### Conditional Finalization Workflow 
+### Conditional Finalization Workflow 
 
-The conditional finalization flow is used to come to agreement among nodes on what upkeepPayloads to check, based on the results of the proposal flow. It is triggered by a ticker that provides payloads based on a coordinated block and upkeepIDs.
+The conditional finalization workflow checks coordinated proposals merged with coordinated block history, from the previous round. 
+Eligible results are added to the result store, denoted as `perfomables`.
 
-The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
+The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
 
-### 2. Log Triggers Workflows
-#### Log Trigger Workflow
+### 2. Log Triggers
+### Log Trigger Workflow
 
-The log trigger workflow is used to determine if a log needs to be perform. It is triggered by a ticker that get the latest logs from log event provider.
-The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
+The log trigger workflow checks latest logs from the log event provider, and adds the eligible results to the result store, denoted as `perfomables`. Ineligible results are reported to the upkeep states store.
+
+The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
 
 In cases of retryable failures, the payloads are pushed into the retry queue.
 
-#### Retry Workflow
+### Retry Workflow
 
-The retry workflow is used to retry payloads that failed with retryable errors. It is triggered by a ticker that gets payloads from the retry queue.
+The retry workflow is used to retry payloads that failed with retryable errors. It is similar to log trigger workflow, but instead of getting logs from the log event provider, it gets payloads from the retry queue.
 
-The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
+### Log Recovery Proposal Workflow
 
-#### Log Recovery Proposal Workflow
+The log trigger workflow checks logs that were missed, and spotted by the log event recoverer.
 
-The log recovery workflow is used to recover logs that were missed by the log trigger flow. It is triggered by a ticker that gets missed logs from log recoverer.
-The missed logs are pushed into the metadata store as recovery proposals. 
-The plugin will then collect these proposals and push them into the outcome to be processed in next rounds where they gets picked up into recovery finalization flow. 
+Eligible results are added to the metadata store, denoted as `proposals`. 
+Ineligible results are reported to the upkeep states store.
+
+The plugin will include them in the outcome, and they will be added in the next round to the proposal queue to be processed by the recovery finalization workflow.
 
 <aside>
 A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
@@ -144,13 +147,16 @@ A node can be temporarily down and miss some rounds and associated actions on ou
 It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
 </aside>
 
-#### Log Recovery Finalization Flow
+### Log Recovery Finalization Flow
 
-The recovery finalization workflow takes recoverable payloads merged with the latest check blocks and runs the pipeline for them.
+The recovery finalization workflow checks coordinated proposals merged with the latest check blocks.
 
-The recovery finalization ticker will call the payload builder to build payloads with the latest proposals that were found in the proposal queue.
-The log recoverer does necessary checks to ensure that the log should actually be recovered, to protect against malicious nodes surfacing wrong logs for recovery. 
-The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
+Eligible results are added to the result store, denoted as `perfomables`.
+Ineligible results are reported to the upkeep states store.
+
+The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
+
+<br />
 
 ## Components
 
@@ -159,12 +165,13 @@ An abstracted view of the common protocol components looks as follows:
 ![Automation Block Diagram](./images/automation_ocr3_block.jpg)
 
 <aside>
-💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
+💡 Note: Arrows in the diagrams are directed by data flow.
 </aside>
 <br />
 <aside>
-💡 Note: Arrows in the diagrams are directed by data flow.
+💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
 </aside>
+<br />
 
 ### Registry
 
