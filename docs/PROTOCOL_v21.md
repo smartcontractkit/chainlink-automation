@@ -49,15 +49,14 @@ with a generic and extensible triggering mechanism.
 The protocol is composed of offchain components which we will discuss in this document, 
 and onchain contracts.
 
-Two types of triggers are supported:
+The protocol supports two types of triggers:
 
 **Conditional triggers**
-
-Triggers that are based on on-chain conditions, e.g. a price feed update.
+are based on on-chain conditions, e.g. a price feed update.
+Upkeeps are being checked periodically, and if the condition is met, the upkeep will be performed.
 
 **Log triggers**
-
-Triggers that are based on arbitrary event logs that were emitted on-chain, e.g. a new token transfer.
+are based on arbitrary event logs that were emitted on-chain, e.g. a new token transfer.
 
 ## Overview 
 
