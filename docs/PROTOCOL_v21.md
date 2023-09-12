@@ -1,9 +1,10 @@
 # Offchain protocol overview v2.1
 
-This document aims to give a high level overview of a full e2e protocol for automation `v2.1`. 
+This document aims to give a high level overview of the protocol for Automation `v2.1`. 
 
 ## Table of Contents
 
+  - [Abstract](#abstract)
   - [Overview](#overview)
   - [Boundaries](#boundaries)
     - [Reliability Guarantees](#reliability-guarantees)
@@ -40,20 +41,52 @@ This document aims to give a high level overview of a full e2e protocol for auto
 
 <br />
 
-## Overview
+## Abstract
 
-Chainlink Automation is a decentralized execution engine for automating smart contracts, with a generic and extensible triggering mechanism.
+Chainlink Automation is a decentralized execution engine for automating smart contracts, 
+with a generic and extensible triggering mechanism.
 
-The protocol is composed of offchain components which we will discuss in this document, and onchain contracts.
+The protocol is composed of offchain components which we will discuss in this document, 
+and onchain contracts.
+
+Two types of triggers are supported:
+
+- **Conditional triggers** - triggers that are based on on-chain conditions, e.g. a price feed update
+- **Log triggers** - triggers that are based on logs emitted by external systems, e.g. a new token transfer
+
+## Overview 
+
+In high-level, the system works as follows:
+
+- Upkeeps are registered through an on-chain registry.
+    - Nodes sync the upkeeps to their local state.
+- Nodes listen to external events, and trigger the execution of upkeeps based on those events.
+- Eligible results (denoted as `performables`) with an agreement among f+1 nodes, will be performed on-chain.
+- Upkeeps that will be triggered by the node rather than external events,
+are considered as `proposals` and will go through additional workflow before the eligible ones become `performables`.
+- The protocol runs additional threads to scan for missed events, to ensure the integrity of the system.
 
 The offchain components are responsible for the following:
 
 - **State management** - keeping track of the state of the system, including upkeeps, triggers, and results
-- **Triggering** - listening to external events and triggering the execution of smart contracts based on those events
+- **Watching triggers** - listening to external events and triggering the execution of smart contracts based on those events
 - **Eligibility workflows** - determining whether a upkeep+trigger is eligible to perform
 based on on-chain check pipeline.
-- **Threshold Agreement** - coming to agreement among f+1 nodes on what upkeeps are eligible to perform
-- **Execution** - executing the agreed, eligible upkeeps on-chain
+- **Threshold Agreement** - coming to agreement among f+1 nodes on what upkeeps are eligible to perform.
+- **Execution** - executing the agreed, eligible upkeeps on-chain.
+
+An abstracted view looks as follows:
+
+![Automation Offchain HL Block Diagram](./images/automation_ocr3_highlevel_block.jpg)
+
+<aside>
+💡 Note: Arrows in the diagrams are directed by data flow.
+</aside>
+<br />
+<aside>
+💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
+</aside>
+<br />
 
 ## Boundaries
 
@@ -76,20 +109,35 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 
 ## Definitions
 
-- `upkeepID`: Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
-- `trigger`: Used to represent the trigger for a particular upkeep performance, and is represented as: `(checkBlockNum, checkBlockHash,extension)` where the extension is based on the trigger type:
-    - Conditionals: no extension 
-    - Log triggers: `(logTxHash, logIndex, logBlockNum, logBlockHash)`. \
-    NOTE: `logBlockNum` and `logBlockHash` might not be present in the trigger, in which case they are set to 0 and empty respectively. In such cases the log block will be resolved the given tx hash.
-- `logIdentifier`: unique identifier for a log → `(logTxHash, logIndex)`
-- `workID`: Unique 256 bit identifier for a unit of work that is used across the system. \
+**upkeepID** 
+Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
+
+**trigger**
+Used to represent the trigger for a particular upkeep performance, and is represented as → 
+`(checkBlockNum, checkBlockHash,extension)`
+
+The extension is based on the trigger type:
+- Conditionals: no extension 
+- Log triggers → `(logTxHash, logIndex, logBlockHash, logBlockNum)`. \
+NOTE: `logBlockNum` might not be present in the trigger. In such cases the log block will be resolved the given block hash.
+
+**logIdentifier**
+Unique identifier for a log → `(logBlockHash, logTxHash, logIndex)`
+
+**workID** 
+Unique 256 bit identifier for a unit of work that is used across the system.
+
 `(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
-    - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
-    - Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
-- `upkeepPayload`: Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
-    - For conditionals triggerData is empty (derived onchain in checkUpkeep)
-    - For log: triggerData is the log information
-- `upkeepResult`: Output information to perform an upkeep. Same across both types: `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
+- Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
+- Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
+
+**upkeepPayload** 
+Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
+- For conditionals triggerData is empty (derived onchain in checkUpkeep)
+- For log: triggerData is the log information
+
+**upkeepResult** 
+Output information to perform an upkeep. Same for both types →  `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
 
 ## Workflows
 
@@ -105,7 +153,7 @@ and adds the eligibile ones to the metadata store, denoted as `proposals`.
 The plugin will include them in the outcome, and they will be added in the next round to the proposal queue to be processed by the conditional finalization workflow.
 
 <aside>
-A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
+💡 Note: A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
 
 `1sec` is the expected OCR round time, so the timeout for a coordinated proposal is `~20sec`.
 It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
@@ -141,7 +189,7 @@ Ineligible results are reported to the upkeep states store.
 The plugin will include them in the outcome, and they will be added in the next round to the proposal queue to be processed by the recovery finalization workflow.
 
 <aside>
-A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
+💡 Note: A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
 
 `1sec` is the expected OCR round time, so the timeout for a coordinated proposal is `~20sec`.
 It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
