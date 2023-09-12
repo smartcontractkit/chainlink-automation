@@ -40,7 +40,7 @@ func HydrateConfig(
 
 	config.LogProvider = source
 	config.EventProvider = ocr.NewReportTracker(listener, logger)
-	config.Runnable = upkeep.NewCheckPipeline(conf, listener, active, performs, netTelemetry, conTelemetry, logger)
+	config.Runnable = upkeep.NewCheckPipeline(conf, active, performs, netTelemetry, conTelemetry, logger)
 
 	config.Encoder = source.Util
 	config.BlockSubscriber = chain.NewBlockHistoryTracker(listener, logger)

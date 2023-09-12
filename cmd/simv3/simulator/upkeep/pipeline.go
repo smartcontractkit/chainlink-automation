@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/net"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
@@ -18,7 +17,6 @@ type CheckTelemetry interface {
 
 type CheckPipeline struct {
 	// provided dependencies
-	listener       *chain.Listener
 	active         *ActiveTracker
 	performs       *PerformTracker
 	rpc            *net.SimulatedNetworkService
@@ -30,7 +28,6 @@ type CheckPipeline struct {
 // NewCheckPipeline ...
 func NewCheckPipeline(
 	conf config.RunBook,
-	listener *chain.Listener,
 	active *ActiveTracker,
 	performs *PerformTracker,
 	netTelemetry net.NetTelemetry,
@@ -45,7 +42,6 @@ func NewCheckPipeline(
 	)
 
 	return &CheckPipeline{
-		listener:       listener,
 		active:         active,
 		performs:       performs,
 		rpc:            service,
