@@ -73,13 +73,20 @@ func (bb *BlockBroadcaster) Subscribe(delay bool) (int, chan Block) {
 }
 
 func (bb *BlockBroadcaster) Unsubscribe(subscriptionId int) {
+	bb.unsubscribe(subscriptionId, true)
+}
+
+func (bb *BlockBroadcaster) unsubscribe(subscriptionId int, closeChan bool) {
 	bb.mu.Lock()
 	defer bb.mu.Unlock()
 
 	sub, ok := bb.subscriptions[subscriptionId]
 	if ok {
 		bb.activeSubs--
-		close(sub)
+
+		if closeChan {
+			close(sub)
+		}
 	}
 
 	delete(bb.subscriptions, subscriptionId)
@@ -162,19 +169,23 @@ func (bb *BlockBroadcaster) broadcast() {
 	msg.Hash = sha256.Sum256(bts.Bytes())
 
 	for sub, chSub := range bb.subscriptions {
-		go func(ch chan Block, delay bool) {
+		go func(subID int, ch chan Block, delay bool, logger *log.Logger) {
 			defer func() {
 				if err := recover(); err != nil {
-					log.Println(err)
+					logger.Println(err)
+
+					bb.unsubscribe(subID, false)
 				}
 			}()
 
 			if delay && bb.maxDelay > 0 {
-				// add up to a 2 second delay at random
+				// add up to `maxDelay` millisecond delay at random
 				r := rand.Intn(bb.maxDelay)
+
 				<-time.After(time.Duration(int64(r)) * time.Millisecond)
 			}
+
 			ch <- msg
-		}(chSub, bb.delays[sub])
+		}(sub, chSub, bb.delays[sub], bb.logger)
 	}
 }

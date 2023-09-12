@@ -16,7 +16,6 @@ type Source struct {
 	Util
 
 	// provided dependencies
-	listener  *chain.Listener
 	active    *ActiveTracker
 	triggered *LogTriggerTracker
 	logger    *log.Logger
@@ -26,14 +25,12 @@ type Source struct {
 }
 
 func NewSource(
-	listener *chain.Listener,
 	active *ActiveTracker,
 	triggered *LogTriggerTracker,
 	lookback int,
 	logger *log.Logger,
 ) *Source {
 	return &Source{
-		listener:         listener,
 		active:           active,
 		triggered:        triggered,
 		logger:           log.New(logger.Writer(), "[upkeep-source] ", log.Ldate|log.Ltime|log.Lshortfile),

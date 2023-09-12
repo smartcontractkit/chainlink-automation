@@ -27,12 +27,17 @@ type LogTriggerTracker struct {
 }
 
 // NewLogTriggerTracker ...
-func NewLogTriggerTracker(listener *chain.Listener, active *ActiveTracker, performs *PerformTracker, logger *log.Logger) *LogTriggerTracker {
+func NewLogTriggerTracker(
+	listener *chain.Listener,
+	active *ActiveTracker,
+	performs *PerformTracker,
+	logger *log.Logger,
+) *LogTriggerTracker {
 	src := &LogTriggerTracker{
 		listener:  listener,
 		active:    active,
 		performs:  performs,
-		logger:    log.New(logger.Writer(), "[log-trigger-tracker]", log.LstdFlags),
+		logger:    log.New(logger.Writer(), "[log-trigger-tracker] ", log.Ldate|log.Ltime|log.Lshortfile),
 		triggered: make([]triggeredUpkeep, 0),
 		read:      make([]triggeredUpkeep, 0),
 		chDone:    make(chan struct{}),
@@ -64,8 +69,8 @@ func (ltt *LogTriggerTracker) GetOnce() []triggeredUpkeep {
 }
 
 // GetAfter will return triggered upkeeps older than the provided block number
-// and that have not been viewed by GetOnce. Subsequent calls my return the same
-// results. GetAfter will validate that a triggered upkeep has not yet been
+// and that have not been viewed by GetOnce. Subsequent calls may return the
+// same results. GetAfter will validate that a triggered upkeep has not yet been
 // performed.
 func (ltt *LogTriggerTracker) GetAfter(number *big.Int) []triggeredUpkeep {
 	ltt.mu.RLock()
@@ -85,7 +90,7 @@ func (ltt *LogTriggerTracker) GetAfter(number *big.Int) []triggeredUpkeep {
 		payload := makeLogPayloadFromUpkeep(ltt.read[x], ltt.active.GetLatestBlock())
 		ok := ltt.performs.IsWorkIDPerformed(payload.WorkID)
 
-		if ltt.read[x].blockNumber.Cmp(number) > 0 && !ok {
+		if ltt.read[x].blockNumber.Cmp(number) < 0 && !ok {
 			output = append(output, ltt.read[x])
 		}
 	}

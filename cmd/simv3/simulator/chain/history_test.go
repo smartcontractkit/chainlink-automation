@@ -43,7 +43,6 @@ func TestBlockHistoryTracker(t *testing.T) {
 	broadcaster.Start()
 	select {
 	case <-ctx.Done():
-
 		t.Log("context deadline was passed before upkeep was broadcast")
 		t.Fail()
 	case <-chHistory:

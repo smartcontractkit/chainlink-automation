@@ -3,11 +3,13 @@ package stores
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 
@@ -43,9 +45,10 @@ type metadataStore struct {
 	stopCh               chan struct{}
 
 	typeGetter types.UpkeepTypeGetter
+	logger     *log.Logger
 }
 
-func NewMetadataStore(subscriber types.BlockSubscriber, typeGetter types.UpkeepTypeGetter) (*metadataStore, error) {
+func NewMetadataStore(subscriber types.BlockSubscriber, typeGetter types.UpkeepTypeGetter, logger *log.Logger) (*metadataStore, error) {
 	chID, ch, err := subscriber.Subscribe()
 	if err != nil {
 		return nil, err
@@ -60,6 +63,7 @@ func NewMetadataStore(subscriber types.BlockSubscriber, typeGetter types.UpkeepT
 		logRecoveryProposals: newOrderedMap(),
 		stopCh:               make(chan struct{}, 1),
 		typeGetter:           typeGetter,
+		logger:               telemetry.WrapLogger(logger, "metadata-store"),
 	}, nil
 }
 
@@ -78,6 +82,8 @@ func (m *metadataStore) GetBlockHistory() types.BlockHistory {
 }
 
 func (m *metadataStore) AddProposals(proposals ...types.CoordinatedBlockProposal) {
+	m.logger.Printf("%d proposals added to store", len(proposals))
+
 	for _, proposal := range proposals {
 		switch m.typeGetter(proposal.UpkeepID) {
 		case types.LogTrigger:
@@ -89,6 +95,7 @@ func (m *metadataStore) AddProposals(proposals ...types.CoordinatedBlockProposal
 }
 
 func (m *metadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedBlockProposal {
+	m.logger.Printf("viewing proposals for type: %d", utype)
 	switch utype {
 	case types.LogTrigger:
 		return m.viewLogRecoveryProposal()
@@ -100,6 +107,8 @@ func (m *metadataStore) ViewProposals(utype types.UpkeepType) []types.Coordinate
 }
 
 func (m *metadataStore) RemoveProposals(proposals ...types.CoordinatedBlockProposal) {
+	m.logger.Printf("%d proposals removed from store", len(proposals))
+
 	for _, proposal := range proposals {
 		switch m.typeGetter(proposal.UpkeepID) {
 		case types.LogTrigger:

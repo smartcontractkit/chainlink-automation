@@ -1,6 +1,7 @@
 package util
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -73,4 +74,24 @@ func UpkeepWorkID(uid ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger)
 	hash := crypto.Keccak256(append(uid[:], triggerExtBytes...))
 
 	return hex.EncodeToString(hash[:])
+}
+
+func NewUpkeepID(entropy []byte, uType uint8) [32]byte {
+	/*
+	   Following the contract convention, an identifier is composed of 32 bytes:
+
+	   - 4 bytes of entropy
+	   - 11 bytes of zeros
+	   - 1 identifying byte for the trigger type
+	   - 16 bytes of entropy
+	*/
+	hashedValue := sha256.Sum256(entropy)
+
+	for x := 4; x < 15; x++ {
+		hashedValue[x] = uint8(0)
+	}
+
+	hashedValue[15] = uType
+
+	return hashedValue
 }

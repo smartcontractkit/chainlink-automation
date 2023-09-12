@@ -91,6 +91,8 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
 
+	factory.logger.Printf("sampler: %s", sample)
+
 	// create the plugin; all services start automatically
 	p, err := newPlugin(
 		c.ConfigDigest,
@@ -146,24 +148,4 @@ func sampleFromProbability(rounds, nodes int, probability float32) (sampleRatio,
 	ratio = sampleRatio(float32(rat))
 
 	return ratio, nil
-}
-
-type sampleRatio float32
-
-func (r sampleRatio) OfInt(count int) int {
-	if count == 0 {
-		return 0
-	}
-
-	// rounds the result using basic rounding op
-	value := math.Round(float64(r) * float64(count))
-	if value < 1.0 {
-		return 1
-	}
-
-	return int(value)
-}
-
-func (r sampleRatio) String() string {
-	return fmt.Sprintf("%.8f", float32(r))
 }

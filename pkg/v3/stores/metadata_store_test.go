@@ -3,6 +3,8 @@ package stores
 import (
 	"context"
 	"errors"
+	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -19,7 +21,9 @@ func TestNewMetadataStore(t *testing.T) {
 			},
 		}
 
-		_, err := NewMetadataStore(blockSubscriber, nil)
+		logger := log.New(io.Discard, "", 0)
+
+		_, err := NewMetadataStore(blockSubscriber, nil, logger)
 		assert.Error(t, err)
 		assert.Equal(t, "subscribe boom", err.Error())
 
@@ -49,7 +53,7 @@ func TestNewMetadataStore(t *testing.T) {
 			}
 		}()
 
-		store, err := NewMetadataStore(blockSubscriber, nil)
+		store, err := NewMetadataStore(blockSubscriber, nil, log.New(io.Discard, "", 0))
 		assert.NoError(t, err)
 
 		go func() {
@@ -87,7 +91,7 @@ func TestNewMetadataStore(t *testing.T) {
 			},
 		}
 
-		store, err := NewMetadataStore(blockSubscriber, nil)
+		store, err := NewMetadataStore(blockSubscriber, nil, log.New(io.Discard, "", 0))
 		assert.NoError(t, err)
 
 		store.running.Store(true)
@@ -122,7 +126,7 @@ func TestNewMetadataStore(t *testing.T) {
 			}
 		}()
 
-		store, err := NewMetadataStore(blockSubscriber, nil)
+		store, err := NewMetadataStore(blockSubscriber, nil, log.New(io.Discard, "", 0))
 		assert.NoError(t, err)
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -156,7 +160,7 @@ func TestNewMetadataStore(t *testing.T) {
 				return 1, ch, nil
 			},
 		}
-		store, _ := NewMetadataStore(blockSubscriber, nil)
+		store, _ := NewMetadataStore(blockSubscriber, nil, log.New(io.Discard, "", 0))
 		store.running.Store(true)
 		err := store.Start(context.Background())
 		assert.Error(t, err)
@@ -169,7 +173,7 @@ func TestNewMetadataStore(t *testing.T) {
 				return 1, ch, nil
 			},
 		}
-		store, _ := NewMetadataStore(blockSubscriber, nil)
+		store, _ := NewMetadataStore(blockSubscriber, nil, log.New(io.Discard, "", 0))
 		store.running.Store(false)
 		err := store.Close()
 		assert.Error(t, err)
@@ -319,7 +323,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 				},
 			}
 
-			store, err := NewMetadataStore(blockSubscriber, nil)
+			store, err := NewMetadataStore(blockSubscriber, nil, log.New(io.Discard, "", 0))
 			assert.NoError(t, err)
 
 			for _, proposal := range tc.addProposals {
@@ -487,7 +491,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 				},
 			}
 
-			store, err := NewMetadataStore(blockSubscriber, tc.typeGetter)
+			store, err := NewMetadataStore(blockSubscriber, tc.typeGetter, log.New(io.Discard, "", 0))
 			assert.NoError(t, err)
 
 			for _, proposal := range tc.addProposals {

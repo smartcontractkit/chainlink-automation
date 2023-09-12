@@ -32,7 +32,7 @@ func HydrateConfig(
 	performs := upkeep.NewPerformTracker(listener, logger)
 
 	triggered := upkeep.NewLogTriggerTracker(listener, active, performs, logger)
-	source := upkeep.NewSource(listener, active, triggered, DefaultLookbackBlocks, logger)
+	source := upkeep.NewSource(active, triggered, DefaultLookbackBlocks, logger)
 
 	config.ContractConfigTracker = ocr.NewOCR3ConfigTracker(listener, logger)
 	config.ContractTransmitter = ocr.NewOCR3Transmitter(name, transmitter)

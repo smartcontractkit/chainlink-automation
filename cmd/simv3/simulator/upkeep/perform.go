@@ -1,6 +1,7 @@
 package upkeep
 
 import (
+	"fmt"
 	"log"
 	"math/big"
 	"runtime"
@@ -60,6 +61,7 @@ func (pt *PerformTracker) IsWorkIDPerformed(workID string) bool {
 	if ok, exists := pt.performed[workID]; exists && ok {
 		return true
 	}
+	fmt.Println(workID)
 
 	return false
 }
