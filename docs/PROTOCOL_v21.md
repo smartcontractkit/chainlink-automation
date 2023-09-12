@@ -51,8 +51,13 @@ and onchain contracts.
 
 Two types of triggers are supported:
 
-- **Conditional triggers** - triggers that are based on on-chain conditions, e.g. a price feed update
-- **Log triggers** - triggers that are based on logs emitted by external systems, e.g. a new token transfer
+**Conditional triggers**
+
+Triggers that are based on on-chain conditions, e.g. a price feed update.
+
+**Log triggers**
+
+Triggers that are based on arbitrary event logs that were emitted on-chain, e.g. a new token transfer.
 
 ## Overview 
 
@@ -109,10 +114,12 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 
 ## Definitions
 
-**upkeepID** 
+**upkeepID**
+
 Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
 
 **trigger**
+
 Used to represent the trigger for a particular upkeep performance, and is represented as → 
 `(checkBlockNum, checkBlockHash,extension)`
 
@@ -122,21 +129,25 @@ The extension is based on the trigger type:
 NOTE: `logBlockNum` might not be present in the trigger. In such cases the log block will be resolved the given block hash.
 
 **logIdentifier**
+
 Unique identifier for a log → `(logBlockHash, logTxHash, logIndex)`
 
-**workID** 
+**workID**
+
 Unique 256 bit identifier for a unit of work that is used across the system.
 
 `(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
 - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
 - Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
 
-**upkeepPayload** 
+**upkeepPayload**
+
 Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
 - For conditionals triggerData is empty (derived onchain in checkUpkeep)
 - For log: triggerData is the log information
 
-**upkeepResult** 
+**upkeepResult**
+ 
 Output information to perform an upkeep. Same for both types →  `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
 
 ## Workflows
