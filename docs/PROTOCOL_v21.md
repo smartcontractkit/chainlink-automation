@@ -315,10 +315,12 @@ For a set of results, we use a single value for `fastGasWei`, `linkNative`, whic
 
 ### ShouldAcceptAttestedReport
 
-Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
+Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight.
+
+A report won't be accepted if a report with a higher check block number was already accepted for the same `WorkID`.
 
 <aside>
-💡 Note: We cannot guarantee that the same (upkeepID) / (logIdentifier, upkeepID) will not be already existing in coordinator. (e.g. node’s local chain is lagging the network). As a result we have an override behaviour where we wait on the higher checkBlockNum report.
+💡 Note: We cannot guarantee that the same WorkID will not be already existing in coordinator, e.g. node’s local chain is lagging the network. As a result we have an override behaviour where we wait on the higher checkBlockNum report.
 </aside>
 
 ### ShouldTransmitAcceptedReport
@@ -394,7 +396,7 @@ Provides a simple interface `getLatestPayloads` to provide new **unseen** logs a
 In the background, it repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` blocks and stores them in the **log buffer** (see below).
 
 <aside>
-💡 Note: `getLatestPayloads` might miss logs when there is a surge of logs which lasts longer than `lookbackBlocks`. Upon node restarts it can **miss logs** when it restarts after a gap, or **provide same logs again** when it quickly restarts.
+💡 Note: `getLatestPayloads` might miss logs when there is a surge of logs which lasts longer than `lookbackBlocks`. Upon node restarts it can miss logs when it restarts after a gap, or provide same logs again when it quickly restarts.
 
 To mitigate missed or dropped logs, the log recoverer will re-scan for missed logs.
 </aside>
