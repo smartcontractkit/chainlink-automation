@@ -10,7 +10,7 @@ This document aims to give a high level overview of the protocol for Automation 
     - [Reliability Guarantees](#reliability-guarantees)
     - [Security Guarantees](#security-guarantees)
   - [Definitions](#definitions)
-  - [Key Consepcts](#key-consepcts)
+  - [Key Concepts](#key-concepts)
     - [Providers](#providers)
     - [Workflows](#workflows)
         - [Conditional Triggers](#1-conditional-triggers)
@@ -109,45 +109,25 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 
 ## Definitions
 
-#### UpkeepID
-
-Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
-
-#### Trigger
-
-Used to represent the trigger for a particular upkeep performance, and is represented as → 
+- **UpkeepID** Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
+- **Trigger** Used to represent the trigger for a particular upkeep performance, and is represented as → 
 `(checkBlockNum, checkBlockHash,extension)`
-
 The extension is based on the trigger type:
 - Conditionals: no extension 
 - Log triggers → `(logTxHash, logIndex, logBlockHash, logBlockNum)`. \
 NOTE: `logBlockNum` might not be present in the trigger. In such cases the log block will be resolved the given block hash.
-
-#### LogIdentifier
-
-Unique identifier for a log → `(logBlockHash, logTxHash, logIndex)`
-
-#### WorkID
-
-Unique 256 bit identifier for a unit of work that is used across the system.
-
-`(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
-- Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
-- Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
-
-#### UpkeepPayload
-
-Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
-- For conditionals triggerData is empty (derived onchain in checkUpkeep)
-- For log: triggerData is the log information
-
-#### UpkeepResult
-
-Output information to perform an upkeep. Same for both types →  `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
+- **LogIdentifier** Unique identifier for a log → `(logBlockHash, logTxHash, logIndex)`
+- **WorkID** Unique 256 bit identifier for a unit of work that is used across the system. `(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
+    - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
+    - Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
+- **UpkeepPayload** - Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
+    - For conditionals triggerData is empty (derived onchain in checkUpkeep)
+    - For log: triggerData is the log information
+- **UpkeepResult** - Output information to perform an upkeep. Same for both types →  `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
 
 <br />
 
-## Key Consepcts
+## Key Concepts
 
 ### Providers
 
