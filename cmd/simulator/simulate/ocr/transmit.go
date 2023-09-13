@@ -45,7 +45,7 @@ func (tl *OCR3TransmitLoader) Load(block *chain.Block) {
 		return
 	}
 
-	transmits := make([]chain.TransmitEvent, len(tl.queue))
+	transmits := make([]chain.TransmitEvent, 0, len(tl.queue))
 
 	for i := range tl.queue {
 		tl.queue[i].BlockNumber = block.Number
