@@ -1,59 +1,91 @@
 # Offchain protocol overview v2.1
 
-This document aims to give a high level overview of a full e2e protocol for automation `v2.1`. 
+This document aims to give a high level overview of the protocol for Automation `v2.1`. 
 
 ## Table of Contents
 
+  - [Abstract](#abstract)
   - [Overview](#overview)
   - [Boundaries](#boundaries)
     - [Reliability Guarantees](#reliability-guarantees)
     - [Security Guarantees](#security-guarantees)
   - [Definitions](#definitions)
-  - [Eligibility Workflows](#eligibility-workflows)
-    - [Conditional Triggers](#1-conditional-triggers-workflows)
-        - [Conditional Proposal](#conditional-proposal-workflow)
-        - [Conditional Finalization](#conditional-finalization-workflow)
-    - [Log Triggers](#2-log-triggers-workflows)
-        - [Log Trigger](#log-trigger-workflow)
-        - [Retry](#retry-workflow)
-        - [Log Recovery Proposal](#log-recovery-proposal-workflow)
-        - [Log Recovery Finalization](#log-recovery-finalization-workflow)
+  - [Key Concepts](#key-concepts)
+    - [Providers](#providers)
+    - [Workflows](#workflows)
+        - [Conditional Triggers](#1-conditional-triggers)
+        - [Log Triggers](#2-log-triggers)
+    - [Pure Reporting](#pure-reporting)
+    - [Report Transmission](#report-transmission)
+  - [OCR Plugin](#ocr-plugin)
+    - [Observation](#observation)
+    - [Outcome](#outcome)
+    - [Reports](#reports)
+    - [ShouldAcceptAttestedReport](#shouldacceptattestedreport)
+    - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
   - [Components](#components)
     - [Registry](#registry)
-    - [Runner](#runner)
-    - [Transmit Event Provider](#transmit-event-provider)
-    - [Coordinator](#coordinator)   
-    - [Result Store](#result-store)
-    - [Metadata Store](#metadata-store)
-    - [Observers](#observers)
-        - [Proposal Observers](#proposal-observers)
-        - [Finalization Observers](#finalization-observers)
     - [Log Provider](#log-provider)
     - [Log Recoverer](#log-recoverer)
     - [Upkeep States](#upkeep-states)
-    - [OCR3 Plugin](#plugin)
-        - [Observation](#observation)
-        - [Outcome](#outcome)
-        - [Reports](#reports)
-        - [ShouldAcceptAttestedReport](#shouldacceptattestedreport)
-        - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
+    - [Runner](#runner)
+    - [Coordinator](#coordinator)   
+    - [Result Store](#result-store)
+    - [Metadata Store](#metadata-store)
 
 <br />
 
-## Overview
+## Abstract
 
-Chainlink Automation is a decentralized execution engine for automating smart contracts, with a generic and extensible triggering mechanism.
+Chainlink Automation is a decentralized execution engine for automating smart contracts, 
+with a generic and extensible triggering mechanism.
 
-The protocol is composed of offchain components which we will discuss in this document, and onchain contracts.
+The protocol is implemented using the OCR3 interface, which is a decentralized consensus framework for off-chain computation.
+It is composed of offchain components which we will discuss in this document, and onchain contracts.
+
+There are two types of supported triggers:
+
+**Conditional triggers**
+are based on on-chain conditions, e.g. a price feed update.
+Upkeeps are being checked periodically, and if the condition is met, the upkeep will be performed.
+
+**Log triggers**
+are based on arbitrary event logs that were emitted on-chain, e.g. a new token transfer.
+
+## Overview 
+
+In high-level, the system works as follows:
+
+- Upkeeps are registered through an on-chain registry.
+    - Nodes sync the upkeeps to their local state.
+- Nodes listen to external events, and trigger the execution of upkeeps based on those events.
+- Eligible results (`performables`) with an agreement among f+1 nodes, will be performed on-chain.
+- Upkeeps which need coordination on a latest check block, are considered as `proposals` and will
+go through additional workflow before the eligible ones become `performables`.
+- The protocol runs additional threads to scan for missed events, to ensure the integrity of the system.
 
 The offchain components are responsible for the following:
 
 - **State management** - keeping track of the state of the system, including upkeeps, triggers, and results
-- **Triggering** - listening to external events and triggering the execution of smart contracts based on those events
+- **Watching triggers** - listening to external events and triggering the execution of smart contracts based on those events
 - **Eligibility workflows** - determining whether a upkeep+trigger is eligible to perform
-based on on-chain check pipeline.
-- **Threshold Agreement** - coming to agreement among f+1 nodes on what upkeeps are eligible to perform
-- **Execution** - executing the agreed, eligible upkeeps on-chain
+based on check pipeline which is parametered by a check block number to do onchain RPC simulations
+- **Threshold Agreement** - coming to agreement among f+1 nodes on what upkeeps are eligible to perform.
+- **Execution** - executing the agreed, eligible upkeeps on-chain.
+
+An abstracted view looks as follows:
+
+![Automation Offchain HL Block Diagram](./images/automation_ocr3_highlevel_block.jpg)
+
+<aside>
+💡 Note: Arrows in the diagrams are directed by data flow.
+</aside>
+<br />
+<aside>
+💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
+</aside>
+<br />
+<br />
 
 ## Boundaries
 
@@ -65,7 +97,7 @@ The protocol works with n=10 nodes, handling upto f=2 arbitrary malicious nodes.
 Out of n=10 nodes every node listens to configured user log, as soon f+1=3 nodes observe the log and agree on a checkPipeline result, it will be performed on chain. We can handle up to 7 nodes missing a log and handle capacity of upto 10 log trigger upkeeps with rate limit per upkeep of 5 logs per second.
 
 **Conditionals** 
-Every upkeep’s condition will be checked at least once by the network every ~3 seconds, handling up to f+1=3 nodes being down. Once condition is eligible, every node evaluates the checkPipeline, as soon as f+1=3 nodes agree, it will be performed on chain. We can handle capacity of up to 500 conditional upkeeps.
+Every upkeep’s condition will be checked at least once by the network every ~3 seconds, handling up to f+1=3 nodes being down. Once condition is eligible, every node evaluates the checkPipeline on a coordinated check block, as soon as f+1=3 nodes agree, it will be performed on chain. We can handle capacity of up to 500 conditional upkeeps.
     
 The protocol will be functional as long as > 6 ((n+f)/2) nodes are alive and participating within the p2p network (required for ocr3 consensus).
 
@@ -73,98 +105,245 @@ The protocol will be functional as long as > 6 ((n+f)/2) nodes are alive and par
 
 At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger and its data before it is performed.
 
+<br />
 
 ## Definitions
 
-- `upkeepID`: Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
-- `trigger`: Used to represent the trigger for a particular upkeep performance, and is represented as: `(checkBlockNum, checkBlockHash,extension)` where the extension is based on the trigger type:
+- **UpkeepID** Unique 256 bit identifier for an upkeep. Each upkeep has a unique trigger type (conditional or log) which is encoded within the ID
+- **Trigger** Used to represent the trigger for a particular upkeep performance, and is represented as → 
+`(checkBlockNum, checkBlockHash,extension)`
+The extension is based on the trigger type:
     - Conditionals: no extension 
-    - Log triggers: `(logTxHash, logIndex, logBlockNum, logBlockHash)`. \
-    NOTE: `logBlockNum` and `logBlockHash` might not be present in the trigger, in which case they are set to 0 and empty respectively. In such cases the log block will be resolved the given tx hash.
-- `logIdentifier`: unique identifier for a log → `(logTxHash, logIndex)`
-- `workID`: Unique 256 bit identifier for a unit of work that is used across the system. \
-`(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
-    - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
+    - Log triggers → `(logTxHash, logIndex, logBlockHash, logBlockNum)`. \
+    NOTE: `logBlockNum` might not be present in the trigger. In such cases the log block will be resolved the given block hash.
+- **LogIdentifier** Unique identifier for a log → `(logBlockHash, logTxHash, logIndex)`
+- **WorkID** Unique 256 bit identifier for a unit of work that is used across the system. `(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
+    - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed block.
     - Log triggers: `keccak256(upkeepID,logIdentifier)`. At any point in time there can be at most one unit of work for a particular upkeep and log.
-- `upkeepPayload`: Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
+- **UpkeepPayload** - Input information to process a unit of work for an upkeep → `(upkeepID, trigger, triggerData)`
     - For conditionals triggerData is empty (derived onchain in checkUpkeep)
     - For log: triggerData is the log information
-- `upkeepResult`: Output information to perform an upkeep. Same across both types: `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
+- **UpkeepResult** - Output information to perform an upkeep. Same for both types →  `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
 
-## Eligibility Workflows
+<br />
 
-The eligibility workflows are the sequence of events and procedures used to determine if an upkeep is considered eligible to perform.
+## Key Concepts
+
+### Providers
+
+Providers act as the data source of triggers to the protocol.
+Each provider serves a different workflow, and is responsible for providing the corresponding payloads.
+
+#### Upkeep Provider
+
+The upkeep provider is responsible for providing upkeep payloads to the **conditional proposal workflow**.
+
+It will provide a list of active upkeeps to be sampled.
+
+#### Log Event Provider
+
+The log event provider is responsible for collecting latest logs,
+and provide the corresponding payloads to the **log trigger workflow**.
+
+The log provider works on the following window/range of blocks:
+
+`[latestBlock, latestBlock-lookbackBlocks]`
+
+<aside>
+💡 Note: lookbackBlocks is 200 blocks and equal or higher than the chain's finality depth 
+</aside>
+
+#### Log Event Recoverer
+
+The log recoverer is responsible for collecting logs that were missed or dropped at some point, and provide the corresponding payloads to the log **recovery proposal workflow**.
+
+In addition, it is responsible for fetching the log data for a particular proposal on demand, serving **recovery finalization workflow**.
+
+The recoverer works on the following window/range of blocks:
+
+`[latestBlock-lookbackBlocks, latestBlock-24hBlock]`
+
+<aside>
+💡 Note: lookbackBlocks is 200 blocks and equal or higher than the chain's finality depth 
+</aside>
+
+<br />
+<br />
+
+### Workflows
+
+Workflows are the sequence of events and procedures used to determine if an upkeep is considered eligible to perform.
+
+Each workflow performs pre-processing, processing and post-processing steps.
 
 The protocol supports two types of triggers, each brings a set of workflows:
 
-### 1. Conditional Triggers Workflows
+#### 1. Conditional Triggers
 #### Conditional Proposal Workflow
 
-The conditional proposal workflow is used to determine if an upkeep is eligible to perform. It is triggered by a ticker that provides samples of upkeeps to check. The samples are
-collected, filtered, and checked. The results are then pushed into the metadata store as proposals. 
-The plugin will then collect these proposals and push them into the outcome to be processed in next rounds, where they will go into conditional finalization workflow.
+The conditional proposal workflow checks random samples of active upkeeps, 
+and adds the eligibile ones to the metadata store, denoted as `proposals`.
+The plugin will include them in the outcome, and they will be added in the next round to the proposal queue to be processed by the conditional finalization workflow.
 
 <aside>
-A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
+💡 Note: A node can be temporarily down and miss some rounds and associated actions on outcome. A history of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
 
 `1sec` is the expected OCR round time, so the timeout for a coordinated proposal is `~20sec`.
-It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
+It gives the node enough time to process the proposal before it gets coordinated again, on a new check block number.
 </aside>
 
 #### Conditional Finalization Workflow 
 
-The conditional finalization flow is used to come to agreement among nodes on what upkeepPayloads to check, based on the results of the proposal flow. It is triggered by a ticker that provides payloads based on a coordinated block and upkeepIDs.
+The conditional finalization workflow checks coordinated proposals merged with coordinated block history, from the previous round. 
+Eligible results are added to the result store, denoted as `perfomables`.
 
-The results are collected, filtered, and checked again. Eligible results will go into the results store and later on into a report and those that were agreed by at least f+1=3 nodes will be performed on chain.
+The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
 
-### 2. Log Triggers Workflows
+<br />
+
+#### 2. Log Triggers
 #### Log Trigger Workflow
 
-The log trigger workflow is used to determine if a log needs to be perform. It is triggered by a ticker that get the latest logs from log event provider.
-The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
+The log trigger workflow checks latest logs from the log event provider, and adds the eligible results to the result store, denoted as `perfomables`. Ineligible results are reported to the upkeep states store.
+
+The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
 
 In cases of retryable failures, the payloads are pushed into the retry queue.
 
 #### Retry Workflow
 
-The retry workflow is used to retry payloads that failed with retryable errors. It is triggered by a ticker that gets payloads from the retry queue.
+The retry workflow is used to retry payloads that failed with retryable errors. It is similar to log trigger workflow, but instead of getting logs from the log event provider, it gets payloads from the retry queue.
 
-The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
+<aside>
+💡 Note: retryable errors will be retried over and over as long as they originate in a block that is newer than `lookbackBlocks`.
+
+Logs from older blocks will be considered as missed, and are expected to be picked up by the recoverer.
+</aside>
 
 #### Log Recovery Proposal Workflow
 
-The log recovery workflow is used to recover logs that were missed by the log trigger flow. It is triggered by a ticker that gets missed logs from log recoverer.
-The missed logs are pushed into the metadata store as recovery proposals. 
-The plugin will then collect these proposals and push them into the outcome to be processed in next rounds where they gets picked up into recovery finalization flow. 
+The log trigger workflow checks logs that were missed, and spotted by the log event recoverer.
+
+Eligible results are added to the metadata store, denoted as `proposals`. 
+Ineligible results are reported to the upkeep states store.
+
+The plugin will include them in the outcome, and they will be added in the next round to the proposal queue to be processed on a coordinated check block by the recovery finalization workflow.
 
 <aside>
-A node can be temporarily down and miss some rounds and associated actions on outcome. A ring buffer of coordinated proposals is kept for 20 rounds. A node can process coorindated proposals for upto last 20 rounds.
-
-`1sec` is the expected OCR round time, so the timeout for a coordinated proposal is `~20sec`.
-It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
+💡 Note: It uses the same structure as conditional proposal flow where it keeps them active for 20 rounds tied to a particular coordinated check block
 </aside>
 
 #### Log Recovery Finalization Flow
 
-The recovery finalization workflow takes recoverable payloads merged with the latest check blocks and runs the pipeline for them.
+The recovery finalization workflow checks coordinated proposals merged with the latest check blocks.
 
-The recovery finalization ticker will call the payload builder to build payloads with the latest proposals that were found in the proposal queue.
-The log recoverer does necessary checks to ensure that the log should actually be recovered, to protect against malicious nodes surfacing wrong logs for recovery. 
-The payloads are filtered, processed through checkPipeline and eligible results are collected into the result store. Those that are agreed by at least f+1=3 nodes will go into a report and be performed on chain.
+Eligible results are added to the result store, denoted as `perfomables`.
+Ineligible results are reported to the upkeep states store.
+
+The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
+
+<br />
+
+### Pure Reporting
+
+OCR interface is implemented with "pure" functions that don't perform any blocking operations.
+Intead, we use async pooling and queueing to decouple the interaction with  other components in the system:
+
+- **Proposal queue** - used by the plugin for queueing proposals to be processed by the finalization observers.
+- **Result store** - used to store performable results to be included in an outcome after the plugin reads them. Finalization workflows adds results, while the plugin reads them.
+- **Metadata store** - used by proposal workflows for pushing proposals and block history to be included in an outcome after the plugin reads them.
+
+<br />
+
+### Report Transmission
+
+Finalized reports are transmitted to contract, to perform the agreed upkeep payloads on chain.
+
+**Transmit events** are used to surface the results to the network.
+The following events can be emitted by the contract for a given report:
+
+- `UpkeepPerformed`: Report successfully performed for an upkeep 
+(for log triggers `(upkeepID, logIdentifier)`)
+- `StateUpkeep`: Report was stale and the upkeep was already performed
+    - For conditionals this happens when an upkeep is tried to be performed on a checkBockNumber which is older than the last perform block (Stale check). 
+    - For log triggers this happens when the particular (upkeepID, logIdentifier) has been performed before already
+- `InsufficientFunds`: Emitted when pre upkeep execution when not enough funds are found on chain for the execution. Funds check is done in checkPipeline, but actual funds required on chain at execution time can change, e.g. to gas price changes / link price changes. In such cases upkeep is not performed or charged. These reports should really be an edge case, on chain we have a multiplier during checkPipeline to overestimate funds before even attempting an upkeep.
+- `CancelledUpkeep`: This happens when the upkeep gets cancelled in between check time and perform time. To protect against malicious users, the contract adds a 50 block delay to any user cancellation requests.
+
+<br />
+
+## OCR Plugin
+
+The plugin is performing the following tasks upon OCR life-cycle:
+
+### Observation
+
+Upon observation, the plugin first prepross previous outcome, and then build the current observation.
+
+**Preprocessing** of previous outcome, which includes the following steps:
+- Remove agreed upon finalized performables from result store
+- Remove surfaced proposals from metadata store
+- Add surfaced proposals to proposal queue
+
+**Building** of the current observation includes the following steps:
+- Read performables from result store, filter results using coordinator and add them to observation
+- Read proposals from metadata store, filter using coordinator and add them to observation
+- Read block history from metadata store, add it to observation
+
+<aside>
+💡 Note: The OCR seq number is used as pseudoRandom seed for sorting performables and proposals in a
+    random, deterministic order across nodes
+</aside>
+<br />
+
+### Outcome
+
+Upon outcome, the plugin collects performables and proposals from the other nodes observations,
+to be included in an outcome.
+
+**Performables** which have f+1 agreement are added to finalized results.
+
+**Proposals** are collected without f+1 agreement, but with limits, deduplication and filtering of existing proposals. Then we "merge" these proposals with the coordinated block and add it to the outcome.
+The **coordinated block** is determined by looking on block history and using the most recent block/hash with f+1 agreement.
+
+### Reports
+
+Takes agreed performables from the outcome, package them into reports with potential batching of upkeeps.
+Batching is subject to upkeep gas limit, and preconfigured `reportGasLimit` and `gasOverheadPerUpkeep`. Additionally, same upkeep ID is not batched within the same report.
+
+For a set of results, we use a single value for `fastGasWei`, `linkNative`, which is taken from the result which has the highest `checkBlockNum`.
+
+### ShouldAcceptAttestedReport
+
+Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight.
+
+A report won't be accepted if a report with a higher check block number was already accepted for the same `WorkID`.
+
+<aside>
+💡 Note: We cannot guarantee that the same WorkID will not be already existing in coordinator, e.g. node’s local chain is lagging the network. As a result we have an override behaviour where we wait on the higher checkBlockNum report.
+</aside>
+
+### ShouldTransmitAcceptedReport
+
+Extracts [(trigger, upkeepID)] from report filters upkeeps that were already performed using the coordinator. 
+If any (trigger, upkeepID) is not yet confirmed then return true. Otherwise return false.
+
+<br />
 
 ## Components
 
-An abstracted view of the common protocol components looks as follows:
+The following diagrams visualize the system and the protocol flow:
 
 ![Automation Block Diagram](./images/automation_ocr3_block.jpg)
 
 <aside>
-💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
+💡 Note: Arrows in the diagrams are directed by data flow.
 </aside>
 <br />
 <aside>
-💡 Note: Arrows in the diagrams are directed by data flow.
+💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
 </aside>
+<br />
 
 ### Registry
 
@@ -190,238 +369,36 @@ Upon startup, all upkeeps are synced from chain and the log event provider is ca
 
 The registry exposes `checkUpkeep` so the runner could execute the pipeline taking `upkeepPayload` as an input
 
-- If the checkBlockNum is lagging latestBlock by more than a threshold (100 blocks) then it returns a non-retryable error
+- If the checkBlockNum is lagging latestBlock by more than a threshold (128 blocks) then it returns a non-retryable error
 - For log triggers verifies the log is still part of chain at checkBlockNum
 - Does a batch RPC call to checkUpkeep (for conditionals calls `checkUpkeep()` and for log calls `checkUpkeep(logData)`).
 - Does batch mercury fetch and callback for upkeeps that requires mercury data
 - Does batch RPC call to simulatePerformUpkeep for upkeeps that are eligible
 
-Returns list of results for each payload. Result can be **eligible** with upkeepResult / **non-eligible** with failure reason / **error**, which can be retryable if it’s transient or non retryable e.g. in case the checkBlockNum is too old.
-
-### Runner
-
-This component is responsible for parallelizing upkeep executions and providing a single interface to different components maintaining a shared cache
-
-- Takes a list of upkeepPayloads, calls CheckPipeline asynchronously with upkeeps being batched in a single pipeline execution
-- Maintains in-memory cache of non-errored pipeline executions indexed on (trigger, upkeepID). Directly uses that result instead of a new execution if available
-- Allows for repeated calls for the same upkeep payload
-- Execution automatically fails after a timeout that was provided as argument (~10s, set by Observer)
-- A call to CheckUpkeeps on the runner is synchronous. A worker is spawned per a batch of upkeeps to check, and all workers needs to finish before returning.
-
-<aside>
-💡 Note: Because of the sync nature, we don't track pending requests, so there might be double checking of same payloads. Once a payload was checked, we cache the result in memory, so next time we don't need to check it again.
-</aside>
-
-### Transmit Event Provider
-
-This component serves to transmit events from log poller, to other components in the system (coordinator). 
-
-**Transmit Events** 
-
-Are emitted when a report is sent onchain to the contract.
-The following events are used:
-
-- `UpkeepPerformed`: Report successfully performed for an upkeep 
-(for log triggers `(upkeepID, logIdentifier)`)
-- `StateUpkeep`: Report was stale and the upkeep was already performed
-    - For conditionals this happens when an upkeep is tried to be performed on a checkBockNumber which is older than the last perform block (Stale check). 
-    - For log triggers this happens when the particular (upkeepID, logIdentifier) has been performed before already
-- `InsufficientFunds`: Emitted when pre upkeep execution when not enough funds are found on chain for the execution. Funds check is done in checkPipeline, but actual funds required on chain at execution time can change, e.g. to gas price changes / link price changes. In such cases upkeep is not performed or charged. These reports should really be an edge case, on chain we have a multiplier during checkPipeline to overestimate funds before even attempting an upkeep.
-- `CancelledUpkeep`: This happens when the upkeep gets cancelled in between check time and perform time. To protect against malicious users, the contract adds a 50 block delay to any user cancellation requests.
-
-### Coordinator
-
-Stores in-flight & confirmed reports in memory and helps to coordinate the execution and transmission of upkeeps across multiple components in the system.
-
-The coordinator stores reports by workID, in case of conflict - a new report is seen for the same key, it waits on the higher `checkBlockNumber`. 
-
-All keys stored expire after TTL. In case an item is not marked as performed within TTL, it is assumed that the tx got lost. Conditionals and Log upkeeps recover from such scenarios through different logic.
-
-**Conditionals**
-
-The coordinator ensures that an upkeep is performed at progressively higher blocks and tracks 'in-flight' status on transmits. This variant sets the last performed block higher in a local cache for an upkeepId on every transmit event.
-
-The coordinator stores inflight reports per `upkeepID` and an associated `upkeepTriggerID` for identifying transmit events.
-
-**Log Triggers**
-
-The coordinator ensures that a triggered log is performed exactly once. It tracks 'in-flight' status when a report is generated and registers transmit events such as performed or staleReport or reorg.
-
-The coordinator stores inflight reports per `(upkeepID, logIdentifier)` and an associated `upkeepTriggerID` for identifying transmit events.
-
-**Transmit Events**
-
-The coordinator listens to transmit event logs (stale / reorged / cancelled / insufficient funds) of stored `upkeepTriggerID` in memory, and act accordingly:
-
-- Upkeep performed - the `upkeepTriggerID` is marked as confirmed
-    - For log upkeeps, state is updated to `performed` with the Upkeep States component
-    - For conditional upkeeps the perform block number is stored in memory
-- Stale report - the `upkeepTriggerID` is marked as confirmed
-    - conditional upkeeps will be sampled and checked again automatically on a later block
-    - for log upkeeps it means there was a duplicate perform. The state is updated to `performed` in Upkeep States
-- Reorged - the `upkeepTriggerID` is removed from coordinator
-    - conditional upkeeps will be sampled and checked again automatically on a later block
-    - Logs enqueued through log event provider (i.e. checkBlockNum == logBlockNum) are forgotten about since the log got reorged. If reorg causes a new log then it is expected to be surfaced up by the log provider again.
-    - Logs enqueued through recovery attemtps will be picked up again by the log recoverer
-- Insufficient funds - the `upkeepTriggerID` is removed
-    - This can happen when we thought there were sufficient funds during checkPipeline but during onchain execution funds were not enough (e.g. gas price spike)
-    - conditional upkeeps will be sampled and checked again automatically on a later block
-    - Logs are expected to be picked up again by the log recoverer
-- Cancelled Upkeep - the `upkeepTriggerID` is removed. No recovery is needed as upkeep is cancelled
-
-**Coordinator API**
-
-**Accept**
-
-The coordinator exposes an `Accept` function to mark an upkeep as pending for transmission. It is used during `shouldAccept` step by the plugin.
-
-**Should Transmit**
-
-To check whether some reported upkeep can be transmitted, the plugin calls to `shouldTransmit` on the coordinator.
-It expects the full trigger as input, i.e. with concrete checkBlockNum and checkBlockHash:
-`shouldTransmit(upkeepID, trigger)`.
-
-An item is considered confirmed for transmission if it was accepted by the coordinator (i.e. we expect it to be performed) but was yet transmitted.
-
-**Should Process**
-
-`shouldProcess(upkeepID, trigger)` is used to check whether an upkeep should be processed which is used for pre-processing / filtering to prevent duplicate reports.
-
-For conditionals
-    - False if report is inflight for upkeepID
-    - False if report has been confirmed after blockNum (This can happen when network latest block is lagging this node’s logs)
-
-For log triggers
-    - False if report is inflight or has been confirmed
-    - True otherwise
-
-### Result Store
-
-This component is responsible for storing `upkeepResults` that a node thinks should be performed. It hopes to get agreement from quorum of nodes on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. Results that do not achieve agreement within TTL are expected to be picked up by recovery flow.
-
-- Maintains an in-memory collection of upkeepResults
-    - Conditional upkeeps will be stored by (upkeepID)
-    - Log upkeeps will be stored by (upkeepID, logIdentifier)
-    - Overwrites results for duplicated results with newer checkBlockNumber.
-- Each result has a TTL (5min). When the TTL expires
-    - conditional upkeeps will be sampled and checked again automatically
-    - log upkeeps that were missed are expected to be picked up by the log recoverer
-- Provides a read API to view results, which takes as input (`pseudoRandomSeed`, `limit`).
-The nodes in the network are expected to use the same seed for a particular round. Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. 
-Note: We do not do FIFO here as potentially out of sync old results will block new results sent by the node for agreement.
-- Provides an API to remove (trigger, upkeepID) from the store
-
-### Metadata Store
-
-This component stores the metadata to be sent within observations to the network. 
-Every record has a TTL, and upon expiry items are just removed without any action.
-The store provides an add / view / remove API for other components.
-
-There are three categories of objects that are stored:
-
-**1. Conditional proposals**
-
-Are sample upkeeps (upkeepID) that are eligible to perform.
-
-**2. Log recovery proposals**
-
-Are recovered proposals (upkeepID, logIdentifier) that were missed, and are eligible to perform.
-
-**3. Latest block history**
-
-Latest block history coming from the block subscriber (last 256 block and hashes), and used for coordination among nodes.
-
-## Observers
-
-### Proposal Observers
-
-Proposal observers takes input from the corresponding ticker, process it and push it into the metadata store to be incloded as proposals for the next round.
-
-Proposals will be added to the propsal queue, be processed by the finalization observers.
-
-There are 2 types of proposal observers:
-
-#### 1. Samples Observer
-Manages samples of conditional upkeeps, gets sample payloads from the upkeep provider.
-
-#### 2. Recovery Observer
-Manages recovery proposals of log upkeeps, gets recovery payloads from the log recoverer.
+Returns list of results for each payload. Result can be **eligible** with upkeepResult / **non-eligible** with failure reason / **error**, which can be retryable if it’s transient or non retryable
 
 <br />
-
-Proposal observers will perform the following steps:
-
-**Pre-processing**
-
-Filters upkeeps present in coordinator (`shouldProcess`).
-
-**Processing**
-
-Calls runner with upkeep payloads
-
-**Post-processing**
-
-Does the following:
-
-- For eligible upkeeps, adds them to the metadata store (`eligible samples` / `recovery logs`)
-- For ineligible upkeeps, updates only log trigger state in upkeep states store to be ineligible
-- Retryables and other errors are ignored
-    - For conditionals, they will be anyway picked up in next samples.
-    - For log triggers, we expect the recoverer to pick them up again if needed
-
-
-### Finalization Observers
-
-Finalization observers takes input from the corresponding ticker, process it and push it into the result store to be to be included in reports by the plugin.
-
-There are 4 types of finalization observers:
-
-#### 1. Conditional Finalization
-Processes agreed eligible samples from previous observations, served via the proposal queue.
-
-#### 2. Log Trigger
-Processes log triggers that were found by log provider.
-
-#### 3. Log Recovery Finalization
-Processes agreed eligible recovery logs from previous observations, served via the proposal queue.
-
-#### 4. Retry
-Processes retryable payloads from the retry queue.
-
-<br />
-
-Finalization observers will perform the following steps:
-
-**Pre-processing**
-
-Filters upkeeps present in coordinator (`shouldAccept`).
-
-**Processing**
-
-Calls runner with upkeep payloads.
-
-**Post-processing**
-
-Does the following:
-
-- For eligible upkeeps, adds them to the result store
-- For ineligible upkeeps, updates only log trigger state in upkeep states store to be ineligible
-- Retryables errors are added to the retry queue
 
 ### Log Provider
 
-This component’s purpose is to surface latest logs for registered upkeeps. It does not maintain any state across restarts (no DB). The main functionality it exposes
+This component’s purpose is to surface latest logs for registered upkeeps. It stores state in-memory and therefore does not maintain any state across restarts (no persistence).
 
-- Listening for log filter config changes from Registry: 
-    - sync log poller with the filters
-    - sync the local filter store with changes in filters
-- Provides a simple interface `getLatestPayloads` to provide new **unseen** logs across all upkeeps within a limit
-    - Repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` (200) blocks. Stores them in the log buffer (see below)
-    - Handles load balancing and rate limiting across upkeeps
-    - `getLatestPayloads` limits the number of logs returned per upkeep in a single call. If there are more logs present, then the provider gives the logs starting from an offset (`latestBlock-latestBlock%lookbackBlocks`). Offset is calculated such that the nodes try to choose the same logs from big pool of logs so they can get agreement
+The main functionality it exposes:
+
+**Upkeep filter life-cycle**
+
+Listening for log filter config changes from Registry to sync log poller and the local filter store with changes in the filters
+
+**Latest logs**
+
+Provides a simple interface `getLatestPayloads` to provide new **unseen** logs across all upkeeps within a limit.
+
+In the background, it repeatedly queries latest logs from the chain (via log poller DB) for the last `lookbackBlocks` blocks and stores them in the **log buffer** (see below).
 
 <aside>
-💡 Note: `getLatestPayloads` might miss logs when there is a surge of logs which lasts longer than `lookbackBlocks`. Upon node restarts it can **miss logs** when it restarts after a gap, or **provide same logs again** when it quickly restarts
+💡 Note: `getLatestPayloads` might miss logs when there is a surge of logs which lasts longer than `lookbackBlocks`. Upon node restarts it can miss logs when it restarts after a gap, or provide same logs again when it quickly restarts.
+
+To mitigate missed or dropped logs, the log recoverer will re-scan for missed logs.
 </aside>
 
 #### Log Buffer
@@ -455,7 +432,7 @@ While the provider is scanning latest logs, the recoverer is scanning older logs
 
 **Proposal Data**
 
-The recoverer provides an interface `getProposalData` to be called when buildubg an upkeep payload for a particular log on demand by giving a trigger as in input.
+The recoverer provides an interface `getProposalData` to be called when building an upkeep payload for a particular log on demand when surfaced as a proposal from another node.
 
 The payload building process does the following:
 - Does not return a payload for a newer log to ensure recovery logs are isolated from latest logs. 
@@ -469,61 +446,113 @@ The payload building process does the following:
 The upkeeps states are used to track the status of log upkeeps (ineligible, performed) across the system, to avoid redundant work by the recoverer. Enables to select by (upkeepID, logIdentifier) is used as a key to store the state of a log upkeep.
 
 The state is updated after ineligible check by observer.
-Perform events scanner updates the states cache lazily/on-demand, by reading `DedupKeyAdded` events.
+Perform events scanner updates the states cache lazily/on-demand, by reading `DedupKeyAdded` events after finality depth which indicates the particular log upkeep was performed.
 
-The states (only ineligible) will be persisted in DB so the latest state to be restored when the node starts up.
+The states are be persisted in DB so the latest state to be restored when the node starts up.
 
 <aside>
-💡 Note: Performed states are not persisted in DB, as they are already present in log events that are stored in DB.
+💡 Note: The nodes do not seek any agreement on ineligible state for an upkeep from the network and as such their local states can become inconsistent. However, the perform state would be coordinated by the chain to be the same across all nodes.
 </aside>
+<br/>
+
+### Runner
+
+This component is responsible for parallelizing upkeep executions and providing a single interface to different components maintaining a shared cache
+
+- Takes a list of upkeepPayloads, calls CheckPipeline asynchronously with upkeeps being batched in a single pipeline execution
+- Maintains in-memory cache of non-errored pipeline executions indexed on (trigger, upkeepID). Directly uses that result instead of a new execution if available
+- Allows for repeated calls for the same upkeep payload
+- Execution automatically fails after a timeout that was provided as argument (~20s, set by workflow)
+- A call to CheckUpkeeps on the runner is synchronous. A worker is spawned per a batch of upkeeps to check, and all workers needs to finish before returning.
+
+<aside>
+💡 Note: Because of the sync nature, we don't track pending requests, so there might be double checking of same payloads. Once a payload was checked, we cache the result in memory, so next time we don't need to check it again.
+</aside>
+
+### Coordinator
+
+Stores in-flight & confirmed reports in memory and helps to coordinate the execution and transmission of upkeeps across multiple components in the system.
+
+The coordinator stores reports by workID, in case of conflict - a new report is seen for the same key, it waits on the higher `checkBlockNumber`. 
+
+All keys stored expire after TTL. In case an item is not marked as performed within TTL, it is assumed that the tx got lost. Conditionals and Log upkeeps recover from such scenarios through different logic.
+
+**Conditionals**
+
+The coordinator ensures that an upkeep is performed at progressively higher blocks and tracks 'in-flight' status on transmits. This variant sets the last performed block higher in a local cache for an upkeepId on every transmit event.
+
+**Log Triggers**
+
+The coordinator ensures that a triggered log is performed only once. It tracks 'in-flight' status when a report is generated and registers transmit events to keep track of those that have been performed.
+
+**Transmit Events**
+The coordinator listens to transmit event logs (stale / reorged / cancelled / insufficient funds) of stored `workID` in memory, and act accordingly:
+
+- Upkeep performed - the `workID` is marked as confirmed
+    - For log upkeeps, the same `workID` will be filtered out as it has been performed
+    - For conditional upkeeps the transmit block number is stored in memory and `workID` on lower check blocks will be filtered out
+- Stale/Reorged/Insufficient funds/Cancelled report - the `workID` is marked as transmitted to prevent further transmissions.
+    - conditional upkeeps are expected to be sampled and checked again automatically on a newer check block
+    - missed logs are expected to be surfaced again by the recoverer on a higher check block
+
+**Coordinator API**
+
+**Accept**
+
+The coordinator exposes an `Accept` function to mark an upkeep as pending for transmission. It is used during `shouldAccept` step by the plugin. If the same `workID` was accepted before, it allows it to be accepted on a higher check block
+
+**Should Transmit**
+
+To check whether some reported upkeep can be transmitted, the plugin calls to `shouldTransmit` on the coordinator. It returns true if the `workID` was accepted on the given checkBlock and didn't see a transmit event for it yet.
+
+**Should Process**
+
+`shouldProcess(upkeepID, trigger)` is used to check whether an upkeep should be processed which is used for pre-processing / filtering to prevent duplicate reports.
+
+For conditionals
+    - False if report is inflight for upkeepID
+    - False if report has been confirmed as performed after given check block number
+    - True otherwise
+
+For log triggers
+    - False if report is inflight or has been confirmed as performed
+    - True otherwise
+
+### Result Store
+
+This component is responsible for storing `upkeepResults` that a node thinks should be performed. It hopes to get agreement from quorum of nodes on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. Results that do not achieve agreement within TTL are expected to be picked up by recovery flow.
+
+- Maintains an in-memory collection of upkeep results
+    - Conditional upkeeps will be stored by (upkeepID)
+    - Log upkeeps will be stored by (upkeepID, logIdentifier)
+    - Overwrites results for duplicated results with newer checkBlockNumber.
+- Each result has a TTL (5min). When the TTL expires
+    - conditional upkeeps will be sampled and checked again automatically
+    - log upkeeps that were missed are expected to be picked up by the log recoverer
+- Provides a read API to view results, which takes as input (`pseudoRandomSeed`, `limit`).
+The nodes in the network are expected to use the same seed for a particular round. Sorts all keys (trigger, upkeepID) with the `seed` and provides first `limit` results. 
+Note: We do not do FIFO here as potentially out of sync old results will block new results sent by the node for agreement.
+- Provides an API to remove (trigger, upkeepID) from the store
+
+### Metadata Store
+
+This component stores the metadata to be sent within observations to the network. 
+Every record has a TTL, and upon expiry items are just removed without any action.
+The store provides an add / view / remove API for other components.
+
+There are three categories of objects that are stored:
+
+**1. Conditional proposals**
+
+Are sample upkeeps (upkeepID) that are eligible to perform.
+
+**2. Log recovery proposals**
+
+Are recovered proposals (upkeepID, logIdentifier) that were missed, and are eligible to perform.
+
+**3. Latest block history**
+
+Latest block history coming from the block subscriber (last 256 block and hashes), and used for coordination among nodes.
+
 <br />
-<aside>
-💡 Note: Using a local DB might introduce inconsistencies across the nodes in the network, e.g. in case of node restarts.
-</aside>
 
-### OCR Plugin
-
-The plugin is performing the following tasks upon OCR3 procedures:
-
-#### Observation
-
-Observation starts with a processing of the previous outcome:
-- Remove agreed upon finalized results from result store
-- For `acceptedSamples` (already bound to a trigger - latest coordinated block from the previous outcome)
-    - Remove `upkeepID` from metadata store
-    - Enqueue (trigger, upkeepID) into coordinated ticker
-- For `acceptedRecoveryLogs` (already bound to a trigger - latest coordinated block from the previous outcome)
-    - Remove from metadata store
-    - Enqueue (trigger, upkeepID) into recovery finalization ticker
-
-Then we do the following for current observation:
-- Query results from result store giving seqNr as pseudoRandom seed and predefined limit. Filter results using coordinator and add them to observation
-- Query from metadata store for conditional samples and recovery instructions within limits, filter using coordinator and add them to observation
-- Query block history and hashes from metadata store, add them to observation
-
-#### Outcome
-
-- Derive latest blockNumber and blockHash, by looking on block history and using the most recent block/hash that the majority of nodes have in common. It is not added to the outcome automatically but is used below
-- Any result which has f+1 agreement is added to finalized result
-- All conditional samples are collected from observations within limits, deduped and filtered from existing `acceptedSamples`. These are then added to `acceptedSamples` in the outcome **bound to the current latestBlockNumber and hash**.
-    - `acceptedSamples` is a ring buffer where samples are held for ~30 rounds so that they get deduped and not get bound to a new blockNumber for some rounds
-- Similar behaviour as conditional samples is done for recovery logs to maintain `acceptedRecoveryLogs`
-
-#### Reports
-
-Takes finalised results from the outcome, package them into reports with potential batching of upkeeps.
-Batching is subject to upkeep gas limit, and preconfigured reportGasLimit and gasOverheadPerUpkeep. Additionally, same upkeep ID is not batched within the same report.
-
-For a list of upkeepResults, we only need to send one fastGasWei, linkNative to chain in the report. This is taken from the result which has the highest checkBlockNum
-
-#### ShouldAcceptAttestedReport
-
-Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
-
-<aside>
-💡 Note: We cannot guarantee that the same (upkeepID) / (logIdentifier, upkeepID) will not be already existing in coordinator. (e.g. node’s local chain is lagging the network). As a result we have an override behaviour where we wait on the higher checkBlockNum report.
-</aside>
-
-#### ShouldTransmitAcceptedReport
-
-Extracts [(trigger, upkeepID)] from report filters upkeeps that were already performed using the coordinator. If any (trigger, upkeepID) is not yet confirmed then return true
