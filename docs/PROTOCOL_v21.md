@@ -17,7 +17,6 @@ This document aims to give a high level overview of the protocol for Automation 
         - [Log Triggers](#2-log-triggers)
     - [Pure Reporting](#pure-reporting)
     - [Transmission](#transmission)
-
   - [Components](#components)
     - [Registry](#registry)
     - [Log Provider](#log-provider)
@@ -86,6 +85,7 @@ An abstracted view looks as follows:
 💡 Note: source is available in https://miro.com/app/board/uXjVPntyh4E=/
 </aside>
 <br />
+<br />
 
 ## Boundaries
 
@@ -105,6 +105,7 @@ The protocol will be functional as long as > 6 ((n+f)/2) nodes are alive and par
 
 At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger and its data before it is performed.
 
+<br />
 
 ## Definitions
 
@@ -144,20 +145,22 @@ Input information to process a unit of work for an upkeep → `(upkeepID, trigge
 
 Output information to perform an upkeep. Same for both types →  `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
 
+<br />
+
 ## Key Consepcts
 
-## Providers
+### Providers
 
 Providers act as the data source of triggers to the protocol.
 Each provider serves a different workflow, and is responsible for providing the corresponding payloads.
 
-### Upkeep Provider
+#### Upkeep Provider
 
 The upkeep provider is responsible for providing upkeep payloads to the **conditional proposal workflow**.
 
 It will provide a list of active upkeeps to be sampled.
 
-### Log Event Provider
+#### Log Event Provider
 
 The log event provider is responsible for collecting latest logs,
 and provide the corresponding payloads to the **log trigger workflow**.
@@ -170,7 +173,7 @@ The log provider works on the following window/range of blocks:
 💡 Note: lookbackBlocks is 200 blocks and equal or higher than the chain's finality depth 
 </aside>
 
-### Log Event Recoverer
+#### Log Event Recoverer
 
 The log recoverer is responsible for collecting logs that were missed or dropped at some point, and provide the corresponding payloads to the log **recovery proposal workflow**.
 
@@ -184,7 +187,10 @@ The recoverer works on the following window/range of blocks:
 💡 Note: lookbackBlocks is 200 blocks and equal or higher than the chain's finality depth 
 </aside>
 
-## Workflows
+<br />
+<br />
+
+### Workflows
 
 Workflows are the sequence of events and procedures used to determine if an upkeep is considered eligible to perform.
 
@@ -193,7 +199,7 @@ Each workflow performs pre-processing, processing and post-processing steps.
 The protocol supports two types of triggers, each brings a set of workflows:
 
 ### 1. Conditional Triggers
-### Conditional Proposal Workflow
+#### Conditional Proposal Workflow
 
 The conditional proposal workflow checks random samples of active upkeeps, 
 and adds the eligibile ones to the metadata store, denoted as `proposals`.
@@ -206,15 +212,19 @@ The plugin will include them in the outcome, and they will be added in the next 
 It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
 </aside>
 
-### Conditional Finalization Workflow 
+<br />
+
+#### Conditional Finalization Workflow 
 
 The conditional finalization workflow checks coordinated proposals merged with coordinated block history, from the previous round. 
 Eligible results are added to the result store, denoted as `perfomables`.
 
 The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
 
+<br />
+
 ### 2. Log Triggers
-### Log Trigger Workflow
+#### Log Trigger Workflow
 
 The log trigger workflow checks latest logs from the log event provider, and adds the eligible results to the result store, denoted as `perfomables`. Ineligible results are reported to the upkeep states store.
 
@@ -222,7 +232,7 @@ The results that were agreed by at least f+1=3 nodes will be included in a repor
 
 In cases of retryable failures, the payloads are pushed into the retry queue.
 
-### Retry Workflow
+#### Retry Workflow
 
 The retry workflow is used to retry payloads that failed with retryable errors. It is similar to log trigger workflow, but instead of getting logs from the log event provider, it gets payloads from the retry queue.
 
@@ -232,7 +242,7 @@ The retry workflow is used to retry payloads that failed with retryable errors. 
 Logs from older blocks will be considered as missed, and are expected to be picked up by the recoverer.
 </aside>
 
-### Log Recovery Proposal Workflow
+#### Log Recovery Proposal Workflow
 
 The log trigger workflow checks logs that were missed, and spotted by the log event recoverer.
 
@@ -248,7 +258,7 @@ The plugin will include them in the outcome, and they will be added in the next 
 It gives the observe enough time to process the proposal before it gets coordinated again, on a new block number. 
 </aside>
 
-### Log Recovery Finalization Flow
+#### Log Recovery Finalization Flow
 
 The recovery finalization workflow checks coordinated proposals merged with the latest check blocks.
 
@@ -257,7 +267,9 @@ Ineligible results are reported to the upkeep states store.
 
 The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
 
-## Pure Reporting
+<br />
+
+### Pure Reporting
 
 OCR interface is implemented with "pure" functions that don't perform any blocking operations.
 Intead, we use async pooling and queueing to decouple the interaction with  other components in the system:
@@ -266,7 +278,9 @@ Intead, we use async pooling and queueing to decouple the interaction with  othe
 - **Result store** - used to store performable results to be included in an outcome after the plugin reads them. Finalization workflows adds results, while the plugin reads them.
 - **Metadata store** - used by proposal workflows for pushing proposals and block history to be included in an outcome after the plugin reads them.
 
-## Transmission
+<br />
+
+### Transmission
 
 Finalized reports are transmitted to contract, to perform the agreed upkeep payloads on chain.
 
