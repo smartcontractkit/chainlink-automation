@@ -1,4 +1,4 @@
-# Simulator V3
+# Simulator
 
 The goal of the simulator is to complete a full run of the automation plugin
 without using a chain, p2p network, RPC providers, or chainlink node as
@@ -18,7 +18,7 @@ Start the service in one terminal window and run the pprof tool in another. For 
 
 ```
 # terminal 1
-$ ./bin/simv3 --pprof --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
+$ ./bin/simulator --pprof --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
 
 # terminal 2
 $ go tool pprof -top http://localhost:6060/debug/pprof/heap
@@ -42,7 +42,7 @@ p2p and RPC. The charts are provided by an HTTP endpoint on localhost.
 
 *Example*
 ```
-$ ./bin/simv3 --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
+$ ./bin/simulator --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
 ```
 
 *Options*
