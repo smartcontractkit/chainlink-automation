@@ -36,9 +36,8 @@ func TestActiveTracker(t *testing.T) {
 
 	tracker := upkeep.NewActiveTracker(listener, logger)
 
-	broadcaster.Start()
-
-	time.Sleep(1 * time.Second)
+	<-broadcaster.Start()
+	broadcaster.Stop()
 
 	assert.Len(t, tracker.GetAllByType(chain.ConditionalType), 1, "should only have 1 conditional upkeep")
 	assert.Len(t, tracker.GetAllByType(chain.LogTriggerType), 0, "should have 0 log upkeeps")

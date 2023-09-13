@@ -18,6 +18,8 @@ import (
 )
 
 func TestOCR3ConfigLoader(t *testing.T) {
+	t.Parallel()
+
 	logger := log.New(io.Discard, "", 0)
 
 	digester := new(mockDigester)

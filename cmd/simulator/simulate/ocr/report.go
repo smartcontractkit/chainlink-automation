@@ -70,6 +70,7 @@ func (rt *ReportTracker) GetLatestEvents(_ context.Context) ([]ocr2keepers.Trans
 			if err != nil {
 				rt.logger.Println(err)
 			}
+			fmt.Println(transmits)
 
 			events = append(events, transmits...)
 		}

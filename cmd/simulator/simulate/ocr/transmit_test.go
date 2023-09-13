@@ -15,6 +15,8 @@ import (
 )
 
 func TestOCR3TransmitLoader(t *testing.T) {
+	t.Parallel()
+
 	logger := log.New(io.Discard, "", 0)
 	loader := ocr.NewOCR3TransmitLoader(config.RunBook{}, logger)
 	block := chain.Block{
