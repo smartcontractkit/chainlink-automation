@@ -449,10 +449,6 @@ Perform events scanner updates the states cache lazily/on-demand, by reading `De
 The states are be persisted in DB so the latest state to be restored when the node starts up.
 
 <aside>
-💡 Note: Performed states are not persisted in DB, as they are already present in log events that are stored in DB.
-</aside>
-<br />
-<aside>
 💡 Note: The nodes do not seek any agreement on ineligible state for an upkeep from the network and as such their local states can become inconsistent. However, the perform state would be coordinated by the chain to be the same across all nodes.
 </aside>
 <br/>
@@ -464,7 +460,7 @@ This component is responsible for parallelizing upkeep executions and providing 
 - Takes a list of upkeepPayloads, calls CheckPipeline asynchronously with upkeeps being batched in a single pipeline execution
 - Maintains in-memory cache of non-errored pipeline executions indexed on (trigger, upkeepID). Directly uses that result instead of a new execution if available
 - Allows for repeated calls for the same upkeep payload
-- Execution automatically fails after a timeout that was provided as argument (~20s, set by Observer)
+- Execution automatically fails after a timeout that was provided as argument (~20s, set by workflow)
 - A call to CheckUpkeeps on the runner is synchronous. A worker is spawned per a batch of upkeeps to check, and all workers needs to finish before returning.
 
 <aside>
