@@ -10,15 +10,12 @@ This document aims to give a high level overview of the protocol for Automation 
     - [Reliability Guarantees](#reliability-guarantees)
     - [Security Guarantees](#security-guarantees)
   - [Definitions](#definitions)
-  - [Workflows](#workflows)
-    - [Conditional Triggers](#1-conditional-triggers)
-        - [Conditional Proposal](#conditional-proposal-workflow)
-        - [Conditional Finalization](#conditional-finalization-workflow)
-    - [Log Triggers](#2-log-triggers)
-        - [Log Trigger](#log-trigger-workflow)
-        - [Retry](#retry-workflow)
-        - [Log Recovery Proposal](#log-recovery-proposal-workflow)
-        - [Log Recovery Finalization](#log-recovery-finalization-workflow)
+  - [Key Consepcts](#key-consepcts)
+    - [Providers](#providers)
+    - [Workflows](#workflows)
+        - [Conditional Triggers](#1-conditional-triggers)
+        - [Log Triggers](#2-log-triggers)
+    - [Pure Reporting](#pure-reporting)
   - [Components](#components)
     - [Registry](#registry)
     - [Runner](#runner)
@@ -47,9 +44,7 @@ Chainlink Automation is a decentralized execution engine for automating smart co
 with a generic and extensible triggering mechanism.
 
 The protocol is composed of offchain components which we will discuss in this document, 
-and onchain contracts.
-
-The protocol supports two types of triggers:
+and onchain contracts. There are two types of triggers it supports:
 
 **Conditional triggers**
 are based on on-chain conditions, e.g. a price feed update.
@@ -146,8 +141,48 @@ Input information to process a unit of work for an upkeep → `(upkeepID, trigge
 - For log: triggerData is the log information
 
 #### UpkeepResult
- 
+
 Output information to perform an upkeep. Same for both types →  `(fastGasWei, linkNative, upkeepID, trigger, gasLimit, performData)`
+
+## Key Consepcts
+
+## Providers
+
+Providers act as the data source of triggers to the protocol.
+Each provider serves a different workflow, and is responsible for providing the corresponding payloads.
+
+### Upkeep Provider
+
+The upkeep provider is responsible for providing upkeep payloads to the **conditional proposal workflow**.
+
+It will provide a list of active upkeeps to be sampled.
+
+### Log Event Provider
+
+The log event provider is responsible for collecting latest logs,
+and provide the corresponding payloads to the **log trigger workflow**.
+
+The log provider works on the following window/range of blocks:
+
+`[latestBlock, latestBlock-lookbackBlocks]`
+
+<aside>
+💡 Note: lookbackBlocks is 200 blocks and equal or higher than the chain's finality depth 
+</aside>
+
+### Log Recoverer
+
+The log recoverer is responsible for collecting logs that were missed or dropped at some point, and provide the corresponding payloads to the log **recovery proposal workflow**.
+
+In addition, it is responsible for fetching the log data for a particular proposal on demand, serving **recovery finalization workflow**.
+
+The recoverer works on the following window/range of blocks:
+
+`[latestBlock-lookbackBlocks, latestBlock-24hBlock]`
+
+<aside>
+💡 Note: lookbackBlocks is 200 blocks and equal or higher than the chain's finality depth 
+</aside>
 
 ## Workflows
 
@@ -213,6 +248,15 @@ Eligible results are added to the result store, denoted as `perfomables`.
 Ineligible results are reported to the upkeep states store.
 
 The results that were agreed by at least f+1=3 nodes will be included in a report, to be performed on chain.
+
+## Pure Reporting
+
+OCR interface is implemented with "pure" functions that don't perform any blocking operations.
+Intead, we use async pooling and queueing to decouple the interaction with  other components in the system:
+
+- **Proposal queue** - used by the plugin for queueing proposals to be processed by the finalization observers.
+- **Result store** - used to store performable results to be included in an outcome after the plugin reads them. Finalization workflows adds results, while the plugin reads them.
+- **Metadata store** - used by proposal workflows for pushing proposals and block history to be included in an outcome after the plugin reads them.
 
 <br />
 
