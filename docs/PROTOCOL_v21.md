@@ -17,6 +17,12 @@ This document aims to give a high level overview of the protocol for Automation 
         - [Log Triggers](#2-log-triggers)
     - [Pure Reporting](#pure-reporting)
     - [Report Transmission](#report-transmission)
+  - [OCR Plugin](#ocr-plugin)
+    - [Observation](#observation)
+    - [Outcome](#outcome)
+    - [Reports](#reports)
+    - [ShouldAcceptAttestedReport](#shouldacceptattestedreport)
+    - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
   - [Components](#components)
     - [Registry](#registry)
     - [Log Provider](#log-provider)
@@ -26,12 +32,6 @@ This document aims to give a high level overview of the protocol for Automation 
     - [Coordinator](#coordinator)   
     - [Result Store](#result-store)
     - [Metadata Store](#metadata-store)
-    - [OCR3 Plugin](#plugin)
-        - [Observation](#observation)
-        - [Outcome](#outcome)
-        - [Reports](#reports)
-        - [ShouldAcceptAttestedReport](#shouldacceptattestedreport)
-        - [ShouldTransmitAcceptedReport](#shouldtransmitacceptedreport)
 
 <br />
 
@@ -52,6 +52,8 @@ Upkeeps are being checked periodically, and if the condition is met, the upkeep 
 **Log triggers**
 are based on arbitrary event logs that were emitted on-chain, e.g. a new token transfer.
 
+## Overview 
+
 In high-level, the system works as follows:
 
 - Upkeeps are registered through an on-chain registry.
@@ -61,8 +63,6 @@ In high-level, the system works as follows:
 - Upkeeps that will be triggered by the node rather than external events,
 are considered as `proposals` and will go through additional workflow before the eligible ones become `performables`.
 - The protocol runs additional threads to scan for missed events, to ensure the integrity of the system.
-
-## Overview 
 
 The offchain components are responsible for the following:
 
@@ -274,6 +274,60 @@ The following events are used:
     - For log triggers this happens when the particular (upkeepID, logIdentifier) has been performed before already
 - `InsufficientFunds`: Emitted when pre upkeep execution when not enough funds are found on chain for the execution. Funds check is done in checkPipeline, but actual funds required on chain at execution time can change, e.g. to gas price changes / link price changes. In such cases upkeep is not performed or charged. These reports should really be an edge case, on chain we have a multiplier during checkPipeline to overestimate funds before even attempting an upkeep.
 - `CancelledUpkeep`: This happens when the upkeep gets cancelled in between check time and perform time. To protect against malicious users, the contract adds a 50 block delay to any user cancellation requests.
+
+<br />
+
+## OCR Plugin
+
+The plugin is performing the following tasks upon OCR life-cycle:
+
+#### Observation
+
+Upon observation, the plugin first prepross previous outcome, and then build the current observation.
+
+**Preprocessing** of previous outcome, which includes the following steps:
+- Remove agreed upon finalized performables from result store
+- Remove surfaced proposals from metadata store
+- Add surfaced proposals to proposal queue
+
+**Building** of the current observation includes the following steps:
+- Read performables from result store, filter results using coordinator and add them to observation
+    - NOTE: the OCR seq number is used as pseudoRandom seed for sorting performables in a
+    random, deterministic order across nodes
+- Read proposals from metadata store, filter using coordinator and add them to observation
+    - NOTE: the OCR seq number is used as pseudoRandom seed for sorting proposals in a
+    random, deterministic order across nodes
+- Read block history from metadata store, add it to observation
+
+#### Outcome
+
+Upon outcome, the plugin collects performables and proposals from the other nodes observations,
+to be included in an outcome.
+
+**Performables** which have f+1 agreement are added to finalized results.
+
+**Proposals** are collected without f+1 agreement, but with limits, deduplication and filtering of existing proposals. Then we "merge" these proposals with the coordinated block and add it to the outcome.
+The **coordinated block** is determined by looking on block history and using the most recent block/hash with f+1 agreement.
+
+#### Reports
+
+Takes agreed performables from the outcome, package them into reports with potential batching of upkeeps.
+Batching is subject to upkeep gas limit, and preconfigured `reportGasLimit` and `gasOverheadPerUpkeep`. Additionally, same upkeep ID is not batched within the same report.
+
+For a set of results, we use a single value for `fastGasWei`, `linkNative`, which is taken from the result which has the highest `checkBlockNum`.
+
+#### ShouldAcceptAttestedReport
+
+Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
+
+<aside>
+💡 Note: We cannot guarantee that the same (upkeepID) / (logIdentifier, upkeepID) will not be already existing in coordinator. (e.g. node’s local chain is lagging the network). As a result we have an override behaviour where we wait on the higher checkBlockNum report.
+</aside>
+
+#### ShouldTransmitAcceptedReport
+
+Extracts [(trigger, upkeepID)] from report filters upkeeps that were already performed using the coordinator. 
+If any (trigger, upkeepID) is not yet confirmed then return true. Otherwise return false.
 
 <br />
 
@@ -524,49 +578,3 @@ Latest block history coming from the block subscriber (last 256 block and hashes
 
 <br />
 
-### OCR Plugin
-
-The plugin is performing the following tasks upon OCR3 procedures:
-
-#### Observation
-
-Observation starts with a processing of the previous outcome:
-- Remove agreed upon finalized results from result store
-- For `acceptedSamples` (already bound to a trigger - latest coordinated block from the previous outcome)
-    - Remove `upkeepID` from metadata store
-    - Enqueue (trigger, upkeepID) into coordinated ticker
-- For `acceptedRecoveryLogs` (already bound to a trigger - latest coordinated block from the previous outcome)
-    - Remove from metadata store
-    - Enqueue (trigger, upkeepID) into recovery finalization ticker
-
-Then we do the following for current observation:
-- Query results from result store giving seqNr as pseudoRandom seed and predefined limit. Filter results using coordinator and add them to observation
-- Query from metadata store for conditional samples and recovery instructions within limits, filter using coordinator and add them to observation
-- Query block history and hashes from metadata store, add them to observation
-
-#### Outcome
-
-- Derive latest blockNumber and blockHash, by looking on block history and using the most recent block/hash that the majority of nodes have in common. It is not added to the outcome automatically but is used below
-- Any result which has f+1 agreement is added to finalized result
-- All conditional samples are collected from observations within limits, deduped and filtered from existing `acceptedSamples`. These are then added to `acceptedSamples` in the outcome **bound to the current latestBlockNumber and hash**.
-    - `acceptedSamples` is a ring buffer where samples are held for ~30 rounds so that they get deduped and not get bound to a new blockNumber for some rounds
-- Similar behaviour as conditional samples is done for recovery logs to maintain `acceptedRecoveryLogs`
-
-#### Reports
-
-Takes finalised results from the outcome, package them into reports with potential batching of upkeeps.
-Batching is subject to upkeep gas limit, and preconfigured reportGasLimit and gasOverheadPerUpkeep. Additionally, same upkeep ID is not batched within the same report.
-
-For a list of upkeepResults, we only need to send one fastGasWei, linkNative to chain in the report. This is taken from the result which has the highest checkBlockNum
-
-#### ShouldAcceptAttestedReport
-
-Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
-
-<aside>
-💡 Note: We cannot guarantee that the same (upkeepID) / (logIdentifier, upkeepID) will not be already existing in coordinator. (e.g. node’s local chain is lagging the network). As a result we have an override behaviour where we wait on the higher checkBlockNum report.
-</aside>
-
-#### ShouldTransmitAcceptedReport
-
-Extracts [(trigger, upkeepID)] from report filters upkeeps that were already performed using the coordinator. If any (trigger, upkeepID) is not yet confirmed then return true
