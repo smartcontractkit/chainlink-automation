@@ -292,12 +292,14 @@ Upon observation, the plugin first prepross previous outcome, and then build the
 
 **Building** of the current observation includes the following steps:
 - Read performables from result store, filter results using coordinator and add them to observation
-    - NOTE: the OCR seq number is used as pseudoRandom seed for sorting performables in a
-    random, deterministic order across nodes
 - Read proposals from metadata store, filter using coordinator and add them to observation
-    - NOTE: the OCR seq number is used as pseudoRandom seed for sorting proposals in a
-    random, deterministic order across nodes
 - Read block history from metadata store, add it to observation
+
+<aside>
+💡 Note: The OCR seq number is used as pseudoRandom seed for sorting performables and proposals in a
+    random, deterministic order across nodes
+</aside>
+<br />
 
 #### Outcome
 
