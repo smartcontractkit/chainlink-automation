@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	DefaultBlockHistoryChannelDepth = 100
-	DefaultHistoryDepth             = 256
+	defaultBlockHistoryChannelDepth = 100
+	defaultHistoryDepth             = 256
 )
 
 type BlockHistoryTracker struct {
@@ -50,7 +50,7 @@ func (ht *BlockHistoryTracker) Subscribe() (int, chan ocr2keepers.BlockHistory, 
 	ht.mu.Lock()
 	defer ht.mu.Unlock()
 
-	chHistory := make(chan ocr2keepers.BlockHistory, DefaultBlockHistoryChannelDepth)
+	chHistory := make(chan ocr2keepers.BlockHistory, defaultBlockHistoryChannelDepth)
 	ht.count++
 
 	ht.channels[ht.count] = chHistory
@@ -98,7 +98,7 @@ func (ht *BlockHistoryTracker) broadcast() {
 
 	history := []ocr2keepers.BlockKey{}
 
-	keys := ht.history.Keys(DefaultHistoryDepth)
+	keys := ht.history.Keys(defaultHistoryDepth)
 	for _, key := range keys {
 		block, _ := ht.history.Get(key)
 

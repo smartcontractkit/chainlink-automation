@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
@@ -186,11 +187,9 @@ func (g *Group) ReportResults() {
 }
 
 func shorten(full string, outLen int) string {
-	rFull := []rune(full)
-
-	if len(rFull) < outLen {
+	if utf8.RuneCountInString(full) < outLen {
 		return full
 	}
 
-	return string(rFull[:outLen])
+	return string([]byte(full)[:outLen])
 }

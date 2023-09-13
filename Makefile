@@ -26,7 +26,7 @@ benchmark: dependencies fmt
 parallel: dependencies fmt
 	@go test github.com/smartcontractkit/ocr2keepers/internal/keepers -bench=BenchmarkCacheParallelism -benchtime 20s -mutexprofile mutex.out -run=^#
 
-simulator: dependencies fmt
+simulatorv2: dependencies fmt
 	go build -o $(GOBIN)/simv2 ./cmd/simv2/*.go || exit
 
 simulatorv3: dependencies fmt

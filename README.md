@@ -5,6 +5,11 @@ Initialize the plugin by creating a new Delegate
 delegate, err := ocr2keepers.NewDelegate(delegateConfig)
 ```
 
+## Links
+
+- [Overview](./OVERVIEW.md)
+- [Simulator](./SIMULATOR.md)
+
 ## Unit Testing
 Unit testing is used extensively and the primary goal is to keep test coverage above 70%.
 
@@ -45,46 +50,3 @@ The strategy of logging in this repo is to have two types of outcomes from logs:
 2. debug info - extra log info about inner workings of the plugin (optional based on provided ocr logger settings)
 
 If an error cannot be handled, it should be bubbled up. If it cannot be bubbled up, it should panic. The plugin shouldn't be concerned with managing runtime errors, log severity, or panic recovery unless it cannot be handled by the chainlink node process. An example might be a background service that is created a plugin startup but not managed by the chainlink node. If there is such a service, it should handle its own recovery within the context of a Start/Stop service.
-
-## Simulator V3
-
-The goal of the simulator is to complete a full run of the automation plugin
-without using a chain, p2p network, RPC providers, or chainlink node as
-dependencies. What is being tested in this simulator is how the plugin 
-interfaces with `libOCR` and how multiple instances interact to acheive a quorum
-on tasks.
-
-Use this tool to validate the plugin protocol **only** since the chain and
-network layers are both fully simulated and do not match real instances 1:1.
-
-The simulator uses runbooks to control some of the underlying simulations such
-as p2p network latency, block production, upkeep schedules, and more.
-
-### Usage
-
-The current iteration of the simulator requires a full build before a run as the
-simulator doesn't run binaries of the plugin, but instead the plugin is built
-within the simulator binary. The current limitation is that multiple custom
-builds cannot be run as part of a combined network. All instances in the 
-simulated network will be identical.
-
-Outputs can be directed to a specific directory, which is advised since each
-instance produces its own log files. With more than 4 instances running for
-long periods of time, these log files can become large. Logging is full debug
-by default.
-
-Charts are useful to visualize RPC failures and overall simulated latency, both
-p2p and RPC. The charts are provided by an HTTP endpoint on localhost.
-
-*Example*
-```
-$ ./bin/simv3 --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
-```
-
-*Options*
-- `--simulation-file | -f [string]`: default ./runbook.json, path to JSON file defining simulation parameters
-- `--output-directory | -o [string]`: default ./runbook_logs, path to output directory where run logs are written
-- `--simulate [bool]`: default false, run simulation and output results
-- `--charts [bool]`: default false, start and run charts service to display results
-- `--pprof [bool]`: default false, run pprof server on simulation startup
-- `--pprof-port [int]`: default 6060, port to serve pprof profiler on

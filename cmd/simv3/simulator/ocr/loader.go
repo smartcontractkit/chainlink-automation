@@ -98,6 +98,9 @@ func (l *OCR3ConfigLoader) AddSigner(id string, onKey KeySourcer, offKey Offchai
 }
 
 func buildConfig(conf config.ConfigEvent, oracles []ocr2config.OracleIdentityExtra, digester Digester, count uint64) (types.ContractConfig, error) {
+	// S is a slice of values that indicate the number of oracles involved
+	// in attempting to transmit. For the simulator, all nodes will be involved
+	// in transmit attempts.
 	S := make([]int, len(oracles))
 	for i := 0; i < len(oracles); i++ {
 		S[i] = 1

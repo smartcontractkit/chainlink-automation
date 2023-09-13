@@ -12,9 +12,7 @@ var (
 )
 
 // Util contains basic utilities for upkeeps.
-type Util struct {
-	ReportGasLimit uint64
-}
+type Util struct{}
 
 func (u Util) Encode(results ...ocr2keepers.CheckResult) ([]byte, error) {
 	return util.EncodeCheckResultsToReportBytes(results)

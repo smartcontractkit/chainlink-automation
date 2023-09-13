@@ -1,4 +1,18 @@
-# Profiling
+# Simulator V3
+
+The goal of the simulator is to complete a full run of the automation plugin
+without using a chain, p2p network, RPC providers, or chainlink node as
+dependencies. What is being tested in this simulator is how the plugin 
+interfaces with `libOCR` and how multiple instances interact to achieve a quorum
+on tasks.
+
+Use this tool to validate the plugin protocol **only** since the chain and
+network layers are both fully simulated and do not match real instances 1:1.
+
+The simulator uses runbooks to control some of the underlying simulations such
+as p2p network latency, block production, upkeep schedules, and more.
+
+## Profiling
 
 Start the service in one terminal window and run the pprof tool in another. For more information on pprof, view some docs [here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
 
@@ -10,7 +24,36 @@ $ ./bin/simv3 --pprof --simulate -f ./simulation_runbooks/runbook_eth_goerli_mil
 $ go tool pprof -top http://localhost:6060/debug/pprof/heap
 ```
 
-# Runbook Options
+## Usage
+
+The current iteration of the simulator requires a full build before a run as the
+simulator doesn't run binaries of the plugin, but instead the plugin is built
+within the simulator binary. The current limitation is that multiple custom
+builds cannot be run as part of a combined network. All instances in the 
+simulated network will be identical.
+
+Outputs can be directed to a specific directory, which is advised since each
+instance produces its own log files. With more than 4 instances running for
+long periods of time, these log files can become large. Logging is full debug
+by default.
+
+Charts are useful to visualize RPC failures and overall simulated latency, both
+p2p and RPC. The charts are provided by an HTTP endpoint on localhost.
+
+*Example*
+```
+$ ./bin/simv3 --simulate -f ./simulation_runbooks/runbook_eth_goerli_mild.json
+```
+
+*Options*
+- `--simulation-file | -f [string]`: default ./runbook.json, path to JSON file defining simulation parameters
+- `--output-directory | -o [string]`: default ./runbook_logs, path to output directory where run logs are written
+- `--simulate [bool]`: default false, run simulation and output results
+- `--charts [bool]`: default false, start and run charts service to display results
+- `--pprof [bool]`: default false, run pprof server on simulation startup
+- `--pprof-port [int]`: default 6060, port to serve pprof profiler on
+
+### Runbook Options
 
 A runbook is a set of configurations for the simulator defined in a JSON file.
 Each property is described below.
