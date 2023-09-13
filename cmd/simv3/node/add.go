@@ -12,12 +12,12 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
 	simio "github.com/smartcontractkit/ocr2keepers/cmd/simv3/io"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator"
 	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
 )
 
@@ -89,7 +89,7 @@ func (g *Group) Add(maxWorkers int, maxQueueSize int) {
 		ServiceQueueLength:     maxQueueSize,
 	}
 
-	_ = simulator.HydrateConfig(
+	_ = simulate.HydrateConfig(
 		onchainRing.PKString(),
 		&dConfig,
 		g.blockSrc,

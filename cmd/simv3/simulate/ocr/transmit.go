@@ -14,7 +14,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/chain"
 	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
 )
 

@@ -9,10 +9,10 @@ import (
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
 	simio "github.com/smartcontractkit/ocr2keepers/cmd/simv3/io"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/net"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/ocr"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/net"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/ocr"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/upkeep"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
 )
 

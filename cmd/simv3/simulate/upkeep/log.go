@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/chain"
 )
 
 // LogTriggerTracker ...

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/upkeep"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 

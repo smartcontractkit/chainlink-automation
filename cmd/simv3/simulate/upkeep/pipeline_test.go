@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/chain"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/util"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )

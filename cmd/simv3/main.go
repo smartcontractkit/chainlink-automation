@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/node"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/run"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/upkeep"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
 )
 

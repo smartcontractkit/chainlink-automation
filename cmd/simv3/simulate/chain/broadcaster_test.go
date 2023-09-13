@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/chain"
 )
 
 func TestBlockBroadcaster(t *testing.T) {

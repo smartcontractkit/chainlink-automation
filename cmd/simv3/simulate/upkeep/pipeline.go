@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/net"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/net"
 	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
 )
 

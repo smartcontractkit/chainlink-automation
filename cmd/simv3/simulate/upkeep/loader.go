@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/chain"
 )
 
 // UpkeepConfigLoader provides upkeep configurations to a block broadcaster. Use

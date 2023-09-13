@@ -6,7 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/config"
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/chain"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/chain"
 	"github.com/stretchr/testify/assert"
 )
 

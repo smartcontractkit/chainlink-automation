@@ -9,7 +9,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulator/upkeep"
+	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/simulate/upkeep"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/telemetry"
 	"github.com/smartcontractkit/ocr2keepers/cmd/simv3/util"
 )
