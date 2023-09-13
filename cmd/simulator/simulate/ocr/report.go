@@ -50,14 +50,14 @@ func NewReportTracker(listener *chain.Listener, logger *log.Logger) *ReportTrack
 // GetLatestEvents returns a list of events within a lookback range. Events
 // returned from this function should follow an 'at least once' delivery.
 func (rt *ReportTracker) GetLatestEvents(_ context.Context) ([]ocr2keepers.TransmitEvent, error) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+
 	if rt.latest == nil {
 		rt.logger.Println("encountered nil block")
 
 		return nil, nil
 	}
-
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
 
 	events := make([]ocr2keepers.TransmitEvent, 0)
 
