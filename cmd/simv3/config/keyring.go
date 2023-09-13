@@ -167,6 +167,8 @@ func (keyring *EvmKeyring) Unmarshal(in []byte) error {
 	if err != nil {
 		return err
 	}
+
 	keyring.privateKey = *privateKey
+
 	return nil
 }

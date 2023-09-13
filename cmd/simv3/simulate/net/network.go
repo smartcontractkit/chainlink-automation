@@ -10,17 +10,17 @@ import (
 )
 
 type SimulatedBinaryNetworkEndpointFactory struct {
+	Network    *SimulatedNetwork
 	PeerLookup map[uint8]string
 	pID        string
-	Network    *SimulatedNetwork
 }
 
 func (ef *SimulatedBinaryNetworkEndpointFactory) NewEndpoint(
-	cd types.ConfigDigest,
+	_ types.ConfigDigest,
 	peerIDs []string,
-	v2bootstrappers []commontypes.BootstrapperLocator,
-	f int,
-	limits types.BinaryNetworkEndpointLimits,
+	_ []commontypes.BootstrapperLocator,
+	_ int,
+	_ types.BinaryNetworkEndpointLimits,
 ) (commontypes.BinaryNetworkEndpoint, error) {
 
 	var thisID uint8
@@ -28,14 +28,15 @@ func (ef *SimulatedBinaryNetworkEndpointFactory) NewEndpoint(
 		if peer == ef.pID {
 			thisID = uint8(i)
 		}
+
 		ef.PeerLookup[uint8(i)] = peer
 	}
 
 	ch := ef.Network.RegisterEndpoint(ef.pID)
 	ep := &SimulatedBinaryNetworkEndpoint{
+		Network:    ef.Network,
 		PeerLookup: ef.PeerLookup,
 		ID:         thisID,
-		Network:    ef.Network,
 		chReceive:  ch,
 	}
 
@@ -47,9 +48,9 @@ func (ef *SimulatedBinaryNetworkEndpointFactory) PeerID() string {
 }
 
 type SimulatedBinaryNetworkEndpoint struct {
+	Network    *SimulatedNetwork
 	PeerLookup map[uint8]string
 	ID         uint8
-	Network    *SimulatedNetwork
 	chReceive  chan commontypes.BinaryMessageWithSender
 }
 
@@ -97,8 +98,8 @@ func NewSimulatedNetwork(avgLatency time.Duration) *SimulatedNetwork {
 func (sn *SimulatedNetwork) NewFactory() *SimulatedBinaryNetworkEndpointFactory {
 	f := &SimulatedBinaryNetworkEndpointFactory{
 		PeerLookup: make(map[uint8]string),
-		pID:        uuid.New().String(),
 		Network:    sn,
+		pID:        uuid.New().String(),
 	}
 
 	return f
@@ -107,6 +108,7 @@ func (sn *SimulatedNetwork) NewFactory() *SimulatedBinaryNetworkEndpointFactory 
 func (sn *SimulatedNetwork) RegisterEndpoint(id string) chan commontypes.BinaryMessageWithSender {
 	ch := make(chan commontypes.BinaryMessageWithSender, 1000)
 	sn.endpoints[id] = ch
+
 	return ch
 }
 
@@ -128,16 +130,11 @@ func (sn *SimulatedNetwork) SendTo(sender uint8, payload []byte, to string) {
 
 func (sn *SimulatedNetwork) Broadcast(sender uint8, payload []byte) {
 	rn := rand.Intn(100)
+
 	// simulate network delay
 	<-time.After(time.Duration(rn) * time.Millisecond)
 
 	for _, ch := range sn.endpoints {
-		/*
-			if key == sender {
-				continue
-			}
-		*/
-
 		msg := commontypes.BinaryMessageWithSender{
 			Msg:    payload,
 			Sender: commontypes.OracleID(sender),
