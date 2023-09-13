@@ -16,7 +16,7 @@ This document aims to give a high level overview of the protocol for Automation 
         - [Conditional Triggers](#1-conditional-triggers)
         - [Log Triggers](#2-log-triggers)
     - [Pure Reporting](#pure-reporting)
-    - [Transmission](#transmission)
+    - [Report Transmission](#report-transmission)
   - [Components](#components)
     - [Registry](#registry)
     - [Log Provider](#log-provider)
@@ -52,8 +52,6 @@ Upkeeps are being checked periodically, and if the condition is met, the upkeep 
 **Log triggers**
 are based on arbitrary event logs that were emitted on-chain, e.g. a new token transfer.
 
-## Overview 
-
 In high-level, the system works as follows:
 
 - Upkeeps are registered through an on-chain registry.
@@ -63,6 +61,8 @@ In high-level, the system works as follows:
 - Upkeeps that will be triggered by the node rather than external events,
 are considered as `proposals` and will go through additional workflow before the eligible ones become `performables`.
 - The protocol runs additional threads to scan for missed events, to ensure the integrity of the system.
+
+## Overview 
 
 The offchain components are responsible for the following:
 
@@ -113,9 +113,9 @@ At least f+1=3 independent nodes need to achieve agreement on an upkeep, trigger
 - **Trigger** Used to represent the trigger for a particular upkeep performance, and is represented as → 
 `(checkBlockNum, checkBlockHash,extension)`
 The extension is based on the trigger type:
-- Conditionals: no extension 
-- Log triggers → `(logTxHash, logIndex, logBlockHash, logBlockNum)`. \
-NOTE: `logBlockNum` might not be present in the trigger. In such cases the log block will be resolved the given block hash.
+    - Conditionals: no extension 
+    - Log triggers → `(logTxHash, logIndex, logBlockHash, logBlockNum)`. \
+    NOTE: `logBlockNum` might not be present in the trigger. In such cases the log block will be resolved the given block hash.
 - **LogIdentifier** Unique identifier for a log → `(logBlockHash, logTxHash, logIndex)`
 - **WorkID** Unique 256 bit identifier for a unit of work that is used across the system. `(upkeepID, trigger)` are used to form a workID, in different structure, based on the trigger type:
     - Conditionals: `keccak256(upkeepID)`. Where we allow sequential execution of the same upkeepID, in cases the trigger has a newer `checkBlockNum`, higher then the last performed check block.
@@ -260,7 +260,7 @@ Intead, we use async pooling and queueing to decouple the interaction with  othe
 
 <br />
 
-### Transmission
+### Report Transmission
 
 Finalized reports are transmitted to contract, to perform the agreed upkeep payloads on chain.
 
