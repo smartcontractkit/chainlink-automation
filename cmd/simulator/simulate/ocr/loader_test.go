@@ -1,6 +1,7 @@
 package ocr_test
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -36,6 +37,10 @@ func TestOCR3ConfigLoader(t *testing.T) {
 
 	loader.Load(&block)
 	require.Len(t, block.Transactions, 0, "no transactions at block 1")
+
+	onKey, _ := config.NewEVMKeyring(rand.Reader)
+	offKey, _ := config.NewOffchainKeyring(rand.Reader, rand.Reader)
+	loader.AddSigner("signer", onKey, offKey)
 
 	block.Number = big.NewInt(2)
 
