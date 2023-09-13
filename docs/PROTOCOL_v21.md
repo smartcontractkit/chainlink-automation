@@ -192,8 +192,6 @@ The plugin will include them in the outcome, and they will be added in the next 
 It gives the node enough time to process the proposal before it gets coordinated again, on a new check block number.
 </aside>
 
-<br />
-
 #### Conditional Finalization Workflow 
 
 The conditional finalization workflow checks coordinated proposals merged with coordinated block history, from the previous round. 
