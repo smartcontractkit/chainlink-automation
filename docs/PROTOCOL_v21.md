@@ -178,7 +178,7 @@ Each workflow performs pre-processing, processing and post-processing steps.
 
 The protocol supports two types of triggers, each brings a set of workflows:
 
-### 1. Conditional Triggers
+#### 1. Conditional Triggers
 #### Conditional Proposal Workflow
 
 The conditional proposal workflow checks random samples of active upkeeps, 
@@ -203,7 +203,7 @@ The results that were agreed by at least f+1=3 nodes will be included in a repor
 
 <br />
 
-### 2. Log Triggers
+#### 2. Log Triggers
 #### Log Trigger Workflow
 
 The log trigger workflow checks latest logs from the log event provider, and adds the eligible results to the result store, denoted as `perfomables`. Ineligible results are reported to the upkeep states store.
@@ -281,7 +281,7 @@ The following events are used:
 
 The plugin is performing the following tasks upon OCR life-cycle:
 
-#### Observation
+### Observation
 
 Upon observation, the plugin first prepross previous outcome, and then build the current observation.
 
@@ -301,7 +301,7 @@ Upon observation, the plugin first prepross previous outcome, and then build the
 </aside>
 <br />
 
-#### Outcome
+### Outcome
 
 Upon outcome, the plugin collects performables and proposals from the other nodes observations,
 to be included in an outcome.
@@ -311,14 +311,14 @@ to be included in an outcome.
 **Proposals** are collected without f+1 agreement, but with limits, deduplication and filtering of existing proposals. Then we "merge" these proposals with the coordinated block and add it to the outcome.
 The **coordinated block** is determined by looking on block history and using the most recent block/hash with f+1 agreement.
 
-#### Reports
+### Reports
 
 Takes agreed performables from the outcome, package them into reports with potential batching of upkeeps.
 Batching is subject to upkeep gas limit, and preconfigured `reportGasLimit` and `gasOverheadPerUpkeep`. Additionally, same upkeep ID is not batched within the same report.
 
 For a set of results, we use a single value for `fastGasWei`, `linkNative`, which is taken from the result which has the highest `checkBlockNum`.
 
-#### ShouldAcceptAttestedReport
+### ShouldAcceptAttestedReport
 
 Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coordinator to be marked as inflight. Will return always true.
 
@@ -326,7 +326,7 @@ Extracts [(trigger, upkeepID)] from report and adds reported upkeeps to the coor
 💡 Note: We cannot guarantee that the same (upkeepID) / (logIdentifier, upkeepID) will not be already existing in coordinator. (e.g. node’s local chain is lagging the network). As a result we have an override behaviour where we wait on the higher checkBlockNum report.
 </aside>
 
-#### ShouldTransmitAcceptedReport
+### ShouldTransmitAcceptedReport
 
 Extracts [(trigger, upkeepID)] from report filters upkeeps that were already performed using the coordinator. 
 If any (trigger, upkeepID) is not yet confirmed then return true. Otherwise return false.
