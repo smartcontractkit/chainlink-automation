@@ -160,16 +160,13 @@ func (sim *SimulatedNetworkService) doErroredLimit(ctx context.Context, name str
 func (sim *SimulatedNetworkService) doForcedWait(ctx context.Context, name string, chErr chan error) {
 	randVal := sim.distribution.Rand()
 	waitTime := (time.Duration(randVal) * time.Millisecond) + (RateLimitTimeout)
-	timer := time.NewTimer(waitTime)
 
 	select {
 	case <-ctx.Done():
 		sim.telemetry.Register(name, waitTime, ctx.Err())
 
-		timer.Stop()
-
 		chErr <- ctx.Err()
-	case <-timer.C:
+	case <-time.After(waitTime):
 		sim.telemetry.Register(name, waitTime, nil)
 
 		chErr <- nil
@@ -192,13 +189,13 @@ func (sim *SimulatedNetworkService) collectIncrement() int {
 
 func (sim *SimulatedNetworkService) run() {
 	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			sim.collectIncrement()
 		case <-sim.done:
-			ticker.Stop()
 			return
 		}
 	}

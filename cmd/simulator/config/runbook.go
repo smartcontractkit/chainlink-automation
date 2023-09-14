@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
+// TODO: change the name of this to SimulationPlan
 type RunBook struct {
 	Nodes             int           `json:"nodes"`
 	MaxServiceWorkers int           `json:"maxNodeServiceWorkers"`
