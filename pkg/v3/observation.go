@@ -162,7 +162,7 @@ func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keep
 		return err
 	}
 	if generatedWorkID := wg(p.UpkeepID, p.Trigger); generatedWorkID != p.WorkID {
-		return fmt.Errorf("incorrect workID within proposal: (%s, %s)", generatedWorkID, p.WorkID)
+		return fmt.Errorf("incorrect workID within proposal")
 	}
 	return nil
 }

@@ -39,7 +39,7 @@ func newPlugin(
 ) (ocr3types.ReportingPlugin[AutomationReportInfo], error) {
 	// create the value stores
 	resultStore := stores.New(logger)
-	metadataStore, err := stores.NewMetadataStore(blockSource, upkeepTypeGetter, logger)
+	metadataStore, err := stores.NewMetadataStore(blockSource, upkeepTypeGetter)
 	if err != nil {
 		return nil, err
 	}

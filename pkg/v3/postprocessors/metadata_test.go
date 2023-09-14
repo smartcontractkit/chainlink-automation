@@ -2,8 +2,6 @@ package postprocessors
 
 import (
 	"context"
-	"io"
-	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +14,7 @@ func TestMetadataAddSamples(t *testing.T) {
 	ch := make(chan ocr2keepers.BlockHistory)
 	ms, err := stores.NewMetadataStore(&mockBlockSubscriber{ch: ch}, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
 		return ocr2keepers.ConditionTrigger
-	}, log.New(io.Discard, "", 0))
+	})
 	assert.NoError(t, err)
 
 	values := []ocr2keepers.CheckResult{

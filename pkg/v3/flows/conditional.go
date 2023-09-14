@@ -48,18 +48,9 @@ func newSampleProposalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](
-		interval,
-		observer,
-		func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
-			return NewSampler(
-				ratio,
-				getter,
-				log.New(logger.Writer(), fmt.Sprintf("[%s | upkeep-sampler] ", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-			), nil
-		},
-		log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
+	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+		return NewSampler(ratio, getter, logger), nil
+	}, log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 }
 
 func NewSampler(
@@ -98,8 +89,6 @@ func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 
 	upkeeps = s.shuffler.Shuffle(upkeeps)
 	size := s.ratio.OfInt(len(upkeeps))
-
-	s.logger.Printf("%d active upkeeps available with a sample size of %d", len(upkeeps), size)
 
 	if size <= 0 {
 		return nil, nil
