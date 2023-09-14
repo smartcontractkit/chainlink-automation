@@ -56,23 +56,6 @@ func NewRunnableObserver(
 	}
 }
 
-// NewGenericObserver creates a new Observer with the given pre-processors, post-processor, and runner
-func NewGenericObserver[T any](
-	preprocessors []PreProcessor[T],
-	postprocessor PostProcessor[T],
-	processor func(context.Context, ...T) ([]ocr2keepers.CheckResult, error),
-	processLimit time.Duration,
-	logger *log.Logger,
-) *Observer[T] {
-	return &Observer[T]{
-		lggr:             logger,
-		Preprocessors:    preprocessors,
-		Postprocessor:    postprocessor,
-		processFunc:      processor,
-		processTimeLimit: processLimit,
-	}
-}
-
 // Process - receives a tick and runs it through the eligibility pipeline. Calls all pre-processors, runs the check pipeline, and calls the post-processor.
 func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error {
 	pCtx, cancel := context.WithTimeout(ctx, o.processTimeLimit)

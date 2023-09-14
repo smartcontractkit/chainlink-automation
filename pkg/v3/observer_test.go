@@ -58,60 +58,51 @@ func (m *mockPostprocessor) PostProcess(ctx context.Context, results []ocr2keepe
 	return ret.Error(0)
 }
 
-func TestNewGenericObserver(t *testing.T) {
-	t.Skip()
+type mockRunner struct {
+	CheckUpkeepsFn func(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
+}
 
-	type args struct {
-		preprocessors []PreProcessor[int]
-		postprocessor PostProcessor[int]
-		runner        func(context.Context, ...int) ([]ocr2keepers.CheckResult, error)
-		limit         time.Duration
-		logger        *log.Logger
-	}
+func (r *mockRunner) CheckUpkeeps(ctx context.Context, p ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+	return r.CheckUpkeepsFn(ctx, p...)
+}
 
-	tests := []struct {
-		name string
-		args args
-		want Observer[int]
-	}{
-		{
-			name: "should return an Observer",
-			args: args{
-				preprocessors: []PreProcessor[int]{new(mockPreprocessor)},
-				postprocessor: new(mockPostprocessor),
-				runner:        new(mockProcessFunc).Process,
-				limit:         50 * time.Millisecond,
-				logger:        log.New(io.Discard, "", 0),
-			},
-			want: Observer[int]{
-				Preprocessors:    []PreProcessor[int]{new(mockPreprocessor)},
-				Postprocessor:    new(mockPostprocessor),
-				processFunc:      new(mockProcessFunc).Process,
-				processTimeLimit: 50 * time.Millisecond,
-				lggr:             log.New(io.Discard, "", 0),
-			},
+type mockPostProcessor2 struct {
+	PostProcessFn func(ctx context.Context, results []ocr2keepers.CheckResult, payloads []ocr2keepers.UpkeepPayload) error
+}
+
+func (p *mockPostProcessor2) PostProcess(ctx context.Context, results []ocr2keepers.CheckResult, payloads []ocr2keepers.UpkeepPayload) error {
+	return p.PostProcessFn(ctx, results, payloads)
+}
+
+type mockCustomTick struct {
+	ValueFn func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error)
+}
+
+func (t *mockCustomTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+	return t.ValueFn(ctx)
+}
+
+func TestNewRunnableObserver(t *testing.T) {
+	preProcessors := []PreProcessor[ocr2keepers.UpkeepPayload]{}
+	postProcessor := &mockPostProcessor2{
+		PostProcessFn: func(ctx context.Context, results []ocr2keepers.CheckResult, payloads []ocr2keepers.UpkeepPayload) error {
+			return nil
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			want := Observer[int]{
-				Preprocessors:    tt.args.preprocessors,
-				Postprocessor:    tt.args.postprocessor,
-				processFunc:      tt.args.runner,
-				processTimeLimit: tt.args.limit,
-			}
-
-			assert.Equalf(
-				t,
-				want,
-				*NewGenericObserver(tt.args.preprocessors, tt.args.postprocessor, tt.args.runner, 50*time.Millisecond, tt.args.logger),
-				"NewObserver(%v, %v, %v)",
-				tt.args.preprocessors,
-				tt.args.postprocessor,
-				tt.args.runner,
-			)
-		})
+	runner := &mockRunner{
+		CheckUpkeepsFn: func(ctx context.Context, payload ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+			return nil, nil
+		},
 	}
+	obs := NewRunnableObserver(preProcessors, postProcessor, runner, time.Second, log.Default())
+	assert.NotNil(t, obs)
+	ts := &mockCustomTick{
+		ValueFn: func(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+			return []ocr2keepers.UpkeepPayload{}, nil
+		},
+	}
+	err := obs.Process(context.Background(), ts)
+	assert.NoError(t, err)
 }
 
 func TestObserve_Process(t *testing.T) {
