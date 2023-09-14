@@ -34,13 +34,15 @@ func TestNewServiceRecoverer(t *testing.T) {
 
 		wg.Add(1)
 		go func() {
-			svc.Start(context.Background())
+			err := svc.Start(context.Background())
 			wg.Done()
+			assert.NoError(t, err)
 		}()
 
 		<-startCh
 
-		svc.Close()
+		err := svc.Close()
+		assert.NoError(t, err)
 
 		<-stopCh
 
@@ -66,13 +68,15 @@ func TestNewServiceRecoverer(t *testing.T) {
 
 		wg.Add(1)
 		go func() {
-			svc.Start(context.Background())
+			err := svc.Start(context.Background())
 			wg.Done()
+			assert.NoError(t, err)
 		}()
 
 		<-ch
 
-		svc.Close()
+		err := svc.Close()
+		assert.NoError(t, err)
 
 		wg.Wait()
 	})
@@ -102,13 +106,16 @@ func TestNewServiceRecoverer(t *testing.T) {
 
 		wg.Add(1)
 		go func() {
-			rec.Start(context.Background())
+			err := rec.Start(context.Background())
 			wg.Done()
+			assert.NoError(t, err)
 		}()
 
 		<-ch
 
-		rec.Close()
+		err := rec.Close()
+		assert.NoError(t, err)
+
 		assert.Equal(t, callCount.Load(), int32(2))
 
 		wg.Wait()
