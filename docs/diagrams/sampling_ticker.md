@@ -2,7 +2,7 @@
 
 The sampling ticker checks a random sample of upkeeps and applies the ticker
 and upkeep ids to a staging queue. The plugin pulls values from this queue to
-acheive quorum on the results.
+achieve quorum on the results.
 
 ```mermaid
 sequenceDiagram
