@@ -5,6 +5,11 @@ Initialize the plugin by creating a new Delegate
 delegate, err := ocr2keepers.NewDelegate(delegateConfig)
 ```
 
+## Links
+
+- [Overview](./OVERVIEW.md)
+- [Simulator](./SIMULATOR.md)
+
 ## Unit Testing
 Unit testing is used extensively and the primary goal is to keep test coverage above 70%.
 
