@@ -266,5 +266,5 @@ func (c *coordinator) Close() error {
 }
 
 func (c *coordinator) visitedID(e ocr2keepers.TransmitEvent) string {
-	return fmt.Sprintf("%s_%x", e.WorkID, e.TransactionHash)
+	return fmt.Sprintf("%s_%x_%d", e.WorkID, e.TransactionHash, e.TransmitBlock)
 }
