@@ -78,6 +78,10 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	return observation.Encode()
 }
 
+func (plugin *ocr3Plugin) ObservationQuorum(outctx ocr3types.OutcomeContext, query types.Query) (ocr3types.Quorum, error) {
+	return ocr3types.QuorumTwoFPlusOne, nil
+}
+
 func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
 	plugin.Logger.Printf("inside ValidateObservation for seqNr %d", outctx.SeqNr)
 	_, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
