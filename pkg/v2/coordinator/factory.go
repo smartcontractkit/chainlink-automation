@@ -20,7 +20,7 @@ type CoordinatorFactory struct {
 // config. The new coordinator is not automatically started.
 func (f *CoordinatorFactory) NewCoordinator(c config.OffchainConfig) (ocr2keepers.Coordinator, error) {
 	return NewReportCoordinator(
-		time.Duration(c.PerformLockoutWindow),
+		time.Duration(c.PerformLockoutWindow)*time.Millisecond,
 		f.CacheClean,
 		f.Logs,
 		c.MinConfirmations,
