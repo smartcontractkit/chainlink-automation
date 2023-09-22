@@ -47,8 +47,11 @@ func (pq *proposalQueue) Enqueue(newProposals ...ocr2keepers.CoordinatedBlockPro
 	defer pq.lock.Unlock()
 
 	for _, p := range newProposals {
-		if _, ok := pq.records[p.WorkID]; ok {
-			continue
+		if existing, ok := pq.records[p.WorkID]; ok {
+			if existing.proposal.Trigger.BlockNumber >= p.Trigger.BlockNumber {
+				// Only if existing proposal is on newer or equal check block then skip this proposal
+				continue
+			}
 		}
 		pq.records[p.WorkID] = proposalQueueRecord{
 			proposal:  p,
