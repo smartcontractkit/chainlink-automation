@@ -146,8 +146,8 @@ func (c *coordinator) ShouldProcess(workID string, upkeepID ocr2keepers.UpkeepId
 			case ocr2keepers.ConditionTrigger:
 				switch v.transmitType {
 				case ocr2keepers.PerformEvent:
-					// For conditionals, a particular workID should only be checked after its last perform
-					return trigger.BlockNumber > v.transmitBlockNumber
+					// For conditionals, a particular workID should only be checked after or on its last perform block
+					return trigger.BlockNumber >= v.transmitBlockNumber
 				default:
 					// There was an attempt to check this workID, but it failed, so should be processed again
 					return true
