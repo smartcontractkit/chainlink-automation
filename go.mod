@@ -55,4 +55,4 @@ require (
 
 exclude golang/github.com/influxdata/influxdb v1.8.3
 
-replace github.com/smartcontractkit/libocr => github.com/ferglor/libocr v0.0.0-20230927173455-81b40031b6f1
+replace github.com/smartcontractkit/libocr => github.com/ferglor/libocr v0.0.0-20230927232138-7b1f8899f91a
