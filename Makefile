@@ -1,13 +1,13 @@
 GOBASE=$(shell pwd)
 GOBIN=$(GOBASE)/bin
 
-GOPACKAGES = $(shell go list ./...)
+GOPACKAGES = $(shell go list ./pkg/... && go list ./internal/... && go list ./cmd/...)
 
 dependencies:
 	go mod download
 
 generate:
-	go generate -x ./...
+	go generate -x $(GOPACKAGES)
 
 test: dependencies
 	@go test -v $(GOPACKAGES)
