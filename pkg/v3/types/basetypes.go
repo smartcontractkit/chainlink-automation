@@ -15,6 +15,7 @@ const (
 var checkResultStringTemplate = `{
 	"PipelineExecutionState":%d,
 	"Retryable":%v,
+	"RetryInterval":%d,
 	"Eligible":%v,
 	"IneligibilityReason":%d,
 	"UpkeepID":%s,
@@ -215,7 +216,7 @@ func (r CheckResult) UniqueID() string {
 
 func (r CheckResult) String() string {
 	return fmt.Sprintf(
-		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.Eligible,
+		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.RetryInterval, r.Eligible,
 		r.IneligibilityReason, r.UpkeepID, r.Trigger, r.WorkID, r.GasAllocated,
 		hex.EncodeToString(r.PerformData), r.FastGasWei, r.LinkNative,
 	)
