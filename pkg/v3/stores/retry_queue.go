@@ -13,7 +13,7 @@ import (
 var (
 	// DefaultExpiration is the default expiration time for items in the queue
 	DefaultExpiration = 24 * time.Hour
-	// RetryInterval is the (default) minimum time between retries
+	// RetryInterval is the default time between retries
 	RetryInterval = 30 * time.Second
 )
 
