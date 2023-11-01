@@ -60,7 +60,7 @@ type UpkeepStateUpdater interface {
 
 type RetryQueue interface {
 	// Enqueue adds new items to the queue
-	Enqueue(items ...UpkeepPayload) error
+	Enqueue(items ...RetryRecord) error
 	// Dequeue returns the next n items in the queue, considering retry time schedules
 	Dequeue(n int) ([]UpkeepPayload, error)
 }
