@@ -217,6 +217,7 @@ func TestCheckResultString(t *testing.T) {
 	input := CheckResult{
 		PipelineExecutionState: 1,
 		Retryable:              true,
+		RetryInterval:          1,
 		Eligible:               true,
 		IneligibilityReason:    10,
 		UpkeepID:               UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
@@ -240,6 +241,7 @@ func TestCheckResultString(t *testing.T) {
 		{
 			"PipelineExecutionState":1,
 			"Retryable":true,
+			"RetryInterval":1,
 			"Eligible":true,
 			"IneligibilityReason":10,
 			"UpkeepID":455867356320691211288303676705517652851520854420902457558325773249309310976,
@@ -275,6 +277,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 0,
 				Retryable:              false,
+				RetryInterval:          0,
 				Eligible:               false,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -292,6 +295,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 1,
 				Retryable:              false,
+				RetryInterval:          0,
 				Eligible:               false,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -309,6 +313,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               false,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -326,6 +331,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -343,6 +349,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier{},
@@ -360,6 +367,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -377,6 +385,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -403,6 +412,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -429,6 +439,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -455,6 +466,7 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
+				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),

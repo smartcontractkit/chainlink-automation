@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 )
 
 const (
@@ -14,6 +15,7 @@ const (
 var checkResultStringTemplate = `{
 	"PipelineExecutionState":%d,
 	"Retryable":%v,
+	"RetryInterval":%d,
 	"Eligible":%v,
 	"IneligibilityReason":%d,
 	"UpkeepID":%s,
@@ -130,6 +132,10 @@ type CheckResult struct {
 	// if PipelineExecutionState is non zero, then retryable indicates that the same
 	// payload can be processed again in order to get a successful execution
 	Retryable bool
+	// RetryInterval is the time interval after which the same payload can be retried.
+	// This field is used is special cases (such as mercury lookup), where we want to
+	// have a different retry interval than the default one (30s)
+	RetryInterval time.Duration
 	// Rest of these fields are only applicable if PipelineExecutionState is zero
 	// Eligible indicates whether this result is eligible to be performed
 	Eligible bool
@@ -210,7 +216,7 @@ func (r CheckResult) UniqueID() string {
 
 func (r CheckResult) String() string {
 	return fmt.Sprintf(
-		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.Eligible,
+		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.RetryInterval, r.Eligible,
 		r.IneligibilityReason, r.UpkeepID, r.Trigger, r.WorkID, r.GasAllocated,
 		hex.EncodeToString(r.PerformData), r.FastGasWei, r.LinkNative,
 	)
@@ -270,4 +276,12 @@ type ReportedUpkeep struct {
 	Trigger Trigger
 	// WorkID represents the unit of work for the reported upkeep
 	WorkID string
+}
+
+// RetryRecord is a record of a payload that can be retried after a certain interval.
+type RetryRecord struct {
+	// payload is the desired unit of work to be retried
+	Payload UpkeepPayload
+	// Interval is the time interval after which the same payload can be retried.
+	Interval time.Duration
 }

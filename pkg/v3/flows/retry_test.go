@@ -61,12 +61,16 @@ func TestRetryFlow(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	err := retryQ.Enqueue(ocr2keepers.UpkeepPayload{
-		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
-		WorkID:   "0x1",
-	}, ocr2keepers.UpkeepPayload{
-		UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
-		WorkID:   "0x2",
+	err := retryQ.Enqueue(ocr2keepers.RetryRecord{
+		Payload: ocr2keepers.UpkeepPayload{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			WorkID:   "0x1",
+		},
+	}, ocr2keepers.RetryRecord{
+		Payload: ocr2keepers.UpkeepPayload{
+			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			WorkID:   "0x2",
+		},
 	})
 	assert.NoError(t, err)
 

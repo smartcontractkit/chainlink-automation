@@ -35,14 +35,14 @@ func TestRetryQueue_Sanity(t *testing.T) {
 	q := NewRetryQueue(log.New(io.Discard, "", 0))
 
 	err := q.Enqueue(
-		ocr2keepers.UpkeepPayload{WorkID: "1"},
-		ocr2keepers.UpkeepPayload{WorkID: "2"},
+		newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "1"}, 0),
+		newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "2"}, time.Millisecond*5),
 	)
 	require.NoError(t, err)
 
 	err = q.Enqueue(
-		ocr2keepers.UpkeepPayload{WorkID: "2"},
-		ocr2keepers.UpkeepPayload{WorkID: "3"},
+		newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "2"}, 0),
+		newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "3"}, 0),
 	)
 	require.NoError(t, err)
 
@@ -54,6 +54,13 @@ func TestRetryQueue_Sanity(t *testing.T) {
 	require.Len(t, items, 0)
 
 	require.Equal(t, 3, q.Size())
+
+	// adding a record with a custom interval
+	err = q.Enqueue(
+		newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "4"}, defaultExpiration-time.Millisecond*5),
+	)
+	require.NoError(t, err)
+	require.Equal(t, 4, q.Size())
 	// dequeue after retry interval elapsed
 	go func() {
 		defer cancel()
@@ -62,7 +69,7 @@ func TestRetryQueue_Sanity(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, items, 2)
 
-		require.Equal(t, 1, q.Size())
+		require.Equal(t, 2, q.Size())
 	}()
 
 	<-ctx.Done()
@@ -78,8 +85,8 @@ func TestRetryQueue_Expiration(t *testing.T) {
 
 	t.Run("dequeue before expiration", func(t *testing.T) {
 		err := q.Enqueue(
-			ocr2keepers.UpkeepPayload{WorkID: "1"},
-			ocr2keepers.UpkeepPayload{WorkID: "2"},
+			newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "1"}, 0),
+			newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "2"}, 0),
 		)
 		require.NoError(t, err)
 		require.Equal(t, 2, q.Size())
@@ -104,4 +111,11 @@ func TestRetryQueue_Expiration(t *testing.T) {
 		q.lock.RUnlock()
 		require.Equal(t, 0, n)
 	})
+}
+
+func newRetryRecord(payload ocr2keepers.UpkeepPayload, interval time.Duration) ocr2keepers.RetryRecord {
+	return ocr2keepers.RetryRecord{
+		Payload:  payload,
+		Interval: interval,
+	}
 }

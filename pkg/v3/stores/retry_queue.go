@@ -11,13 +11,17 @@ import (
 )
 
 var (
+	// DefaultExpiration is the default expiration time for items in the queue
 	DefaultExpiration = 24 * time.Hour
-	RetryInterval     = 30 * time.Second
+	// RetryInterval is the default time between retries
+	RetryInterval = 30 * time.Second
 )
 
 type retryQueueRecord struct {
 	// payload is the desired unit of work to be retried
 	payload types.UpkeepPayload
+	// interval is the retry interval for the payload
+	interval time.Duration
 	// pending is true if the item is currently being retried
 	pending bool
 	// createdAt is the first time the item was seen by the queue
@@ -55,13 +59,14 @@ func NewRetryQueue(lggr *log.Logger) *retryQueue {
 	}
 }
 
-func (q *retryQueue) Enqueue(payloads ...types.UpkeepPayload) error {
+func (q *retryQueue) Enqueue(records ...types.RetryRecord) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	now := time.Now()
 
-	for _, payload := range payloads {
+	for _, rec := range records {
+		payload := rec.Payload
 		record, ok := q.records[payload.WorkID]
 		if !ok {
 			record = retryQueueRecord{
@@ -79,6 +84,13 @@ func (q *retryQueue) Enqueue(payloads ...types.UpkeepPayload) error {
 		// (can happen when the same payload gets retryable error again)
 		record.updatedAt = now
 		record.pending = false
+		// if some custom interval is set for this record, use it.
+		// otherwise use the default interval
+		if rec.Interval > 0 {
+			record.interval = rec.Interval
+		} else {
+			record.interval = q.interval
+		}
 		q.records[payload.WorkID] = record
 	}
 
@@ -105,7 +117,7 @@ func (q *retryQueue) Dequeue(n int) ([]types.UpkeepPayload, error) {
 		if record.pending {
 			continue
 		}
-		if record.elapsed(now, q.interval) {
+		if record.elapsed(now, record.interval) {
 			results = append(results, record.payload)
 			record.pending = true
 			q.records[k] = record
