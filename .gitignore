@@ -29,5 +29,5 @@ bin/
 
 # default simulation output folders
 reports/
-runbook_logs/
-private_runbooks/
+simulation_plan_logs/
+simulation_plans/
