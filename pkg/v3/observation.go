@@ -2,6 +2,7 @@ package ocr2keepers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -42,7 +43,8 @@ type AutomationObservation struct {
 }
 
 func (observation AutomationObservation) Encode() ([]byte, error) {
-	return json.Marshal(observation)
+	// Create a bug
+	return nil, errors.New("Observation encoding error")
 }
 
 func DecodeAutomationObservation(data []byte, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) (AutomationObservation, error) {
