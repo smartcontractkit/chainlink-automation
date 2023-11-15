@@ -245,7 +245,7 @@ The results that were agreed by at least f+1=3 nodes will be included in a repor
 ### Pure Reporting
 
 OCR interface is implemented with "pure" functions that don't perform any blocking operations.
-Intead, we use async pooling and queueing to decouple the interaction with  other components in the system:
+Instead, we use async pooling and queueing to decouple the interaction with  other components in the system:
 
 - **Proposal queue** - used by the plugin for queueing proposals to be processed by the finalization observers.
 - **Result store** - used to store performable results to be included in an outcome after the plugin reads them. Finalization workflows adds results, while the plugin reads them.
@@ -262,7 +262,7 @@ The following events can be emitted by the contract for a given report:
 
 - `UpkeepPerformed`: Report successfully performed for an upkeep
 (for log triggers `(upkeepID, logIdentifier)`)
-- `StateUpkeep`: Report was stale and the upkeep was already performed
+- `StaleUpkeep`: Report was stale and the upkeep was already performed
     - For conditionals this happens when an upkeep is tried to be performed on a checkBockNumber which is older than the last perform block (Stale check).
     - For log triggers this happens when the particular (upkeepID, logIdentifier) has been performed before already
 - `InsufficientFunds`: Emitted when pre upkeep execution when not enough funds are found on chain for the execution. Funds check is done in checkPipeline, but actual funds required on chain at execution time can change, e.g. to gas price changes / link price changes. In such cases upkeep is not performed or charged. These reports should really be an edge case, on chain we have a multiplier during checkPipeline to overestimate funds before even attempting an upkeep.
@@ -276,7 +276,7 @@ The plugin is performing the following tasks upon OCR life-cycle:
 
 ### Observation
 
-Upon observation, the plugin first prepross previous outcome, and then build the current observation.
+Upon observation, the plugin first preprocess previous outcome, and then build the current observation.
 
 **Preprocessing** of previous outcome, which includes the following steps:
 - Remove agreed upon finalized performables from result store
@@ -373,7 +373,7 @@ The registry exposes `checkUpkeep` so the runner could execute the pipeline taki
 - Does batch mercury fetch and callback for upkeeps that requires mercury data
 - Does batch RPC call to simulatePerformUpkeep for upkeeps that are eligible
 
-Returns list of results for each payload. Result can be **eligible** with upkeepResult / **non-eligible** with failure reason / **error**, which can be retryable if it’s transient or non retryable
+Returns list of results for each payload. Result can be **eligible** with `CheckResult`s / **non-eligible** with failure reason / **error**, which can be retryable if it’s transient or non retryable. `CheckResult` also includes a retry interval. If retry interval is populated, retry workflow will retry it after this interval. Otherwise, it will wait for the default interval 30s before retrying.
 
 <br />
 
@@ -518,7 +518,7 @@ For log triggers
 
 ### Result Store
 
-This component is responsible for storing `upkeepResults` that a node thinks should be performed. It hopes to get agreement from quorum of nodes on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. Results that do not achieve agreement within TTL are expected to be picked up by recovery flow.
+This component is responsible for storing `CheckResult`s that a node thinks should be performed. It hopes to get agreement from quorum of nodes on these results to push into reports. Best effort is made to ensure the same logs enter different node’s result stores independently as **it is assumed that blockchain nodes will get in sync within TTL**, but it is not guaranteed as node’s local blockchain can see different reorgs or select different logs during surges. Results that do not achieve agreement within TTL are expected to be picked up by recovery flow.
 
 - Maintains an in-memory collection of upkeep results
     - Conditional upkeeps will be stored by (upkeepID)
