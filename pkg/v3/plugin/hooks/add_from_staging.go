@@ -26,29 +26,49 @@ type AddFromStagingHook struct {
 	coord  types.Coordinator
 }
 
+// RunHook adds results from the store to the observation.
+// It sorts by a shuffled workID. workID for all items is shuffled using a pseduorandom souce
+// that is the same across all nodes for a given round. This ensures that all nodes try to
+// send the same subset of workIDs if they are available, while giving different priority
+// to workIDs in different rounds.
 func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	results, err := hook.store.View()
+	storeResults, err := hook.store.View()
 	if err != nil {
 		return err
 	}
-	results, err = hook.coord.FilterResults(results)
+	storeResults, err = hook.coord.FilterResults(storeResults)
 	if err != nil {
 		return err
 	}
-
-	// Sort by a shuffled workID. workID for all items is shuffled using a pseduorandom souce
-	// that is the same across all nodes for a given round. This ensures that all nodes try to
-	// send the same subset of workIDs if they are available, while giving different priority
-	// to workIDs in different rounds.
-	sort.Slice(results, func(i, j int) bool {
-		return random.ShuffleString(results[i].WorkID, rSrc) < random.ShuffleString(results[j].WorkID, rSrc)
+	// create a slice of shuffled workID strings, i.e. calling random.ShuffleString once per workID
+	shuffledStrings := make([]shuffledString, len(storeResults))
+	for i, result := range storeResults {
+		shuffledStrings[i] = shuffledString{
+			val:       random.ShuffleString(result.WorkID, rSrc),
+			origIndex: i,
+		}
+	}
+	// sort by the shuffled workID
+	sort.Slice(shuffledStrings, func(i, j int) bool {
+		return shuffledStrings[i].val < shuffledStrings[j].val
 	})
-	if len(results) > limit {
-		results = results[:limit]
+	if len(storeResults) > limit {
+		shuffledStrings = shuffledStrings[:limit]
+	}
+	// create a slice of results in the order of the shuffled workIDs
+	results := make([]ocr2keepers.CheckResult, len(shuffledStrings))
+	for i, shuffled := range shuffledStrings {
+		results[i] = storeResults[shuffled.origIndex]
 	}
 
 	hook.logger.Printf("adding %d results to observation", len(results))
 	obs.Performable = append(obs.Performable, results...)
 
 	return nil
+}
+
+// shuffledString represents a string that has been shuffled using a pseduorandom source
+type shuffledString struct {
+	val       string
+	origIndex int
 }
