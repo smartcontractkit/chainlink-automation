@@ -7,12 +7,12 @@ import (
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	simio "github.com/smartcontractkit/ocr2keepers/tools/simulator/io"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/loader"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/net"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	simio "github.com/smartcontractkit/chainlink-automation/tools/simulator/io"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/loader"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/net"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/telemetry"
 )
 
 type GroupConfig struct {

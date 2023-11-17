@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
+	"github.com/smartcontractkit/chainlink-automation/internal/util"
+	pkgutil "github.com/smartcontractkit/chainlink-automation/pkg/util"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 )
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")

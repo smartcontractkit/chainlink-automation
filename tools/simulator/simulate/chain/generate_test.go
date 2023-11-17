@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/shopspring/decimal"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
 )
 
 func TestGenerateAllUpkeeps(t *testing.T) {

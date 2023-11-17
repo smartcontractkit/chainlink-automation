@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v2/coordinator/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v2/coordinator/mocks"
 )
 
 func TestReportCoordinator(t *testing.T) {

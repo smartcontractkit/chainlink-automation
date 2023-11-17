@@ -14,7 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
+
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin"
 )
 
 var _ types.OffchainKeyring = &OffchainKeyring{}

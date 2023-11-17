@@ -7,10 +7,10 @@ import (
 	"log"
 	"time"
 
-	internalutil "github.com/smartcontractkit/ocr2keepers/internal/util"
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 const (

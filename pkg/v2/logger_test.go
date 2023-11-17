@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v2/mocks"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v2/mocks"
 )
 
 func TestLogWriter(t *testing.T) {

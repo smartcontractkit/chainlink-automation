@@ -1,10 +1,10 @@
 go mod download
 gofmt -w .
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/cmd/simulator	0.475s
+ok  	github.com/smartcontractkit/chainlink-automation/cmd/simulator	0.475s
 goos: darwin
 goarch: amd64
-pkg: github.com/smartcontractkit/ocr2keepers/internal/keepers
+pkg: github.com/smartcontractkit/chainlink-automation/internal/keepers
 cpu: VirtualApple @ 2.50GHz
 BenchmarkCacheParallelism-10                	 3714394	       312.9 ns/op	      55 B/op	       1 allocs/op
 BenchmarkDecode-10                          	  325212	      3503 ns/op	    1160 B/op	      10 allocs/op
@@ -24,21 +24,21 @@ BenchmarkWorkerGroup/MaxProcs-10                     	     147	       130.0 comp
 BenchmarkWorkerGroup/2x_MaxProcs-10                  	     295	       280.0 complete	     383 B/op	       4 allocs/op
 BenchmarkWorkerGroup/10x_MaxProcs-10                 	   10000	       900.0 complete	     128 B/op	       2 allocs/op
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/internal/keepers	72.649s
-?   	github.com/smartcontractkit/ocr2keepers/internal/mocks	[no test files]
+ok  	github.com/smartcontractkit/chainlink-automation/internal/keepers	72.649s
+?   	github.com/smartcontractkit/chainlink-automation/internal/mocks	[no test files]
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/pkg	0.560s
+ok  	github.com/smartcontractkit/chainlink-automation/pkg	0.560s
 goos: darwin
 goarch: amd64
-pkg: github.com/smartcontractkit/ocr2keepers/pkg/chain
+pkg: github.com/smartcontractkit/chainlink-automation/pkg/chain
 cpu: VirtualApple @ 2.50GHz
 BenchmarkEncodeReport/No_Perform_Data-10         	  165970	      6783 ns/op	    3096 B/op	      71 allocs/op
 BenchmarkEncodeReport/Small_Perform_Data-10      	  170286	      7121 ns/op	    3608 B/op	      75 allocs/op
 BenchmarkEncodeReport/Large_Perform_Data-10      	  164830	      7304 ns/op	    4152 B/op	      74 allocs/op
 BenchmarkEncodeReport/Multiple_Performs-10       	   89985	     13546 ns/op	    9944 B/op	     169 allocs/op
 PASS
-ok  	github.com/smartcontractkit/ocr2keepers/pkg/chain	33.573s
-?   	github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers	[no test files]
-?   	github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_logic2_0	[no test files]
-?   	github.com/smartcontractkit/ocr2keepers/pkg/chain/gethwrappers/keeper_registry_wrapper2_0	[no test files]
-?   	github.com/smartcontractkit/ocr2keepers/pkg/types	[no test files]
+ok  	github.com/smartcontractkit/chainlink-automation/pkg/chain	33.573s
+?   	github.com/smartcontractkit/chainlink-automation/pkg/chain/gethwrappers	[no test files]
+?   	github.com/smartcontractkit/chainlink-automation/pkg/chain/gethwrappers/keeper_registry_logic2_0	[no test files]
+?   	github.com/smartcontractkit/chainlink-automation/pkg/chain/gethwrappers/keeper_registry_wrapper2_0	[no test files]
+?   	github.com/smartcontractkit/chainlink-automation/pkg/types	[no test files]

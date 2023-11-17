@@ -3,7 +3,7 @@ package run
 import (
 	"os"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
 )
 
 func LoadSimulationPlan(path string) (config.SimulationPlan, error) {

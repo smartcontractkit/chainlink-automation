@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"sort"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
 )
 
 type upkeepStatsBuilder struct {

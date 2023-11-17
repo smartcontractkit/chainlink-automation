@@ -3,7 +3,7 @@ package runner
 import (
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 )
 
 type Result struct {

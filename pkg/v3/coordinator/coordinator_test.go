@@ -14,9 +14,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/util"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 func TestNewCoordinator(t *testing.T) {

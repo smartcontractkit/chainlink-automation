@@ -11,14 +11,14 @@ import (
 	"github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	pluginconfig "github.com/smartcontractkit/ocr2keepers/pkg/v3/config"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/runner"
-	simio "github.com/smartcontractkit/ocr2keepers/tools/simulator/io"
+	pluginconfig "github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/runner"
+	simio "github.com/smartcontractkit/chainlink-automation/tools/simulator/io"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/telemetry"
 )
 
 func (g *Group) Add(conf config.Node) {

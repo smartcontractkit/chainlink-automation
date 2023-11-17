@@ -9,9 +9,9 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/upkeep"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/util"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/upkeep"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
 
 func (g *Group) WriteTransmitChart() {

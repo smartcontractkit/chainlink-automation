@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/ocr2keepers
+module github.com/smartcontractkit/chainlink-automation
 
 go 1.20
 
@@ -23,18 +23,15 @@ require (
 )
 
 require (
-	github.com/deckarep/golang-set/v2 v2.3.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/holiman/uint256 v1.2.2 // indirect
-)
-
-require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/deckarep/golang-set/v2 v2.3.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

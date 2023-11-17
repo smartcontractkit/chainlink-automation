@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type ineligiblePostProcessor struct {

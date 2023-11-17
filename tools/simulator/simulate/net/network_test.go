@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/net"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/net"
 )
 
 func TestSimulatedNetwork(t *testing.T) {
