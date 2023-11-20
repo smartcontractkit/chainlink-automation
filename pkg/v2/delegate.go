@@ -10,7 +10,7 @@ import (
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v2/config"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v2/config"
 )
 
 var (

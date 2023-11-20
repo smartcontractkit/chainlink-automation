@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
+	"github.com/smartcontractkit/chainlink-automation/internal/util"
 )
 
 type observer[T any] interface {

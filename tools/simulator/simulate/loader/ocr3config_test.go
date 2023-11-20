@@ -13,9 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/loader"
+
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/loader"
 )
 
 func TestOCR3ConfigLoader(t *testing.T) {

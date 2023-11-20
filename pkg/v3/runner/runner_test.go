@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types/mocks"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
 )
 
 var (

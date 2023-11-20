@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	types "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	mock "github.com/stretchr/testify/mock"
 )
 

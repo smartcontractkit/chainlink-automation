@@ -9,7 +9,7 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
 )
 
 // OCR3ConfigTracker ...

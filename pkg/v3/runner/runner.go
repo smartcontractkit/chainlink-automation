@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/internal/util"
-	pkgutil "github.com/smartcontractkit/ocr2keepers/pkg/util"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/internal/util"
+	pkgutil "github.com/smartcontractkit/chainlink-automation/pkg/util"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 const WorkerBatchLimit int = 10

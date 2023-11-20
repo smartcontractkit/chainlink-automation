@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v2/mocks"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v2/mocks"
 )
 
 func TestStart(t *testing.T) {

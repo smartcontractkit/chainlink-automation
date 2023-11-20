@@ -5,9 +5,9 @@ import (
 	"log"
 	"math/big"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/util"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
 
 // Source maintains delivery of active upkeeps based on type and repeat

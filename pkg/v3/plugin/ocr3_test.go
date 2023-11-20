@@ -17,10 +17,10 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers2 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin/hooks"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/service"
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	ocr2keepers2 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 func TestOcr3Plugin_Query(t *testing.T) {

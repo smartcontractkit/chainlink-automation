@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/util"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
 
 const (

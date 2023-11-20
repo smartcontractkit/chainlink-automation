@@ -6,7 +6,7 @@ import (
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v2/config"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v2/config"
 )
 
 // an upkeep key is composed of a block number and upkeep id (~40 bytes)

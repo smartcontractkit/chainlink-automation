@@ -11,7 +11,7 @@ import (
 
 	"gonum.org/v1/gonum/stat/distuv"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/util"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
 
 const (

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
 )
 
 const (

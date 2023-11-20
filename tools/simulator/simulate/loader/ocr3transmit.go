@@ -9,9 +9,9 @@ import (
 	"log"
 	"sync"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/util"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
 
 const (

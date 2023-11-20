@@ -3,15 +3,15 @@ package simulate
 import (
 	"log"
 
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/plugin"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/db"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/loader"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/net"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/ocr"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/upkeep"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/db"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/loader"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/net"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/ocr"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/upkeep"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/telemetry"
 )
 
 const (

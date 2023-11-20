@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/ocr2keepers/pkg/v2"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v2/encoding"
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v2/encoding"
 )
 
 func TestObservation_UnmarshalJSON(t *testing.T) {

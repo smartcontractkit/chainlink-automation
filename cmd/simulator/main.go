@@ -16,11 +16,11 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/chains/evmutil"
 	flag "github.com/spf13/pflag"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/node"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/run"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/node"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/run"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/telemetry"
 )
 
 var (

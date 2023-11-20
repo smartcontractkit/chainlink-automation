@@ -5,10 +5,10 @@ import (
 	"log"
 	"math/rand"
 
-	ocr2keepersv3 "github.com/smartcontractkit/ocr2keepers/pkg/v3"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/random"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/telemetry"
-	"github.com/smartcontractkit/ocr2keepers/pkg/v3/types"
+	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type AddConditionalProposalsHook struct {

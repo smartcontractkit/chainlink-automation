@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/loader"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/loader"
 )
 
 func TestUpkeepConfigLoader(t *testing.T) {

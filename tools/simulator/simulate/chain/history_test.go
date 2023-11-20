@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/config"
-	"github.com/smartcontractkit/ocr2keepers/tools/simulator/simulate/chain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
 )
 
 func TestBlockHistoryTracker(t *testing.T) {
