@@ -86,11 +86,11 @@ func (q *retryQueue) Enqueue(records ...types.RetryRecord) error {
 		record.pending = false
 		// if some custom interval is set for this record, use it.
 		// otherwise use the default interval
-		if rec.Interval > 0 {
-			record.interval = rec.Interval
-		} else {
+	//	if rec.Interval > 0 {
+	//		record.interval = rec.Interval
+	//	} else {
 			record.interval = q.interval
-		}
+	//	}
 		q.records[payload.WorkID] = record
 	}
 
