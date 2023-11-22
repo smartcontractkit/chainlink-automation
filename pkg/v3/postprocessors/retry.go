@@ -30,8 +30,8 @@ func (p *retryablePostProcessor) PostProcess(_ context.Context, results []ocr2ke
 	for i, res := range results {
 		if res.PipelineExecutionState != 0 && res.Retryable {
 			e := p.q.Enqueue(ocr2keepers.RetryRecord{
-				Payload:  payloads[i],
-				Interval: res.RetryInterval,
+				Payload: payloads[i],
+				//Interval: res.RetryInterval,
 			})
 			if e == nil {
 				retryable++
