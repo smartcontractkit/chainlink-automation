@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -20,7 +19,7 @@ func TestRetryPostProcessor_PostProcess(t *testing.T) {
 	results := []ocr2keepers.CheckResult{
 		{Retryable: true, PipelineExecutionState: 1},
 		{Retryable: false, PipelineExecutionState: 3},
-		{Retryable: true, RetryInterval: time.Second, PipelineExecutionState: 2},
+		{Retryable: true, PipelineExecutionState: 2},
 	}
 
 	// Call the PostProcess method
