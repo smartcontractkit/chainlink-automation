@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -15,7 +16,6 @@ const (
 var checkResultStringTemplate = `{
 	"PipelineExecutionState":%d,
 	"Retryable":%v,
-	"RetryInterval":%d,
 	"Eligible":%v,
 	"IneligibilityReason":%d,
 	"UpkeepID":%s,
@@ -124,18 +124,16 @@ type TransmitEvent struct {
 
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
-// quorum requirements in mind. Please ensure to get a proper review along with an
-// upgrade plan before changing this
+// quorum requirements in mind. Any field that is needed to be encoded should be added
+// as well to checkResultMsg struct, and to be encoded/decoded in the MarshalJSON and
+// UnmarshalJSON functions. Please ensure to get a proper review along with an upgrade
+// plan before changing this.
 type CheckResult struct {
 	// zero if success, else indicates an error code
 	PipelineExecutionState uint8
 	// if PipelineExecutionState is non zero, then retryable indicates that the same
 	// payload can be processed again in order to get a successful execution
 	Retryable bool
-	// RetryInterval is the time interval after which the same payload can be retried.
-	// This field is used is special cases (such as mercury lookup), where we want to
-	// have a different retry interval than the default one (30s)
-	RetryInterval time.Duration
 	// Rest of these fields are only applicable if PipelineExecutionState is zero
 	// Eligible indicates whether this result is eligible to be performed
 	Eligible bool
@@ -156,6 +154,26 @@ type CheckResult struct {
 	FastGasWei *big.Int
 	// Link to native ratio to be used when performing this upkeep
 	LinkNative *big.Int
+	// RetryInterval is the time interval after which the same payload can be retried.
+	// This field is used is special cases (such as mercury lookup), where we want to
+	// have a different retry interval than the default one (30s)
+	// NOTE: this field is not encoded in JSON and is only used internally
+	RetryInterval time.Duration
+}
+
+// checkResultMsg is used for encoding and decoding check results.
+type checkResultMsg struct {
+	PipelineExecutionState uint8
+	Retryable              bool
+	Eligible               bool
+	IneligibilityReason    uint8
+	UpkeepID               UpkeepIdentifier
+	Trigger                Trigger
+	WorkID                 string
+	GasAllocated           uint64
+	PerformData            []byte
+	FastGasWei             *big.Int
+	LinkNative             *big.Int
 }
 
 // UniqueID returns a unique identifier for the check result.
@@ -216,10 +234,50 @@ func (r CheckResult) UniqueID() string {
 
 func (r CheckResult) String() string {
 	return fmt.Sprintf(
-		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.RetryInterval, r.Eligible,
+		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.Eligible,
 		r.IneligibilityReason, r.UpkeepID, r.Trigger, r.WorkID, r.GasAllocated,
 		hex.EncodeToString(r.PerformData), r.FastGasWei, r.LinkNative,
 	)
+}
+
+func (r CheckResult) MarshalJSON() ([]byte, error) {
+	crm := &checkResultMsg{
+		PipelineExecutionState: r.PipelineExecutionState,
+		Retryable:              r.Retryable,
+		Eligible:               r.Eligible,
+		IneligibilityReason:    r.IneligibilityReason,
+		UpkeepID:               r.UpkeepID,
+		Trigger:                r.Trigger,
+		WorkID:                 r.WorkID,
+		GasAllocated:           r.GasAllocated,
+		PerformData:            r.PerformData,
+		FastGasWei:             r.FastGasWei,
+		LinkNative:             r.LinkNative,
+	}
+
+	return json.Marshal(crm)
+}
+
+func (r *CheckResult) UnmarshalJSON(data []byte) error {
+	var crm checkResultMsg
+
+	if err := json.Unmarshal(data, &crm); err != nil {
+		return err
+	}
+
+	r.PipelineExecutionState = crm.PipelineExecutionState
+	r.Retryable = crm.Retryable
+	r.Eligible = crm.Eligible
+	r.IneligibilityReason = crm.IneligibilityReason
+	r.UpkeepID = crm.UpkeepID
+	r.Trigger = crm.Trigger
+	r.WorkID = crm.WorkID
+	r.GasAllocated = crm.GasAllocated
+	r.PerformData = crm.PerformData
+	r.FastGasWei = crm.FastGasWei
+	r.LinkNative = crm.LinkNative
+
+	return nil
 }
 
 // BlockHistory is a list of block keys
