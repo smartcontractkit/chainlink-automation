@@ -21,7 +21,7 @@ const (
 	// MaxOutcomeLength applies a limit to the total length of bytes in an outcome for
 	// a round. NOTE: This is derived from a limit of 5000 on performData
 	// which is guaranteed onchain
-	MaxOutcomeLength = 2_000_000
+	MaxOutcomeLength = 2_500_000
 	// MaxReportLength limits the total length of bytes for a single report.
 	MaxReportLength = 1_000_000
 	// MaxReportCount limits the total number of reports allowed to be produced
