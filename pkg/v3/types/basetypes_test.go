@@ -213,11 +213,78 @@ func TestUpkeepIdentifier_BigInt(t *testing.T) {
 	}
 }
 
+func TestCheckResultEncoding(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    CheckResult
+		expected string
+		decoded  CheckResult
+	}{
+		{
+			name: "check result with retry interval",
+			input: CheckResult{
+				PipelineExecutionState: 1,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    10,
+				UpkeepID:               UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
+				Trigger: Trigger{
+					BlockNumber: 5,
+					BlockHash:   [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash: [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+						Index:  99,
+					},
+				},
+				WorkID:        "work id",
+				GasAllocated:  1001,
+				PerformData:   []byte{1, 2, 3, 4, 5, 6},
+				FastGasWei:    big.NewInt(12),
+				LinkNative:    big.NewInt(13),
+				RetryInterval: 1,
+			},
+			expected: `{"PipelineExecutionState":1,"Retryable":true,"Eligible":true,"IneligibilityReason":10,"UpkeepID":[1,2,3,4,5,6,7,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":5,"BlockHash":[1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],"LogTriggerExtension":{"TxHash":[1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],"Index":99,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"BlockNumber":0}},"WorkID":"work id","GasAllocated":1001,"PerformData":"AQIDBAUG","FastGasWei":12,"LinkNative":13}`,
+			decoded: CheckResult{
+				PipelineExecutionState: 1,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    10,
+				UpkeepID:               UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
+				Trigger: Trigger{
+					BlockNumber: 5,
+					BlockHash:   [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash: [32]byte{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+						Index:  99,
+					},
+				},
+				WorkID:       "work id",
+				GasAllocated: 1001,
+				PerformData:  []byte{1, 2, 3, 4, 5, 6},
+				FastGasWei:   big.NewInt(12),
+				LinkNative:   big.NewInt(13),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded, err := json.Marshal(tc.input)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, string(encoded))
+
+			var decoded CheckResult
+			err = json.Unmarshal(encoded, &decoded)
+			require.NoError(t, err)
+			assert.True(t, reflect.DeepEqual(tc.decoded, decoded))
+		})
+	}
+}
+
 func TestCheckResultString(t *testing.T) {
 	input := CheckResult{
 		PipelineExecutionState: 1,
 		Retryable:              true,
-		RetryInterval:          1,
 		Eligible:               true,
 		IneligibilityReason:    10,
 		UpkeepID:               UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
@@ -229,11 +296,12 @@ func TestCheckResultString(t *testing.T) {
 				Index:  99,
 			},
 		},
-		WorkID:       "work id",
-		GasAllocated: 1001,
-		PerformData:  []byte{1, 2, 3, 4, 5, 6},
-		FastGasWei:   big.NewInt(12),
-		LinkNative:   big.NewInt(13),
+		WorkID:        "work id",
+		GasAllocated:  1001,
+		PerformData:   []byte{1, 2, 3, 4, 5, 6},
+		FastGasWei:    big.NewInt(12),
+		LinkNative:    big.NewInt(13),
+		RetryInterval: 1,
 	}
 
 	result := fmt.Sprintf("%v", input)
@@ -241,7 +309,6 @@ func TestCheckResultString(t *testing.T) {
 		{
 			"PipelineExecutionState":1,
 			"Retryable":true,
-			"RetryInterval":1,
 			"Eligible":true,
 			"IneligibilityReason":10,
 			"UpkeepID":455867356320691211288303676705517652851520854420902457558325773249309310976,
@@ -259,7 +326,8 @@ func TestCheckResultString(t *testing.T) {
 			"GasAllocated":1001,
 			"PerformData":"010203040506",
 			"FastGasWei":12,
-			"LinkNative":13
+			"LinkNative":13,
+			"RetryInterval":1
 		}
 	`
 	assertJSONEqual(t, expected, result)
@@ -277,7 +345,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 0,
 				Retryable:              false,
-				RetryInterval:          0,
 				Eligible:               false,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -295,7 +362,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 1,
 				Retryable:              false,
-				RetryInterval:          0,
 				Eligible:               false,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -313,7 +379,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               false,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -331,7 +396,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    0,
 				UpkeepID:               UpkeepIdentifier{},
@@ -349,7 +413,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier{},
@@ -367,7 +430,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -385,7 +447,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -412,7 +473,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -439,7 +499,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
@@ -466,7 +525,6 @@ func TestCheckResult_UniqueID(t *testing.T) {
 			result: CheckResult{
 				PipelineExecutionState: 2,
 				Retryable:              true,
-				RetryInterval:          0,
 				Eligible:               true,
 				IneligibilityReason:    6,
 				UpkeepID:               UpkeepIdentifier([32]byte{9, 9, 9, 9}),
