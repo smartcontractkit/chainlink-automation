@@ -546,7 +546,7 @@ func TestLargeObservationSize(t *testing.T) {
 			Hash:   [32]byte{1},
 		})
 	}
-	largePerformData := [5001]byte{}
+	largePerformData := [10001]byte{}
 	for i := 0; i < ObservationPerformablesLimit; i++ {
 		newResult := validLogResult
 		uid := types.UpkeepIdentifier{}

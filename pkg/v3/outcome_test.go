@@ -120,7 +120,7 @@ func TestLargeOutcomeSize(t *testing.T) {
 		AgreedPerformables: []types.CheckResult{},
 		SurfacedProposals:  [][]types.CoordinatedBlockProposal{},
 	}
-	largePerformData := [5001]byte{}
+	largePerformData := [10001]byte{}
 	for i := 0; i < OutcomeAgreedPerformablesLimit; i++ {
 		newResult := validLogResult
 		uid := types.UpkeepIdentifier{}
