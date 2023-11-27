@@ -24,7 +24,8 @@ var checkResultStringTemplate = `{
 	"GasAllocated":%d,
 	"PerformData":"%s",
 	"FastGasWei":%s,
-	"LinkNative":%s
+	"LinkNative":%s,
+	"RetryInterval":%d
 }`
 
 func init() {
@@ -236,7 +237,7 @@ func (r CheckResult) String() string {
 	return fmt.Sprintf(
 		checkResultStringTemplate, r.PipelineExecutionState, r.Retryable, r.Eligible,
 		r.IneligibilityReason, r.UpkeepID, r.Trigger, r.WorkID, r.GasAllocated,
-		hex.EncodeToString(r.PerformData), r.FastGasWei, r.LinkNative,
+		hex.EncodeToString(r.PerformData), r.FastGasWei, r.LinkNative, r.RetryInterval,
 	)
 }
 

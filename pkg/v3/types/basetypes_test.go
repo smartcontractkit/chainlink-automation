@@ -326,12 +326,11 @@ func TestCheckResultString(t *testing.T) {
 			"GasAllocated":1001,
 			"PerformData":"010203040506",
 			"FastGasWei":12,
-			"LinkNative":13
+			"LinkNative":13,
+			"RetryInterval":1
 		}
 	`
 	assertJSONEqual(t, expected, result)
-	// removing fields that shouldn't be encoded
-	input.RetryInterval = 0
 	assertJSONContainsAllStructFields(t, result, input)
 }
 
