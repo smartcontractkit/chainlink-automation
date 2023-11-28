@@ -27,7 +27,7 @@ type AddFromStagingHook struct {
 }
 
 // RunHook adds results from the store to the observation.
-// It sorts by a shuffled workID. workID for all items is shuffled using a pseduorandom souce
+// It sorts by a shuffled workID. workID for all items is shuffled using a pseudorandom source
 // that is the same across all nodes for a given round. This ensures that all nodes try to
 // send the same subset of workIDs if they are available, while giving different priority
 // to workIDs in different rounds.
