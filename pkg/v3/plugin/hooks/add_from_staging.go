@@ -57,9 +57,3 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 
 	return nil
 }
-
-// shuffledString represents a string that has been shuffled using a pseduorandom source
-type shuffledString struct {
-	val       string
-	origIndex int
-}
