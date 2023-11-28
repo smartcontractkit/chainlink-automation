@@ -32,35 +32,26 @@ type AddFromStagingHook struct {
 // send the same subset of workIDs if they are available, while giving different priority
 // to workIDs in different rounds.
 func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
-	storeResults, err := hook.store.View()
+	results, err := hook.store.View()
 	if err != nil {
 		return err
 	}
-	storeResults, err = hook.coord.FilterResults(storeResults)
+	results, err = hook.coord.FilterResults(results)
 	if err != nil {
 		return err
 	}
-	// create a slice of shuffled workID strings, i.e. calling random.ShuffleString once per workID
-	shuffledStrings := make([]shuffledString, len(storeResults))
-	for i, result := range storeResults {
-		shuffledStrings[i] = shuffledString{
-			val:       random.ShuffleString(result.WorkID, rSrc),
-			origIndex: i,
-		}
+	// creating a map to hold the shuffled workIDs
+	shuffledIDs := make(map[string]string, len(results))
+	for _, result := range results {
+		shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
 	}
 	// sort by the shuffled workID
-	sort.Slice(shuffledStrings, func(i, j int) bool {
-		return shuffledStrings[i].val < shuffledStrings[j].val
+	sort.SliceStable(results, func(i, j int) bool {
+		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
 	})
-	if len(storeResults) > limit {
-		shuffledStrings = shuffledStrings[:limit]
+	if len(results) > limit {
+		results = results[:limit]
 	}
-	// create a slice of results in the order of the shuffled workIDs
-	results := make([]ocr2keepers.CheckResult, len(shuffledStrings))
-	for i, shuffled := range shuffledStrings {
-		results[i] = storeResults[shuffled.origIndex]
-	}
-
 	hook.logger.Printf("adding %d results to observation", len(results))
 	obs.Performable = append(obs.Performable, results...)
 
