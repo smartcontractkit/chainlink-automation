@@ -1,7 +1,10 @@
 package ocr2keepers
 
 import (
+	"bytes"
+	"encoding/hex"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,20 +70,45 @@ var validBlockHistory = types.BlockHistory{
 		Hash:   [32]byte{1},
 	},
 }
+var validObservation = AutomationObservation{
+	Performable:     []types.CheckResult{validConditionalResult, validLogResult},
+	UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+	BlockHistory:    validBlockHistory,
+}
+var expectedEncodedObservation []byte
+
+func init() {
+	b, err := os.ReadFile("fixtures/expected_encoded_observation.txt")
+	if err != nil {
+		panic(err)
+	}
+	expectedEncodedObservation, err = hex.DecodeString(string(b))
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestValidAutomationObservation(t *testing.T) {
-	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
-		BlockHistory:    validBlockHistory,
-	}
-	encoded, err := ao.Encode()
+	encoded, err := validObservation.Encode()
 	assert.NoError(t, err, "no error in encoding valid automation observation")
 
 	decoded, err := DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.NoError(t, err, "no error in decoding valid automation observation")
 
-	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
+	assert.Equal(t, validObservation, decoded, "final result from encoding and decoding should match")
+}
+
+func TestAutomationObservationEncodeBackwardsCompatibility(t *testing.T) {
+	encoded, err := validObservation.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	if !bytes.Equal(encoded, expectedEncodedObservation) {
+		assert.Fail(t,
+			"encoded observation does not match expected encoded observation; "+
+				"this means a breaking change has been made to the observation encoding function; "+
+				"only update this test if non-backwards-compatible changes are necessary",
+		)
+	}
 }
 
 func TestLargeBlockHistory(t *testing.T) {
