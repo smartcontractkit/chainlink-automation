@@ -41,12 +41,12 @@ func TestValidAutomationOutcome(t *testing.T) {
 
 func TestAutomationOutcomeEncodeBackwardsCompatibility(t *testing.T) {
 	encoded, err := validOutcome.Encode()
-	assert.NoError(t, err, "no error in encoding valid automation observation")
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	if !bytes.Equal(encoded, expectedEncodedOutcome) {
 		assert.Fail(t,
-			"encoded observation does not match expected encoded observation; "+
-				"this means a breaking change has been made to the observation encoding function; "+
+			"encoded outcome does not match expected encoded outcome; "+
+				"this means a breaking change has been made to the outcome encoding function; "+
 				"only update this test if non-backwards-compatible changes are necessary",
 		)
 	}
@@ -64,7 +64,7 @@ func TestLargeAgreedPerformables(t *testing.T) {
 		ao.AgreedPerformables = append(ao.AgreedPerformables, validConditionalResult)
 	}
 	encoded, err := ao.Encode()
-	assert.NoError(t, err, "no error in encoding valid automation observation")
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
@@ -80,7 +80,7 @@ func TestDuplicateAgreedPerformables(t *testing.T) {
 		ao.AgreedPerformables = append(ao.AgreedPerformables, validConditionalResult)
 	}
 	encoded, err := ao.Encode()
-	assert.NoError(t, err, "no error in encoding valid automation observation")
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
@@ -101,7 +101,7 @@ func TestLargeProposalHistory(t *testing.T) {
 		ao.SurfacedProposals = append(ao.SurfacedProposals, []types.CoordinatedBlockProposal{newProposal})
 	}
 	encoded, err := ao.Encode()
-	assert.NoError(t, err, "no error in encoding valid automation observation")
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
@@ -122,7 +122,7 @@ func TestLargeSurfacedProposalInSingleRound(t *testing.T) {
 		ao.SurfacedProposals[0] = append(ao.SurfacedProposals[0], newProposal)
 	}
 	encoded, err := ao.Encode()
-	assert.NoError(t, err, "no error in encoding valid automation observation")
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
@@ -138,7 +138,7 @@ func TestDuplicateSurfaced(t *testing.T) {
 		ao.SurfacedProposals = append(ao.SurfacedProposals, []types.CoordinatedBlockProposal{validConditionalProposal})
 	}
 	encoded, err := ao.Encode()
-	assert.NoError(t, err, "no error in encoding valid automation observation")
+	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
@@ -181,5 +181,5 @@ func TestLargeOutcomeSize(t *testing.T) {
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
 
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
-	assert.Less(t, len(encoded), MaxOutcomeLength, "encoded observation should be less than maxObservationSize")
+	assert.Less(t, len(encoded), MaxOutcomeLength, "encoded outcome should be less than maxoutcomeSize")
 }
