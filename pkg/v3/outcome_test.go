@@ -1,7 +1,10 @@
 package ocr2keepers
 
 import (
+	"bytes"
+	"encoding/hex"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,18 +12,44 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func TestValidAutomationOutcome(t *testing.T) {
-	ao := AutomationOutcome{
-		AgreedPerformables: []types.CheckResult{validConditionalResult, validLogResult},
-		SurfacedProposals:  [][]types.CoordinatedBlockProposal{{validConditionalProposal, validLogProposal}},
+var validOutcome = AutomationOutcome{
+	AgreedPerformables: []types.CheckResult{validConditionalResult, validLogResult},
+	SurfacedProposals:  [][]types.CoordinatedBlockProposal{{validConditionalProposal, validLogProposal}},
+}
+var expectedEncodedOutcome []byte
+
+func init() {
+	b, err := os.ReadFile("fixtures/expected_encoded_outcome.txt")
+	if err != nil {
+		panic(err)
 	}
-	encoded, err := ao.Encode()
+	expectedEncodedOutcome, err = hex.DecodeString(string(b))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestValidAutomationOutcome(t *testing.T) {
+	encoded, err := validOutcome.Encode()
 	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	decoded, err := DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.NoError(t, err, "no error in decoding valid automation outcome")
 
-	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
+	assert.Equal(t, validOutcome, decoded, "final result from encoding and decoding should match")
+}
+
+func TestAutomationOutcomeEncodeBackwardsCompatibility(t *testing.T) {
+	encoded, err := validOutcome.Encode()
+	assert.NoError(t, err, "no error in encoding valid automation observation")
+
+	if !bytes.Equal(encoded, expectedEncodedOutcome) {
+		assert.Fail(t,
+			"encoded observation does not match expected encoded observation; "+
+				"this means a breaking change has been made to the observation encoding function; "+
+				"only update this test if non-backwards-compatible changes are necessary",
+		)
+	}
 }
 
 func TestLargeAgreedPerformables(t *testing.T) {
