@@ -26,6 +26,11 @@ type AddFromStagingHook struct {
 	coord  types.Coordinator
 }
 
+// RunHook adds results from the store to the observation.
+// It sorts by a shuffled workID. workID for all items is shuffled using a pseudorandom source
+// that is the same across all nodes for a given round. This ensures that all nodes try to
+// send the same subset of workIDs if they are available, while giving different priority
+// to workIDs in different rounds.
 func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
 	results, err := hook.store.View()
 	if err != nil {
@@ -35,18 +40,18 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	if err != nil {
 		return err
 	}
-
-	// Sort by a shuffled workID. workID for all items is shuffled using a pseduorandom souce
-	// that is the same across all nodes for a given round. This ensures that all nodes try to
-	// send the same subset of workIDs if they are available, while giving different priority
-	// to workIDs in different rounds.
+	// creating a map to hold the shuffled workIDs
+	shuffledIDs := make(map[string]string, len(results))
+	for _, result := range results {
+		shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
+	}
+	// sort by the shuffled workID
 	sort.Slice(results, func(i, j int) bool {
-		return random.ShuffleString(results[i].WorkID, rSrc) < random.ShuffleString(results[j].WorkID, rSrc)
+		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
 	})
 	if len(results) > limit {
 		results = results[:limit]
 	}
-
 	hook.logger.Printf("adding %d results to observation", len(results))
 	obs.Performable = append(obs.Performable, results...)
 
