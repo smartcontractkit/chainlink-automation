@@ -46,7 +46,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 		shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
 	}
 	// sort by the shuffled workID
-	sort.SliceStable(results, func(i, j int) bool {
+	sort.Slice(results, func(i, j int) bool {
 		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
 	})
 	if len(results) > limit {
