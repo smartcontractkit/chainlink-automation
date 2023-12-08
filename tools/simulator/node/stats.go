@@ -24,7 +24,6 @@ func newUpkeepStatsBuilder(
 	checks map[string][]string,
 	encoder ocr2keepers.Encoder,
 ) (*upkeepStatsBuilder, error) {
-
 	// count the number of transmits per account
 	accTr := make(map[string]int)
 
@@ -85,7 +84,6 @@ func (b *upkeepStatsBuilder) UpkeepIDs() []string {
 		srcUpkeepID := ocr2keepers.UpkeepIdentifier(upkeep.UpkeepID)
 
 		for _, upkeepID := range allIDs {
-
 			if upkeepID == srcUpkeepID.String() {
 				found = true
 			}

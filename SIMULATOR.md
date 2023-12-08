@@ -12,20 +12,6 @@ network layers are both fully simulated and do not match real instances 1:1.
 The simulator uses runbooks to control some of the underlying simulations such
 as p2p network latency, block production, upkeep schedules, and more.
 
-## Profiling
-
-Start the service in one terminal window and run the pprof tool in another. For
-more information on pprof, view some docs
-[here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
-
-```
-# terminal 1
-$ ./bin/simulator --pprof --simulate -f ./tools/simulator/plans/simplan_fast_check.json
-
-# terminal 2
-$ go tool pprof -top http://localhost:6060/debug/pprof/heap
-```
-
 ## Usage
 
 The current iteration of the simulator requires a full build before a run as the
@@ -50,10 +36,25 @@ $ ./bin/simulator --simulate -f ./tools/simulator/plans/simplan_fast_check.json
 *Options*
 - `--simulation-file | -f [string]`: default ./simulation_plan.json, path to JSON file defining simulation parameters
 - `--output-directory | -o [string]`: default ./simulation_logs, path to output directory where run logs are written
+- `--verbose [bool]`: default false, make output verbose (prints logs to output directory)
 - `--simulate [bool]`: default false, run simulation and output results
 - `--charts [bool]`: default false, start and run charts service to display results
 - `--pprof [bool]`: default false, run pprof server on simulation startup
 - `--pprof-port [int]`: default 6060, port to serve pprof profiler on
+
+## Profiling
+
+Start the service in one terminal window and run the pprof tool in another. For
+more information on pprof, view some docs
+[here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
+
+```
+# terminal 1
+$ ./bin/simulator --pprof --simulate -f ./tools/simulator/plans/simplan_fast_check.json
+
+# terminal 2
+$ go tool pprof -top http://localhost:6060/debug/pprof/heap
+```
 
 ## Simulation Plan
 

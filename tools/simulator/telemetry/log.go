@@ -10,12 +10,14 @@ import (
 type NodeLogCollector struct {
 	baseCollector
 	filePath string
+	verbose  bool
 }
 
-func NewNodeLogCollector(path string) *NodeLogCollector {
-	err := os.MkdirAll(path, 0750)
-	if err != nil && !os.IsExist(err) {
-		panic(err)
+func NewNodeLogCollector(path string, verbose bool) *NodeLogCollector {
+	if verbose {
+		if err := os.MkdirAll(path, 0750); err != nil && !os.IsExist(err) {
+			panic(err)
+		}
 	}
 
 	return &NodeLogCollector{
@@ -25,6 +27,7 @@ func NewNodeLogCollector(path string) *NodeLogCollector {
 			ioLookup: make(map[string]int),
 		},
 		filePath: path,
+		verbose:  verbose,
 	}
 }
 
@@ -52,35 +55,55 @@ func (c *NodeLogCollector) GeneralLog(node string) io.Writer {
 
 func (c *NodeLogCollector) AddNode(node string) error {
 	path := fmt.Sprintf("%s/%s", c.filePath, node)
-	err := os.MkdirAll(path, 0750)
-	if err != nil && !os.IsExist(err) {
-		panic(err)
+
+	if c.verbose {
+		if err := os.MkdirAll(path, 0750); err != nil && !os.IsExist(err) {
+			panic(err)
+		}
+	}
+
+	if err := c.addWriterForKey(fmt.Sprintf("%s/general.log", path), fmt.Sprintf("general/%s", node)); err != nil {
+		return err
+	}
+
+	if err := c.addWriterForKey(fmt.Sprintf("%s/contract.log", path), fmt.Sprintf("contract/%s", node)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *NodeLogCollector) addWriterForKey(path, key string) error {
+	if !c.verbose {
+		c.ioLookup[key] = len(c.io)
+		c.io = append(c.io, writeCloseDiscard{})
+
+		return nil
 	}
 
 	var perms fs.FileMode = 0666
+
 	flag := os.O_RDWR | os.O_CREATE | os.O_TRUNC
 
-	key := fmt.Sprintf("general/%s", node)
-
-	f, err := os.OpenFile(fmt.Sprintf("%s/general.log", path), flag, perms)
+	file, err := os.OpenFile(fmt.Sprintf("%s/general.log", path), flag, perms)
 	if err != nil {
-		f.Close()
+		file.Close()
+
 		return err
 	}
 
 	c.ioLookup[key] = len(c.io)
-	c.io = append(c.io, f)
+	c.io = append(c.io, file)
 
-	key = fmt.Sprintf("contract/%s", node)
+	return nil
+}
 
-	cLog, err := os.OpenFile(fmt.Sprintf("%s/contract.log", path), flag, perms)
-	if err != nil {
-		cLog.Close()
-		return err
-	}
+type writeCloseDiscard struct{}
 
-	c.ioLookup[key] = len(c.io)
-	c.io = append(c.io, cLog)
+func (writeCloseDiscard) Write(bts []byte) (int, error) {
+	return len(bts), nil
+}
 
+func (writeCloseDiscard) Close() error {
 	return nil
 }

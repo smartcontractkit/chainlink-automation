@@ -20,14 +20,16 @@ import (
 type RPCCollector struct {
 	baseCollector
 	filePath string
+	verbose  bool
 	nodes    map[string]*WrappedRPCCollector
 }
 
-func NewNodeRPCCollector(path string) *RPCCollector {
+func NewNodeRPCCollector(path string, verbose bool) *RPCCollector {
 	return &RPCCollector{
 		baseCollector: baseCollector{
 			t: RPCType,
 		},
+		verbose:  verbose,
 		filePath: path,
 		nodes:    make(map[string]*WrappedRPCCollector),
 	}
@@ -45,6 +47,10 @@ func (c *RPCCollector) AddNode(node string) error {
 }
 
 func (c *RPCCollector) WriteResults() error {
+	if !c.verbose {
+		return nil
+	}
+
 	for key, node := range c.nodes {
 		path := fmt.Sprintf("%s/%s", c.filePath, key)
 		err := os.MkdirAll(path, 0750)
@@ -158,6 +164,10 @@ func (c *RPCCollector) collectDataFromFile() ([]string, map[string][]rpcDataPoin
 	ids := []string{}
 	rateData := make(map[string][]rpcDataPoint)
 	path := c.filePath
+
+	if !c.verbose {
+		return ids, rateData, fmt.Errorf("verbose logging not activated")
+	}
 
 	files, err := os.ReadDir(path)
 	if err != nil {
