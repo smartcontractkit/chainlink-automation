@@ -49,6 +49,7 @@ type SimulatedUpkeep struct {
 	EligibleAt     []*big.Int
 	TriggeredBy    string
 	CheckData      []byte
+	Expected       bool
 }
 
 type SimulatedLog struct {

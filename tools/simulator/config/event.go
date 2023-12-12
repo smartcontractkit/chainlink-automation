@@ -2,6 +2,11 @@ package config
 
 import "math/big"
 
+const (
+	AllExpected  = "all"
+	NoneExpected = "none"
+)
+
 type EventType string
 
 const (
@@ -79,6 +84,14 @@ type GenerateUpkeepEvent struct {
 	// upkeeps. Only applies to log trigger type upkeeps. An empty value for a
 	// log triggered upkeep will result in the upkeep never being triggered.
 	LogTriggeredBy string `json:"logTriggeredBy,omitempty"`
+	// Expected provides customizations to upkeep perform assertions. By default
+	// all eligible upkeeps are expected to be performed where the default value
+	// in this configuration is 'all'. The alternative is 'none' where none of
+	// generated upkeeps are expected to perform. Use the latter when creating
+	// upkeeps that should perform per the eligibility configuration, but will
+	// not perform due to some other network concerns such as too high network
+	// delay or something that might disable the OCR3 protocol.
+	Expected string `json:"expected,omitempty"`
 }
 
 // LogTriggerEvent is a configuration for simulating logs emitted from a chain

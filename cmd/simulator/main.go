@@ -165,10 +165,10 @@ func main() {
 
 	wg.Wait()
 
-	fmt.Printf("\nSimulation done")
-
 	if !progress.AllProgressComplete() {
 		fmt.Println("\nsimulation failed")
 		os.Exit(1)
 	}
+
+	fmt.Printf("\nSimulation done")
 }

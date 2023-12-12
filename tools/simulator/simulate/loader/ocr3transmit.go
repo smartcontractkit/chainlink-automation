@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	transmitProgressNamespace = "Collecting upkeep perform events"
+	transmitProgressNamespace         = "Collecting upkeep perform events"
+	transmitNegativeProgressNamespace = "No upkeep perform events expected"
 )
 
 type OCR3TransmitLoader struct {
@@ -27,18 +28,24 @@ type OCR3TransmitLoader struct {
 	mu          sync.RWMutex
 	queue       []*chain.TransmitEvent
 	transmitted map[string]*chain.TransmitEvent
+	namespace   string
 }
 
 // NewOCR3TransmitLoader accepts report bytes and adds them to incoming blocks
 // as TransmitEvent transactions.
 func NewOCR3TransmitLoader(plan config.SimulationPlan, progress ProgressTelemetry, logger *log.Logger) (*OCR3TransmitLoader, error) {
+	namespace := transmitProgressNamespace
 	if progress != nil {
 		expected, err := calculateExpectedPerformEvents(plan)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := progress.Register(transmitProgressNamespace, expected); err != nil {
+		if expected == 0 {
+			namespace = transmitNegativeProgressNamespace
+		}
+
+		if err := progress.Register(namespace, expected); err != nil {
 			return nil, err
 		}
 	}
@@ -48,6 +55,7 @@ func NewOCR3TransmitLoader(plan config.SimulationPlan, progress ProgressTelemetr
 		logger:      log.New(logger.Writer(), "[ocr3-transmit-loader] ", log.Ldate|log.Ltime|log.Lshortfile),
 		queue:       make([]*chain.TransmitEvent, 0),
 		transmitted: make(map[string]*chain.TransmitEvent),
+		namespace:   namespace,
 	}, nil
 }
 
@@ -78,7 +86,7 @@ func (tl *OCR3TransmitLoader) Load(block *chain.Block) {
 	})
 
 	if tl.progress != nil {
-		tl.progress.Increment(transmitProgressNamespace, performs)
+		tl.progress.Increment(tl.namespace, performs)
 	}
 }
 
@@ -147,6 +155,10 @@ func calculateExpectedPerformEvents(plan config.SimulationPlan) (int64, error) {
 	}
 
 	for _, upkeep := range upkeeps {
+		if !upkeep.Expected {
+			continue
+		}
+
 		switch upkeep.Type {
 		case chain.ConditionalType:
 			count += int64(len(upkeep.EligibleAt))

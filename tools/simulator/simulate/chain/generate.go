@@ -83,6 +83,7 @@ func generateBasicSimulatedUpkeeps(event config.GenerateUpkeepEvent, alwaysEligi
 			AlwaysEligible: alwaysEligible,
 			EligibleAt:     make([]*big.Int, 0),
 			TriggeredBy:    event.LogTriggeredBy,
+			Expected:       event.Expected == config.AllExpected,
 		}
 
 		generated = append(generated, simulated)
@@ -112,6 +113,7 @@ func generateEligibilityFuncSimulatedUpkeeps(event config.GenerateUpkeepEvent, s
 			AlwaysEligible: false,
 			EligibleAt:     make([]*big.Int, 0),
 			TriggeredBy:    event.LogTriggeredBy,
+			Expected:       event.Expected == config.AllExpected,
 		}
 
 		var genesis *big.Int

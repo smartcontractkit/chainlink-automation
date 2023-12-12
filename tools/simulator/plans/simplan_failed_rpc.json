@@ -1,0 +1,81 @@
+{
+    "node": {
+        "totalNodeCount": 4,
+        "maxNodeServiceWorkers": 100,
+        "maxNodeServiceQueueSize": 1000
+    },
+    "p2pNetwork": {
+        "maxLatency": "100ms"
+    },
+    "rpc": {
+        "maxBlockDelay": 600,
+        "averageLatency": 300,
+        "errorRate": 1.0,
+        "rateLimitThreshold": 1000
+    },
+    "blocks": {
+        "genesisBlock": 128943862,
+        "blockCadence": "1s",
+        "durationInBlocks": 30,
+        "endPadding": 10
+    },
+    "events": [
+        {
+            "type": "ocr3config",
+            "eventBlockNumber": 128943863,
+            "comment": "initial ocr config (valid)",
+            "maxFaultyNodes": 1,
+            "encodedOffchainConfig": "{\"version\":\"v3\",\"performLockoutWindow\":100000,\"targetProbability\":\"0.999\",\"targetInRounds\":4,\"minConfirmations\":1,\"gasLimitPerReport\":1000000,\"gasOverheadPerUpkeep\":300000,\"maxUpkeepBatchSize\":10}",
+            "maxRoundsPerEpoch": 7,
+            "deltaProgress": "10s",
+            "deltaResend": "10s",
+            "deltaInitial": "300ms",
+            "deltaRound": "1100ms",
+            "deltaGrace": "300ms",
+            "deltaCertifiedCommitRequest": "200ms",
+            "deltaStage": "20s",
+            "maxQueryTime": "50ms",
+            "maxObservationTime": "100ms",
+            "maxShouldAcceptTime": "50ms",
+            "maxShouldTransmitTime": "50ms"
+        },
+        {
+            "type": "generateUpkeeps",
+            "eventBlockNumber": 128943862,
+            "comment": "~3 performs per upkeep",
+            "count": 10,
+            "startID": 200,
+            "eligibilityFunc": "30x - 15",
+            "offsetFunc": "2x + 1",
+            "upkeepType": "conditional",
+            "expected": "none"
+        },
+        {
+            "type": "generateUpkeeps",
+            "eventBlockNumber": 128943862,
+            "comment": "single log triggered upkeep",
+            "count": 1,
+            "startID": 300,
+            "eligibilityFunc": "always",
+            "upkeepType": "logTrigger",
+            "logTriggeredBy": "test_trigger_event",
+            "expected": "none"
+        },
+        {
+            "type": "generateUpkeeps",
+            "eventBlockNumber": 128943882,
+            "comment": "single log triggered upkeep",
+            "count": 1,
+            "startID": 400,
+            "eligibilityFunc": "never",
+            "upkeepType": "logTrigger",
+            "logTriggeredBy": "test_trigger_event"
+        },
+        {
+            "type": "logTrigger",
+            "eventBlockNumber": 128943872,
+            "comment": "trigger 10 blocks after trigger upkeep created",
+            "triggerValue": "test_trigger_event"
+        }
+    ]
+}
