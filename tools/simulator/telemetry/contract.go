@@ -13,24 +13,20 @@ type ContractEventCollector struct {
 	// dependencies
 	logger *log.Logger
 
-	// configuration
-	filePath string
-
 	// internal state properties
 	mu    sync.RWMutex
 	nodes map[string]*WrappedContractCollector
 }
 
-func NewContractEventCollector(path string, logger *log.Logger) *ContractEventCollector {
+func NewContractEventCollector(logger *log.Logger) *ContractEventCollector {
 	return &ContractEventCollector{
 		baseCollector: baseCollector{
 			t:        NodeLogType,
 			io:       []io.WriteCloser{},
 			ioLookup: make(map[string]int),
 		},
-		logger:   log.New(logger.Writer(), "[contract-event-collector]", log.Ldate|log.Ltime|log.Lshortfile),
-		filePath: path,
-		nodes:    make(map[string]*WrappedContractCollector),
+		logger: log.New(logger.Writer(), "[contract-event-collector]", log.Ldate|log.Ltime|log.Lshortfile),
+		nodes:  make(map[string]*WrappedContractCollector),
 	}
 }
 

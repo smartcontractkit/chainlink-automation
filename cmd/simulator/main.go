@@ -26,6 +26,7 @@ import (
 var (
 	simulationFile  = flag.StringP("simulation-file", "f", "./simulation_plan.json", "file path to read simulation config from")
 	outputDirectory = flag.StringP("output-directory", "o", "./simulation_plan_logs", "directory path to output log files")
+	verbose         = flag.BoolP("verbose", "v", false, "make output verbose (prints logs to output directory)")
 	simulate        = flag.Bool("simulate", false, "run simulation")
 	serveCharts     = flag.Bool("charts", false, "create and serve charts")
 	profiler        = flag.Bool("pprof", false, "run pprof server on startup")
@@ -53,7 +54,7 @@ func main() {
 	}
 
 	// ----- setup simulation output directory and file handles
-	outputs, err := run.SetupOutput(*outputDirectory, *simulate, plan)
+	outputs, err := run.SetupOutput(*outputDirectory, *simulate, *verbose, plan)
 	if err != nil {
 		procLog.Printf("failed to setup output directory: %s", err)
 		os.Exit(1)

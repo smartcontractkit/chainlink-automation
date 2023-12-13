@@ -3,6 +3,7 @@ package run
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -29,7 +30,18 @@ func (out *Outputs) Close() error {
 	return err
 }
 
-func SetupOutput(path string, simulate bool, plan config.SimulationPlan) (*Outputs, error) {
+func SetupOutput(path string, simulate, verbose bool, plan config.SimulationPlan) (*Outputs, error) {
+	if !verbose {
+		logger := log.New(io.Discard, "", 0)
+
+		return &Outputs{
+			SimulationLog:  logger,
+			RPCCollector:   telemetry.NewNodeRPCCollector("", false),
+			LogCollector:   telemetry.NewNodeLogCollector("", false),
+			EventCollector: telemetry.NewContractEventCollector(logger),
+		}, nil
+	}
+
 	var (
 		logger *log.Logger
 		lggF   *os.File
@@ -59,9 +71,9 @@ func SetupOutput(path string, simulate bool, plan config.SimulationPlan) (*Outpu
 
 	return &Outputs{
 		SimulationLog:           logger,
-		RPCCollector:            telemetry.NewNodeRPCCollector(path),
-		LogCollector:            telemetry.NewNodeLogCollector(path),
-		EventCollector:          telemetry.NewContractEventCollector(path, logger),
+		RPCCollector:            telemetry.NewNodeRPCCollector(path, true),
+		LogCollector:            telemetry.NewNodeLogCollector(path, true),
+		EventCollector:          telemetry.NewContractEventCollector(logger),
 		simulationLogFileHandle: lggF,
 	}, nil
 }
