@@ -74,6 +74,38 @@ jobs:
             exit 1
           fi
 
+  simulation:
+    strategy:
+      fail-fast: false
+      matrix:
+        plan: ["simplan_fast_check", "only_log_trigger"]
+
+    name: Upkeep Simulation ${{ matrix.plan }}
+
+    runs-on: ubuntu-latest
+    # runs-on: ubuntu20.04-64cores-256GB <-- run on specific machine with more resources
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up go
+      uses: actions/setup-go@v3
+      with:
+        go-version-file: "go.mod"
+    
+    - name: Run Simulation Plan
+      run: make simulator && ./bin/simulator --simulate --verbose -f ./tools/simulator/plans/${{ matrix.plan }}.json -o ./${{ matrix.plan }}
+    
+    - name: Archive Simulation Output
+      run: tar -czvf ${{ matrix.plan }}.tar.gz ./${{ matrix.plan }}
+    
+    - name: Store Simulation Artifacts
+      if: always()
+      uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # v3.1.0
+      with:
+        name: ${{ matrix.plan }}_logs
+        path: |
+          ./${{ matrix.plan }}.tar.gz
+
   race-test:
     runs-on: ubuntu-latest
     steps:
@@ -112,7 +144,7 @@ jobs:
 
   sonar-scan:
     name: SonarQube
-    needs: [lint, unit-test, race-test]
+    needs: [lint, unit-test, race-test, simulation]
     runs-on: ubuntu-latest
     if: always()
     steps:
