@@ -85,7 +85,7 @@ func (c *NodeLogCollector) addWriterForKey(path, key string) error {
 
 	flag := os.O_RDWR | os.O_CREATE | os.O_TRUNC
 
-	file, err := os.OpenFile(fmt.Sprintf("%s/general.log", path), flag, perms)
+	file, err := os.OpenFile(path, flag, perms)
 	if err != nil {
 		file.Close()
 

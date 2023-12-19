@@ -145,6 +145,9 @@ func (cl *Listener) saveBlock(block Block) {
 }
 
 func (cl *Listener) broadcastTransaction(channel EventChannel, event ChainEvent) {
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
+
 	if subs, ok := cl.subscriptions[channel]; ok {
 		for i := range subs {
 			go func(chSub chan ChainEvent) { chSub <- event }(subs[i])
