@@ -324,7 +324,8 @@ matches the `triggerValue` of a `logTrigger` event, this upkeep is 'triggered' b
 
 An upkeep may or may not be expected to perform even though the upkeep is eligible. This may be due to other configured
 components of the simulation and provides a way to do negative assertions. That is, an assertion that upkeeps DID NOT
-perform. Available options include `all` and `none`. Default is `all`.
+perform. Available options include `all` and `none`. Default is `all`. In the future there might be other options such
+as percentage or quantity.
 
 #### Log Events
 
