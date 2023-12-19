@@ -1,32 +1,27 @@
 # Simulator
 
-The goal of the simulator is to complete a full run of the automation plugin
-without using a chain, p2p network, RPC providers, or chainlink node as
-dependencies. What is being tested in this simulator is how the plugin 
-interfaces with `libOCR` and how multiple instances interact to achieve a quorum
-on tasks.
+The goal of the simulator is to complete a full run of the automation plugin without using a chain, p2p network, RPC
+providers, or chainlink node as dependencies. What is being tested in this simulator is how the plugin interfaces
+with `libOCR` and how multiple instances interact to achieve a quorum on tasks.
 
-Use this tool to validate the plugin protocol **only** since the chain and
-network layers are both fully simulated and do not match real instances 1:1.
+Use this tool to validate the plugin protocol **only** since the chain and network layers are both fully simulated and
+do not match real instances 1:1.
 
-The simulator uses runbooks to control some of the underlying simulations such
-as p2p network latency, block production, upkeep schedules, and more.
+The simulator uses runbooks to control some of the underlying simulations such as p2p network latency, block
+production, upkeep schedules, and more.
 
 ## Usage
 
-The current iteration of the simulator requires a full build before a run as the
-simulator doesn't run binaries of the plugin, but instead the plugin is built
-within the simulator binary. The current limitation is that multiple custom
-builds cannot be run as part of a combined network. All instances in the 
-simulated network will be identical.
+The current iteration of the simulator requires a full build before a run since the simulator doesn't run binaries of
+the plugin. Instead the plugin is built within the simulator binary. The current limitation is that multiple custom
+builds cannot be run as part of a combined network. All instances in the simulated network will be identical.
 
-Outputs can be directed to a specific directory, which is advised since each
-instance produces its own log files. With more than 4 instances running for
-long periods of time, these log files can become large. Logging is full debug
+Outputs can be directed to a specific directory, which is advised since each instance produces its own log files. With
+more than 4 instances running for long periods of time, these log files can become large. Logging is full debug
 by default.
 
-Charts are useful to visualize RPC failures and overall simulated latency, both
-p2p and RPC. The charts are provided by an HTTP endpoint on localhost.
+Charts are useful to visualize RPC failures and overall simulated latency, both p2p and RPC. The charts are provided
+by an HTTP endpoint on localhost.
 
 *Example*
 ```
@@ -42,11 +37,20 @@ $ ./bin/simulator --simulate -f ./tools/simulator/plans/simplan_fast_check.json
 - `--pprof [bool]`: default false, run pprof server on simulation startup
 - `--pprof-port [int]`: default 6060, port to serve pprof profiler on
 
+### Assertions and Exit Status
+
+Exit status of any simulation is dictated by assertions on whether or not eligible upkeeps were performed. Both positive
+and negative assertions are possible by configuring upkeep perform expectations. A negative assertion would be one where
+it is expected that no upkeeps are performed, which can be accomplished by altering network variables such as the
+simulated RPC or not sending an OCR config event.
+
+All simulations will return an exit status, which is used in CI runs to indicate success or failure of a simulation
+plan.
+
 ## Profiling
 
-Start the service in one terminal window and run the pprof tool in another. For
-more information on pprof, view some docs
-[here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
+Start the service in one terminal window and run the pprof tool in another. For more information on pprof, view some
+docs [here](https://github.com/google/pprof/blob/main/doc/README.md) to get started.
 
 ```
 # terminal 1
@@ -314,6 +318,14 @@ Options are `conditional` and `logTrigger`.
 
 This value applies to a log trigger type upkeep and is the reference point for a `logTrigger` event. If this value
 matches the `triggerValue` of a `logTrigger` event, this upkeep is 'triggered' by the log trigger event.
+
+*expected*
+[string]
+
+An upkeep may or may not be expected to perform even though the upkeep is eligible. This may be due to other configured
+components of the simulation and provides a way to do negative assertions. That is, an assertion that upkeeps DID NOT
+perform. Available options include `all` and `none`. Default is `all`. In the future there might be other options such
+as percentage or quantity.
 
 #### Log Events
 

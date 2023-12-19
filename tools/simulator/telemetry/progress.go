@@ -14,9 +14,11 @@ const (
 
 type ProgressTelemetry struct {
 	success      atomic.Bool
+	failed       atomic.Int32
 	writer       progress.Writer
 	incrementMap map[string]chan int64
 	chDone       chan struct{}
+	chComplete   chan struct{}
 }
 
 func NewProgressTelemetry(wOutput io.Writer) *ProgressTelemetry {
@@ -49,6 +51,7 @@ func NewProgressTelemetry(wOutput io.Writer) *ProgressTelemetry {
 		writer:       writer,
 		incrementMap: make(map[string]chan int64),
 		chDone:       make(chan struct{}),
+		chComplete:   make(chan struct{}),
 	}
 }
 
@@ -70,6 +73,8 @@ func (t *ProgressTelemetry) Increment(namespace string, count int64) {
 }
 
 func (t *ProgressTelemetry) AllProgressComplete() bool {
+	<-t.chComplete
+
 	return t.success.Load()
 }
 
@@ -85,6 +90,14 @@ func (t *ProgressTelemetry) Close() error {
 }
 
 func (t *ProgressTelemetry) track(namespace string, total int64, chIncrements chan int64) {
+	var negativeAssert bool
+
+	// for total == 0, the tracker is a negative assertion and 0 increments is a positive case
+	// to make the tracker function well, set the expected increment to 1 and only increment on completion
+	if total == 0 {
+		negativeAssert = true
+	}
+
 	tracker := progress.Tracker{
 		Message:    namespace,
 		Total:      total,
@@ -97,13 +110,21 @@ func (t *ProgressTelemetry) track(namespace string, total int64, chIncrements ch
 	for !tracker.IsDone() {
 		select {
 		case increment := <-chIncrements:
-			tracker.Increment(increment)
+			if negativeAssert {
+				tracker.MarkAsErrored()
+				t.failed.Add(1)
+				break
+			}
 
-			if tracker.Value() == total {
+			tracker.Increment(increment)
+		case <-t.chDone:
+			if negativeAssert {
 				tracker.MarkAsDone()
 			}
-		case <-t.chDone:
-			tracker.MarkAsErrored()
+
+			if tracker.Value() != total {
+				tracker.MarkAsErrored()
+			}
 		}
 	}
 }
@@ -125,5 +146,7 @@ func (t *ProgressTelemetry) checkProgress() {
 		}
 	}
 
-	t.success.Store(t.writer.Length() == t.writer.LengthDone())
+	t.success.Store(t.writer.Length() == t.writer.LengthDone() && t.failed.Load() == 0)
+
+	close(t.chComplete)
 }

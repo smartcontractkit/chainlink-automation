@@ -99,6 +99,10 @@ func DecodeSimulationPlan(encoded []byte) (SimulationPlan, error) {
 				return plan, fmt.Errorf("%w: failed to decode generateUpkeep event in simulation plan at index %d: %s", ErrEncoding, idx, err.Error())
 			}
 
+			if generateEvent.Expected == "" {
+				generateEvent.Expected = AllExpected
+			}
+
 			plan.GenerateUpkeeps = append(plan.GenerateUpkeeps, generateEvent)
 		case LogTriggerEventType:
 			var logEvent LogTriggerEvent
