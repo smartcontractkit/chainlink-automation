@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 var conditionalUpkeepID = [32]byte{1}

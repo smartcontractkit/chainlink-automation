@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestNewMetadataStore(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (

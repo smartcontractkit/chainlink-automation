@@ -1,6 +1,6 @@
 package modify
 
-import "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+import types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
 var (
 	ObservationModifiers = []NamedModifier{

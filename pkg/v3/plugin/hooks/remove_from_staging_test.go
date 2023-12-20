@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestRemoveFromStagingHook(t *testing.T) {

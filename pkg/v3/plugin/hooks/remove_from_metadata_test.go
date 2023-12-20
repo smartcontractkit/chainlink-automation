@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/chainlink-common/pkg/types/automation/mocks"
 )
 
