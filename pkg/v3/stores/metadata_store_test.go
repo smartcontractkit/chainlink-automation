@@ -506,6 +506,8 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 type mockBlockSubscriber struct {
 	SubscribeFn   func() (int, chan types.BlockHistory, error)
 	UnsubscribeFn func(int) error
+	StartFn       func(ctx context.Context) error
+	CloseFn       func() error
 }
 
 func (_m *mockBlockSubscriber) Subscribe() (int, chan types.BlockHistory, error) {
@@ -514,4 +516,10 @@ func (_m *mockBlockSubscriber) Subscribe() (int, chan types.BlockHistory, error)
 
 func (_m *mockBlockSubscriber) Unsubscribe(i int) error {
 	return _m.UnsubscribeFn(i)
+}
+func (r *mockBlockSubscriber) Start(ctx context.Context) error {
+	return r.StartFn(ctx)
+}
+func (r *mockBlockSubscriber) Close() error {
+	return r.CloseFn()
 }
