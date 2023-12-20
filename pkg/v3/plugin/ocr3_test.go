@@ -20,7 +20,7 @@ import (
 	ocr2keepers2 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestOcr3Plugin_Query(t *testing.T) {

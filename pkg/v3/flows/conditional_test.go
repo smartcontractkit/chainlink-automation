@@ -14,8 +14,8 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-common/pkg/types/automation/mocks"
 )
 
 func TestConditionalFinalization(t *testing.T) {

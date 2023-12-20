@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	pkgutil "github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const WorkerBatchLimit int = 10

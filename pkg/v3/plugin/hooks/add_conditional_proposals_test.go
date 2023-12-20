@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestAddConditionalSamplesHook_RunHook(t *testing.T) {
