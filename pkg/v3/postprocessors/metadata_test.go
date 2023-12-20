@@ -57,7 +57,9 @@ func TestMetadataAddSamples(t *testing.T) {
 }
 
 type mockBlockSubscriber struct {
-	ch chan ocr2keepers.BlockHistory
+	ch      chan ocr2keepers.BlockHistory
+	StartFn func(ctx context.Context) error
+	CloseFn func() error
 }
 
 func (_m *mockBlockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error) {
@@ -66,4 +68,12 @@ func (_m *mockBlockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, 
 
 func (_m *mockBlockSubscriber) Unsubscribe(int) error {
 	return nil
+}
+
+func (_m *mockBlockSubscriber) Start(ctx context.Context) error {
+	return _m.StartFn(ctx)
+}
+
+func (_m *mockBlockSubscriber) Close() error {
+	return _m.CloseFn()
 }
