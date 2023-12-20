@@ -10,7 +10,7 @@ import (
 	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (

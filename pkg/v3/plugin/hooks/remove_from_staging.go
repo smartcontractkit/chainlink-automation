@@ -6,7 +6,7 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func NewRemoveFromStagingHook(store types.ResultStore, logger *log.Logger) RemoveFromStagingHook {

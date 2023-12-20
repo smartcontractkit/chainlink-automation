@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 type proposalQueueRecord struct {

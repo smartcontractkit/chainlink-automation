@@ -5,7 +5,7 @@ import (
 	"log"
 	"math/big"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )

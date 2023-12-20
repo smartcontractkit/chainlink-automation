@@ -9,7 +9,7 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestAddToProposalQHook_RunHook(t *testing.T) {

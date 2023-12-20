@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-common/pkg/types/automation/mocks"
 )
 
 func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
