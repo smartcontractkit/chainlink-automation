@@ -1,8 +1,6 @@
 module github.com/smartcontractkit/chainlink-automation
 
-go 1.21
-
-toolchain go1.21.5
+go 1.20
 
 replace (
 	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
