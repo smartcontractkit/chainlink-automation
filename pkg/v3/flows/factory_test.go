@@ -73,6 +73,8 @@ func (r *mockRunner) CheckUpkeeps(ctx context.Context, p ...ocr2keepers.UpkeepPa
 type mockSubscriber struct {
 	SubscribeFn   func() (int, chan ocr2keepers.BlockHistory, error)
 	UnsubscribeFn func(int) error
+	StartFn       func(ctx context.Context) error
+	CloseFn       func() error
 }
 
 func (r *mockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error) {
@@ -80,4 +82,10 @@ func (r *mockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error)
 }
 func (r *mockSubscriber) Unsubscribe(i int) error {
 	return r.UnsubscribeFn(i)
+}
+func (r *mockSubscriber) Start(ctx context.Context) error {
+	return r.StartFn(ctx)
+}
+func (r *mockSubscriber) Close() error {
+	return r.CloseFn()
 }
