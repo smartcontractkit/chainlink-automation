@@ -1,6 +1,8 @@
 module github.com/smartcontractkit/chainlink-automation
 
-go 1.20
+go 1.21
+
+toolchain go1.21.5
 
 replace (
 	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
@@ -11,14 +13,14 @@ require (
 	github.com/Maldris/mathparse v0.0.0-20170508133428-f0d009a7a773
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/go-echarts/go-echarts/v2 v2.2.6
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
-	github.com/smartcontractkit/libocr v0.0.0-20230922131214-122accb19ea6
+	github.com/smartcontractkit/libocr v0.0.0-20230925165524-ffa38fe11ef8
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/crypto v0.9.0
+	golang.org/x/crypto v0.14.0
 	gonum.org/v1/gonum v0.13.0
 )
 
@@ -38,14 +40,15 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/smartcontractkit/chainlink-common v0.1.7-0.20231219235720-570e81c70a1a // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
-	golang.org/x/sys v0.8.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
