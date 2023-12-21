@@ -17,8 +17,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
-type AutomationReportInfo struct{}
-
 type ocr3Plugin struct {
 	ConfigDigest                types.ConfigDigest
 	ReportEncoder               ocr2keepers.Encoder

@@ -1113,7 +1113,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		name                string
 		sequenceNumber      uint64
 		outcome             ocr3types.Outcome
-		wantReportsWithInfo []ocr3types.ReportWithInfo[AutomationReportInfo]
+		wantReportsWithInfo []ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]
 		encoder             ocr2keepers.Encoder
 		utg                 ocr2keepers.UpkeepTypeGetter
 		wg                  ocr2keepers.WorkIDGenerator
@@ -1131,7 +1131,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 			name:                "an empty json object generates a nil report",
 			sequenceNumber:      5,
 			outcome:             ocr3types.Outcome([]byte(`{}`)),
-			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo](nil),
+			wantReportsWithInfo: []ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo](nil),
 		},
 		{
 			name:           "a well formed but invalid outcome returns an error",
@@ -1196,7 +1196,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
 				return "workID1"
 			},
-			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo]{
+			wantReportsWithInfo: []ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]{
 				{
 					Report: []byte(`[]`),
 				},
@@ -1289,7 +1289,7 @@ func TestOcr3Plugin_ShouldAcceptAttestedReport(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
 		sequenceNumber uint64
-		reportWithInfo ocr3types.ReportWithInfo[AutomationReportInfo]
+		reportWithInfo ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]
 		encoder        ocr2keepers.Encoder
 		coordinator    ocr2keepers.Coordinator
 		expectsErr     bool
@@ -1390,7 +1390,7 @@ func TestOcr3Plugin_ShouldTransmitAcceptedReport(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
 		sequenceNumber uint64
-		reportWithInfo ocr3types.ReportWithInfo[AutomationReportInfo]
+		reportWithInfo ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]
 		encoder        ocr2keepers.Encoder
 		coordinator    ocr2keepers.Coordinator
 		expectsErr     bool
