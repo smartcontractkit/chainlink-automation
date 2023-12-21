@@ -32,13 +32,13 @@ type DelegateConfig struct {
 	BinaryNetworkEndpointFactory types.BinaryNetworkEndpointFactory
 	V2Bootstrappers              []commontypes.BootstrapperLocator
 	ContractConfigTracker        types.ContractConfigTracker
-	ContractTransmitter          ocr3types.ContractTransmitter[AutomationReportInfo]
+	ContractTransmitter          ocr3types.ContractTransmitter[ocr2keepers.AutomationReportInfo]
 	KeepersDatabase              ocr3types.Database
 	Logger                       commontypes.Logger
 	MonitoringEndpoint           commontypes.MonitoringEndpoint
 	OffchainConfigDigester       types.OffchainConfigDigester
 	OffchainKeyring              types.OffchainKeyring
-	OnchainKeyring               ocr3types.OnchainKeyring[AutomationReportInfo]
+	OnchainKeyring               ocr3types.OnchainKeyring[ocr2keepers.AutomationReportInfo]
 	LocalConfig                  types.LocalConfig
 
 	// LogProvider allows reads on the latest log events ready to be processed
@@ -147,7 +147,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	l.Printf("creating oracle with reporting factory config: %+v", conf)
 
 	// create the oracle from config values
-	keeper, err := newOracleFn(offchainreporting.OCR3OracleArgs[AutomationReportInfo]{
+	keeper, err := newOracleFn(offchainreporting.OCR3OracleArgs[ocr2keepers.AutomationReportInfo]{
 		BinaryNetworkEndpointFactory: c.BinaryNetworkEndpointFactory,
 		V2Bootstrappers:              c.V2Bootstrappers,
 		ContractConfigTracker:        c.ContractConfigTracker,

@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 var _ types.OffchainKeyring = &OffchainKeyring{}
@@ -96,7 +96,7 @@ func (k *OffchainKeyring) configEncryptionPublicKey() (types.ConfigEncryptionPub
 
 var curve = secp256k1.S256()
 
-var _ ocr3types.OnchainKeyring[plugin.AutomationReportInfo] = &EvmKeyring{}
+var _ ocr3types.OnchainKeyring[ocr2keepers.AutomationReportInfo] = &EvmKeyring{}
 
 type EvmKeyring struct {
 	privateKey ecdsa.PrivateKey
@@ -120,7 +120,7 @@ func (k *EvmKeyring) PKString() string {
 	return k.signingAddress().String()
 }
 
-func (k *EvmKeyring) reportToSigData(digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[plugin.AutomationReportInfo]) []byte {
+func (k *EvmKeyring) reportToSigData(digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]) []byte {
 	rawRepctx := [3][32]byte{}
 
 	// first is the digest
@@ -137,11 +137,11 @@ func (k *EvmKeyring) reportToSigData(digest types.ConfigDigest, v uint64, r ocr3
 	return crypto.Keccak256(sigData)
 }
 
-func (k *EvmKeyring) Sign(digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[plugin.AutomationReportInfo]) ([]byte, error) {
+func (k *EvmKeyring) Sign(digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]) ([]byte, error) {
 	return crypto.Sign(k.reportToSigData(digest, v, r), &k.privateKey)
 }
 
-func (k *EvmKeyring) Verify(publicKey types.OnchainPublicKey, digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[plugin.AutomationReportInfo], signature []byte) bool {
+func (k *EvmKeyring) Verify(publicKey types.OnchainPublicKey, digest types.ConfigDigest, v uint64, r ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo], signature []byte) bool {
 	hash := k.reportToSigData(digest, v, r)
 	authorPubkey, err := crypto.SigToPub(hash, signature)
 	if err != nil {

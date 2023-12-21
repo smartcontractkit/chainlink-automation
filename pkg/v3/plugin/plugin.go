@@ -36,7 +36,7 @@ func newPlugin(
 	conf config.OffchainConfig,
 	f int,
 	logger *log.Logger,
-) (ocr3types.ReportingPlugin[AutomationReportInfo], error) {
+) (ocr3types.ReportingPlugin[ocr2keepers.AutomationReportInfo], error) {
 	// create the value stores
 	resultStore := stores.New(logger)
 	metadataStore, err := stores.NewMetadataStore(blockSource, upkeepTypeGetter)

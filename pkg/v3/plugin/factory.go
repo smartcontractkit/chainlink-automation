@@ -45,7 +45,7 @@ func NewReportingPluginFactory(
 	workIDGenerator types.WorkIDGenerator,
 	upkeepStateUpdater types.UpkeepStateUpdater,
 	logger *log.Logger,
-) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
+) ocr3types.ReportingPluginFactory[types.AutomationReportInfo] {
 	return &pluginFactory{
 		logProvider:        logProvider,
 		events:             events,
@@ -63,7 +63,7 @@ func NewReportingPluginFactory(
 	}
 }
 
-func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConfig) (ocr3types.ReportingPlugin[AutomationReportInfo], ocr3types.ReportingPluginInfo, error) {
+func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConfig) (ocr3types.ReportingPlugin[types.AutomationReportInfo], ocr3types.ReportingPluginInfo, error) {
 	info := ocr3types.ReportingPluginInfo{
 		Name: fmt.Sprintf("Oracle: %d: Automation Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: ocr3types.ReportingPluginLimits{

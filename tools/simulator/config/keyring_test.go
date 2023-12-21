@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/curve25519"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestOffchainKeyring_OffchainSign(t *testing.T) {
@@ -65,9 +65,9 @@ func TestEvmKeyring(t *testing.T) {
 
 	digest := sha256.Sum256([]byte("message"))
 	round := uint64(10_000)
-	report := ocr3types.ReportWithInfo[plugin.AutomationReportInfo]{
+	report := ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]{
 		Report: []byte("report"),
-		Info:   plugin.AutomationReportInfo{},
+		Info:   ocr2keepers.AutomationReportInfo{},
 	}
 
 	signature, err := keyring.Sign(digest, round, report)

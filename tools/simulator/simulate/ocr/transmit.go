@@ -4,10 +4,9 @@ import (
 	"context"
 	"sync"
 
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/libocr/offchainreporting2/types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin"
 )
 
 type Transmitter interface {
@@ -34,7 +33,7 @@ func (tr *OCR3Transmitter) Transmit(
 	ctx context.Context,
 	digest types.ConfigDigest,
 	v uint64,
-	r ocr3types.ReportWithInfo[plugin.AutomationReportInfo],
+	r ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo],
 	s []types.AttributedOnchainSignature,
 ) error {
 	return tr.loader.Transmit(tr.transmitterID, []byte(r.Report), v)

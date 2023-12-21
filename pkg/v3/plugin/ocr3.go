@@ -131,10 +131,10 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Q
 	return outcome.Encode()
 }
 
-func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo], error) {
 	plugin.Logger.Printf("inside Reports for seqNr %d", seqNr)
 	var (
-		reports []ocr3types.ReportWithInfo[AutomationReportInfo]
+		reports []ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]
 		outcome ocr2keepersv3.AutomationOutcome
 		err     error
 	)
@@ -183,7 +183,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	return reports, nil
 }
 
-func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]) (bool, error) {
 	plugin.Logger.Printf("inside ShouldAcceptAttestedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
@@ -206,7 +206,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 	return accept, nil
 }
 
-func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
+func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]) (bool, error) {
 	plugin.Logger.Printf("inside ShouldTransmitAcceptedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
 	if err != nil {
@@ -250,9 +250,9 @@ func (plugin *ocr3Plugin) startServices() {
 	}
 }
 
-func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo], error) {
 	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
-	return ocr3types.ReportWithInfo[AutomationReportInfo]{
+	return ocr3types.ReportWithInfo[ocr2keepers.AutomationReportInfo]{
 		Report: types.Report(encoded),
 	}, err
 }
