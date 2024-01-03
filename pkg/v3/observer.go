@@ -3,6 +3,7 @@ package ocr2keepers
 import (
 	"context"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
@@ -37,6 +38,11 @@ type Observer[T any] struct {
 
 	// internal configurations
 	processTimeLimit time.Duration
+
+	gotFromTicker int64
+	preProcessed  int64
+	processed     int64
+	postProcessed int64
 }
 
 // NewRunnableObserver creates a new Observer with the given pre-processors, post-processor, and runner
@@ -85,6 +91,7 @@ func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error
 		return err
 	}
 
+	gotFromTicker := atomic.AddInt64(&o.gotFromTicker, int64(len(value)))
 	o.lggr.Printf("got %d payloads from ticker", len(value))
 
 	// Run pre-processors
@@ -95,6 +102,7 @@ func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error
 		}
 	}
 
+	preProcessed := atomic.AddInt64(&o.preProcessed, int64(len(value)))
 	o.lggr.Printf("processing %d payloads", len(value))
 
 	// Run check pipeline
@@ -103,6 +111,7 @@ func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error
 		return err
 	}
 
+	processed := atomic.AddInt64(&o.processed, int64(len(results)))
 	o.lggr.Printf("post-processing %d results", len(results))
 
 	// Run post-processor
@@ -110,7 +119,10 @@ func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error
 		return err
 	}
 
+	postProcessed := atomic.AddInt64(&o.postProcessed, int64(len(results)))
 	o.lggr.Printf("finished processing of %d results: %+v", len(results), results)
+
+	o.lggr.Printf("logs stats: gotFromTicker %d; preProcessed %d; processed %d; postProcessed %d", gotFromTicker, preProcessed, processed, postProcessed)
 
 	return nil
 }

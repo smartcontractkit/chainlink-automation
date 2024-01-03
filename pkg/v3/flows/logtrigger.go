@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
@@ -62,6 +63,9 @@ func newLogTriggerFlow(
 type logTick struct {
 	logProvider ocr2keepers.LogEventProvider
 	logger      *log.Logger
+
+	counter    int64
+	numOfTicks int64
 }
 
 func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
@@ -72,6 +76,13 @@ func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 	logs, err := et.logProvider.GetLatestPayloads(ctx)
 
 	et.logger.Printf("%d logs returned by log provider", len(logs))
+
+	numOfTicks := atomic.AddInt64(&et.numOfTicks, 1)
+	counter := atomic.AddInt64(&et.counter, int64(len(logs)))
+
+	if numOfTicks%10 == 0 {
+		et.logger.Printf("logs stats; counter %d; numOfTicks %d", counter, numOfTicks)
+	}
 
 	return logs, err
 }
