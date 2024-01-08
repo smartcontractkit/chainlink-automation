@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/coordinator"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/flows"
@@ -15,23 +12,26 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 func newPlugin(
-	digest types.ConfigDigest,
+	digest ocr2plustypes.ConfigDigest,
 	logProvider ocr2keepers.LogEventProvider,
-	events ocr2keepers.TransmitEventProvider,
+	events types.TransmitEventProvider,
 	blockSource ocr2keepers.BlockSubscriber,
 	recoverablesProvider ocr2keepers.RecoverableProvider,
 	builder ocr2keepers.PayloadBuilder,
-	ratio ocr2keepers.Ratio,
+	ratio types.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
 	encoder ocr2keepers.Encoder,
-	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter,
-	workIDGenerator ocr2keepers.WorkIDGenerator,
+	upkeepTypeGetter types.UpkeepTypeGetter,
+	workIDGenerator types.WorkIDGenerator,
 	upkeepStateUpdater ocr2keepers.UpkeepStateUpdater,
-	runnable ocr2keepers.Runnable,
+	runnable types.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	f int,

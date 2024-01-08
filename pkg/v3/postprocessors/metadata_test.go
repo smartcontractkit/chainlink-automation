@@ -7,13 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestMetadataAddSamples(t *testing.T) {
 	ch := make(chan ocr2keepers.BlockHistory)
-	ms, err := stores.NewMetadataStore(&mockBlockSubscriber{ch: ch}, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-		return ocr2keepers.ConditionTrigger
+	ms, err := stores.NewMetadataStore(&mockBlockSubscriber{ch: ch}, func(uid ocr2keepers.UpkeepIdentifier) types.UpkeepType {
+		return types.ConditionTrigger
 	})
 	assert.NoError(t, err)
 
@@ -53,7 +54,7 @@ func TestMetadataAddSamples(t *testing.T) {
 
 	assert.NoError(t, err, "no error expected from post processor")
 
-	assert.Equal(t, 2, len(ms.ViewProposals(ocr2keepers.ConditionTrigger)))
+	assert.Equal(t, 2, len(ms.ViewProposals(types.ConditionTrigger)))
 }
 
 type mockBlockSubscriber struct {

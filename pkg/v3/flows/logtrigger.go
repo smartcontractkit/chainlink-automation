@@ -11,7 +11,8 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 var (
@@ -29,13 +30,13 @@ const (
 
 // log trigger flow is the happy path entry point for log triggered upkeeps
 func newLogTriggerFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	rs ocr2keepers.ResultStore,
+	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	rs types.ResultStore,
 	rn ocr2keepersv3.Runner,
-	logProvider ocr2keepers.LogEventProvider,
+	logProvider common.LogEventProvider,
 	logInterval time.Duration,
-	retryQ ocr2keepers.RetryQueue,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	retryQ types.RetryQueue,
+	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
@@ -52,7 +53,7 @@ func newLogTriggerFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	timeTick := tickers.NewTimeTicker[[]common.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
@@ -60,11 +61,11 @@ func newLogTriggerFlow(
 }
 
 type logTick struct {
-	logProvider ocr2keepers.LogEventProvider
+	logProvider common.LogEventProvider
 	logger      *log.Logger
 }
 
-func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+func (et logTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
 	if et.logProvider == nil {
 		return nil, nil
 	}

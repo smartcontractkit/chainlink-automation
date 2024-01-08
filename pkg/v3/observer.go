@@ -5,8 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
 )
 
 // PreProcessor is the general interface for middleware used to filter, add, or modify upkeep

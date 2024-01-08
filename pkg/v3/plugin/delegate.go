@@ -6,15 +6,15 @@ import (
 	"log"
 	"time"
 
-	"github.com/smartcontractkit/libocr/commontypes"
-	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/runner"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/libocr/commontypes"
+	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 var (
@@ -29,26 +29,26 @@ type oracle interface {
 // DelegateConfig provides a single configuration struct for all options
 // to be passed to the oracle, oracle factory, and underlying plugin/services.
 type DelegateConfig struct {
-	BinaryNetworkEndpointFactory types.BinaryNetworkEndpointFactory
+	BinaryNetworkEndpointFactory ocr2plustypes.BinaryNetworkEndpointFactory
 	V2Bootstrappers              []commontypes.BootstrapperLocator
-	ContractConfigTracker        types.ContractConfigTracker
+	ContractConfigTracker        ocr2plustypes.ContractConfigTracker
 	ContractTransmitter          ocr3types.ContractTransmitter[AutomationReportInfo]
 	KeepersDatabase              ocr3types.Database
 	Logger                       commontypes.Logger
 	MonitoringEndpoint           commontypes.MonitoringEndpoint
-	OffchainConfigDigester       types.OffchainConfigDigester
-	OffchainKeyring              types.OffchainKeyring
+	OffchainConfigDigester       ocr2plustypes.OffchainConfigDigester
+	OffchainKeyring              ocr2plustypes.OffchainKeyring
 	OnchainKeyring               ocr3types.OnchainKeyring[AutomationReportInfo]
-	LocalConfig                  types.LocalConfig
+	LocalConfig                  ocr2plustypes.LocalConfig
 
 	// LogProvider allows reads on the latest log events ready to be processed
 	LogProvider ocr2keepers.LogEventProvider
 
 	// EventProvider allows reads on latest transmit events
-	EventProvider ocr2keepers.TransmitEventProvider
+	EventProvider types.TransmitEventProvider
 
 	// Runnable is a check pipeline runner
-	Runnable ocr2keepers.Runnable
+	Runnable types.Runnable
 
 	// Encoder provides methods to encode/decode reports
 	Encoder ocr2keepers.Encoder
@@ -72,8 +72,8 @@ type DelegateConfig struct {
 	UpkeepStateUpdater ocr2keepers.UpkeepStateUpdater
 
 	// Methods passed from core
-	UpkeepTypeGetter ocr2keepers.UpkeepTypeGetter
-	WorkIDGenerator  ocr2keepers.WorkIDGenerator
+	UpkeepTypeGetter types.UpkeepTypeGetter
+	WorkIDGenerator  types.WorkIDGenerator
 
 	// CacheExpiration is the duration of time a cached key is available. Use
 	// this value to balance memory usage and RPC calls. A new set of keys is
@@ -140,7 +140,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	}
 
 	// the log wrapper is to be able to use a log.Logger everywhere instead of
-	// a variety of logger types. all logs write to the Debug method.
+	// a variety of logger ocr2plustypes. all logs write to the Debug method.
 	wrapper := &logWriter{l: c.Logger}
 	l := log.New(wrapper, fmt.Sprintf("[%s] ", telemetry.ServiceName), log.Lshortfile)
 

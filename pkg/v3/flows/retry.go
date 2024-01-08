@@ -11,7 +11,8 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (
@@ -22,15 +23,15 @@ const (
 )
 
 func NewRetryFlow(
-	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	resultStore ocr2keepers.ResultStore,
+	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
-	retryQ ocr2keepers.RetryQueue,
+	retryQ types.RetryQueue,
 	retryTickerInterval time.Duration,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "retry-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
@@ -45,7 +46,7 @@ func NewRetryFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | retry-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	timeTick := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](retryTickerInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	timeTick := tickers.NewTimeTicker[[]common.UpkeepPayload](retryTickerInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
 		return retryTick{logger: logger, q: retryQ, batchSize: RetryBatchSize}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | retry-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
@@ -54,11 +55,11 @@ func NewRetryFlow(
 
 type retryTick struct {
 	logger    *log.Logger
-	q         ocr2keepers.RetryQueue
+	q         types.RetryQueue
 	batchSize int
 }
 
-func (t retryTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+func (t retryTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
 	if t.q == nil {
 		return nil, nil
 	}

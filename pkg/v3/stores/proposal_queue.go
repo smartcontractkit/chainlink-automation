@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
@@ -30,12 +32,12 @@ type proposalQueue struct {
 	lock    sync.RWMutex
 	records map[string]proposalQueueRecord
 
-	typeGetter ocr2keepers.UpkeepTypeGetter
+	typeGetter types.UpkeepTypeGetter
 }
 
-var _ ocr2keepers.ProposalQueue = &proposalQueue{}
+var _ types.ProposalQueue = &proposalQueue{}
 
-func NewProposalQueue(typeGetter ocr2keepers.UpkeepTypeGetter) *proposalQueue {
+func NewProposalQueue(typeGetter types.UpkeepTypeGetter) *proposalQueue {
 	return &proposalQueue{
 		records:    map[string]proposalQueueRecord{},
 		typeGetter: typeGetter,
@@ -62,7 +64,7 @@ func (pq *proposalQueue) Enqueue(newProposals ...ocr2keepers.CoordinatedBlockPro
 	return nil
 }
 
-func (pq *proposalQueue) Dequeue(t ocr2keepers.UpkeepType, n int) ([]ocr2keepers.CoordinatedBlockProposal, error) {
+func (pq *proposalQueue) Dequeue(t types.UpkeepType, n int) ([]ocr2keepers.CoordinatedBlockProposal, error) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 

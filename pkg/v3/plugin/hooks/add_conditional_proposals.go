@@ -8,7 +8,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type AddConditionalProposalsHook struct {

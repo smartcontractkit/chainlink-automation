@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 
 type retryQueueRecord struct {
 	// payload is the desired unit of work to be retried
-	payload types.UpkeepPayload
+	payload commontypes.UpkeepPayload
 	// interval is the retry interval for the payload
 	interval time.Duration
 	// pending is true if the item is currently being retried
@@ -101,13 +102,13 @@ func (q *retryQueue) Enqueue(records ...types.RetryRecord) error {
 // Returns only non-pending items that are within their retry interval.
 //
 // NOTE: Items that are expired are removed from the queue.
-func (q *retryQueue) Dequeue(n int) ([]types.UpkeepPayload, error) {
+func (q *retryQueue) Dequeue(n int) ([]commontypes.UpkeepPayload, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	now := time.Now()
 
-	var results []types.UpkeepPayload
+	var results []commontypes.UpkeepPayload
 	for k, record := range q.records {
 		if record.expired(now, q.expiration) {
 			q.lggr.Printf("removing expired record %s", k)

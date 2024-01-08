@@ -3,14 +3,15 @@ package postprocessors
 import (
 	"context"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 type addProposalToMetadataStore struct {
-	metadataStore ocr2keepers.MetadataStore
+	metadataStore types.MetadataStore
 }
 
-func NewAddProposalToMetadataStorePostprocessor(store ocr2keepers.MetadataStore) *addProposalToMetadataStore {
+func NewAddProposalToMetadataStorePostprocessor(store types.MetadataStore) *addProposalToMetadataStore {
 	return &addProposalToMetadataStore{metadataStore: store}
 }
 

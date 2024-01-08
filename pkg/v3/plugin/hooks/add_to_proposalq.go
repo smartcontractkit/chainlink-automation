@@ -6,10 +6,10 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func NewAddToProposalQHook(proposalQ ocr2keepers.ProposalQueue, logger *log.Logger) AddToProposalQHook {
+func NewAddToProposalQHook(proposalQ types.ProposalQueue, logger *log.Logger) AddToProposalQHook {
 	return AddToProposalQHook{
 		proposalQ: proposalQ,
 		logger:    log.New(logger.Writer(), fmt.Sprintf("[%s | pre-build hook:add-to-proposalq]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
@@ -17,7 +17,7 @@ func NewAddToProposalQHook(proposalQ ocr2keepers.ProposalQueue, logger *log.Logg
 }
 
 type AddToProposalQHook struct {
-	proposalQ ocr2keepers.ProposalQueue
+	proposalQ types.ProposalQueue
 	logger    *log.Logger
 }
 

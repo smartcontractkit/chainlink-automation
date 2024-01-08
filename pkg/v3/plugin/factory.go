@@ -7,43 +7,43 @@ import (
 	"math/cmplx"
 	"strconv"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/runner"
-	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 )
 
 type pluginFactory struct {
-	logProvider        types.LogEventProvider
+	logProvider        commontypes.LogEventProvider
 	events             types.TransmitEventProvider
-	blocks             types.BlockSubscriber
-	rp                 types.RecoverableProvider
-	builder            types.PayloadBuilder
-	getter             types.ConditionalUpkeepProvider
+	blocks             commontypes.BlockSubscriber
+	rp                 commontypes.RecoverableProvider
+	builder            commontypes.PayloadBuilder
+	getter             commontypes.ConditionalUpkeepProvider
 	runnable           types.Runnable
 	runnerConf         runner.RunnerConfig
-	encoder            types.Encoder
+	encoder            commontypes.Encoder
 	upkeepTypeGetter   types.UpkeepTypeGetter
 	workIDGenerator    types.WorkIDGenerator
-	upkeepStateUpdater types.UpkeepStateUpdater
+	upkeepStateUpdater commontypes.UpkeepStateUpdater
 	logger             *log.Logger
 }
 
 func NewReportingPluginFactory(
-	logProvider types.LogEventProvider,
+	logProvider commontypes.LogEventProvider,
 	events types.TransmitEventProvider,
-	blocks types.BlockSubscriber,
-	rp types.RecoverableProvider,
-	builder types.PayloadBuilder,
-	getter types.ConditionalUpkeepProvider,
+	blocks commontypes.BlockSubscriber,
+	rp commontypes.RecoverableProvider,
+	builder commontypes.PayloadBuilder,
+	getter commontypes.ConditionalUpkeepProvider,
 	runnable types.Runnable,
 	runnerConf runner.RunnerConfig,
-	encoder types.Encoder,
+	encoder commontypes.Encoder,
 	upkeepTypeGetter types.UpkeepTypeGetter,
 	workIDGenerator types.WorkIDGenerator,
-	upkeepStateUpdater types.UpkeepStateUpdater,
+	upkeepStateUpdater commontypes.UpkeepStateUpdater,
 	logger *log.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
 	return &pluginFactory{

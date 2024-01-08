@@ -9,7 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
@@ -17,7 +18,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		name             string
 		metadata         types.MetadataStore
 		coordinator      types.Coordinator
-		proposals        []types.CoordinatedBlockProposal
+		proposals        []commontypes.CoordinatedBlockProposal
 		limit            int
 		src              [16]byte
 		wantNumProposals int
@@ -27,8 +28,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals aren't filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
-					return []types.CoordinatedBlockProposal{
+				ViewLogRecoveryProposalFn: func() []commontypes.CoordinatedBlockProposal {
+					return []commontypes.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -36,7 +37,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
+				FilterProposalsFn: func(proposals []commontypes.CoordinatedBlockProposal) ([]commontypes.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 1, len(proposals))
 					return proposals, nil
 				},
@@ -48,8 +49,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals are filtered and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
-					return []types.CoordinatedBlockProposal{
+				ViewLogRecoveryProposalFn: func() []commontypes.CoordinatedBlockProposal {
+					return []commontypes.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -60,7 +61,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
+				FilterProposalsFn: func(proposals []commontypes.CoordinatedBlockProposal) ([]commontypes.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 2, len(proposals))
 					return proposals[:1], nil
 				},
@@ -72,8 +73,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "proposals aren't filtered but are limited and are added to the observation",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
-					return []types.CoordinatedBlockProposal{
+				ViewLogRecoveryProposalFn: func() []commontypes.CoordinatedBlockProposal {
+					return []commontypes.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -90,7 +91,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
+				FilterProposalsFn: func(proposals []commontypes.CoordinatedBlockProposal) ([]commontypes.CoordinatedBlockProposal, error) {
 					assert.Equal(t, 4, len(proposals))
 					return proposals, nil
 				},
@@ -102,8 +103,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 		{
 			name: "if an error is encountered filtering proposals, an error is returned",
 			metadata: &mockMetadataStore{
-				ViewLogRecoveryProposalFn: func() []types.CoordinatedBlockProposal {
-					return []types.CoordinatedBlockProposal{
+				ViewLogRecoveryProposalFn: func() []commontypes.CoordinatedBlockProposal {
+					return []commontypes.CoordinatedBlockProposal{
 						{
 							WorkID: "workID1",
 						},
@@ -120,7 +121,7 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 				},
 			},
 			coordinator: &mockCoordinator{
-				FilterProposalsFn: func(proposals []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
+				FilterProposalsFn: func(proposals []commontypes.CoordinatedBlockProposal) ([]commontypes.CoordinatedBlockProposal, error) {
 					return nil, errors.New("filter proposals boom")
 				},
 			},
@@ -152,12 +153,12 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 
 type mockMetadataStore struct {
 	types.MetadataStore
-	ViewLogRecoveryProposalFn func() []types.CoordinatedBlockProposal
-	ViewConditionalProposalFn func() []types.CoordinatedBlockProposal
-	GetBlockHistoryFn         func() types.BlockHistory
+	ViewLogRecoveryProposalFn func() []commontypes.CoordinatedBlockProposal
+	ViewConditionalProposalFn func() []commontypes.CoordinatedBlockProposal
+	GetBlockHistoryFn         func() commontypes.BlockHistory
 }
 
-func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedBlockProposal {
+func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []commontypes.CoordinatedBlockProposal {
 	switch utype {
 	case types.LogTrigger:
 		return s.ViewLogRecoveryProposalFn()
@@ -168,30 +169,30 @@ func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []types.Coordi
 	}
 }
 
-func (s *mockMetadataStore) GetBlockHistory() types.BlockHistory {
+func (s *mockMetadataStore) GetBlockHistory() commontypes.BlockHistory {
 	return s.GetBlockHistoryFn()
 }
 
 type mockCoordinator struct {
 	types.Coordinator
-	FilterProposalsFn func([]types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error)
-	FilterResultsFn   func([]types.CheckResult) ([]types.CheckResult, error)
-	ShouldAcceptFn    func(types.ReportedUpkeep) bool
-	ShouldTransmitFn  func(types.ReportedUpkeep) bool
+	FilterProposalsFn func([]commontypes.CoordinatedBlockProposal) ([]commontypes.CoordinatedBlockProposal, error)
+	FilterResultsFn   func([]commontypes.CheckResult) ([]commontypes.CheckResult, error)
+	ShouldAcceptFn    func(commontypes.ReportedUpkeep) bool
+	ShouldTransmitFn  func(commontypes.ReportedUpkeep) bool
 }
 
-func (s *mockCoordinator) FilterProposals(p []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
+func (s *mockCoordinator) FilterProposals(p []commontypes.CoordinatedBlockProposal) ([]commontypes.CoordinatedBlockProposal, error) {
 	return s.FilterProposalsFn(p)
 }
 
-func (s *mockCoordinator) FilterResults(res []types.CheckResult) ([]types.CheckResult, error) {
+func (s *mockCoordinator) FilterResults(res []commontypes.CheckResult) ([]commontypes.CheckResult, error) {
 	return s.FilterResultsFn(res)
 }
 
-func (s *mockCoordinator) ShouldAccept(upkeep types.ReportedUpkeep) bool {
+func (s *mockCoordinator) ShouldAccept(upkeep commontypes.ReportedUpkeep) bool {
 	return s.ShouldAcceptFn(upkeep)
 }
 
-func (s *mockCoordinator) ShouldTransmit(upkeep types.ReportedUpkeep) bool {
+func (s *mockCoordinator) ShouldTransmit(upkeep commontypes.ReportedUpkeep) bool {
 	return s.ShouldTransmitFn(upkeep)
 }

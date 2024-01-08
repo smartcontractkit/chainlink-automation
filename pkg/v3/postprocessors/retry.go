@@ -7,10 +7,11 @@ import (
 	"log"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
-func NewRetryablePostProcessor(q ocr2keepers.RetryQueue, logger *log.Logger) *retryablePostProcessor {
+func NewRetryablePostProcessor(q types.RetryQueue, logger *log.Logger) *retryablePostProcessor {
 	return &retryablePostProcessor{
 		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | retryable-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		q:      q,
@@ -19,7 +20,7 @@ func NewRetryablePostProcessor(q ocr2keepers.RetryQueue, logger *log.Logger) *re
 
 type retryablePostProcessor struct {
 	logger *log.Logger
-	q      ocr2keepers.RetryQueue
+	q      types.RetryQueue
 }
 
 var _ PostProcessor = (*retryablePostProcessor)(nil)
@@ -29,7 +30,7 @@ func (p *retryablePostProcessor) PostProcess(_ context.Context, results []ocr2ke
 	retryable := 0
 	for i, res := range results {
 		if res.PipelineExecutionState != 0 && res.Retryable {
-			e := p.q.Enqueue(ocr2keepers.RetryRecord{
+			e := p.q.Enqueue(types.RetryRecord{
 				Payload:  payloads[i],
 				Interval: res.RetryInterval,
 			})

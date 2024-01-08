@@ -6,13 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestProposalFilterer_PreProcess(t *testing.T) {
 	metadata := &mockMetadataStore{
-		ViewProposalsFn: func(utype types.UpkeepType) []types.CoordinatedBlockProposal {
-			return []types.CoordinatedBlockProposal{
+		ViewProposalsFn: func(utype types.UpkeepType) []commontypes.CoordinatedBlockProposal {
+			return []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID2",
 				},
@@ -23,7 +24,7 @@ func TestProposalFilterer_PreProcess(t *testing.T) {
 		metadata:   metadata,
 		upkeepType: types.LogTrigger,
 	}
-	payloads, err := filterer.PreProcess(context.Background(), []types.UpkeepPayload{
+	payloads, err := filterer.PreProcess(context.Background(), []commontypes.UpkeepPayload{
 		{
 			WorkID: "workID1",
 		},
@@ -35,14 +36,14 @@ func TestProposalFilterer_PreProcess(t *testing.T) {
 		},
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, []types.UpkeepPayload{{WorkID: "workID1"}, {WorkID: "workID3"}}, payloads)
+	assert.Equal(t, []commontypes.UpkeepPayload{{WorkID: "workID1"}, {WorkID: "workID3"}}, payloads)
 }
 
 type mockMetadataStore struct {
 	types.MetadataStore
-	ViewProposalsFn func(utype types.UpkeepType) []types.CoordinatedBlockProposal
+	ViewProposalsFn func(utype types.UpkeepType) []commontypes.CoordinatedBlockProposal
 }
 
-func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedBlockProposal {
+func (s *mockMetadataStore) ViewProposals(utype types.UpkeepType) []commontypes.CoordinatedBlockProposal {
 	return s.ViewProposalsFn(utype)
 }

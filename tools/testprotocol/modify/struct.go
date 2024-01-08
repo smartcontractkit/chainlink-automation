@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	ocr2keeperstypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
+	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 )
 
 type NamedModifier func(context.Context, interface{}, error) (string, []byte, error)

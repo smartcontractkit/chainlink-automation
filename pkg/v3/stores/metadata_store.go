@@ -8,7 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (
@@ -22,7 +23,7 @@ var (
 
 type expiringRecord struct {
 	createdAt time.Time
-	proposal  types.CoordinatedBlockProposal
+	proposal  commontypes.CoordinatedBlockProposal
 }
 
 func (r expiringRecord) expired(expr time.Duration) bool {
@@ -31,9 +32,9 @@ func (r expiringRecord) expired(expr time.Duration) bool {
 
 type metadataStore struct {
 	chID                 int
-	ch                   chan types.BlockHistory
-	subscriber           types.BlockSubscriber
-	blockHistory         types.BlockHistory
+	ch                   chan commontypes.BlockHistory
+	subscriber           commontypes.BlockSubscriber
+	blockHistory         commontypes.BlockHistory
 	blockHistoryMutex    sync.RWMutex
 	conditionalProposals orderedMap
 	conditionalMutex     sync.RWMutex
@@ -45,7 +46,7 @@ type metadataStore struct {
 	typeGetter types.UpkeepTypeGetter
 }
 
-func NewMetadataStore(subscriber types.BlockSubscriber, typeGetter types.UpkeepTypeGetter) (*metadataStore, error) {
+func NewMetadataStore(subscriber commontypes.BlockSubscriber, typeGetter types.UpkeepTypeGetter) (*metadataStore, error) {
 	chID, ch, err := subscriber.Subscribe()
 	if err != nil {
 		return nil, err
@@ -55,7 +56,7 @@ func NewMetadataStore(subscriber types.BlockSubscriber, typeGetter types.UpkeepT
 		chID:                 chID,
 		ch:                   ch,
 		subscriber:           subscriber,
-		blockHistory:         types.BlockHistory{},
+		blockHistory:         commontypes.BlockHistory{},
 		conditionalProposals: newOrderedMap(),
 		logRecoveryProposals: newOrderedMap(),
 		stopCh:               make(chan struct{}, 1),
@@ -63,21 +64,21 @@ func NewMetadataStore(subscriber types.BlockSubscriber, typeGetter types.UpkeepT
 	}, nil
 }
 
-func (m *metadataStore) SetBlockHistory(blockHistory types.BlockHistory) {
+func (m *metadataStore) SetBlockHistory(blockHistory commontypes.BlockHistory) {
 	m.blockHistoryMutex.Lock()
 	defer m.blockHistoryMutex.Unlock()
 
 	m.blockHistory = blockHistory
 }
 
-func (m *metadataStore) GetBlockHistory() types.BlockHistory {
+func (m *metadataStore) GetBlockHistory() commontypes.BlockHistory {
 	m.blockHistoryMutex.RLock()
 	defer m.blockHistoryMutex.RUnlock()
 
 	return m.blockHistory
 }
 
-func (m *metadataStore) AddProposals(proposals ...types.CoordinatedBlockProposal) {
+func (m *metadataStore) AddProposals(proposals ...commontypes.CoordinatedBlockProposal) {
 	for _, proposal := range proposals {
 		switch m.typeGetter(proposal.UpkeepID) {
 		case types.LogTrigger:
@@ -88,7 +89,7 @@ func (m *metadataStore) AddProposals(proposals ...types.CoordinatedBlockProposal
 	}
 }
 
-func (m *metadataStore) ViewProposals(utype types.UpkeepType) []types.CoordinatedBlockProposal {
+func (m *metadataStore) ViewProposals(utype types.UpkeepType) []commontypes.CoordinatedBlockProposal {
 	switch utype {
 	case types.LogTrigger:
 		return m.viewLogRecoveryProposal()
@@ -99,7 +100,7 @@ func (m *metadataStore) ViewProposals(utype types.UpkeepType) []types.Coordinate
 	}
 }
 
-func (m *metadataStore) RemoveProposals(proposals ...types.CoordinatedBlockProposal) {
+func (m *metadataStore) RemoveProposals(proposals ...commontypes.CoordinatedBlockProposal) {
 	for _, proposal := range proposals {
 		switch m.typeGetter(proposal.UpkeepID) {
 		case types.LogTrigger:
@@ -144,7 +145,7 @@ func (m *metadataStore) Close() error {
 	return nil
 }
 
-func (m *metadataStore) addLogRecoveryProposal(proposals ...types.CoordinatedBlockProposal) {
+func (m *metadataStore) addLogRecoveryProposal(proposals ...commontypes.CoordinatedBlockProposal) {
 	m.logRecoveryMutex.Lock()
 	defer m.logRecoveryMutex.Unlock()
 
@@ -156,12 +157,12 @@ func (m *metadataStore) addLogRecoveryProposal(proposals ...types.CoordinatedBlo
 	}
 }
 
-func (m *metadataStore) viewLogRecoveryProposal() []types.CoordinatedBlockProposal {
+func (m *metadataStore) viewLogRecoveryProposal() []commontypes.CoordinatedBlockProposal {
 	// We also remove expired items in this function, hence take Lock() instead of RLock()
 	m.logRecoveryMutex.Lock()
 	defer m.logRecoveryMutex.Unlock()
 
-	res := make([]types.CoordinatedBlockProposal, 0)
+	res := make([]commontypes.CoordinatedBlockProposal, 0)
 
 	for _, key := range m.logRecoveryProposals.Keys() {
 		record := m.logRecoveryProposals.Get(key)
@@ -175,7 +176,7 @@ func (m *metadataStore) viewLogRecoveryProposal() []types.CoordinatedBlockPropos
 	return res
 }
 
-func (m *metadataStore) removeLogRecoveryProposal(proposals ...types.CoordinatedBlockProposal) {
+func (m *metadataStore) removeLogRecoveryProposal(proposals ...commontypes.CoordinatedBlockProposal) {
 	m.logRecoveryMutex.Lock()
 	defer m.logRecoveryMutex.Unlock()
 
@@ -184,7 +185,7 @@ func (m *metadataStore) removeLogRecoveryProposal(proposals ...types.Coordinated
 	}
 }
 
-func (m *metadataStore) addConditionalProposal(proposals ...types.CoordinatedBlockProposal) {
+func (m *metadataStore) addConditionalProposal(proposals ...commontypes.CoordinatedBlockProposal) {
 	m.conditionalMutex.Lock()
 	defer m.conditionalMutex.Unlock()
 
@@ -196,12 +197,12 @@ func (m *metadataStore) addConditionalProposal(proposals ...types.CoordinatedBlo
 	}
 }
 
-func (m *metadataStore) viewConditionalProposal() []types.CoordinatedBlockProposal {
+func (m *metadataStore) viewConditionalProposal() []commontypes.CoordinatedBlockProposal {
 	// We also remove expired items in this function, hence take Lock() instead of RLock()
 	m.conditionalMutex.Lock()
 	defer m.conditionalMutex.Unlock()
 
-	res := make([]types.CoordinatedBlockProposal, 0)
+	res := make([]commontypes.CoordinatedBlockProposal, 0)
 
 	for _, key := range m.conditionalProposals.Keys() {
 		record := m.conditionalProposals.Get(key)
@@ -216,7 +217,7 @@ func (m *metadataStore) viewConditionalProposal() []types.CoordinatedBlockPropos
 
 }
 
-func (m *metadataStore) removeConditionalProposal(proposals ...types.CoordinatedBlockProposal) {
+func (m *metadataStore) removeConditionalProposal(proposals ...commontypes.CoordinatedBlockProposal) {
 	m.conditionalMutex.Lock()
 	defer m.conditionalMutex.Unlock()
 

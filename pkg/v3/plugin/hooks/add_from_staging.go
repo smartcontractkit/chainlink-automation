@@ -8,11 +8,10 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func NewAddFromStagingHook(store ocr2keepers.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
+func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
 	return AddFromStagingHook{
 		store:  store,
 		coord:  coord,
@@ -21,7 +20,7 @@ func NewAddFromStagingHook(store ocr2keepers.ResultStore, coord types.Coordinato
 }
 
 type AddFromStagingHook struct {
-	store  ocr2keepers.ResultStore
+	store  types.ResultStore
 	logger *log.Logger
 	coord  types.Coordinator
 }
