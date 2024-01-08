@@ -79,6 +79,7 @@ func main() {
 			outputs.RPCCollector,
 			outputs.LogCollector,
 			outputs.EventCollector,
+			outputs.StatusCollector,
 		},
 		Logger: outputs.SimulationLog,
 	}

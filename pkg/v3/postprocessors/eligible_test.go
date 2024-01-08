@@ -10,12 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 func TestNewEligiblePostProcessor(t *testing.T) {
 	resultsStore := stores.New(log.New(io.Discard, "", 0))
-	processor := NewEligiblePostProcessor(resultsStore, log.New(io.Discard, "", 0))
+	lggr := telemetry.NewTelemetryLogger(log.New(io.Discard, "", 0), io.Discard)
+	processor := NewEligiblePostProcessor(resultsStore, lggr)
 
 	t.Run("process eligible results", func(t *testing.T) {
 		result1 := ocr2keepers.CheckResult{Eligible: false}

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -90,7 +92,10 @@ upkeep state boom`),
 			var buf bytes.Buffer
 			l := log.Default()
 			l.SetOutput(&buf)
-			processor := NewIneligiblePostProcessor(tc.stateUpdater, l)
+
+			lggr := telemetry.NewTelemetryLogger(l, io.Discard)
+
+			processor := NewIneligiblePostProcessor(tc.stateUpdater, lggr)
 
 			err := processor.PostProcess(context.Background(), tc.results, nil)
 			if tc.expectsErr {

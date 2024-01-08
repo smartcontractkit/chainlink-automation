@@ -1,24 +1,21 @@
 package hooks
 
 import (
-	"fmt"
-	"log"
-
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func NewAddToProposalQHook(proposalQ ocr2keepers.ProposalQueue, logger *log.Logger) AddToProposalQHook {
+func NewAddToProposalQHook(proposalQ ocr2keepers.ProposalQueue, logger *telemetry.Logger) AddToProposalQHook {
 	return AddToProposalQHook{
 		proposalQ: proposalQ,
-		logger:    log.New(logger.Writer(), fmt.Sprintf("[%s | pre-build hook:add-to-proposalq]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		logger:    telemetry.WrapTelemetryLogger(logger, "pre-build hook:add-to-proposalq"),
 	}
 }
 
 type AddToProposalQHook struct {
 	proposalQ ocr2keepers.ProposalQueue
-	logger    *log.Logger
+	logger    *telemetry.Logger
 }
 
 func (hook *AddToProposalQHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) {

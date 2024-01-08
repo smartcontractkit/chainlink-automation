@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -336,7 +337,7 @@ func Test_newCoordinatedBlockProposals_add(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			proposals := newCoordinatedBlockProposals(tc.quorumBlockthreshold, 2, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+			proposals := newCoordinatedBlockProposals(tc.quorumBlockthreshold, 2, 3, [16]byte{1}, telemetry.NewTelemetryLogger(log.New(io.Discard, "", 1), io.Discard))
 			for _, ao := range tc.observations {
 				proposals.add(ao)
 			}
@@ -511,7 +512,7 @@ func Test_performableExists(t *testing.T) {
 
 func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 	t.Run("calling set on an empty outcome with an empty previous outcome updates the outcome based on the internal state", func(t *testing.T) {
-		proposals := newCoordinatedBlockProposals(1, 2, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+		proposals := newCoordinatedBlockProposals(1, 2, 3, [16]byte{1}, telemetry.NewTelemetryLogger(log.New(io.Discard, "", 1), io.Discard))
 
 		observations := []ocr2keepers.AutomationObservation{
 			{
@@ -597,7 +598,7 @@ func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 	})
 
 	t.Run("new proposals that already exist on the surfaced proposals and agreed performables of the previous outcome are not re-added", func(t *testing.T) {
-		proposals := newCoordinatedBlockProposals(1, 2, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+		proposals := newCoordinatedBlockProposals(1, 2, 3, [16]byte{1}, telemetry.NewTelemetryLogger(log.New(io.Discard, "", 1), io.Discard))
 
 		observations := []ocr2keepers.AutomationObservation{
 			{
@@ -705,7 +706,7 @@ func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 	})
 
 	t.Run("when the number of surfaced proposals in the previous outcome equals or exceeds the round history limit, the number of surfaced proposals is truncated to the limit", func(t *testing.T) {
-		proposals := newCoordinatedBlockProposals(1, 1, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+		proposals := newCoordinatedBlockProposals(1, 1, 3, [16]byte{1}, telemetry.NewTelemetryLogger(log.New(io.Discard, "", 1), io.Discard))
 
 		observations := []ocr2keepers.AutomationObservation{
 			{
@@ -821,7 +822,7 @@ func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 	})
 
 	t.Run("when the number of latest proposals exceeds the per round limit, the number of surfaced proposals is truncated to the limit", func(t *testing.T) {
-		proposals := newCoordinatedBlockProposals(1, 1, 1, [16]byte{1}, log.New(io.Discard, "", 1))
+		proposals := newCoordinatedBlockProposals(1, 1, 1, [16]byte{1}, telemetry.NewTelemetryLogger(log.New(io.Discard, "", 1), io.Discard))
 
 		observations := []ocr2keepers.AutomationObservation{
 			{
@@ -925,7 +926,7 @@ func Test_newCoordinatedBlockProposals_set(t *testing.T) {
 	})
 
 	t.Run("when the quorum block cannot be fetched, we return without adding new proposals", func(t *testing.T) {
-		proposals := newCoordinatedBlockProposals(3, 1, 3, [16]byte{1}, log.New(io.Discard, "", 1))
+		proposals := newCoordinatedBlockProposals(3, 1, 3, [16]byte{1}, telemetry.NewTelemetryLogger(log.New(io.Discard, "", 1), io.Discard))
 
 		observations := []ocr2keepers.AutomationObservation{
 			{

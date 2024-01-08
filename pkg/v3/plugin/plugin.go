@@ -1,9 +1,6 @@
 package plugin
 
 import (
-	"fmt"
-	"log"
-
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 
@@ -35,10 +32,10 @@ func newPlugin(
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
 	f int,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) (ocr3types.ReportingPlugin[AutomationReportInfo], error) {
 	// create the value stores
-	resultStore := stores.New(logger)
+	resultStore := stores.New(logger.GetLogger())
 	metadataStore, err := stores.NewMetadataStore(blockSource, upkeepTypeGetter)
 	if err != nil {
 		return nil, err
@@ -46,7 +43,7 @@ func newPlugin(
 
 	// create a new runner instance
 	runner, err := runner.NewRunner(
-		logger,
+		logger.GetLogger(),
 		runnable,
 		rConf,
 	)
@@ -55,7 +52,7 @@ func newPlugin(
 	}
 
 	// create the event coordinator
-	coord := coordinator.NewCoordinator(events, upkeepTypeGetter, conf, logger)
+	coord := coordinator.NewCoordinator(events, upkeepTypeGetter, conf, logger.GetLogger())
 
 	retryQ := stores.NewRetryQueue(logger)
 
@@ -107,7 +104,7 @@ func newPlugin(
 	recoverSvcs := []service.Recoverable{}
 
 	for i := range allSvcs {
-		recoverSvcs = append(recoverSvcs, service.NewRecoverer(allSvcs[i], logger))
+		recoverSvcs = append(recoverSvcs, service.NewRecoverer(allSvcs[i], logger.GetLogger()))
 	}
 
 	// pass the eligibility flow to the plugin as a hook since it uses outcome
@@ -128,7 +125,7 @@ func newPlugin(
 		Services:                    recoverSvcs,
 		Config:                      conf,
 		F:                           f,
-		Logger:                      log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		Logger:                      telemetry.WrapTelemetryLogger(logger, "plugin"),
 	}
 
 	plugin.startServices()

@@ -20,6 +20,7 @@ import (
 	ocr2keepers2 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -33,7 +34,7 @@ func TestOcr3Plugin_Query(t *testing.T) {
 func TestOcr3Plugin_Observation(t *testing.T) {
 	t.Run("first round processing, previous outcome will be nil, creates an observation with 2 performables, 2 proposals and 2 block history", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -101,7 +102,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("first round processing, previous outcome will be nil, creates an observation with 3 performables, 2 upkeep proposals and 3 block history", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -176,7 +177,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("first round processing, previous outcome will be nil, creates an observation with 3 performables, 0 upkeep proposals and 3 block history", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -248,7 +249,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("ineligible check result returns an error", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -346,7 +347,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("subsequent round processing, previous outcome will be non nil, creates an observation built an observation with 2 performables, 0 upkeep proposals and 3 block history", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -459,7 +460,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("subsequent round processing, previous outcome will be non nil, filters results, creates an observation built an observation with 1 performables, 0 upkeep proposals and 3 block history", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -573,7 +574,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("subsequent round processing, previous outcome will be non nil, when AddFromStagingHook errors, an error is returned", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -674,7 +675,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("subsequent round processing, previous outcome will be non nil, when AddLogProposalsHook errors, an error is returned", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -787,7 +788,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("subsequent round processing, previous outcome will be non nil, when AddConditionalProposalsHook errors, an error is returned", func(t *testing.T) {
 		var logBuf bytes.Buffer
-		logger := log.New(&logBuf, "ocr3-test-observation", 0)
+		logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 		metadataStore := &mockMetadataStore{
 			GetBlockHistoryFn: func() ocr2keepers.BlockHistory {
@@ -916,7 +917,7 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 
 	t.Run("subsequent round processing, decoding an invalid previous outcome returns an error", func(t *testing.T) {
 		plugin := &ocr3Plugin{
-			Logger: log.New(io.Discard, "", 1),
+			Logger: telemetry.NewTelemetryLogger(log.New(io.Discard, "", 1), io.Discard),
 		}
 
 		outcomeCtx := ocr3types.OutcomeContext{
@@ -985,7 +986,7 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			plugin := &ocr3Plugin{
-				Logger:           log.New(io.Discard, "ocr3-validate-observation-test", log.Ldate),
+				Logger:           telemetry.NewTelemetryLogger(log.New(io.Discard, "ocr3-validate-observation-test", log.Ldate), io.Discard),
 				UpkeepTypeGetter: mockUpkeepTypeGetter,
 				WorkIDGenerator:  tc.wg,
 			}
@@ -1085,7 +1086,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "ocr3-test-outcome", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 			plugin := &ocr3Plugin{
 				UpkeepTypeGetter: mockUpkeepTypeGetter,
@@ -1265,7 +1266,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "ocr3-test-reports", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-observation", 0), io.Discard)
 
 			plugin := &ocr3Plugin{
 				Logger:           logger,
@@ -1367,7 +1368,7 @@ func TestOcr3Plugin_ShouldAcceptAttestedReport(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0), io.Discard)
 
 			plugin := &ocr3Plugin{
 				Logger:        logger,
@@ -1462,7 +1463,7 @@ func TestOcr3Plugin_ShouldTransmitAcceptedReport(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0), io.Discard)
 
 			plugin := &ocr3Plugin{
 				Logger:        logger,
@@ -1483,7 +1484,7 @@ func TestOcr3Plugin_ShouldTransmitAcceptedReport(t *testing.T) {
 
 func TestOcr3Plugin_startServices(t *testing.T) {
 	var logBuf bytes.Buffer
-	logger := log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0)
+	logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "ocr3-test-shouldAcceptAttestedReport", 0), io.Discard)
 
 	startedCh := make(chan struct{}, 1)
 	plugin := &ocr3Plugin{

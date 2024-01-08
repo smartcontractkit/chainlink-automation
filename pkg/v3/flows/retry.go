@@ -28,13 +28,13 @@ func NewRetryFlow(
 	retryQ ocr2keepers.RetryQueue,
 	retryTickerInterval time.Duration,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) service.Recoverable {
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 	post := postprocessors.NewCombinedPostprocessor(
-		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "retry-eligible-postprocessor")),
-		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
-		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapTelemetryLogger(logger, "retry-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapTelemetryLogger(logger, "retry-retryable-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapTelemetryLogger(logger, "retry-ineligible-postprocessor")),
 	)
 
 	obs := ocr2keepersv3.NewRunnableObserver(
@@ -53,7 +53,7 @@ func NewRetryFlow(
 }
 
 type retryTick struct {
-	logger    *log.Logger
+	logger    *telemetry.Logger
 	q         ocr2keepers.RetryQueue
 	batchSize int
 }

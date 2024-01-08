@@ -1,8 +1,6 @@
 package hooks
 
 import (
-	"fmt"
-	"log"
 	"math/rand"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
@@ -13,15 +11,15 @@ import (
 
 type AddConditionalProposalsHook struct {
 	metadata types.MetadataStore
-	logger   *log.Logger
+	logger   *telemetry.Logger
 	coord    types.Coordinator
 }
 
-func NewAddConditionalProposalsHook(ms types.MetadataStore, coord types.Coordinator, logger *log.Logger) AddConditionalProposalsHook {
+func NewAddConditionalProposalsHook(ms types.MetadataStore, coord types.Coordinator, logger *telemetry.Logger) AddConditionalProposalsHook {
 	return AddConditionalProposalsHook{
 		metadata: ms,
 		coord:    coord,
-		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-conditional-samples]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		logger:   telemetry.WrapTelemetryLogger(logger, "build hook:add-conditional-samples"),
 	}
 }
 
@@ -43,6 +41,12 @@ func (h *AddConditionalProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObser
 	// take first limit
 	if len(conditionals) > limit {
 		conditionals = conditionals[:limit]
+	}
+
+	for _, proposal := range conditionals {
+		if err := h.logger.Collect(proposal.WorkID, uint64(proposal.Trigger.BlockNumber), telemetry.Proposed); err != nil {
+			h.logger.Println(err.Error())
+		}
 	}
 
 	h.logger.Printf("adding %d conditional proposals to observation", len(conditionals))

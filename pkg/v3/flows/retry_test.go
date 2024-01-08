@@ -10,6 +10,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
 
@@ -18,7 +19,7 @@ import (
 )
 
 func TestRetryFlow(t *testing.T) {
-	logger := log.New(io.Discard, "", log.LstdFlags)
+	logger := telemetry.NewTelemetryLogger(log.New(io.Discard, "", log.LstdFlags), io.Discard)
 
 	times := 3
 

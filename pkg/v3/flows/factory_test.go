@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -33,7 +34,7 @@ func TestConditionalTriggerFlows(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		log.New(io.Discard, "", 0),
+		telemetry.NewTelemetryLogger(log.New(io.Discard, "", 0), io.Discard),
 	)
 	assert.Equal(t, 2, len(flows))
 }
@@ -57,7 +58,7 @@ func TestLogTriggerFlows(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		log.New(io.Discard, "", 0),
+		telemetry.NewTelemetryLogger(log.New(io.Discard, "", 0), io.Discard),
 	)
 	assert.Equal(t, 3, len(flows))
 }

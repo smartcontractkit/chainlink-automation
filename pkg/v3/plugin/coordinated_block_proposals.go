@@ -1,11 +1,11 @@
 package plugin
 
 import (
-	"log"
 	"sort"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -14,12 +14,12 @@ type coordinatedBlockProposals struct {
 	roundHistoryLimit    int
 	perRoundLimit        int
 	keyRandSource        [16]byte
-	logger               *log.Logger
+	logger               *telemetry.Logger
 	recentBlocks         map[ocr2keepers.BlockKey]int
 	allNewProposals      []ocr2keepers.CoordinatedBlockProposal
 }
 
-func newCoordinatedBlockProposals(quorumBlockthreshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte, logger *log.Logger) *coordinatedBlockProposals {
+func newCoordinatedBlockProposals(quorumBlockthreshold int, roundHistoryLimit int, perRoundLimit int, rSrc [16]byte, logger *telemetry.Logger) *coordinatedBlockProposals {
 	return &coordinatedBlockProposals{
 		quorumBlockthreshold: quorumBlockthreshold,
 		roundHistoryLimit:    roundHistoryLimit,
@@ -126,6 +126,13 @@ func (c *coordinatedBlockProposals) set(outcome *ocr2keepersv3.AutomationOutcome
 		c.logger.Printf("Limiting new proposals in outcome to %d", c.perRoundLimit)
 		latestProposals = latestProposals[:c.perRoundLimit]
 	}
+
+	for _, proposal := range latestProposals {
+		if err := c.logger.Collect(proposal.WorkID, uint64(proposal.Trigger.BlockNumber), telemetry.AgreedInQuorum); err != nil {
+			c.logger.Println(err.Error())
+		}
+	}
+
 	c.logger.Printf("Setting latest rounds outcome.SurfacedProposals with %d proposals", len(latestProposals))
 	outcome.SurfacedProposals = append([][]ocr2keepers.CoordinatedBlockProposal{latestProposals}, outcome.SurfacedProposals...)
 }

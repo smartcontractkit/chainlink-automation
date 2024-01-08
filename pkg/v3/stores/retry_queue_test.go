@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -32,7 +33,7 @@ func TestRetryQueue_Sanity(t *testing.T) {
 	revert := overrideDefaults(defaultExpiration, retryInterval)
 	defer revert()
 
-	q := NewRetryQueue(log.New(io.Discard, "", 0))
+	q := NewRetryQueue(telemetry.NewTelemetryLogger(log.New(io.Discard, "", 0), io.Discard))
 
 	err := q.Enqueue(
 		newRetryRecord(ocr2keepers.UpkeepPayload{WorkID: "1"}, 0),
@@ -81,7 +82,7 @@ func TestRetryQueue_Expiration(t *testing.T) {
 	revert := overrideDefaults(defaultExpiration, retryInterval)
 	defer revert()
 
-	q := NewRetryQueue(log.New(io.Discard, "", 0))
+	q := NewRetryQueue(telemetry.NewTelemetryLogger(log.New(io.Discard, "", 0), io.Discard))
 
 	t.Run("dequeue before expiration", func(t *testing.T) {
 		err := q.Enqueue(

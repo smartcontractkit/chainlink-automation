@@ -1,8 +1,6 @@
 package hooks
 
 import (
-	"fmt"
-	"log"
 	"math/rand"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
@@ -14,14 +12,14 @@ import (
 type AddLogProposalsHook struct {
 	metadata    types.MetadataStore
 	coordinator types.Coordinator
-	logger      *log.Logger
+	logger      *telemetry.Logger
 }
 
-func NewAddLogProposalsHook(metadataStore types.MetadataStore, coordinator types.Coordinator, logger *log.Logger) AddLogProposalsHook {
+func NewAddLogProposalsHook(metadataStore types.MetadataStore, coordinator types.Coordinator, logger *telemetry.Logger) AddLogProposalsHook {
 	return AddLogProposalsHook{
 		metadata:    metadataStore,
 		coordinator: coordinator,
-		logger:      log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-log-recovery-proposals]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		logger:      telemetry.WrapTelemetryLogger(logger, "build hook:add-log-recovery-proposals"),
 	}
 }
 
@@ -43,6 +41,12 @@ func (h *AddLogProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, 
 	// take first limit
 	if len(proposals) > limit {
 		proposals = proposals[:limit]
+	}
+
+	for _, proposal := range proposals {
+		if err := h.logger.Collect(proposal.WorkID, uint64(proposal.Trigger.BlockNumber), telemetry.Proposed); err != nil {
+			h.logger.Println(err.Error())
+		}
 	}
 
 	h.logger.Printf("adding %d log recovery proposals to observation", len(proposals))

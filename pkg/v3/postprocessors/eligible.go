@@ -2,8 +2,6 @@ package postprocessors
 
 import (
 	"context"
-	"fmt"
-	"log"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
@@ -23,13 +21,13 @@ type PostProcessor interface {
 }
 
 type eligiblePostProcessor struct {
-	lggr         *log.Logger
+	lggr         *telemetry.Logger
 	resultsAdder checkResultAdder
 }
 
-func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger) *eligiblePostProcessor {
+func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *telemetry.Logger) *eligiblePostProcessor {
 	return &eligiblePostProcessor{
-		lggr:         log.New(logger.Writer(), fmt.Sprintf("[%s | eligible-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		lggr:         telemetry.WrapTelemetryLogger(logger, "eligible-post-processor"),
 		resultsAdder: resultsAdder,
 	}
 }
@@ -40,6 +38,9 @@ func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2kee
 		if res.PipelineExecutionState == 0 && res.Eligible {
 			eligible++
 			p.resultsAdder.Add(res)
+			if err := p.lggr.Collect(res.WorkID, uint64(res.Trigger.BlockNumber), telemetry.Queued); err != nil {
+				p.lggr.Println(err.Error())
+			}
 		}
 	}
 	p.lggr.Printf("post-processing %d results, %d eligible\n", len(results), eligible)

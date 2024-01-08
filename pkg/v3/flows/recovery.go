@@ -34,12 +34,12 @@ func newFinalRecoveryFlow(
 	proposalQ ocr2keepers.ProposalQueue,
 	builder ocr2keepers.PayloadBuilder,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
-		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "recovery-final-eligible-postprocessor")),
-		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
-		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapTelemetryLogger(logger, "recovery-final-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapTelemetryLogger(logger, "recovery-final-retryable-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapTelemetryLogger(logger, "retry-ineligible-postprocessor")),
 	)
 	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
@@ -67,7 +67,7 @@ func newFinalRecoveryFlow(
 
 // coordinatedProposalsTick is used to push proposals from the proposal queue to some observer
 type coordinatedProposalsTick struct {
-	logger    *log.Logger
+	logger    *telemetry.Logger
 	builder   ocr2keepers.PayloadBuilder
 	q         ocr2keepers.ProposalQueue
 	utype     ocr2keepers.UpkeepType
@@ -109,7 +109,7 @@ func newRecoveryProposalFlow(
 	recoverableProvider ocr2keepers.RecoverableProvider,
 	recoveryInterval time.Duration,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) service.Recoverable {
 	preProcessors = append(preProcessors, preprocessors.NewProposalFilterer(metadataStore, ocr2keepers.LogTrigger))
 	postprocessors := postprocessors.NewCombinedPostprocessor(
@@ -132,7 +132,7 @@ func newRecoveryProposalFlow(
 
 type logRecoveryTick struct {
 	logRecoverer ocr2keepers.RecoverableProvider
-	logger       *log.Logger
+	logger       *telemetry.Logger
 }
 
 func (et logRecoveryTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {

@@ -8,6 +8,7 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
@@ -29,23 +30,26 @@ const (
 
 // log trigger flow is the happy path entry point for log triggered upkeeps
 func newLogTriggerFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	preprocs []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
 	rs ocr2keepers.ResultStore,
 	rn ocr2keepersv3.Runner,
 	logProvider ocr2keepers.LogEventProvider,
 	logInterval time.Duration,
 	retryQ ocr2keepers.RetryQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
-		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapLogger(logger, "log-trigger-eligible-postprocessor")),
-		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "log-trigger-retryable-postprocessor")),
-		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
+		postprocessors.NewTelemetryStatus(telemetry.CheckPipelineRun, logger),
+		postprocessors.NewEligiblePostProcessor(rs, telemetry.WrapTelemetryLogger(logger, "log-trigger-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapTelemetryLogger(logger, "log-trigger-retryable-postprocessor")),
+		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapTelemetryLogger(logger, "retry-ineligible-postprocessor")),
 	)
 
+	preprocs = append(preprocs, preprocessors.NewTelemetryStatus(telemetry.Surfaced, logger))
+
 	obs := ocr2keepersv3.NewRunnableObserver(
-		preprocessors,
+		preprocs,
 		post,
 		rn,
 		ObservationProcessLimit,
@@ -61,7 +65,7 @@ func newLogTriggerFlow(
 
 type logTick struct {
 	logProvider ocr2keepers.LogEventProvider
-	logger      *log.Logger
+	logger      *telemetry.Logger
 }
 
 func (et logTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {

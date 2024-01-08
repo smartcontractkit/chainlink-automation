@@ -3,6 +3,7 @@ package hooks
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
 )
@@ -153,7 +155,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 
 			// Prepare logger
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "", 0), io.Discard)
 
 			// Prepare observation and random source
 			obs := &tt.initialObservation
@@ -211,7 +213,8 @@ func TestAddFromStagingHook_RunHook_Limits(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockResultStore, mockCoordinator := getMocks(tt.n)
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "", 0), io.Discard)
+
 			addFromStagingHook := NewAddFromStagingHook(mockResultStore, mockCoordinator, logger)
 
 			rSrc := [16]byte{1, 1, 2, 2, 3, 3, 4, 4}

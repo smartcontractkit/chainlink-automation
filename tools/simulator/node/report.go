@@ -38,6 +38,18 @@ func (g *Group) WriteTransmitChart() {
 	fmt.Fprint(g.logger.Writer(), tw.Render())
 	// the render function does not put a newline after the chart
 	fmt.Fprint(g.logger.Writer(), "\n\n")
+
+	var stsTel *telemetry.UpkeepStatusCollector
+
+	for _, col := range g.collectors {
+		switch cT := col.(type) {
+		case *telemetry.UpkeepStatusCollector:
+			stsTel = cT
+		}
+	}
+
+	fmt.Fprint(g.logger.Writer(), stsTel.PrintTabularResults())
+	fmt.Fprint(g.logger.Writer(), "\n\n")
 }
 
 func (g *Group) ReportResults() {

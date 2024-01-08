@@ -1,8 +1,6 @@
 package hooks
 
 import (
-	"fmt"
-	"log"
 	"sort"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
@@ -12,17 +10,17 @@ import (
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func NewAddFromStagingHook(store ocr2keepers.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
+func NewAddFromStagingHook(store ocr2keepers.ResultStore, coord types.Coordinator, logger *telemetry.Logger) AddFromStagingHook {
 	return AddFromStagingHook{
 		store:  store,
 		coord:  coord,
-		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		logger: telemetry.WrapTelemetryLogger(logger, "build hook:add-from-staging"),
 	}
 }
 
 type AddFromStagingHook struct {
 	store  ocr2keepers.ResultStore
-	logger *log.Logger
+	logger *telemetry.Logger
 	coord  types.Coordinator
 }
 
@@ -52,6 +50,13 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	if len(results) > limit {
 		results = results[:limit]
 	}
+
+	for _, result := range results {
+		if err := hook.logger.Collect(result.WorkID, uint64(result.Trigger.BlockNumber), telemetry.ResultProposed); err != nil {
+			hook.logger.Println(err.Error())
+		}
+	}
+
 	hook.logger.Printf("adding %d results to observation", len(results))
 	obs.Performable = append(obs.Performable, results...)
 
