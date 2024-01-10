@@ -2,6 +2,7 @@ package postprocessors
 
 import (
 	"context"
+	"io"
 	"log"
 	"testing"
 	"time"
@@ -9,11 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 func TestRetryPostProcessor_PostProcess(t *testing.T) {
-	lggr := log.Default()
+	lggr := telemetry.NewTelemetryLogger(log.Default(), io.Discard)
+
 	q := stores.NewRetryQueue(lggr)
 	processor := NewRetryablePostProcessor(q, lggr)
 

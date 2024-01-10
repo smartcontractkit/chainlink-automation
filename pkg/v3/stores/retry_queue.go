@@ -49,7 +49,7 @@ type retryQueue struct {
 
 var _ types.RetryQueue = (*retryQueue)(nil)
 
-func NewRetryQueue(lggr *log.Logger) *retryQueue {
+func NewRetryQueue(lggr *telemetry.Logger) *retryQueue {
 	return &retryQueue{
 		lggr:       log.New(lggr.Writer(), fmt.Sprintf("[%s | retry-queue]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		records:    map[string]retryQueueRecord{},

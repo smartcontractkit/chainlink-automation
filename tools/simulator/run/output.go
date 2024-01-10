@@ -17,6 +17,7 @@ type Outputs struct {
 	RPCCollector            *telemetry.RPCCollector
 	LogCollector            *telemetry.NodeLogCollector
 	EventCollector          *telemetry.ContractEventCollector
+	StatusCollector         *telemetry.UpkeepStatusCollector
 	simulationLogFileHandle *os.File
 }
 
@@ -35,10 +36,11 @@ func SetupOutput(path string, simulate, verbose bool, plan config.SimulationPlan
 		logger := log.New(io.Discard, "", 0)
 
 		return &Outputs{
-			SimulationLog:  logger,
-			RPCCollector:   telemetry.NewNodeRPCCollector("", false),
-			LogCollector:   telemetry.NewNodeLogCollector("", false),
-			EventCollector: telemetry.NewContractEventCollector(logger),
+			SimulationLog:   logger,
+			RPCCollector:    telemetry.NewNodeRPCCollector("", false),
+			LogCollector:    telemetry.NewNodeLogCollector("", false),
+			EventCollector:  telemetry.NewContractEventCollector(logger),
+			StatusCollector: telemetry.NewUpkeepStatusCollector(path, false),
 		}, nil
 	}
 
@@ -74,6 +76,7 @@ func SetupOutput(path string, simulate, verbose bool, plan config.SimulationPlan
 		RPCCollector:            telemetry.NewNodeRPCCollector(path, true),
 		LogCollector:            telemetry.NewNodeLogCollector(path, true),
 		EventCollector:          telemetry.NewContractEventCollector(logger),
+		StatusCollector:         telemetry.NewUpkeepStatusCollector(path, true),
 		simulationLogFileHandle: lggF,
 	}, nil
 }

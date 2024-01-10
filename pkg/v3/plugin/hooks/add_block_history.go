@@ -1,9 +1,6 @@
 package hooks
 
 import (
-	"fmt"
-	"log"
-
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
@@ -11,13 +8,14 @@ import (
 
 type AddBlockHistoryHook struct {
 	metadata ocr2keepers.MetadataStore
-	logger   *log.Logger
+	logger   *telemetry.Logger
 }
 
-func NewAddBlockHistoryHook(ms ocr2keepers.MetadataStore, logger *log.Logger) AddBlockHistoryHook {
+func NewAddBlockHistoryHook(ms ocr2keepers.MetadataStore, logger *telemetry.Logger) AddBlockHistoryHook {
 	return AddBlockHistoryHook{
 		metadata: ms,
-		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-block-history]", telemetry.ServiceName), telemetry.LogPkgStdFlags)}
+		logger:   telemetry.WrapTelemetryLogger(logger, "build hook:add-block-history"),
+	}
 }
 
 func (h *AddBlockHistoryHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int) {

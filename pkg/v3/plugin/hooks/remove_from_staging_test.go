@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
@@ -65,7 +66,7 @@ func TestRemoveFromStagingHook(t *testing.T) {
 
 			mr := &mockResultStore{}
 
-			r := NewRemoveFromStagingHook(mr, log.New(io.Discard, "", 0))
+			r := NewRemoveFromStagingHook(mr, telemetry.NewTelemetryLogger(log.New(io.Discard, "", 0), io.Discard))
 
 			r.RunHook(ob)
 			assert.Equal(t, len(ob.AgreedPerformables), len(mr.removedIDs))

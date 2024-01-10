@@ -10,7 +10,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func NewRetryablePostProcessor(q ocr2keepers.RetryQueue, logger *log.Logger) *retryablePostProcessor {
+func NewRetryablePostProcessor(q ocr2keepers.RetryQueue, logger *telemetry.Logger) *retryablePostProcessor {
 	return &retryablePostProcessor{
 		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | retryable-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		q:      q,

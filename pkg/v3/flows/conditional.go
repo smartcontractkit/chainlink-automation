@@ -35,7 +35,7 @@ func newSampleProposalFlow(
 	ms ocr2keepers.MetadataStore,
 	runner ocr2keepersv3.Runner,
 	interval time.Duration,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) service.Recoverable {
 	pre = append(pre, preprocessors.NewProposalFilterer(ms, ocr2keepers.LogTrigger))
 	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
@@ -56,7 +56,7 @@ func newSampleProposalFlow(
 func NewSampler(
 	ratio ocr2keepers.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) *sampler {
 	return &sampler{
 		logger:   logger,
@@ -71,7 +71,7 @@ type shuffler[T any] interface {
 }
 
 type sampler struct {
-	logger *log.Logger
+	logger *telemetry.Logger
 
 	ratio    ocr2keepers.Ratio
 	getter   ocr2keepers.ConditionalUpkeepProvider
@@ -100,6 +100,13 @@ func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 	if len(upkeeps) < size {
 		size = len(upkeeps)
 	}
+
+	for _, upkeep := range upkeeps[:size] {
+		if err := s.logger.Collect(upkeep.WorkID, uint64(upkeep.Trigger.BlockNumber), telemetry.Surfaced); err != nil {
+			s.logger.Println(err.Error())
+		}
+	}
+
 	s.logger.Printf("sampled %d upkeeps", size)
 	return upkeeps[:size], nil
 }
@@ -113,11 +120,11 @@ func newFinalConditionalFlow(
 	builder ocr2keepers.PayloadBuilder,
 	retryQ ocr2keepers.RetryQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
-		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "conditional-final-eligible-postprocessor")),
-		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "conditional-final-retryable-postprocessor")),
+		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapTelemetryLogger(logger, "conditional-final-eligible-postprocessor")),
+		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapTelemetryLogger(logger, "conditional-final-retryable-postprocessor")),
 	)
 	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running

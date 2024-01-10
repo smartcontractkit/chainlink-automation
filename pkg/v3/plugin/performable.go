@@ -1,11 +1,11 @@
 package plugin
 
 import (
-	"log"
 	"sort"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -18,7 +18,7 @@ type performables struct {
 	limit           int
 	keyRandSource   [16]byte
 	quorumThreshold int
-	logger          *log.Logger
+	logger          *telemetry.Logger
 	resultCount     map[string]resultAndCount
 }
 
@@ -27,7 +27,7 @@ type performables struct {
 // and simply adds all results which achieve the quorumThreshold.
 // Results are agreed upon by their UniqueID() which contains all the data
 // within the result.
-func newPerformables(quorumThreshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
+func newPerformables(quorumThreshold int, limit int, rSrc [16]byte, logger *telemetry.Logger) *performables {
 	return &performables{
 		quorumThreshold: quorumThreshold,
 		limit:           limit,
@@ -86,6 +86,13 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 		p.logger.Printf("Limiting new performables in outcome to %d", p.limit)
 		performable = performable[:p.limit]
 	}
+
+	for _, perf := range performable {
+		if err := p.logger.Collect(perf.WorkID, uint64(perf.Trigger.BlockNumber), telemetry.ResultAgreedInQuorum); err != nil {
+			p.logger.Println(err.Error())
+		}
+	}
+
 	p.logger.Printf("Setting outcome.AgreedPerformables with %d performables", len(performable))
 	outcome.AgreedPerformables = performable
 }

@@ -3,21 +3,19 @@ package postprocessors
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type ineligiblePostProcessor struct {
-	lggr         *log.Logger
+	lggr         *telemetry.Logger
 	stateUpdater ocr2keepers.UpkeepStateUpdater
 }
 
-func NewIneligiblePostProcessor(stateUpdater ocr2keepers.UpkeepStateUpdater, logger *log.Logger) *ineligiblePostProcessor {
+func NewIneligiblePostProcessor(stateUpdater ocr2keepers.UpkeepStateUpdater, logger *telemetry.Logger) *ineligiblePostProcessor {
 	return &ineligiblePostProcessor{
-		lggr:         log.New(logger.Writer(), fmt.Sprintf("[%s | ineligible-post-processor]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		lggr:         telemetry.WrapTelemetryLogger(logger, "ineligible-post-processor"),
 		stateUpdater: stateUpdater,
 	}
 }
@@ -27,6 +25,10 @@ func (p *ineligiblePostProcessor) PostProcess(ctx context.Context, results []ocr
 	ineligible := 0
 	for _, res := range results {
 		if res.PipelineExecutionState == 0 && !res.Eligible {
+			if err := p.lggr.Collect(res.WorkID, uint64(res.Trigger.BlockNumber), telemetry.Completed); err != nil {
+				p.lggr.Println(err.Error())
+			}
+
 			err := p.stateUpdater.SetUpkeepState(ctx, res, ocr2keepers.Ineligible)
 			if err != nil {
 				merr = errors.Join(merr, err)

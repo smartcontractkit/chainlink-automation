@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"bytes"
+	"io"
 	"log"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -61,7 +63,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 
 			// Prepare mock logger
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "", 0), io.Discard)
 
 			// Create the hook with the proposal queue and logger
 			addToProposalQHook := NewAddToProposalQHook(proposalQ, logger)

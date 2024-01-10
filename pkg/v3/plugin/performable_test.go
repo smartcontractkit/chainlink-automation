@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bytes"
+	"io"
 	"log"
 	"math/big"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -370,7 +372,7 @@ func TestPerformables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Prepare logger
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "", 0), io.Discard)
 			performables := newPerformables(tt.threshold, tt.limit, [16]byte{}, logger)
 			for _, observation := range tt.observations {
 				performables.add(observation)

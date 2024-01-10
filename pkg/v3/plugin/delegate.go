@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -98,6 +99,8 @@ type DelegateConfig struct {
 	// workers or slower RPC responses will cause this queue to build up.
 	// Adding new items to the queue will block if the queue becomes full.
 	ServiceQueueLength int
+
+	TelemetryWriter io.Writer
 }
 
 // Delegate is a container struct for an Oracle plugin. This struct provides
@@ -142,7 +145,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 	// the log wrapper is to be able to use a log.Logger everywhere instead of
 	// a variety of logger types. all logs write to the Debug method.
 	wrapper := &logWriter{l: c.Logger}
-	l := log.New(wrapper, fmt.Sprintf("[%s] ", telemetry.ServiceName), log.Lshortfile)
+	l := telemetry.NewTelemetryLogger(log.New(wrapper, fmt.Sprintf("[%s] ", telemetry.ServiceName), log.Lshortfile), c.TelemetryWriter)
 
 	l.Printf("creating oracle with reporting factory config: %+v", conf)
 
@@ -187,7 +190,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 
 	return &Delegate{
 		keeper: keeper,
-		logger: l,
+		logger: l.GetLogger(),
 	}, nil
 }
 

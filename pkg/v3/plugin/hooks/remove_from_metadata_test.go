@@ -2,12 +2,14 @@ package hooks
 
 import (
 	"bytes"
+	"io"
 	"log"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
 )
@@ -59,7 +61,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 
 			// Prepare logger
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "", 0), io.Discard)
 
 			// Create the hook with mock MetadataStore, mock UpkeepTypeGetter, and logger
 			removeFromMetadataHook := NewRemoveFromMetadataHook(mockMetadataStore, logger)

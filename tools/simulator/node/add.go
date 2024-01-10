@@ -27,6 +27,7 @@ func (g *Group) Add(conf config.Node) {
 	var rpcTel *telemetry.RPCCollector
 	var logTel *telemetry.NodeLogCollector
 	var ctrTel *telemetry.ContractEventCollector
+	var stsTel *telemetry.UpkeepStatusCollector
 
 	for _, col := range g.collectors {
 		switch cT := col.(type) {
@@ -36,6 +37,8 @@ func (g *Group) Add(conf config.Node) {
 			logTel = cT
 		case *telemetry.ContractEventCollector:
 			ctrTel = cT
+		case *telemetry.UpkeepStatusCollector:
+			stsTel = cT
 		}
 	}
 
@@ -52,6 +55,7 @@ func (g *Group) Add(conf config.Node) {
 	_ = logTel.AddNode(simNet.PeerID())
 	_ = rpcTel.AddNode(simNet.PeerID())
 	_ = ctrTel.AddNode(simNet.PeerID())
+	_ = stsTel.AddNode(simNet.PeerID())
 
 	// general logger
 	var slogger *simio.SimpleLogger
@@ -87,6 +91,7 @@ func (g *Group) Add(conf config.Node) {
 		OnchainKeyring:         onchainRing,
 		MaxServiceWorkers:      conf.MaxServiceWorkers,
 		ServiceQueueLength:     conf.MaxQueueSize,
+		TelemetryWriter:        stsTel.Writer(simNet.PeerID()),
 	}
 
 	_ = simulate.HydrateConfig(

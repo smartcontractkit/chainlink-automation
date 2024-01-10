@@ -3,12 +3,14 @@ package hooks
 import (
 	"bytes"
 	"errors"
+	"io"
 	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -133,7 +135,8 @@ func TestAddLogRecoveryProposalsHook_RunHook(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
-			logger := log.New(&logBuf, "", 0)
+			logger := telemetry.NewTelemetryLogger(log.New(&logBuf, "", 0), io.Discard)
+
 			processor := NewAddLogProposalsHook(tc.metadata, tc.coordinator, logger)
 			observation := &ocr2keepers.AutomationObservation{
 				UpkeepProposals: tc.proposals,

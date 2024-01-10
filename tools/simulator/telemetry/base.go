@@ -14,6 +14,7 @@ type CollectorType int
 const (
 	RPCType CollectorType = iota
 	NodeLogType
+	UpkeepStatusType
 )
 
 type baseCollector struct {

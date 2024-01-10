@@ -1,11 +1,11 @@
 package flows
 
 import (
-	"log"
 	"time"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -21,7 +21,7 @@ func ConditionalTriggerFlows(
 	proposalQ ocr2keepers.ProposalQueue,
 	retryQ ocr2keepers.RetryQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) []service.Recoverable {
 	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
 
@@ -49,7 +49,7 @@ func LogTriggerFlows(
 	retryQ ocr2keepers.RetryQueue,
 	proposals ocr2keepers.ProposalQueue,
 	stateUpdater ocr2keepers.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) []service.Recoverable {
 	// all flows use the same preprocessor based on the coordinator
 	// each flow can add preprocessors to this provided slice

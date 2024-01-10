@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/cmplx"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/runner"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -28,7 +28,7 @@ type pluginFactory struct {
 	upkeepTypeGetter   types.UpkeepTypeGetter
 	workIDGenerator    types.WorkIDGenerator
 	upkeepStateUpdater types.UpkeepStateUpdater
-	logger             *log.Logger
+	logger             *telemetry.Logger
 }
 
 func NewReportingPluginFactory(
@@ -44,7 +44,7 @@ func NewReportingPluginFactory(
 	upkeepTypeGetter types.UpkeepTypeGetter,
 	workIDGenerator types.WorkIDGenerator,
 	upkeepStateUpdater types.UpkeepStateUpdater,
-	logger *log.Logger,
+	logger *telemetry.Logger,
 ) ocr3types.ReportingPluginFactory[AutomationReportInfo] {
 	return &pluginFactory{
 		logProvider:        logProvider,

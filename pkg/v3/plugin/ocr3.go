@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
@@ -14,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
@@ -35,7 +35,7 @@ type ocr3Plugin struct {
 	Services                    []service.Recoverable
 	Config                      config.OffchainConfig
 	F                           int
-	Logger                      *log.Logger
+	Logger                      *telemetry.Logger
 }
 
 func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
@@ -150,6 +150,10 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	seenUpkeepIDs := make(map[string]bool)
 
 	for i, result := range outcome.AgreedPerformables {
+		if err := plugin.Logger.Collect(result.WorkID, uint64(result.Trigger.BlockNumber), telemetry.Reported); err != nil {
+			plugin.Logger.Println(err.Error())
+		}
+
 		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
 			gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) ||
 			seenUpkeepIDs[result.UpkeepID.String()] {
@@ -201,6 +205,10 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 		plugin.Logger.Printf("checking shouldAccept of upkeep '%s', trigger %s in sequence number %d returned %t", upkeep.UpkeepID, upkeep.Trigger, seqNr, shouldAccept)
 
 		if shouldAccept {
+			if err := plugin.Logger.Collect(upkeep.WorkID, uint64(upkeep.Trigger.BlockNumber), telemetry.Completed); err != nil {
+				plugin.Logger.Println(err.Error())
+			}
+
 			accept = true
 		}
 	}

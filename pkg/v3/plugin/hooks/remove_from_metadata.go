@@ -1,24 +1,21 @@
 package hooks
 
 import (
-	"fmt"
-	"log"
-
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func NewRemoveFromMetadataHook(ms types.MetadataStore, logger *log.Logger) RemoveFromMetadataHook {
+func NewRemoveFromMetadataHook(ms types.MetadataStore, logger *telemetry.Logger) RemoveFromMetadataHook {
 	return RemoveFromMetadataHook{
 		ms:     ms,
-		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | pre-build hook:remove-from-metadata]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		logger: telemetry.WrapTelemetryLogger(logger, "pre-build hook:remove-from-metadata"),
 	}
 }
 
 type RemoveFromMetadataHook struct {
 	ms     types.MetadataStore
-	logger *log.Logger
+	logger *telemetry.Logger
 }
 
 func (hook *RemoveFromMetadataHook) RunHook(outcome ocr2keepersv3.AutomationOutcome) {
