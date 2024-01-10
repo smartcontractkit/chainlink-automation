@@ -123,6 +123,7 @@ func (t *ProgressTelemetry) track(namespace string, total int64, chIncrements ch
 			}
 
 			if tracker.Value() != total {
+				t.failed.Add(1)
 				tracker.MarkAsErrored()
 			}
 		}
@@ -142,6 +143,7 @@ func (t *ProgressTelemetry) checkProgress() {
 			// wait for all trackers to complete
 			time.Sleep(500 * time.Millisecond)
 
+			ticker.Stop()
 			t.writer.Stop()
 		}
 	}
