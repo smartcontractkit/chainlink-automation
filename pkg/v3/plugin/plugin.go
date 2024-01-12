@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/coordinator"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/flows"
@@ -14,8 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 func newPlugin(
@@ -34,6 +35,7 @@ func newPlugin(
 	runnable types.Runnable,
 	rConf runner.RunnerConfig,
 	conf config.OffchainConfig,
+	n int,
 	f int,
 	logger *log.Logger,
 ) (ocr3types.ReportingPlugin[AutomationReportInfo], error) {
@@ -127,6 +129,7 @@ func newPlugin(
 		AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coord, logger),
 		Services:                    recoverSvcs,
 		Config:                      conf,
+		N:                           n,
 		F:                           f,
 		Logger:                      log.New(logger.Writer(), fmt.Sprintf("[%s | plugin]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	}

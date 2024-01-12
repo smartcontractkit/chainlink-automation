@@ -41,7 +41,7 @@ func (tr *OCR3Transmitter) Transmit(
 }
 
 // Account from which the transmitter invokes the contract
-func (tr *OCR3Transmitter) FromAccount() (types.Account, error) {
+func (tr *OCR3Transmitter) FromAccount(ctx context.Context) (types.Account, error) {
 	tr.mu.RLock()
 	defer tr.mu.RUnlock()
 

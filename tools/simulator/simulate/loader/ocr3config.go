@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"context"
 	"log"
 	"sync"
 
@@ -27,7 +28,7 @@ type OffchainKeySourcer interface {
 }
 
 type Digester interface {
-	ConfigDigest(config types.ContractConfig) (types.ConfigDigest, error)
+	ConfigDigest(ctx context.Context, config types.ContractConfig) (types.ConfigDigest, error)
 }
 
 type ProgressTelemetry interface {
@@ -79,7 +80,7 @@ func (l *OCR3ConfigLoader) Load(block *chain.Block) {
 
 	// check if new block indicates a new config event should be loaded
 	if evt, ok := l.events[block.Number.String()]; ok {
-		conf, err := buildConfig(evt, l.oracles, l.digest, l.count+1)
+		conf, err := buildConfig(context.Background(), evt, l.oracles, l.digest, l.count+1)
 		if err != nil {
 			l.logger.Printf("error building config: %s", err)
 
@@ -117,7 +118,7 @@ func (l *OCR3ConfigLoader) AddSigner(id string, onKey KeySourcer, offKey Offchai
 	l.oracles = append(l.oracles, newOracle)
 }
 
-func buildConfig(conf config.OCR3ConfigEvent, oracles []ocr2config.OracleIdentityExtra, digester Digester, count uint64) (types.ContractConfig, error) {
+func buildConfig(ctx context.Context, conf config.OCR3ConfigEvent, oracles []ocr2config.OracleIdentityExtra, digester Digester, count uint64) (types.ContractConfig, error) {
 	// S is a slice of values that indicate the number of oracles involved
 	// in attempting to transmit. For the simulator, all nodes will be involved
 	// in transmit attempts.
@@ -127,17 +128,18 @@ func buildConfig(conf config.OCR3ConfigEvent, oracles []ocr2config.OracleIdentit
 	}
 
 	signerOnchainPublicKeys, transmitterAccounts, f, onchainConfig, offchainConfigVersion, offchainConfig, err := ocr3confighelper.ContractSetConfigArgsForTests(
-		conf.DeltaProgress.Value(),  // deltaProgress time.Duratioonfn,
-		conf.DeltaResend.Value(),    // deltaResend time.Duration,
-		conf.DeltaInitial.Value(),   // deltaInitial time.Duration
-		conf.DeltaRound.Value(),     // deltaRound time.Duration,
-		conf.DeltaGrace.Value(),     // deltaGrace time.Duration,
-		conf.DeltaRequest.Value(),   // deltaCertifiedCommitRequest time.Duration
-		conf.DeltaStage.Value(),     // deltaStage time.Duration
-		conf.Rmax,                   // rMax uint64
-		S,                           // s []int,
-		oracles,                     // oracles []OracleIdentityExtra,
-		[]byte(conf.Offchain),       // reportingPluginConfig []byte,
+		conf.DeltaProgress.Value(), // deltaProgress time.Duratioonfn,
+		conf.DeltaResend.Value(),   // deltaResend time.Duration,
+		conf.DeltaInitial.Value(),  // deltaInitial time.Duration
+		conf.DeltaRound.Value(),    // deltaRound time.Duration,
+		conf.DeltaGrace.Value(),    // deltaGrace time.Duration,
+		conf.DeltaRequest.Value(),  // deltaCertifiedCommitRequest time.Duration
+		conf.DeltaStage.Value(),    // deltaStage time.Duration
+		conf.Rmax,                  // rMax uint64
+		S,                          // s []int,
+		oracles,                    // oracles []OracleIdentityExtra,
+		[]byte(conf.Offchain),      // reportingPluginConfig []byte,
+		nil,
 		conf.MaxQuery.Value(),       // maxDurationQuery time.Duration,
 		conf.MaxObservation.Value(), // maxDurationObservation time.Duration,
 		conf.MaxAccept.Value(),      // maxDurationShouldAcceptAttestedReport time.Duration
@@ -159,7 +161,7 @@ func buildConfig(conf config.OCR3ConfigEvent, oracles []ocr2config.OracleIdentit
 		OffchainConfig:        offchainConfig,
 	}
 
-	digest, _ := digester.ConfigDigest(contractConf)
+	digest, _ := digester.ConfigDigest(ctx, contractConf)
 	contractConf.ConfigDigest = digest
 
 	return contractConf, nil
