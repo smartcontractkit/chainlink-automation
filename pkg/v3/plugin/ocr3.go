@@ -88,17 +88,17 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	return observation.Encode()
 }
 
-func (plugin *ocr3Plugin) ObservationQuorum(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query) (ocr3types.Quorum, error) {
+func (plugin *ocr3Plugin) ObservationQuorum(ctx context.Context, outctx ocr3types.OutcomeContext, query ocr2plustypes.Query) (ocr3types.Quorum, error) {
 	return ocr3types.QuorumTwoFPlusOne, nil
 }
 
-func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, ao ocr2plustypes.AttributedObservation) error {
+func (plugin *ocr3Plugin) ValidateObservation(ctx context.Context, outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, ao ocr2plustypes.AttributedObservation) error {
 	plugin.Logger.Printf("inside ValidateObservation for seqNr %d", outctx.SeqNr)
 	_, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 	return err
 }
 
-func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, attributedObservations []ocr2plustypes.AttributedObservation) (ocr3types.Outcome, error) {
+func (plugin *ocr3Plugin) Outcome(ctx context.Context, outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, attributedObservations []ocr2plustypes.AttributedObservation) (ocr3types.Outcome, error) {
 	plugin.Logger.Printf("inside Outcome for seqNr %d", outctx.SeqNr)
 	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
 	c := newCoordinatedBlockProposals(plugin.F+1, ocr2keepersv3.OutcomeSurfacedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeSurfacedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
@@ -146,7 +146,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 	return outcome.Encode()
 }
 
-func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+func (plugin *ocr3Plugin) Reports(ctx context.Context, seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
 	plugin.Logger.Printf("inside Reports for seqNr %d", seqNr)
 	var (
 		reports []ocr3types.ReportWithInfo[AutomationReportInfo]
