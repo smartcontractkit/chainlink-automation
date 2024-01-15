@@ -163,6 +163,30 @@ type CheckResult struct {
 	RetryInterval time.Duration
 }
 
+// Size returns the size of the check result in bytes
+func (cr *CheckResult) Size() int {
+	size := 1 + // PipelineExecutionState
+		1 + // Retryable
+		1 + // Eligible
+		1 + // IneligibilityReason
+		32 // UpkeepID
+	// trigger
+	size += 8 + 32
+	if cr.Trigger.LogTriggerExtension != nil {
+		size += 32 + 4 + 32 + 8
+	}
+	size += 32 + // WorkID
+		8 + // GasAllocated
+		len(cr.PerformData)
+	if cr.FastGasWei != nil {
+		size += 32
+	}
+	if cr.LinkNative != nil {
+		size += 32
+	}
+	return size
+}
+
 // checkResultMsg is used for encoding and decoding check results.
 type checkResultMsg struct {
 	PipelineExecutionState uint8
