@@ -124,6 +124,16 @@ type TransmitEvent struct {
 	CheckBlock BlockNumber
 }
 
+type CheckResults []CheckResult
+
+func (cr CheckResults) Size() int {
+	size := 0
+	for _, r := range cr {
+		size += r.Size()
+	}
+	return size
+}
+
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
 // quorum requirements in mind. Any field that is needed to be encoded should be added
@@ -319,6 +329,11 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 	return bh[0], nil
 }
 
+// Size returns the size of the block history in bytes
+func (bh BlockHistory) Size() int {
+	return len(bh) * (8 + 32)
+}
+
 type UpkeepPayload struct {
 	// Upkeep is all the information that identifies the upkeep
 	UpkeepID UpkeepIdentifier
@@ -352,6 +367,13 @@ type CoordinatedBlockProposal struct {
 	Trigger Trigger
 	// WorkID represents the unit of work for the coordinated proposal
 	WorkID string
+}
+
+// Size returns the size of the coordinated block proposal in bytes
+func (p CoordinatedBlockProposal) Size() int {
+	return 32 + // UpkeepID
+		p.Trigger.Size() + // Trigger
+		32 // WorkID
 }
 
 // ReportedUpkeep contains details of an upkeep for which a report was generated.
