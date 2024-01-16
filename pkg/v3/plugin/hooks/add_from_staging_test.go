@@ -23,6 +23,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 		coordinatorFilterResults []types.CheckResult
 		coordinatorErr           error
 		rSrc                     [16]byte
+		sizeLimit                int
 		limit                    int
 		observationWorkIDs       []string
 		expectedErr              error
@@ -36,7 +37,8 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
-			limit: 10,
+			sizeLimit: 1_000_000,
+			limit:     10,
 			coordinatorFilterResults: []types.CheckResult{
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
@@ -50,6 +52,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			initialObservation:       ocr2keepersv3.AutomationObservation{},
 			resultStoreResults:       []types.CheckResult{},
 			coordinatorFilterResults: []types.CheckResult{},
+			sizeLimit:                1_000_000,
 			limit:                    10,
 			observationWorkIDs:       []string{},
 			expectedLogMsg:           "adding 0 results to observation",
@@ -62,7 +65,8 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
-			limit: 10,
+			sizeLimit: 1_000_000,
+			limit:     10,
 			coordinatorFilterResults: []types.CheckResult{
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
@@ -79,7 +83,8 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
-			limit: 10,
+			sizeLimit: 1_000_000,
+			limit:     10,
 			coordinatorFilterResults: []types.CheckResult{
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
@@ -95,7 +100,8 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
-			limit: 2,
+			sizeLimit: 1_000_000,
+			limit:     2,
 			coordinatorFilterResults: []types.CheckResult{
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
@@ -112,7 +118,8 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
-			limit: 1,
+			sizeLimit: 1_000_000,
+			limit:     1,
 			coordinatorFilterResults: []types.CheckResult{
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
@@ -129,8 +136,9 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 			},
-			rSrc:  [16]byte{1},
-			limit: 2,
+			rSrc:      [16]byte{1},
+			sizeLimit: 1_000_000,
+			limit:     2,
 			coordinatorFilterResults: []types.CheckResult{
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
@@ -162,7 +170,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			addFromStagingHook := NewAddFromStagingHook(mockResultStore, mockCoordinator, logger)
 
 			// Run the hook
-			err := addFromStagingHook.RunHook(obs, tt.limit, tt.rSrc)
+			err := addFromStagingHook.RunHook(obs, tt.sizeLimit, tt.limit, tt.rSrc)
 
 			if tt.expectedErr != nil {
 				// Assert that the hook function returns the expected error
@@ -188,22 +196,25 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 
 func TestAddFromStagingHook_RunHook_Limits(t *testing.T) {
 	tests := []struct {
-		name     string
-		n        int
-		limit    int
-		expected int
+		name      string
+		n         int
+		sizeLimit int
+		limit     int
+		expected  int
 	}{
 		{
-			name:     "limit is less than results",
-			n:        1000,
-			limit:    100,
-			expected: 100,
+			name:      "limit is less than results",
+			n:         1000,
+			sizeLimit: 1_000_000,
+			limit:     100,
+			expected:  100,
 		},
 		{
-			name:     "limit is greater than results",
-			n:        100,
-			limit:    200,
-			expected: 100,
+			name:      "limit is greater than results",
+			n:         100,
+			sizeLimit: 1_000_000,
+			limit:     200,
+			expected:  100,
 		},
 	}
 
@@ -217,7 +228,7 @@ func TestAddFromStagingHook_RunHook_Limits(t *testing.T) {
 			rSrc := [16]byte{1, 1, 2, 2, 3, 3, 4, 4}
 			obs := &ocr2keepersv3.AutomationObservation{}
 
-			err := addFromStagingHook.RunHook(obs, tt.limit, rSrc)
+			err := addFromStagingHook.RunHook(obs, tt.sizeLimit, tt.limit, rSrc)
 			assert.NoError(t, err)
 			assert.Len(t, obs.Performable, tt.expected)
 
@@ -227,7 +238,7 @@ func TestAddFromStagingHook_RunHook_Limits(t *testing.T) {
 			addFromStagingHook2 := NewAddFromStagingHook(mockResultStore2, mockCoordinator2, logger)
 
 			obs2 := &ocr2keepersv3.AutomationObservation{}
-			err2 := addFromStagingHook2.RunHook(obs2, tt.limit, rSrc)
+			err2 := addFromStagingHook2.RunHook(obs2, tt.sizeLimit, tt.limit, rSrc)
 			assert.NoError(t, err2)
 			assert.Len(t, obs.Performable, tt.expected)
 			assert.Equal(t, obs.Performable, obs2.Performable)

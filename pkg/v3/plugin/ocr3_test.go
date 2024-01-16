@@ -635,12 +635,14 @@ func TestOcr3Plugin_Observation(t *testing.T) {
 				hash := crypto.Keccak256(append(uid[:], triggerExtBytes...))
 				return hex.EncodeToString(hash[:])
 			},
-			RemoveFromStagingHook:  hooks.NewRemoveFromStagingHook(resultStore, logger),
-			RemoveFromMetadataHook: hooks.NewRemoveFromMetadataHook(metadataStore, logger),
-			AddToProposalQHook:     hooks.NewAddToProposalQHook(proposalQueue, logger),
-			AddBlockHistoryHook:    hooks.NewAddBlockHistoryHook(metadataStore, logger),
-			AddFromStagingHook:     hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
-			Logger:                 logger,
+			AddLogProposalsHook:         hooks.NewAddLogProposalsHook(metadataStore, coordinator, logger),
+			AddConditionalProposalsHook: hooks.NewAddConditionalProposalsHook(metadataStore, coordinator, logger),
+			RemoveFromStagingHook:       hooks.NewRemoveFromStagingHook(resultStore, logger),
+			RemoveFromMetadataHook:      hooks.NewRemoveFromMetadataHook(metadataStore, logger),
+			AddToProposalQHook:          hooks.NewAddToProposalQHook(proposalQueue, logger),
+			AddBlockHistoryHook:         hooks.NewAddBlockHistoryHook(metadataStore, logger),
+			AddFromStagingHook:          hooks.NewAddFromStagingHook(resultStore, coordinator, logger),
+			Logger:                      logger,
 		}
 
 		previousOutcome := ocr2keepers2.AutomationOutcome{

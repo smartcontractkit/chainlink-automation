@@ -22,6 +22,9 @@ const (
 	// a round. NOTE: This is derived from a limit of 10000 on performData
 	// which is guaranteed onchain
 	MaxOutcomeLength = 2_500_000
+	// maxOutcomeProposalsLength is the maximum length of bytes for all proposals in an outcome
+	MaxOutcomeProposalsLength = OutcomeSurfacedProposalsLimit * OutcomeSurfacedProposalsRoundHistoryLimit *
+		(32 + 32 + (32 + 8 + 32 + 4 + 32 + 8)) // upkeepID + workID + trigger (blockNumber + blockHash + logTriggerExtension)
 	// MaxReportLength limits the total length of bytes for a single report.
 	MaxReportLength = 1_000_000
 	// MaxReportCount limits the total number of reports allowed to be produced
