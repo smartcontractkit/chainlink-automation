@@ -37,8 +37,9 @@ func TestCheckPipeline(t *testing.T) {
 	}
 
 	upkeep1 := chain.SimulatedUpkeep{
-		ID:   big.NewInt(10),
-		Type: chain.LogTriggerType,
+		ID:     big.NewInt(10),
+		Type:   chain.LogTriggerType,
+		States: mustCreatePipelineState(""),
 	}
 
 	trigger1 := ocr2keepers.NewLogTrigger(
@@ -151,6 +152,15 @@ func loadUpkeepAt(upkeep chain.SimulatedUpkeep, atBlock int64) func(*chain.Block
 			})
 		}
 	}
+}
+
+func mustCreatePipelineState(pattern string) *chain.CheckPipelineStateManager {
+	manager, err := chain.NewCheckPipelineStateManager(pattern)
+	if err != nil {
+		panic(err)
+	}
+
+	return manager
 }
 
 type mockNetTelemetry struct {
