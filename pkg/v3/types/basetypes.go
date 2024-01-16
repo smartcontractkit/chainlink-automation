@@ -124,16 +124,6 @@ type TransmitEvent struct {
 	CheckBlock BlockNumber
 }
 
-type CheckResults []CheckResult
-
-func (cr CheckResults) Size() int {
-	size := 0
-	for _, r := range cr {
-		size += r.Size()
-	}
-	return size
-}
-
 // NOTE: This struct is sent on the p2p network as part of observations to get quorum
 // Any change here should be backwards compatible and should keep validation and
 // quorum requirements in mind. Any field that is needed to be encoded should be added
@@ -185,16 +175,12 @@ func (cr *CheckResult) Size() int {
 	if cr.Trigger.LogTriggerExtension != nil {
 		size += 32 + 4 + 32 + 8
 	}
-	size += 32 + // WorkID
+	return size +
+		32 + // WorkID
 		8 + // GasAllocated
-		len(cr.PerformData)
-	if cr.FastGasWei != nil {
-		size += 32
-	}
-	if cr.LinkNative != nil {
-		size += 32
-	}
-	return size
+		len(cr.PerformData) +
+		32 + // FastGasWei
+		32 // LinkNative
 }
 
 // checkResultMsg is used for encoding and decoding check results.
