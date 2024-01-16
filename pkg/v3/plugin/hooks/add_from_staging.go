@@ -57,10 +57,13 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	for _, result := range obs.Performable {
 		observationSize += result.Size()
 	}
-
+	// TODO: remove this in next version, it's a temporary fix for
+	// supporting old nodes that will limit the number of results rather than the size
+	// of the observation
 	if limit > 0 && len(results) > limit {
 		results = results[:limit]
 	}
+	// add results to observation until size limit is reached
 	added := 0
 	for _, result := range results {
 		observationSize += result.Size()

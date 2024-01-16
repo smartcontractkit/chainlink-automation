@@ -83,11 +83,15 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 		return random.ShuffleString(performable[i].WorkID, p.keyRandSource) < random.ShuffleString(performable[j].WorkID, p.keyRandSource)
 	})
 
+	// TODO: remove this in next version, it's a temporary fix for
+	// supporting old nodes that will limit the number of results rather than the size
+	// of the outcome
 	if len(performable) > p.limit {
 		p.logger.Printf("Limiting new performables in outcome to %d", p.limit)
 		performable = performable[:p.limit]
 	}
 
+	// adding performables until size limit is reached
 	size := 0
 	for i, result := range performable {
 		size += result.Size()
