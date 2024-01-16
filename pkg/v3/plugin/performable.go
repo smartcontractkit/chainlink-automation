@@ -15,11 +15,11 @@ type resultAndCount struct {
 }
 
 type performables struct {
-	limit           int
-	keyRandSource   [16]byte
-	quorumThreshold int
-	logger          *log.Logger
-	resultCount     map[string]resultAndCount
+	limit, sizeLimit int
+	keyRandSource    [16]byte
+	quorumThreshold  int
+	logger           *log.Logger
+	resultCount      map[string]resultAndCount
 }
 
 // Performables gets quorum on agreed check results which should ultimately be
@@ -27,10 +27,11 @@ type performables struct {
 // and simply adds all results which achieve the quorumThreshold.
 // Results are agreed upon by their UniqueID() which contains all the data
 // within the result.
-func newPerformables(quorumThreshold int, limit int, rSrc [16]byte, logger *log.Logger) *performables {
+func newPerformables(quorumThreshold int, limit, sizeLimit int, rSrc [16]byte, logger *log.Logger) *performables {
 	return &performables{
 		quorumThreshold: quorumThreshold,
 		limit:           limit,
+		sizeLimit:       sizeLimit,
 		keyRandSource:   rSrc,
 		logger:          logger,
 		resultCount:     make(map[string]resultAndCount),
@@ -82,10 +83,25 @@ func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
 		return random.ShuffleString(performable[i].WorkID, p.keyRandSource) < random.ShuffleString(performable[j].WorkID, p.keyRandSource)
 	})
 
+	// TODO: remove this in next version, it's a temporary fix for
+	// supporting old nodes that will limit the number of results rather than the size
+	// of the outcome
 	if len(performable) > p.limit {
 		p.logger.Printf("Limiting new performables in outcome to %d", p.limit)
 		performable = performable[:p.limit]
 	}
+
+	// adding performables until size limit is reached
+	size := 0
+	for i, result := range performable {
+		size += result.Size()
+		if p.sizeLimit < size {
+			p.logger.Printf("Limiting new performables in outcome to %d", i)
+			performable = performable[:i+1]
+			break
+		}
+	}
+
 	p.logger.Printf("Setting outcome.AgreedPerformables with %d performables", len(performable))
 	outcome.AgreedPerformables = performable
 }

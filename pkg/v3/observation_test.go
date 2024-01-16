@@ -151,26 +151,34 @@ func TestDuplicateBlockHistory(t *testing.T) {
 	assert.ErrorContains(t, err, "block history cannot have duplicate block numbers")
 }
 
-func TestLargePerformable(t *testing.T) {
+func TestLargeObservation(t *testing.T) {
 	ao := AutomationObservation{
 		Performable:     []types.CheckResult{},
 		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
-	for i := 0; i < ObservationPerformablesLimit+1; i++ {
-		newConditionalResult := validConditionalResult
+	size := ao.BlockHistory.Size()
+	for _, prop := range ao.UpkeepProposals {
+		size += prop.Size()
+	}
+	for i := 0; size < MaxObservationLength; i++ {
 		uid := types.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 1)))
-		newConditionalResult.UpkeepID = uid
-		newConditionalResult.WorkID = mockWorkIDGenerator(newConditionalResult.UpkeepID, newConditionalResult.Trigger)
-		ao.Performable = append(ao.Performable, newConditionalResult)
+		newResult := validLogResult
+		if mockUpkeepTypeGetter(uid) == types.ConditionTrigger {
+			newResult = validConditionalResult
+		}
+		newResult.UpkeepID = uid
+		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
+		ao.Performable = append(ao.Performable, newResult)
+		size += newResult.Size()
 	}
 	encoded, err := ao.Encode()
 	assert.NoError(t, err, "no error in encoding valid automation observation")
 
 	_, err = DecodeAutomationObservation(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
-	assert.ErrorContains(t, err, "performable length cannot be greater than")
+	assert.ErrorContains(t, err, "observation size cannot be greater than")
 }
 
 func TestDuplicatePerformable(t *testing.T) {

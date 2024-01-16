@@ -13,10 +13,12 @@ import (
 )
 
 func TestPerformables(t *testing.T) {
+	performablesSizeLimit := ocr2keepers.MaxOutcomeLength - ocr2keepers.MaxOutcomeProposalsLength
 	tests := []struct {
 		name                   string
 		threshold              int
 		limit                  int
+		sizeLimit              int
 		observations           []ocr2keepers.AutomationObservation
 		expectedOutcomeWorkIDs []types.CheckResult
 		wantResultCount        map[string]resultAndCount
@@ -25,6 +27,7 @@ func TestPerformables(t *testing.T) {
 			name:                   "No eligible results",
 			threshold:              2,
 			limit:                  3,
+			sizeLimit:              performablesSizeLimit,
 			observations:           []ocr2keepers.AutomationObservation{},
 			expectedOutcomeWorkIDs: []types.CheckResult{},
 			wantResultCount:        map[string]resultAndCount{},
@@ -33,6 +36,7 @@ func TestPerformables(t *testing.T) {
 			name:      "No threshold met results",
 			threshold: 2,
 			limit:     3,
+			sizeLimit: performablesSizeLimit,
 			observations: []ocr2keepers.AutomationObservation{
 				{
 					Performable: []types.CheckResult{
@@ -82,6 +86,7 @@ func TestPerformables(t *testing.T) {
 			name:      "Duplicate work IDs increase the instance count",
 			threshold: 2,
 			limit:     3,
+			sizeLimit: performablesSizeLimit,
 			observations: []ocr2keepers.AutomationObservation{
 				{
 					Performable: []types.CheckResult{
@@ -134,6 +139,14 @@ func TestPerformables(t *testing.T) {
 			name:      "When the count exceeds the limit, the number of results are limited",
 			threshold: 2,
 			limit:     1,
+			sizeLimit: func() int {
+				cr := types.CheckResult{
+					WorkID:     "2",
+					FastGasWei: big.NewInt(10),
+					LinkNative: big.NewInt(10),
+				}
+				return cr.Size() + 1
+			}(),
 			observations: []ocr2keepers.AutomationObservation{
 				{
 					Performable: []types.CheckResult{
@@ -209,6 +222,14 @@ func TestPerformables(t *testing.T) {
 			name:      "When the count exceeds the limit, the number of results are limited with same sorting order",
 			threshold: 2,
 			limit:     1,
+			sizeLimit: func() int {
+				cr := types.CheckResult{
+					WorkID:     "2",
+					FastGasWei: big.NewInt(10),
+					LinkNative: big.NewInt(10),
+				}
+				return cr.Size() + 1
+			}(),
 			observations: []ocr2keepers.AutomationObservation{
 				{
 					Performable: []types.CheckResult{
@@ -314,6 +335,7 @@ func TestPerformables(t *testing.T) {
 			name:      "Duplicate work IDs with different UIDs reaching threshold",
 			threshold: 2,
 			limit:     3,
+			sizeLimit: performablesSizeLimit,
 			observations: []ocr2keepers.AutomationObservation{
 				{
 					Performable: []types.CheckResult{
@@ -371,7 +393,7 @@ func TestPerformables(t *testing.T) {
 			// Prepare logger
 			var logBuf bytes.Buffer
 			logger := log.New(&logBuf, "", 0)
-			performables := newPerformables(tt.threshold, tt.limit, [16]byte{}, logger)
+			performables := newPerformables(tt.threshold, tt.sizeLimit, tt.limit, [16]byte{}, logger)
 			for _, observation := range tt.observations {
 				performables.add(observation)
 			}
