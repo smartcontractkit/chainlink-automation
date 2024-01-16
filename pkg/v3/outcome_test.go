@@ -57,18 +57,28 @@ func TestLargeAgreedPerformables(t *testing.T) {
 		AgreedPerformables: []types.CheckResult{},
 		SurfacedProposals:  [][]types.CoordinatedBlockProposal{{validConditionalProposal, validLogProposal}},
 	}
-	for i := 0; i < OutcomeAgreedPerformablesLimit+1; i++ {
-		newConditionalResult := validConditionalResult
-		newConditionalResult.Trigger.BlockNumber = types.BlockNumber(i + 1)
-		newConditionalResult.WorkID = mockWorkIDGenerator(newConditionalResult.UpkeepID, newConditionalResult.Trigger)
+	size := 0
+	for _, r := range ao.SurfacedProposals {
+		for _, p := range r {
+			size += p.Size()
+		}
+	}
+	for i := 0; size < MaxOutcomeLength; i++ {
+		newResult := validLogResult
+		uid := types.UpkeepIdentifier{}
+		uid.FromBigInt(big.NewInt(int64(i + 10001)))
+		newResult.UpkeepID = uid
+		newResult.Trigger.BlockNumber = types.BlockNumber(i + 1)
+		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
 		ao.AgreedPerformables = append(ao.AgreedPerformables, validConditionalResult)
+		size += newResult.Size()
 	}
 	encoded, err := ao.Encode()
 	assert.NoError(t, err, "no error in encoding valid automation outcome")
 
 	_, err = DecodeAutomationOutcome(encoded, mockUpkeepTypeGetter, mockWorkIDGenerator)
 	assert.Error(t, err)
-	assert.ErrorContains(t, err, "outcome performable length cannot be greater than")
+	assert.ErrorContains(t, err, "outcome size cannot be greater than")
 }
 
 func TestDuplicateAgreedPerformables(t *testing.T) {

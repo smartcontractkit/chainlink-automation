@@ -46,6 +46,9 @@ func (observation AutomationObservation) Encode() ([]byte, error) {
 }
 
 func DecodeAutomationObservation(data []byte, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) (AutomationObservation, error) {
+	if len(data) > MaxObservationLength {
+		return AutomationObservation{}, fmt.Errorf("observation size cannot be greater than %d; has %d bytes", MaxObservationLength, len(data))
+	}
 	ao := AutomationObservation{}
 	err := json.Unmarshal(data, &ao)
 	if err != nil {
@@ -73,9 +76,6 @@ func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 	}
 
 	// Validate Performables
-	if (len(o.Performable)) > ObservationPerformablesLimit {
-		return fmt.Errorf("performable length cannot be greater than %d", ObservationPerformablesLimit)
-	}
 	seenPerformables := make(map[string]bool)
 	for _, res := range o.Performable {
 		if err := validateCheckResult(res, utg, wg); err != nil {
