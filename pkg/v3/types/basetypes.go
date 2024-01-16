@@ -165,17 +165,12 @@ type CheckResult struct {
 
 // Size returns the size of the check result in bytes
 func (cr *CheckResult) Size() int {
-	size := 1 + // PipelineExecutionState
+	return 1 + // PipelineExecutionState
 		1 + // Retryable
 		1 + // Eligible
 		1 + // IneligibilityReason
-		32 // UpkeepID
-	// trigger
-	size += 8 + 32
-	if cr.Trigger.LogTriggerExtension != nil {
-		size += 32 + 4 + 32 + 8
-	}
-	return size +
+		32 + // UpkeepID
+		cr.Trigger.Size() +
 		32 + // WorkID
 		8 + // GasAllocated
 		len(cr.PerformData) +
