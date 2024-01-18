@@ -23,14 +23,6 @@ type Trigger struct {
 	LogTriggerExtension *LogTriggerExtension
 }
 
-func (r Trigger) Size() int {
-	size := 32 + 8
-	if r.LogTriggerExtension != nil {
-		size += 32 + 4 + 32 + 8
-	}
-	return size
-}
-
 func (r Trigger) String() string {
 	res := fmt.Sprintf(`{"BlockNumber":%d,"BlockHash":"%s"`, r.BlockNumber, hex.EncodeToString(r.BlockHash[:]))
 	if r.LogTriggerExtension != nil {

@@ -213,6 +213,158 @@ func TestUpkeepIdentifier_BigInt(t *testing.T) {
 	}
 }
 
+func TestBlockHistory_Size(t *testing.T) {
+	tests := []struct {
+		name  string
+		input BlockHistory
+	}{
+		{
+			name:  "empty block history",
+			input: BlockHistory{},
+		},
+		{
+			name: "with block history",
+			input: BlockHistory{
+				{
+					Number: 1,
+					Hash:   [32]byte{1, 2, 3, 4},
+				},
+				{
+					Number: 2,
+					Hash:   [32]byte{1, 2, 3, 4},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded, err := json.Marshal(tc.input)
+			require.NoError(t, err)
+			assert.Equal(t, len(encoded), tc.input.Size())
+		})
+	}
+}
+
+func TestCoordinatedBlockProposal_Size(t *testing.T) {
+	tests := []struct {
+		name  string
+		input CoordinatedBlockProposal
+	}{
+		{
+			name:  "empty proposal",
+			input: CoordinatedBlockProposal{},
+		},
+		{
+			name: "with log trigger",
+			input: CoordinatedBlockProposal{
+				UpkeepID: UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
+				Trigger: Trigger{
+					BlockNumber: 5,
+					BlockHash:   [32]byte{1, 2, 3, 4},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash: [32]byte{1, 2, 3, 4},
+						Index:  99,
+					},
+				},
+				WorkID: "work id",
+			},
+		},
+		{
+			name: "with condition trigger",
+			input: CoordinatedBlockProposal{
+				UpkeepID: UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
+				Trigger: Trigger{
+					BlockNumber: 5,
+					BlockHash:   [32]byte{1, 2, 3, 4},
+				},
+				WorkID: "work id",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded, err := json.Marshal(tc.input)
+			require.NoError(t, err)
+			assert.Equal(t, len(encoded), tc.input.Size())
+		})
+	}
+}
+
+func TestCheckResult_Size(t *testing.T) {
+	tests := []struct {
+		name  string
+		input CheckResult
+	}{
+		{
+			name:  "empty result",
+			input: CheckResult{},
+		},
+		{
+			name: "with large perform data",
+			input: CheckResult{
+				PipelineExecutionState: 1,
+				Retryable:              false,
+				Eligible:               true,
+				IneligibilityReason:    10,
+				UpkeepID:               UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
+				Trigger: Trigger{
+					BlockNumber: 5,
+					BlockHash:   [32]byte{1, 2, 3, 4},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash: [32]byte{1, 2, 3, 4},
+						Index:  99,
+					},
+				},
+				WorkID:       "work id",
+				GasAllocated: 1001,
+				PerformData: func() []byte {
+					data := make([]byte, 1000)
+					for i := range data {
+						data[i] = byte(i)
+					}
+					return data
+				}(),
+				FastGasWei: big.NewInt(12),
+				LinkNative: big.NewInt(13),
+			},
+		},
+		{
+			name: "with retry interval",
+			input: CheckResult{
+				PipelineExecutionState: 1,
+				Retryable:              true,
+				Eligible:               true,
+				IneligibilityReason:    10,
+				UpkeepID:               UpkeepIdentifier{1, 2, 3, 4, 5, 6, 7, 8},
+				Trigger: Trigger{
+					BlockNumber: 5,
+					BlockHash:   [32]byte{1, 2, 3, 4},
+					LogTriggerExtension: &LogTriggerExtension{
+						TxHash: [32]byte{1, 2, 3, 4},
+						Index:  99,
+					},
+				},
+				WorkID:        "work id",
+				GasAllocated:  1001,
+				PerformData:   []byte{1, 2, 3, 4, 5, 6},
+				FastGasWei:    big.NewInt(12),
+				LinkNative:    big.NewInt(13),
+				RetryInterval: 1,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded, err := json.Marshal(tc.input)
+			require.NoError(t, err)
+			assert.Equal(t, len(encoded), tc.input.Size())
+		})
+	}
+}
+
 func TestCheckResultEncoding(t *testing.T) {
 	tests := []struct {
 		name     string

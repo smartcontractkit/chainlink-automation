@@ -63,14 +63,14 @@ func TestLargeAgreedPerformables(t *testing.T) {
 			size += p.Size()
 		}
 	}
-	for i := 0; size < MaxOutcomeLength; i++ {
+	for i := 0; size+10 < MaxOutcomeLength; i++ {
 		newResult := validLogResult
 		uid := types.UpkeepIdentifier{}
-		uid.FromBigInt(big.NewInt(int64(i + 10001)))
+		uid.FromBigInt(big.NewInt(int64((i + 1) + 10001)))
 		newResult.UpkeepID = uid
-		newResult.Trigger.BlockNumber = types.BlockNumber(i + 1)
+		newResult.Trigger.BlockNumber = types.BlockNumber(i + 1001)
 		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
-		ao.AgreedPerformables = append(ao.AgreedPerformables, validConditionalResult)
+		ao.AgreedPerformables = append(ao.AgreedPerformables, newResult)
 		size += newResult.Size()
 	}
 	encoded, err := ao.Encode()

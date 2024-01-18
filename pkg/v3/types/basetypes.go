@@ -163,19 +163,14 @@ type CheckResult struct {
 	RetryInterval time.Duration
 }
 
-// Size returns the size of the check result in bytes
+// Size returns the size of the check result in bytes.
+// the size includes additional characters added by the JSON encoding
 func (cr *CheckResult) Size() int {
-	return 1 + // PipelineExecutionState
-		1 + // Retryable
-		1 + // Eligible
-		1 + // IneligibilityReason
-		32 + // UpkeepID
-		cr.Trigger.Size() +
-		32 + // WorkID
-		8 + // GasAllocated
-		len(cr.PerformData) +
-		32 + // FastGasWei
-		32 // LinkNative
+	bytes, err := cr.MarshalJSON()
+	if err != nil {
+		return 0
+	}
+	return len(bytes)
 }
 
 // checkResultMsg is used for encoding and decoding check results.
@@ -312,7 +307,11 @@ func (bh BlockHistory) Latest() (BlockKey, error) {
 
 // Size returns the size of the block history in bytes
 func (bh BlockHistory) Size() int {
-	return len(bh) * (8 + 32)
+	bytes, err := json.Marshal(bh)
+	if err != nil {
+		return 0
+	}
+	return len(bytes)
 }
 
 type UpkeepPayload struct {
@@ -352,9 +351,11 @@ type CoordinatedBlockProposal struct {
 
 // Size returns the size of the coordinated block proposal in bytes
 func (p CoordinatedBlockProposal) Size() int {
-	return 32 + // UpkeepID
-		p.Trigger.Size() + // Trigger
-		32 // WorkID
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		return 0
+	}
+	return len(bytes)
 }
 
 // ReportedUpkeep contains details of an upkeep for which a report was generated.
