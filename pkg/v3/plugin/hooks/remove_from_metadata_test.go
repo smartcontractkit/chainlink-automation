@@ -10,21 +10,22 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
-	var uid1 types.UpkeepIdentifier = [32]byte{1}
-	var uid2 types.UpkeepIdentifier = [32]byte{2}
-	var uid3 types.UpkeepIdentifier = [32]byte{3}
+	var uid1 commontypes.UpkeepIdentifier = [32]byte{1}
+	var uid2 commontypes.UpkeepIdentifier = [32]byte{2}
+	var uid3 commontypes.UpkeepIdentifier = [32]byte{3}
 	tests := []struct {
 		name              string
-		surfacedProposals [][]types.CoordinatedBlockProposal
-		upkeepTypeGetter  map[types.UpkeepIdentifier]types.UpkeepType
+		surfacedProposals [][]commontypes.CoordinatedBlockProposal
+		upkeepTypeGetter  map[commontypes.UpkeepIdentifier]types.UpkeepType
 		expectedRemovals  int
 	}{
 		{
 			name: "Remove proposals from metadata store",
-			surfacedProposals: [][]types.CoordinatedBlockProposal{
+			surfacedProposals: [][]commontypes.CoordinatedBlockProposal{
 				{
 					{UpkeepID: uid1, WorkID: "1"},
 					{UpkeepID: uid2, WorkID: "2"},
@@ -33,7 +34,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 					{UpkeepID: uid3, WorkID: "3"},
 				},
 			},
-			upkeepTypeGetter: map[types.UpkeepIdentifier]types.UpkeepType{
+			upkeepTypeGetter: map[commontypes.UpkeepIdentifier]types.UpkeepType{
 				uid1: types.ConditionTrigger,
 				uid2: types.LogTrigger,
 				uid3: types.ConditionTrigger,
@@ -42,7 +43,7 @@ func TestRemoveFromMetadataHook_RunHook(t *testing.T) {
 		},
 		{
 			name: "No proposals to remove",
-			surfacedProposals: [][]types.CoordinatedBlockProposal{
+			surfacedProposals: [][]commontypes.CoordinatedBlockProposal{
 				{},
 				{},
 			},

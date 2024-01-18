@@ -9,12 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestNewMetadataStore(t *testing.T) {
 	t.Run("creating the metadata store errors when subscribing to the block subscriber errors", func(t *testing.T) {
 		blockSubscriber := &mockBlockSubscriber{
-			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+			SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 				return 0, nil, errors.New("subscribe boom")
 			},
 		}
@@ -28,9 +29,9 @@ func TestNewMetadataStore(t *testing.T) {
 	t.Run("the metadata store starts, reads from the block ticker, and stops without erroring", func(t *testing.T) {
 		canClose := make(chan struct{}, 1)
 		finished := make(chan struct{}, 1)
-		ch := make(chan types.BlockHistory)
+		ch := make(chan commontypes.BlockHistory)
 		blockSubscriber := &mockBlockSubscriber{
-			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+			SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 				return 1, ch, nil
 			},
 			UnsubscribeFn: func(i int) error {
@@ -39,11 +40,11 @@ func TestNewMetadataStore(t *testing.T) {
 		}
 
 		go func() {
-			ch <- types.BlockHistory{
-				types.BlockKey{
+			ch <- commontypes.BlockHistory{
+				commontypes.BlockKey{
 					Number: 4,
 				},
-				types.BlockKey{
+				commontypes.BlockKey{
 					Number: 3,
 				},
 			}
@@ -77,9 +78,9 @@ func TestNewMetadataStore(t *testing.T) {
 	})
 
 	t.Run("closing the metadata store errors when unsubscribing from the block subscriber errors", func(t *testing.T) {
-		ch := make(chan types.BlockHistory)
+		ch := make(chan commontypes.BlockHistory)
 		blockSubscriber := &mockBlockSubscriber{
-			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+			SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 				return 1, ch, nil
 			},
 			UnsubscribeFn: func(i int) error {
@@ -101,9 +102,9 @@ func TestNewMetadataStore(t *testing.T) {
 	t.Run("the metadata store starts, reads from the block ticker, and stops via a cancelled context without erroring", func(t *testing.T) {
 		canClose := make(chan struct{}, 1)
 		finished := make(chan struct{}, 1)
-		ch := make(chan types.BlockHistory)
+		ch := make(chan commontypes.BlockHistory)
 		blockSubscriber := &mockBlockSubscriber{
-			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+			SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 				return 1, ch, nil
 			},
 			UnsubscribeFn: func(i int) error {
@@ -112,11 +113,11 @@ func TestNewMetadataStore(t *testing.T) {
 		}
 
 		go func() {
-			ch <- types.BlockHistory{
-				types.BlockKey{
+			ch <- commontypes.BlockHistory{
+				commontypes.BlockKey{
 					Number: 4,
 				},
-				types.BlockKey{
+				commontypes.BlockKey{
 					Number: 3,
 				},
 			}
@@ -150,9 +151,9 @@ func TestNewMetadataStore(t *testing.T) {
 	})
 
 	t.Run("starting an already started metadata store returns an error", func(t *testing.T) {
-		ch := make(chan types.BlockHistory)
+		ch := make(chan commontypes.BlockHistory)
 		blockSubscriber := &mockBlockSubscriber{
-			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+			SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 				return 1, ch, nil
 			},
 		}
@@ -163,9 +164,9 @@ func TestNewMetadataStore(t *testing.T) {
 	})
 
 	t.Run("closing an already closed metadata store returns an error", func(t *testing.T) {
-		ch := make(chan types.BlockHistory)
+		ch := make(chan commontypes.BlockHistory)
 		blockSubscriber := &mockBlockSubscriber{
-			SubscribeFn: func() (int, chan types.BlockHistory, error) {
+			SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 				return 1, ch, nil
 			},
 		}
@@ -179,15 +180,15 @@ func TestNewMetadataStore(t *testing.T) {
 func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
-		addProposals    [][]types.CoordinatedBlockProposal
-		afterAdd        []types.CoordinatedBlockProposal
-		deleteProposals []types.CoordinatedBlockProposal
-		afterDelete     []types.CoordinatedBlockProposal
+		addProposals    [][]commontypes.CoordinatedBlockProposal
+		afterAdd        []commontypes.CoordinatedBlockProposal
+		deleteProposals []commontypes.CoordinatedBlockProposal
+		afterDelete     []commontypes.CoordinatedBlockProposal
 		timeFn          func() time.Time
 	}{
 		{
 			name: "all unique proposals are added and retrieved, existent keys are successfully deleted",
-			addProposals: [][]types.CoordinatedBlockProposal{
+			addProposals: [][]commontypes.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -205,7 +206,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedBlockProposal{
+			afterAdd: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -219,7 +220,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					WorkID: "workID4",
 				},
 			},
-			deleteProposals: []types.CoordinatedBlockProposal{
+			deleteProposals: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -230,7 +231,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					WorkID: "workID5",
 				},
 			},
-			afterDelete: []types.CoordinatedBlockProposal{
+			afterDelete: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID2",
 				},
@@ -242,7 +243,7 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 		},
 		{
 			name: "duplicate proposals aren't returned, existent keys are successfully deleted",
-			addProposals: [][]types.CoordinatedBlockProposal{
+			addProposals: [][]commontypes.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -260,22 +261,22 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedBlockProposal{
+			afterAdd: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			deleteProposals: []types.CoordinatedBlockProposal{
+			deleteProposals: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedBlockProposal{},
+			afterDelete: []commontypes.CoordinatedBlockProposal{},
 			timeFn:      time.Now,
 		},
 		{
 			name: "proposals added three days ago aren't returned, non existent keys result in a no op delete",
-			addProposals: [][]types.CoordinatedBlockProposal{
+			addProposals: [][]commontypes.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -293,13 +294,13 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedBlockProposal{},
-			deleteProposals: []types.CoordinatedBlockProposal{
+			afterAdd: []commontypes.CoordinatedBlockProposal{},
+			deleteProposals: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedBlockProposal{},
+			afterDelete: []commontypes.CoordinatedBlockProposal{},
 			timeFn: func() time.Time {
 				return time.Now().Add(-72 * time.Hour)
 			},
@@ -312,9 +313,9 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 				timeFn = oldTimeFn
 			}()
 
-			ch := make(chan types.BlockHistory)
+			ch := make(chan commontypes.BlockHistory)
 			blockSubscriber := &mockBlockSubscriber{
-				SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 					return 1, ch, nil
 				},
 			}
@@ -338,19 +339,19 @@ func TestMetadataStore_AddConditionalProposal(t *testing.T) {
 func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
-		addProposals    [][]types.CoordinatedBlockProposal
-		afterAdd        []types.CoordinatedBlockProposal
-		deleteProposals []types.CoordinatedBlockProposal
-		afterDelete     []types.CoordinatedBlockProposal
+		addProposals    [][]commontypes.CoordinatedBlockProposal
+		afterAdd        []commontypes.CoordinatedBlockProposal
+		deleteProposals []commontypes.CoordinatedBlockProposal
+		afterDelete     []commontypes.CoordinatedBlockProposal
 		timeFn          func() time.Time
 		typeGetter      types.UpkeepTypeGetter
 	}{
 		{
 			name: "all unique proposals are added and retrieved, existent keys are successfully deleted",
-			typeGetter: func(identifier types.UpkeepIdentifier) types.UpkeepType {
+			typeGetter: func(identifier commontypes.UpkeepIdentifier) types.UpkeepType {
 				return types.LogTrigger
 			},
-			addProposals: [][]types.CoordinatedBlockProposal{
+			addProposals: [][]commontypes.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -368,7 +369,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedBlockProposal{
+			afterAdd: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -382,7 +383,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					WorkID: "workID4",
 				},
 			},
-			deleteProposals: []types.CoordinatedBlockProposal{
+			deleteProposals: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -393,7 +394,7 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					WorkID: "workID5",
 				},
 			},
-			afterDelete: []types.CoordinatedBlockProposal{
+			afterDelete: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID2",
 				},
@@ -405,10 +406,10 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 		},
 		{
 			name: "duplicate proposals aren't returned, existent keys are successfully deleted",
-			typeGetter: func(identifier types.UpkeepIdentifier) types.UpkeepType {
+			typeGetter: func(identifier commontypes.UpkeepIdentifier) types.UpkeepType {
 				return types.LogTrigger
 			},
-			addProposals: [][]types.CoordinatedBlockProposal{
+			addProposals: [][]commontypes.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -426,25 +427,25 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedBlockProposal{
+			afterAdd: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			deleteProposals: []types.CoordinatedBlockProposal{
+			deleteProposals: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedBlockProposal{},
+			afterDelete: []commontypes.CoordinatedBlockProposal{},
 			timeFn:      time.Now,
 		},
 		{
 			name: "proposals added three days ago aren't returned, non existent keys result in a no op delete",
-			typeGetter: func(identifier types.UpkeepIdentifier) types.UpkeepType {
+			typeGetter: func(identifier commontypes.UpkeepIdentifier) types.UpkeepType {
 				return types.LogTrigger
 			},
-			addProposals: [][]types.CoordinatedBlockProposal{
+			addProposals: [][]commontypes.CoordinatedBlockProposal{
 				{
 					{
 						WorkID: "workID1",
@@ -462,13 +463,13 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 					},
 				},
 			},
-			afterAdd: []types.CoordinatedBlockProposal{},
-			deleteProposals: []types.CoordinatedBlockProposal{
+			afterAdd: []commontypes.CoordinatedBlockProposal{},
+			deleteProposals: []commontypes.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			afterDelete: []types.CoordinatedBlockProposal{},
+			afterDelete: []commontypes.CoordinatedBlockProposal{},
 			timeFn: func() time.Time {
 				return time.Now().Add(-72 * time.Hour)
 			},
@@ -480,9 +481,9 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 			defer func() {
 				timeFn = oldTimeFn
 			}()
-			ch := make(chan types.BlockHistory)
+			ch := make(chan commontypes.BlockHistory)
 			blockSubscriber := &mockBlockSubscriber{
-				SubscribeFn: func() (int, chan types.BlockHistory, error) {
+				SubscribeFn: func() (int, chan commontypes.BlockHistory, error) {
 					return 1, ch, nil
 				},
 			}
@@ -504,14 +505,22 @@ func TestMetadataStore_AddLogRecoveryProposal(t *testing.T) {
 }
 
 type mockBlockSubscriber struct {
-	SubscribeFn   func() (int, chan types.BlockHistory, error)
+	SubscribeFn   func() (int, chan commontypes.BlockHistory, error)
 	UnsubscribeFn func(int) error
+	StartFn       func(ctx context.Context) error
+	CloseFn       func() error
 }
 
-func (_m *mockBlockSubscriber) Subscribe() (int, chan types.BlockHistory, error) {
+func (_m *mockBlockSubscriber) Subscribe() (int, chan commontypes.BlockHistory, error) {
 	return _m.SubscribeFn()
 }
 
 func (_m *mockBlockSubscriber) Unsubscribe(i int) error {
 	return _m.UnsubscribeFn(i)
+}
+func (r *mockBlockSubscriber) Start(ctx context.Context) error {
+	return r.StartFn(ctx)
+}
+func (r *mockBlockSubscriber) Close() error {
+	return r.CloseFn()
 }

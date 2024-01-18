@@ -5,7 +5,8 @@ package mocks
 import (
 	context "context"
 
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,19 +16,19 @@ type TransmitEventProvider struct {
 }
 
 // GetLatestEvents provides a mock function with given fields: _a0
-func (_m *TransmitEventProvider) GetLatestEvents(_a0 context.Context) ([]types.TransmitEvent, error) {
+func (_m *TransmitEventProvider) GetLatestEvents(_a0 context.Context) ([]automation.TransmitEvent, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []types.TransmitEvent
+	var r0 []automation.TransmitEvent
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]types.TransmitEvent, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) ([]automation.TransmitEvent, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []types.TransmitEvent); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) []automation.TransmitEvent); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.TransmitEvent)
+			r0 = ret.Get(0).([]automation.TransmitEvent)
 		}
 	}
 

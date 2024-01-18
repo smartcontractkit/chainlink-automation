@@ -14,14 +14,15 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestRecoveryFinalization(t *testing.T) {
-	upkeepIDs := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier([32]byte{1}),
-		ocr2keepers.UpkeepIdentifier([32]byte{2}),
+	upkeepIDs := []common.UpkeepIdentifier{
+		common.UpkeepIdentifier([32]byte{1}),
+		common.UpkeepIdentifier([32]byte{2}),
 	}
 	workIDs := []string{
 		"0x1",
@@ -36,14 +37,14 @@ func TestRecoveryFinalization(t *testing.T) {
 	rStore := new(mocks.MockResultStore)
 	coord := new(mocks.MockCoordinator)
 	payloadBuilder := new(mocks.MockPayloadBuilder)
-	proposalQ := stores.NewProposalQueue(func(ui ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-		return ocr2keepers.LogTrigger
+	proposalQ := stores.NewProposalQueue(func(ui common.UpkeepIdentifier) types.UpkeepType {
+		return types.LogTrigger
 	})
 	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
 
 	retryQ := stores.NewRetryQueue(logger)
 
-	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[0],
 			WorkID:   workIDs[0],
@@ -53,7 +54,7 @@ func TestRecoveryFinalization(t *testing.T) {
 			WorkID:   workIDs[1],
 		},
 	}, nil).Times(times)
-	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]common.CheckResult{
 		{
 			UpkeepID: upkeepIDs[0],
 			WorkID:   workIDs[0],
@@ -66,7 +67,7 @@ func TestRecoveryFinalization(t *testing.T) {
 		},
 	}, nil).Times(times)
 	rStore.On("Add", mock.Anything).Times(times)
-	payloadBuilder.On("BuildPayloads", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	payloadBuilder.On("BuildPayloads", mock.Anything, mock.Anything, mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[0],
 			WorkID:   workIDs[0],
@@ -79,16 +80,16 @@ func TestRecoveryFinalization(t *testing.T) {
 	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	// set the ticker time lower to reduce the test time
 	recFinalInterval := 50 * time.Millisecond
-	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
 	svc := newFinalRecoveryFlow(pre, rStore, runner, retryQ, recFinalInterval, proposalQ, payloadBuilder, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	err := proposalQ.Enqueue(ocr2keepers.CoordinatedBlockProposal{
+	err := proposalQ.Enqueue(common.CoordinatedBlockProposal{
 		UpkeepID: upkeepIDs[0],
 		WorkID:   workIDs[0],
-	}, ocr2keepers.CoordinatedBlockProposal{
+	}, common.CoordinatedBlockProposal{
 		UpkeepID: upkeepIDs[1],
 		WorkID:   workIDs[1],
 	})
@@ -112,10 +113,10 @@ func TestRecoveryFinalization(t *testing.T) {
 }
 
 func TestRecoveryProposal(t *testing.T) {
-	upkeepIDs := []ocr2keepers.UpkeepIdentifier{
-		ocr2keepers.UpkeepIdentifier([32]byte{1}),
-		ocr2keepers.UpkeepIdentifier([32]byte{2}),
-		ocr2keepers.UpkeepIdentifier([32]byte{3}),
+	upkeepIDs := []common.UpkeepIdentifier{
+		common.UpkeepIdentifier([32]byte{1}),
+		common.UpkeepIdentifier([32]byte{2}),
+		common.UpkeepIdentifier([32]byte{3}),
 	}
 	workIDs := []string{
 		"0x1",
@@ -130,27 +131,27 @@ func TestRecoveryProposal(t *testing.T) {
 	recoverer := new(mocks.MockRecoverableProvider)
 	coord := new(mocks.MockCoordinator)
 
-	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[0],
 			WorkID:   workIDs[0],
 		},
 	}, nil).Times(1)
-	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[1],
 			WorkID:   workIDs[1],
 		},
 	}, nil).Times(1)
 
-	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]common.CheckResult{
 		{
 			UpkeepID: upkeepIDs[0],
 			WorkID:   workIDs[0],
 			Eligible: true,
 		},
 	}, nil).Times(1)
-	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]common.CheckResult{
 		{
 			UpkeepID: upkeepIDs[1],
 			WorkID:   workIDs[1],
@@ -158,7 +159,7 @@ func TestRecoveryProposal(t *testing.T) {
 		},
 	}, nil).Times(1)
 
-	mStore.On("ViewProposals", mock.Anything).Return([]ocr2keepers.CoordinatedBlockProposal{
+	mStore.On("ViewProposals", mock.Anything).Return([]common.CoordinatedBlockProposal{
 		{
 			UpkeepID: upkeepIDs[2],
 			WorkID:   workIDs[2],
@@ -166,13 +167,13 @@ func TestRecoveryProposal(t *testing.T) {
 	}, nil).Times(2)
 	mStore.On("AddProposals", mock.Anything).Return(nil).Times(2)
 
-	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[0],
 			WorkID:   workIDs[0],
 		},
 	}, nil).Times(1)
-	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[1],
 			WorkID:   workIDs[1],
@@ -180,7 +181,7 @@ func TestRecoveryProposal(t *testing.T) {
 	}, nil).Times(1)
 	// set the ticker time lower to reduce the test time
 	interval := 50 * time.Millisecond
-	pre := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
 	stateUpdater := &mockStateUpdater{}
 	svc := newRecoveryProposalFlow(pre, runner, mStore, recoverer, interval, stateUpdater, logger)
 
@@ -205,5 +206,5 @@ func TestRecoveryProposal(t *testing.T) {
 }
 
 type mockStateUpdater struct {
-	ocr2keepers.UpkeepStateUpdater
+	common.UpkeepStateUpdater
 }

@@ -5,7 +5,8 @@ package mocks
 import (
 	context "context"
 
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,11 +16,11 @@ type MockCoordinator struct {
 }
 
 // Accept provides a mock function with given fields: _a0
-func (_m *MockCoordinator) Accept(_a0 types.ReportedUpkeep) bool {
+func (_m *MockCoordinator) Accept(_a0 automation.ReportedUpkeep) bool {
 	ret := _m.Called(_a0)
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(types.ReportedUpkeep) bool); ok {
+	if rf, ok := ret.Get(0).(func(automation.ReportedUpkeep) bool); ok {
 		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(bool)
@@ -29,23 +30,23 @@ func (_m *MockCoordinator) Accept(_a0 types.ReportedUpkeep) bool {
 }
 
 // FilterProposals provides a mock function with given fields: _a0
-func (_m *MockCoordinator) FilterProposals(_a0 []types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error) {
+func (_m *MockCoordinator) FilterProposals(_a0 []automation.CoordinatedBlockProposal) ([]automation.CoordinatedBlockProposal, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []types.CoordinatedBlockProposal
+	var r0 []automation.CoordinatedBlockProposal
 	var r1 error
-	if rf, ok := ret.Get(0).(func([]types.CoordinatedBlockProposal) ([]types.CoordinatedBlockProposal, error)); ok {
+	if rf, ok := ret.Get(0).(func([]automation.CoordinatedBlockProposal) ([]automation.CoordinatedBlockProposal, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func([]types.CoordinatedBlockProposal) []types.CoordinatedBlockProposal); ok {
+	if rf, ok := ret.Get(0).(func([]automation.CoordinatedBlockProposal) []automation.CoordinatedBlockProposal); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.CoordinatedBlockProposal)
+			r0 = ret.Get(0).([]automation.CoordinatedBlockProposal)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func([]types.CoordinatedBlockProposal) error); ok {
+	if rf, ok := ret.Get(1).(func([]automation.CoordinatedBlockProposal) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -55,23 +56,23 @@ func (_m *MockCoordinator) FilterProposals(_a0 []types.CoordinatedBlockProposal)
 }
 
 // FilterResults provides a mock function with given fields: _a0
-func (_m *MockCoordinator) FilterResults(_a0 []types.CheckResult) ([]types.CheckResult, error) {
+func (_m *MockCoordinator) FilterResults(_a0 []automation.CheckResult) ([]automation.CheckResult, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []types.CheckResult
+	var r0 []automation.CheckResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func([]types.CheckResult) ([]types.CheckResult, error)); ok {
+	if rf, ok := ret.Get(0).(func([]automation.CheckResult) ([]automation.CheckResult, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func([]types.CheckResult) []types.CheckResult); ok {
+	if rf, ok := ret.Get(0).(func([]automation.CheckResult) []automation.CheckResult); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.CheckResult)
+			r0 = ret.Get(0).([]automation.CheckResult)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func([]types.CheckResult) error); ok {
+	if rf, ok := ret.Get(1).(func([]automation.CheckResult) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -81,23 +82,23 @@ func (_m *MockCoordinator) FilterResults(_a0 []types.CheckResult) ([]types.Check
 }
 
 // PreProcess provides a mock function with given fields: _a0, payloads
-func (_m *MockCoordinator) PreProcess(_a0 context.Context, payloads []types.UpkeepPayload) ([]types.UpkeepPayload, error) {
+func (_m *MockCoordinator) PreProcess(_a0 context.Context, payloads []automation.UpkeepPayload) ([]automation.UpkeepPayload, error) {
 	ret := _m.Called(_a0, payloads)
 
-	var r0 []types.UpkeepPayload
+	var r0 []automation.UpkeepPayload
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []types.UpkeepPayload) ([]types.UpkeepPayload, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []automation.UpkeepPayload) ([]automation.UpkeepPayload, error)); ok {
 		return rf(_a0, payloads)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []types.UpkeepPayload) []types.UpkeepPayload); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []automation.UpkeepPayload) []automation.UpkeepPayload); ok {
 		r0 = rf(_a0, payloads)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.UpkeepPayload)
+			r0 = ret.Get(0).([]automation.UpkeepPayload)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []types.UpkeepPayload) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, []automation.UpkeepPayload) error); ok {
 		r1 = rf(_a0, payloads)
 	} else {
 		r1 = ret.Error(1)
@@ -107,11 +108,11 @@ func (_m *MockCoordinator) PreProcess(_a0 context.Context, payloads []types.Upke
 }
 
 // ShouldTransmit provides a mock function with given fields: _a0
-func (_m *MockCoordinator) ShouldTransmit(_a0 types.ReportedUpkeep) bool {
+func (_m *MockCoordinator) ShouldTransmit(_a0 automation.ReportedUpkeep) bool {
 	ret := _m.Called(_a0)
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(types.ReportedUpkeep) bool); ok {
+	if rf, ok := ret.Get(0).(func(automation.ReportedUpkeep) bool); ok {
 		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(bool)

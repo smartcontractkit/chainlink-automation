@@ -9,7 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func overrideDefaults(expiration, retryInterval time.Duration) func() {
@@ -113,8 +114,8 @@ func TestRetryQueue_Expiration(t *testing.T) {
 	})
 }
 
-func newRetryRecord(payload ocr2keepers.UpkeepPayload, interval time.Duration) ocr2keepers.RetryRecord {
-	return ocr2keepers.RetryRecord{
+func newRetryRecord(payload ocr2keepers.UpkeepPayload, interval time.Duration) types.RetryRecord {
+	return types.RetryRecord{
 		Payload:  payload,
 		Interval: interval,
 	}

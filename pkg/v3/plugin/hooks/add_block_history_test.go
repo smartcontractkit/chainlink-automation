@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
+	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestAddBlockHistoryHook_RunHook(t *testing.T) {

@@ -1,11 +1,13 @@
 package chain
 
 import (
+	"context"
 	"log"
 	"runtime"
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
 
@@ -43,6 +45,14 @@ func NewBlockHistoryTracker(listener *Listener, logger *log.Logger) *BlockHistor
 	runtime.SetFinalizer(tracker, func(srv *BlockHistoryTracker) { srv.stop() })
 
 	return tracker
+}
+
+func (src *BlockHistoryTracker) Close() error {
+	return nil
+}
+
+func (src *BlockHistoryTracker) Start(_ context.Context) error {
+	return nil
 }
 
 // Subscribe provides an identifier integer, a new channel, and potentially an error

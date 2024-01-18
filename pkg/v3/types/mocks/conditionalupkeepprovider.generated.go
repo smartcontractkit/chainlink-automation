@@ -5,7 +5,8 @@ package mocks
 import (
 	context "context"
 
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,19 +16,19 @@ type MockConditionalUpkeepProvider struct {
 }
 
 // GetActiveUpkeeps provides a mock function with given fields: _a0
-func (_m *MockConditionalUpkeepProvider) GetActiveUpkeeps(_a0 context.Context) ([]types.UpkeepPayload, error) {
+func (_m *MockConditionalUpkeepProvider) GetActiveUpkeeps(_a0 context.Context) ([]automation.UpkeepPayload, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []types.UpkeepPayload
+	var r0 []automation.UpkeepPayload
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]types.UpkeepPayload, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) ([]automation.UpkeepPayload, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []types.UpkeepPayload); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) []automation.UpkeepPayload); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.UpkeepPayload)
+			r0 = ret.Get(0).([]automation.UpkeepPayload)
 		}
 	}
 

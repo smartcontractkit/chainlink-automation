@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (
@@ -53,16 +55,16 @@ func DecodeCheckResultsFromReportBytes(bts []byte) ([]ocr2keepers.CheckResult, e
 
 // GetUpkeepType returns the upkeep type from the given ID.
 // it follows the same logic as the contract, but performs it locally.
-func GetUpkeepType(id ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+func GetUpkeepType(id ocr2keepers.UpkeepIdentifier) types.UpkeepType {
 	for i := upkeepTypeStartIndex; i < upkeepTypeByteIndex; i++ {
 		if id[i] != 0 { // old id
-			return ocr2keepers.ConditionTrigger
+			return types.ConditionTrigger
 		}
 	}
 
 	typeByte := id[upkeepTypeByteIndex]
 
-	return ocr2keepers.UpkeepType(typeByte)
+	return types.UpkeepType(typeByte)
 }
 
 func UpkeepWorkID(uid ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {

@@ -6,25 +6,25 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 type AutomationReportInfo struct{}
 
 type ocr3Plugin struct {
-	ConfigDigest                types.ConfigDigest
+	ConfigDigest                ocr2plustypes.ConfigDigest
 	ReportEncoder               ocr2keepers.Encoder
-	Coordinator                 ocr2keepers.Coordinator
-	UpkeepTypeGetter            ocr2keepers.UpkeepTypeGetter
-	WorkIDGenerator             ocr2keepers.WorkIDGenerator
+	Coordinator                 types.Coordinator
+	UpkeepTypeGetter            types.UpkeepTypeGetter
+	WorkIDGenerator             types.WorkIDGenerator
 	RemoveFromStagingHook       hooks.RemoveFromStagingHook
 	RemoveFromMetadataHook      hooks.RemoveFromMetadataHook
 	AddToProposalQHook          hooks.AddToProposalQHook
@@ -38,11 +38,11 @@ type ocr3Plugin struct {
 	Logger                      *log.Logger
 }
 
-func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (types.Query, error) {
+func (plugin *ocr3Plugin) Query(ctx context.Context, outctx ocr3types.OutcomeContext) (ocr2plustypes.Query, error) {
 	return nil, nil
 }
 
-func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.OutcomeContext, query types.Query) (types.Observation, error) {
+func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.OutcomeContext, query ocr2plustypes.Query) (ocr2plustypes.Observation, error) {
 	plugin.Logger.Printf("inside Observation for seqNr %d", outctx.SeqNr)
 	// first round outcome will be nil or empty so no processing should be done
 	if outctx.PreviousOutcome != nil || len(outctx.PreviousOutcome) != 0 {
@@ -78,17 +78,17 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	return observation.Encode()
 }
 
-func (plugin *ocr3Plugin) ObservationQuorum(outctx ocr3types.OutcomeContext, query types.Query) (ocr3types.Quorum, error) {
+func (plugin *ocr3Plugin) ObservationQuorum(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query) (ocr3types.Quorum, error) {
 	return ocr3types.QuorumTwoFPlusOne, nil
 }
 
-func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query types.Query, ao types.AttributedObservation) error {
+func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, ao ocr2plustypes.AttributedObservation) error {
 	plugin.Logger.Printf("inside ValidateObservation for seqNr %d", outctx.SeqNr)
 	_, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 	return err
 }
 
-func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query types.Query, attributedObservations []types.AttributedObservation) (ocr3types.Outcome, error) {
+func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, attributedObservations []ocr2plustypes.AttributedObservation) (ocr3types.Outcome, error) {
 	plugin.Logger.Printf("inside Outcome for seqNr %d", outctx.SeqNr)
 	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
 	c := newCoordinatedBlockProposals(plugin.F+1, ocr2keepersv3.OutcomeSurfacedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeSurfacedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
@@ -255,13 +255,13 @@ func (plugin *ocr3Plugin) startServices() {
 func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
 	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
 	return ocr3types.ReportWithInfo[AutomationReportInfo]{
-		Report: types.Report(encoded),
+		Report: ocr2plustypes.Report(encoded),
 	}, err
 }
 
 // Generates a randomness source derived from the config and seq # so
 // that it's the same across the network for the same round.
 // similar key building as libocr transmit selector.
-func getRandomKeySource(cd types.ConfigDigest, seqNr uint64) [16]byte {
+func getRandomKeySource(cd ocr2plustypes.ConfigDigest, seqNr uint64) [16]byte {
 	return random.GetRandomKeySource(cd[:], seqNr)
 }

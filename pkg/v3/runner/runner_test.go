@@ -14,7 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
 )
 

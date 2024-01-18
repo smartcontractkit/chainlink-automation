@@ -8,7 +8,7 @@ import (
 	"github.com/Maldris/mathparse"
 	"github.com/shopspring/decimal"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
 )
 
@@ -143,9 +143,9 @@ func generateEligibilityFuncSimulatedUpkeeps(event config.GenerateUpkeepEvent, s
 func getTriggerType(configType config.UpkeepType) (UpkeepType, uint8, error) {
 	switch configType {
 	case config.ConditionalUpkeepType:
-		return ConditionalType, uint8(ocr2keepers.ConditionTrigger), nil
+		return ConditionalType, uint8(types.ConditionTrigger), nil
 	case config.LogTriggerUpkeepType:
-		return LogTriggerType, uint8(ocr2keepers.LogTrigger), nil
+		return LogTriggerType, uint8(types.LogTrigger), nil
 	default:
 		return 0, 0, fmt.Errorf("%w: trigger type '%s' unrecognized", ErrUpkeepGeneration, configType)
 	}

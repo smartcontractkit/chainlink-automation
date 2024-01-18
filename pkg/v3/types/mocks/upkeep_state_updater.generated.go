@@ -5,7 +5,8 @@ package mocks
 import (
 	context "context"
 
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,11 +16,11 @@ type MockUpkeepStateUpdater struct {
 }
 
 // SetUpkeepState provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MockUpkeepStateUpdater) SetUpkeepState(_a0 context.Context, _a1 types.CheckResult, _a2 types.UpkeepState) error {
+func (_m *MockUpkeepStateUpdater) SetUpkeepState(_a0 context.Context, _a1 automation.CheckResult, _a2 automation.UpkeepState) error {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.CheckResult, types.UpkeepState) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, automation.CheckResult, automation.UpkeepState) error); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Error(0)

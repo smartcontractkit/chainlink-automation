@@ -10,25 +10,26 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 var conditionalUpkeepID = [32]byte{1}
 var logUpkeepID = [32]byte{2}
-var conditionalTrigger = types.Trigger{
+var conditionalTrigger = commontypes.Trigger{
 	BlockNumber: 10,
 	BlockHash:   [32]byte{1},
 }
-var logTrigger = types.Trigger{
+var logTrigger = commontypes.Trigger{
 	BlockNumber: 10,
 	BlockHash:   [32]byte{1},
-	LogTriggerExtension: &types.LogTriggerExtension{
+	LogTriggerExtension: &commontypes.LogTriggerExtension{
 		TxHash:      [32]byte{1},
 		Index:       0,
 		BlockHash:   [32]byte{1},
 		BlockNumber: 5,
 	},
 }
-var validConditionalResult = types.CheckResult{
+var validConditionalResult = commontypes.CheckResult{
 	PipelineExecutionState: 0,
 	Retryable:              false,
 	Eligible:               true,
@@ -41,7 +42,7 @@ var validConditionalResult = types.CheckResult{
 	FastGasWei:             big.NewInt(100),
 	LinkNative:             big.NewInt(100),
 }
-var validLogResult = types.CheckResult{
+var validLogResult = commontypes.CheckResult{
 	PipelineExecutionState: 0,
 	Retryable:              false,
 	Eligible:               true,
@@ -54,25 +55,25 @@ var validLogResult = types.CheckResult{
 	FastGasWei:             big.NewInt(100),
 	LinkNative:             big.NewInt(100),
 }
-var validConditionalProposal = types.CoordinatedBlockProposal{
+var validConditionalProposal = commontypes.CoordinatedBlockProposal{
 	UpkeepID: conditionalUpkeepID,
 	Trigger:  conditionalTrigger,
 	WorkID:   mockWorkIDGenerator(conditionalUpkeepID, conditionalTrigger),
 }
-var validLogProposal = types.CoordinatedBlockProposal{
+var validLogProposal = commontypes.CoordinatedBlockProposal{
 	UpkeepID: logUpkeepID,
 	Trigger:  logTrigger,
 	WorkID:   mockWorkIDGenerator(logUpkeepID, logTrigger),
 }
-var validBlockHistory = types.BlockHistory{
+var validBlockHistory = commontypes.BlockHistory{
 	{
 		Number: 10,
 		Hash:   [32]byte{1},
 	},
 }
 var validObservation = AutomationObservation{
-	Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-	UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+	Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+	UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 	BlockHistory:    validBlockHistory,
 }
 var expectedEncodedObservation []byte
@@ -113,13 +114,13 @@ func TestAutomationObservationEncodeBackwardsCompatibility(t *testing.T) {
 
 func TestLargeBlockHistory(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
-		BlockHistory:    types.BlockHistory{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    commontypes.BlockHistory{},
 	}
 	for i := 0; i < ObservationBlockHistoryLimit+1; i++ {
-		ao.BlockHistory = append(ao.BlockHistory, types.BlockKey{
-			Number: types.BlockNumber(i + 1),
+		ao.BlockHistory = append(ao.BlockHistory, commontypes.BlockKey{
+			Number: commontypes.BlockNumber(i + 1),
 			Hash:   [32]byte{1},
 		})
 	}
@@ -133,13 +134,13 @@ func TestLargeBlockHistory(t *testing.T) {
 
 func TestDuplicateBlockHistory(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
-		BlockHistory:    types.BlockHistory{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		BlockHistory:    commontypes.BlockHistory{},
 	}
 	for i := 0; i < 2; i++ {
-		ao.BlockHistory = append(ao.BlockHistory, types.BlockKey{
-			Number: types.BlockNumber(1),
+		ao.BlockHistory = append(ao.BlockHistory, commontypes.BlockKey{
+			Number: commontypes.BlockNumber(1),
 			Hash:   [32]byte{uint8(i)},
 		})
 	}
@@ -153,13 +154,13 @@ func TestDuplicateBlockHistory(t *testing.T) {
 
 func TestLargePerformable(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	for i := 0; i < ObservationPerformablesLimit+1; i++ {
 		newConditionalResult := validConditionalResult
-		uid := types.UpkeepIdentifier{}
+		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 1)))
 		newConditionalResult.UpkeepID = uid
 		newConditionalResult.WorkID = mockWorkIDGenerator(newConditionalResult.UpkeepID, newConditionalResult.Trigger)
@@ -175,8 +176,8 @@ func TestLargePerformable(t *testing.T) {
 
 func TestDuplicatePerformable(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	for i := 0; i < 2; i++ {
@@ -192,13 +193,13 @@ func TestDuplicatePerformable(t *testing.T) {
 
 func TestLargeProposal(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
 		BlockHistory:    validBlockHistory,
 	}
 	for i := 0; i < ObservationConditionalsProposalsLimit+ObservationLogRecoveryProposalsLimit+1; i++ {
 		newProposal := validConditionalProposal
-		uid := types.UpkeepIdentifier{}
+		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 1)))
 		newProposal.UpkeepID = uid
 		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
@@ -214,13 +215,13 @@ func TestLargeProposal(t *testing.T) {
 
 func TestLargeConditionalProposal(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
 		BlockHistory:    validBlockHistory,
 	}
 	for i := 0; i < ObservationConditionalsProposalsLimit+1; i++ {
 		newProposal := validConditionalProposal
-		uid := types.UpkeepIdentifier{}
+		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 1)))
 		newProposal.UpkeepID = uid
 		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
@@ -236,13 +237,13 @@ func TestLargeConditionalProposal(t *testing.T) {
 
 func TestLargeLogProposal(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
 		BlockHistory:    validBlockHistory,
 	}
 	for i := 0; i < ObservationLogRecoveryProposalsLimit+1; i++ {
 		newProposal := validLogProposal
-		uid := types.UpkeepIdentifier{}
+		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 1001)))
 		newProposal.UpkeepID = uid
 		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
@@ -258,8 +259,8 @@ func TestLargeLogProposal(t *testing.T) {
 
 func TestDuplicateProposal(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
 		BlockHistory:    validBlockHistory,
 	}
 	for i := 0; i < 2; i++ {
@@ -276,8 +277,8 @@ func TestDuplicateProposal(t *testing.T) {
 
 func TestInvalidPipelineExecutionState(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validConditionalResult
@@ -293,8 +294,8 @@ func TestInvalidPipelineExecutionState(t *testing.T) {
 
 func TestInvalidRetryable(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validConditionalResult
@@ -310,8 +311,8 @@ func TestInvalidRetryable(t *testing.T) {
 
 func TestInvalidEligibility(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validConditionalResult
@@ -327,8 +328,8 @@ func TestInvalidEligibility(t *testing.T) {
 
 func TestInvalidIneligibilityReason(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validConditionalResult
@@ -344,8 +345,8 @@ func TestInvalidIneligibilityReason(t *testing.T) {
 
 func TestInvalidTriggerTypeConditional(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validConditionalResult
@@ -361,8 +362,8 @@ func TestInvalidTriggerTypeConditional(t *testing.T) {
 
 func TestInvalidTriggerTypeLog(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -378,8 +379,8 @@ func TestInvalidTriggerTypeLog(t *testing.T) {
 
 func TestInvalidWorkID(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -395,8 +396,8 @@ func TestInvalidWorkID(t *testing.T) {
 
 func TestInvalidGasAllocated(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -412,8 +413,8 @@ func TestInvalidGasAllocated(t *testing.T) {
 
 func TestNilFastGas(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -429,8 +430,8 @@ func TestNilFastGas(t *testing.T) {
 
 func TestInvalidFastGasNegative(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -446,8 +447,8 @@ func TestInvalidFastGasNegative(t *testing.T) {
 
 func TestInvalidFastGasTooBig(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -463,8 +464,8 @@ func TestInvalidFastGasTooBig(t *testing.T) {
 
 func TestNilLinkNative(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -480,8 +481,8 @@ func TestNilLinkNative(t *testing.T) {
 
 func TestInvalidLinkNativeNegative(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -497,8 +498,8 @@ func TestInvalidLinkNativeNegative(t *testing.T) {
 
 func TestInvalidLinkNativeTooBig(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{validConditionalProposal, validLogProposal},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidPerformable := validLogResult
@@ -514,8 +515,8 @@ func TestInvalidLinkNativeTooBig(t *testing.T) {
 
 func TestInvalidWorkIDProposal(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidProposal := validLogProposal
@@ -531,8 +532,8 @@ func TestInvalidWorkIDProposal(t *testing.T) {
 
 func TestInvalidConditionalProposal(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidProposal := validConditionalProposal
@@ -548,8 +549,8 @@ func TestInvalidConditionalProposal(t *testing.T) {
 
 func TestInvalidLogProposal(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{validConditionalResult, validLogResult},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
+		Performable:     []commontypes.CheckResult{validConditionalResult, validLogResult},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
 		BlockHistory:    validBlockHistory,
 	}
 	invalidProposal := validLogProposal
@@ -565,20 +566,20 @@ func TestInvalidLogProposal(t *testing.T) {
 
 func TestLargeObservationSize(t *testing.T) {
 	ao := AutomationObservation{
-		Performable:     []types.CheckResult{},
-		UpkeepProposals: []types.CoordinatedBlockProposal{},
-		BlockHistory:    types.BlockHistory{},
+		Performable:     []commontypes.CheckResult{},
+		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
+		BlockHistory:    commontypes.BlockHistory{},
 	}
 	for i := 0; i < ObservationBlockHistoryLimit; i++ {
-		ao.BlockHistory = append(ao.BlockHistory, types.BlockKey{
-			Number: types.BlockNumber(i + 1),
+		ao.BlockHistory = append(ao.BlockHistory, commontypes.BlockKey{
+			Number: commontypes.BlockNumber(i + 1),
 			Hash:   [32]byte{1},
 		})
 	}
 	largePerformData := [10001]byte{}
 	for i := 0; i < ObservationPerformablesLimit; i++ {
 		newResult := validLogResult
-		uid := types.UpkeepIdentifier{}
+		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 10001)))
 		newResult.UpkeepID = uid
 		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
@@ -587,7 +588,7 @@ func TestLargeObservationSize(t *testing.T) {
 	}
 	for i := 0; i < ObservationConditionalsProposalsLimit; i++ {
 		newProposal := validConditionalProposal
-		uid := types.UpkeepIdentifier{}
+		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 1)))
 		newProposal.UpkeepID = uid
 		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
@@ -595,7 +596,7 @@ func TestLargeObservationSize(t *testing.T) {
 	}
 	for i := 0; i < ObservationLogRecoveryProposalsLimit; i++ {
 		newProposal := validLogProposal
-		uid := types.UpkeepIdentifier{}
+		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 1001)))
 		newProposal.UpkeepID = uid
 		newProposal.WorkID = mockWorkIDGenerator(newProposal.UpkeepID, newProposal.Trigger)
@@ -611,7 +612,7 @@ func TestLargeObservationSize(t *testing.T) {
 	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation should be less than maxObservationSize")
 }
 
-func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
+func mockUpkeepTypeGetter(id commontypes.UpkeepIdentifier) types.UpkeepType {
 	if id == conditionalUpkeepID {
 		return types.ConditionTrigger
 	}
@@ -621,7 +622,7 @@ func mockUpkeepTypeGetter(id types.UpkeepIdentifier) types.UpkeepType {
 	return types.LogTrigger
 }
 
-func mockWorkIDGenerator(id types.UpkeepIdentifier, trigger types.Trigger) string {
+func mockWorkIDGenerator(id commontypes.UpkeepIdentifier, trigger commontypes.Trigger) string {
 	wid := id.String()
 	if trigger.LogTriggerExtension != nil {
 		wid += string(trigger.LogTriggerExtension.LogIdentifier())

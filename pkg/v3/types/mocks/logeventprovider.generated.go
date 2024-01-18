@@ -5,7 +5,8 @@ package mocks
 import (
 	context "context"
 
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -14,20 +15,34 @@ type MockLogEventProvider struct {
 	mock.Mock
 }
 
+// Close provides a mock function with given fields:
+func (_m *MockLogEventProvider) Close() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetLatestPayloads provides a mock function with given fields: _a0
-func (_m *MockLogEventProvider) GetLatestPayloads(_a0 context.Context) ([]types.UpkeepPayload, error) {
+func (_m *MockLogEventProvider) GetLatestPayloads(_a0 context.Context) ([]automation.UpkeepPayload, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []types.UpkeepPayload
+	var r0 []automation.UpkeepPayload
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]types.UpkeepPayload, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) ([]automation.UpkeepPayload, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []types.UpkeepPayload); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) []automation.UpkeepPayload); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.UpkeepPayload)
+			r0 = ret.Get(0).([]automation.UpkeepPayload)
 		}
 	}
 
@@ -38,6 +53,20 @@ func (_m *MockLogEventProvider) GetLatestPayloads(_a0 context.Context) ([]types.
 	}
 
 	return r0, r1
+}
+
+// Start provides a mock function with given fields: _a0
+func (_m *MockLogEventProvider) Start(_a0 context.Context) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 type mockConstructorTestingTNewMockLogEventProvider interface {

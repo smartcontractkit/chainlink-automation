@@ -6,24 +6,25 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func ConditionalTriggerFlows(
-	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ratio ocr2keepers.Ratio,
-	getter ocr2keepers.ConditionalUpkeepProvider,
-	subscriber ocr2keepers.BlockSubscriber,
-	builder ocr2keepers.PayloadBuilder,
-	resultStore ocr2keepers.ResultStore,
-	metadataStore ocr2keepers.MetadataStore,
+	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	ratio types.Ratio,
+	getter common.ConditionalUpkeepProvider,
+	subscriber common.BlockSubscriber,
+	builder common.PayloadBuilder,
+	resultStore types.ResultStore,
+	metadataStore types.MetadataStore,
 	runner ocr2keepersv3.Runner,
-	proposalQ ocr2keepers.ProposalQueue,
-	retryQ ocr2keepers.RetryQueue,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	proposalQ types.ProposalQueue,
+	retryQ types.RetryQueue,
+	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) []service.Recoverable {
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
 	conditionalFinal := newFinalConditionalFlow(preprocessors, resultStore, runner, FinalConditionalInterval, proposalQ, builder, retryQ, stateUpdater, logger)
@@ -36,24 +37,24 @@ func ConditionalTriggerFlows(
 }
 
 func LogTriggerFlows(
-	coord ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	resultStore ocr2keepers.ResultStore,
-	metadataStore ocr2keepers.MetadataStore,
+	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	resultStore types.ResultStore,
+	metadataStore types.MetadataStore,
 	runner ocr2keepersv3.Runner,
-	logProvider ocr2keepers.LogEventProvider,
-	rp ocr2keepers.RecoverableProvider,
-	builder ocr2keepers.PayloadBuilder,
+	logProvider common.LogEventProvider,
+	rp common.RecoverableProvider,
+	builder common.PayloadBuilder,
 	logInterval time.Duration,
 	recoveryProposalInterval time.Duration,
 	recoveryFinalInterval time.Duration,
-	retryQ ocr2keepers.RetryQueue,
-	proposals ocr2keepers.ProposalQueue,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	retryQ types.RetryQueue,
+	proposals types.ProposalQueue,
+	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) []service.Recoverable {
 	// all flows use the same preprocessor based on the coordinator
 	// each flow can add preprocessors to this provided slice
-	preprocessors := []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
 
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network

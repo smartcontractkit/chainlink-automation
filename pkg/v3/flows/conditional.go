@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/preprocessors"
@@ -13,7 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 const (
@@ -29,15 +31,15 @@ const (
 )
 
 func newSampleProposalFlow(
-	pre []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	ratio ocr2keepers.Ratio,
-	getter ocr2keepers.ConditionalUpkeepProvider,
-	ms ocr2keepers.MetadataStore,
+	pre []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	ratio types.Ratio,
+	getter common.ConditionalUpkeepProvider,
+	ms types.MetadataStore,
 	runner ocr2keepersv3.Runner,
 	interval time.Duration,
 	logger *log.Logger,
 ) service.Recoverable {
-	pre = append(pre, preprocessors.NewProposalFilterer(ms, ocr2keepers.LogTrigger))
+	pre = append(pre, preprocessors.NewProposalFilterer(ms, types.LogTrigger))
 	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
 
 	observer := ocr2keepersv3.NewRunnableObserver(
@@ -48,21 +50,21 @@ func newSampleProposalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	return tickers.NewTimeTicker[[]common.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
 		return NewSampler(ratio, getter, logger), nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 }
 
 func NewSampler(
-	ratio ocr2keepers.Ratio,
-	getter ocr2keepers.ConditionalUpkeepProvider,
+	ratio types.Ratio,
+	getter common.ConditionalUpkeepProvider,
 	logger *log.Logger,
 ) *sampler {
 	return &sampler{
 		logger:   logger,
 		getter:   getter,
 		ratio:    ratio,
-		shuffler: random.Shuffler[ocr2keepers.UpkeepPayload]{Source: random.NewCryptoRandSource()},
+		shuffler: random.Shuffler[common.UpkeepPayload]{Source: random.NewCryptoRandSource()},
 	}
 }
 
@@ -73,12 +75,12 @@ type shuffler[T any] interface {
 type sampler struct {
 	logger *log.Logger
 
-	ratio    ocr2keepers.Ratio
-	getter   ocr2keepers.ConditionalUpkeepProvider
-	shuffler shuffler[ocr2keepers.UpkeepPayload]
+	ratio    types.Ratio
+	getter   common.ConditionalUpkeepProvider
+	shuffler shuffler[common.UpkeepPayload]
 }
 
-func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+func (s *sampler) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
 	upkeeps, err := s.getter.GetActiveUpkeeps(ctx)
 	if err != nil {
 		return nil, err
@@ -105,14 +107,14 @@ func (s *sampler) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error
 }
 
 func newFinalConditionalFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	resultStore ocr2keepers.ResultStore,
+	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	interval time.Duration,
-	proposalQ ocr2keepers.ProposalQueue,
-	builder ocr2keepers.PayloadBuilder,
-	retryQ ocr2keepers.RetryQueue,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	proposalQ types.ProposalQueue,
+	builder common.PayloadBuilder,
+	retryQ types.RetryQueue,
+	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
@@ -130,12 +132,12 @@ func newFinalConditionalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	ticker := tickers.NewTimeTicker[[]common.UpkeepPayload](interval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
 		return coordinatedProposalsTick{
 			logger:    logger,
 			builder:   builder,
 			q:         proposalQ,
-			utype:     ocr2keepers.ConditionTrigger,
+			utype:     types.ConditionTrigger,
 			batchSize: FinalConditionalBatchSize,
 		}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))

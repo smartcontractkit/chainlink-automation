@@ -7,8 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 var (
@@ -33,7 +36,7 @@ type resultStore struct {
 	lock sync.RWMutex
 }
 
-var _ ocr2keepers.ResultStore = (*resultStore)(nil)
+var _ types.ResultStore = (*resultStore)(nil)
 
 func New(lggr *log.Logger) *resultStore {
 	return &resultStore{

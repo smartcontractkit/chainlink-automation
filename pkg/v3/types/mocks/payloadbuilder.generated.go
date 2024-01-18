@@ -5,7 +5,8 @@ package mocks
 import (
 	context "context"
 
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,7 +16,7 @@ type MockPayloadBuilder struct {
 }
 
 // BuildPayloads provides a mock function with given fields: _a0, _a1
-func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...types.CoordinatedBlockProposal) ([]types.UpkeepPayload, error) {
+func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...automation.CoordinatedBlockProposal) ([]automation.UpkeepPayload, error) {
 	_va := make([]interface{}, len(_a1))
 	for _i := range _a1 {
 		_va[_i] = _a1[_i]
@@ -25,20 +26,20 @@ func (_m *MockPayloadBuilder) BuildPayloads(_a0 context.Context, _a1 ...types.Co
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 []types.UpkeepPayload
+	var r0 []automation.UpkeepPayload
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, ...types.CoordinatedBlockProposal) ([]types.UpkeepPayload, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...automation.CoordinatedBlockProposal) ([]automation.UpkeepPayload, error)); ok {
 		return rf(_a0, _a1...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, ...types.CoordinatedBlockProposal) []types.UpkeepPayload); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...automation.CoordinatedBlockProposal) []automation.UpkeepPayload); ok {
 		r0 = rf(_a0, _a1...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.UpkeepPayload)
+			r0 = ret.Get(0).([]automation.UpkeepPayload)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, ...types.CoordinatedBlockProposal) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ...automation.CoordinatedBlockProposal) error); ok {
 		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)

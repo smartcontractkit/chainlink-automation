@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestConditionalTriggerFlows(t *testing.T) {
@@ -18,7 +18,7 @@ func TestConditionalTriggerFlows(t *testing.T) {
 		nil,
 		nil,
 		&mockSubscriber{
-			SubscribeFn: func() (int, chan ocr2keepers.BlockHistory, error) {
+			SubscribeFn: func() (int, chan common.BlockHistory, error) {
 				return 0, nil, nil
 			},
 		},
@@ -26,7 +26,7 @@ func TestConditionalTriggerFlows(t *testing.T) {
 		nil,
 		nil,
 		&mockRunner{
-			CheckUpkeepsFn: func(ctx context.Context, payload ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+			CheckUpkeepsFn: func(ctx context.Context, payload ...common.UpkeepPayload) ([]common.CheckResult, error) {
 				return nil, nil
 			},
 		},
@@ -44,7 +44,7 @@ func TestLogTriggerFlows(t *testing.T) {
 		nil,
 		nil,
 		&mockRunner{
-			CheckUpkeepsFn: func(ctx context.Context, payload ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+			CheckUpkeepsFn: func(ctx context.Context, payload ...common.UpkeepPayload) ([]common.CheckResult, error) {
 				return nil, nil
 			},
 		},
@@ -63,21 +63,29 @@ func TestLogTriggerFlows(t *testing.T) {
 }
 
 type mockRunner struct {
-	CheckUpkeepsFn func(context.Context, ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error)
+	CheckUpkeepsFn func(context.Context, ...common.UpkeepPayload) ([]common.CheckResult, error)
 }
 
-func (r *mockRunner) CheckUpkeeps(ctx context.Context, p ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+func (r *mockRunner) CheckUpkeeps(ctx context.Context, p ...common.UpkeepPayload) ([]common.CheckResult, error) {
 	return r.CheckUpkeepsFn(ctx, p...)
 }
 
 type mockSubscriber struct {
-	SubscribeFn   func() (int, chan ocr2keepers.BlockHistory, error)
+	SubscribeFn   func() (int, chan common.BlockHistory, error)
 	UnsubscribeFn func(int) error
+	StartFn       func(ctx context.Context) error
+	CloseFn       func() error
 }
 
-func (r *mockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error) {
+func (r *mockSubscriber) Subscribe() (int, chan common.BlockHistory, error) {
 	return r.SubscribeFn()
 }
 func (r *mockSubscriber) Unsubscribe(i int) error {
 	return r.UnsubscribeFn(i)
+}
+func (r *mockSubscriber) Start(ctx context.Context) error {
+	return r.StartFn(ctx)
+}
+func (r *mockSubscriber) Close() error {
+	return r.CloseFn()
 }

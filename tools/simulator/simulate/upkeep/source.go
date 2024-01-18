@@ -5,7 +5,8 @@ import (
 	"log"
 	"math/big"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
@@ -36,6 +37,14 @@ func NewSource(
 		logger:           log.New(logger.Writer(), "[upkeep-source] ", log.Ldate|log.Ltime|log.Lshortfile),
 		recoveryLookback: lookback,
 	}
+}
+
+func (src *Source) Close() error {
+	return nil
+}
+
+func (src *Source) Start(_ context.Context) error {
+	return nil
 }
 
 // GetActiveUpkeeps delivers all active conditional upkeep payloads. Payloads

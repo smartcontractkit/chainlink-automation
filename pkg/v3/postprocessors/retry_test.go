@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRetryPostProcessor_PostProcess(t *testing.T) {

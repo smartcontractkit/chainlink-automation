@@ -6,13 +6,15 @@ import (
 	"log"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (
@@ -26,14 +28,14 @@ const (
 )
 
 func newFinalRecoveryFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
-	resultStore ocr2keepers.ResultStore,
+	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
-	retryQ ocr2keepers.RetryQueue,
+	retryQ types.RetryQueue,
 	recoveryFinalizationInterval time.Duration,
-	proposalQ ocr2keepers.ProposalQueue,
-	builder ocr2keepers.PayloadBuilder,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	proposalQ types.ProposalQueue,
+	builder common.PayloadBuilder,
+	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(
@@ -52,12 +54,12 @@ func newFinalRecoveryFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	ticker := tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryFinalizationInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	ticker := tickers.NewTimeTicker[[]common.UpkeepPayload](recoveryFinalizationInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
 		return coordinatedProposalsTick{
 			logger:    logger,
 			builder:   builder,
 			q:         proposalQ,
-			utype:     ocr2keepers.LogTrigger,
+			utype:     types.LogTrigger,
 			batchSize: FinalRecoveryBatchSize,
 		}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
@@ -68,13 +70,13 @@ func newFinalRecoveryFlow(
 // coordinatedProposalsTick is used to push proposals from the proposal queue to some observer
 type coordinatedProposalsTick struct {
 	logger    *log.Logger
-	builder   ocr2keepers.PayloadBuilder
-	q         ocr2keepers.ProposalQueue
-	utype     ocr2keepers.UpkeepType
+	builder   common.PayloadBuilder
+	q         types.ProposalQueue
+	utype     types.UpkeepType
 	batchSize int
 }
 
-func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+func (t coordinatedProposalsTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
 	if t.q == nil {
 		return nil, nil
 	}
@@ -89,7 +91,7 @@ func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.Upke
 	if err != nil {
 		return nil, fmt.Errorf("failed to build payloads from proposals: %w", err)
 	}
-	payloads := []ocr2keepers.UpkeepPayload{}
+	payloads := []common.UpkeepPayload{}
 	filtered := 0
 	for _, p := range builtPayloads {
 		if p.IsEmpty() {
@@ -103,15 +105,15 @@ func (t coordinatedProposalsTick) Value(ctx context.Context) ([]ocr2keepers.Upke
 }
 
 func newRecoveryProposalFlow(
-	preProcessors []ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload],
+	preProcessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
 	runner ocr2keepersv3.Runner,
-	metadataStore ocr2keepers.MetadataStore,
-	recoverableProvider ocr2keepers.RecoverableProvider,
+	metadataStore types.MetadataStore,
+	recoverableProvider common.RecoverableProvider,
 	recoveryInterval time.Duration,
-	stateUpdater ocr2keepers.UpkeepStateUpdater,
+	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
-	preProcessors = append(preProcessors, preprocessors.NewProposalFilterer(metadataStore, ocr2keepers.LogTrigger))
+	preProcessors = append(preProcessors, preprocessors.NewProposalFilterer(metadataStore, types.LogTrigger))
 	postprocessors := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, logger),
 		postprocessors.NewAddProposalToMetadataStorePostprocessor(metadataStore),
@@ -125,17 +127,17 @@ func newRecoveryProposalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	return tickers.NewTimeTicker[[]ocr2keepers.UpkeepPayload](recoveryInterval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]ocr2keepers.UpkeepPayload], error) {
+	return tickers.NewTimeTicker[[]common.UpkeepPayload](recoveryInterval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
 		return logRecoveryTick{logger: logger, logRecoverer: recoverableProvider}, nil
 	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 }
 
 type logRecoveryTick struct {
-	logRecoverer ocr2keepers.RecoverableProvider
+	logRecoverer common.RecoverableProvider
 	logger       *log.Logger
 }
 
-func (et logRecoveryTick) Value(ctx context.Context) ([]ocr2keepers.UpkeepPayload, error) {
+func (et logRecoveryTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
 	if et.logRecoverer == nil {
 		return nil, nil
 	}

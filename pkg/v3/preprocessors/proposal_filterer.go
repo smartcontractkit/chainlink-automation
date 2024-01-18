@@ -4,10 +4,11 @@ import (
 	"context"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
-func NewProposalFilterer(metadata ocr2keepers.MetadataStore, upkeepType ocr2keepers.UpkeepType) ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] {
+func NewProposalFilterer(metadata types.MetadataStore, upkeepType types.UpkeepType) ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] {
 	return &proposalFilterer{
 		upkeepType: upkeepType,
 		metadata:   metadata,
@@ -15,8 +16,8 @@ func NewProposalFilterer(metadata ocr2keepers.MetadataStore, upkeepType ocr2keep
 }
 
 type proposalFilterer struct {
-	metadata   ocr2keepers.MetadataStore
-	upkeepType ocr2keepers.UpkeepType
+	metadata   types.MetadataStore
+	upkeepType types.UpkeepType
 }
 
 var _ ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] = (*proposalFilterer)(nil)

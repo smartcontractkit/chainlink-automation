@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 // NOTE: Any change to these values should keep backwards compatibility in mind
@@ -45,7 +47,7 @@ func (observation AutomationObservation) Encode() ([]byte, error) {
 	return json.Marshal(observation)
 }
 
-func DecodeAutomationObservation(data []byte, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) (AutomationObservation, error) {
+func DecodeAutomationObservation(data []byte, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) (AutomationObservation, error) {
 	ao := AutomationObservation{}
 	err := json.Unmarshal(data, &ao)
 	if err != nil {
@@ -58,7 +60,7 @@ func DecodeAutomationObservation(data []byte, utg ocr2keepers.UpkeepTypeGetter, 
 	return ao, nil
 }
 
-func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateAutomationObservation(o AutomationObservation, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) error {
 	// Validate Block History
 	if len(o.BlockHistory) > ObservationBlockHistoryLimit {
 		return fmt.Errorf("block history length cannot be greater than %d", ObservationBlockHistoryLimit)
@@ -103,9 +105,9 @@ func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 			return fmt.Errorf("proposals cannot have duplicate workIDs")
 		}
 		seenProposals[proposal.WorkID] = true
-		if utg(proposal.UpkeepID) == ocr2keepers.ConditionTrigger {
+		if utg(proposal.UpkeepID) == types.ConditionTrigger {
 			conditionalProposalCount++
-		} else if utg(proposal.UpkeepID) == ocr2keepers.LogTrigger {
+		} else if utg(proposal.UpkeepID) == types.LogTrigger {
 			logProposalCount++
 		}
 	}
@@ -120,7 +122,7 @@ func validateAutomationObservation(o AutomationObservation, utg ocr2keepers.Upke
 }
 
 // Validates the check result fields sent within an observation
-func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateCheckResult(r ocr2keepers.CheckResult, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) error {
 	if r.PipelineExecutionState != 0 || r.Retryable {
 		return fmt.Errorf("check result cannot have failed execution state")
 	}
@@ -154,7 +156,7 @@ func validateCheckResult(r ocr2keepers.CheckResult, utg ocr2keepers.UpkeepTypeGe
 	return nil
 }
 
-func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) error {
 	// No validation is done on Trigger.BlockNumber and Trigger.BlockHash because those
 	// get updated with a coordinated quorum block
 	ut := utg(p.UpkeepID)
@@ -168,13 +170,13 @@ func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg ocr2keep
 }
 
 // Validate validates the trigger fields, and any extensions if present.
-func validateTriggerExtensionType(t ocr2keepers.Trigger, ut ocr2keepers.UpkeepType) error {
+func validateTriggerExtensionType(t ocr2keepers.Trigger, ut types.UpkeepType) error {
 	switch ut {
-	case ocr2keepers.ConditionTrigger:
+	case types.ConditionTrigger:
 		if t.LogTriggerExtension != nil {
 			return fmt.Errorf("log trigger extension cannot be present for condition upkeep")
 		}
-	case ocr2keepers.LogTrigger:
+	case types.LogTrigger:
 		if t.LogTriggerExtension == nil {
 			return fmt.Errorf("log trigger extension cannot be empty for log upkeep")
 		}

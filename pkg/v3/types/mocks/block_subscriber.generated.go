@@ -3,7 +3,10 @@
 package mocks
 
 import (
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	context "context"
+
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -12,14 +15,42 @@ type MockBlockSubscriber struct {
 	mock.Mock
 }
 
+// Close provides a mock function with given fields:
+func (_m *MockBlockSubscriber) Close() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Start provides a mock function with given fields: _a0
+func (_m *MockBlockSubscriber) Start(_a0 context.Context) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Subscribe provides a mock function with given fields:
-func (_m *MockBlockSubscriber) Subscribe() (int, chan types.BlockHistory, error) {
+func (_m *MockBlockSubscriber) Subscribe() (int, chan automation.BlockHistory, error) {
 	ret := _m.Called()
 
 	var r0 int
-	var r1 chan types.BlockHistory
+	var r1 chan automation.BlockHistory
 	var r2 error
-	if rf, ok := ret.Get(0).(func() (int, chan types.BlockHistory, error)); ok {
+	if rf, ok := ret.Get(0).(func() (int, chan automation.BlockHistory, error)); ok {
 		return rf()
 	}
 	if rf, ok := ret.Get(0).(func() int); ok {
@@ -28,11 +59,11 @@ func (_m *MockBlockSubscriber) Subscribe() (int, chan types.BlockHistory, error)
 		r0 = ret.Get(0).(int)
 	}
 
-	if rf, ok := ret.Get(1).(func() chan types.BlockHistory); ok {
+	if rf, ok := ret.Get(1).(func() chan automation.BlockHistory); ok {
 		r1 = rf()
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(chan types.BlockHistory)
+			r1 = ret.Get(1).(chan automation.BlockHistory)
 		}
 	}
 

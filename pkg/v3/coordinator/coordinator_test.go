@@ -14,9 +14,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 func TestNewCoordinator(t *testing.T) {
@@ -26,17 +28,17 @@ func TestNewCoordinator(t *testing.T) {
 		fullRunComplete := make(chan struct{}, 1)
 
 		// constructor dependencies
-		upkeepTypeGetter := func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-			return ocr2keepers.ConditionTrigger
+		upkeepTypeGetter := func(uid common.UpkeepIdentifier) types.UpkeepType {
+			return types.ConditionTrigger
 		}
 
 		eventProvider := &mockEventProvider{
-			GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+			GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
 				callCount++
 				if callCount > 1 {
 					fullRunComplete <- struct{}{}
 				}
-				return []ocr2keepers.TransmitEvent{}, nil
+				return []common.TransmitEvent{}, nil
 			},
 		}
 
@@ -62,12 +64,12 @@ func TestNewCoordinator(t *testing.T) {
 		fullRunComplete := make(chan struct{}, 1)
 
 		// constructor dependencies
-		upkeepTypeGetter := func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-			return ocr2keepers.ConditionTrigger
+		upkeepTypeGetter := func(uid common.UpkeepIdentifier) types.UpkeepType {
+			return types.ConditionTrigger
 		}
 
 		eventProvider := &mockEventProvider{
-			GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+			GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
 				callCount++
 				if callCount > 1 {
 					fullRunComplete <- struct{}{}
@@ -102,12 +104,12 @@ func TestNewCoordinator(t *testing.T) {
 		fullRunComplete := make(chan struct{}, 1)
 
 		// constructor dependencies
-		upkeepTypeGetter := func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-			return ocr2keepers.ConditionTrigger
+		upkeepTypeGetter := func(uid common.UpkeepIdentifier) types.UpkeepType {
+			return types.ConditionTrigger
 		}
 
 		eventProvider := &mockEventProvider{
-			GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+			GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
 				callCount++
 				if callCount > 1 {
 					fullRunComplete <- struct{}{}
@@ -115,7 +117,7 @@ func TestNewCoordinator(t *testing.T) {
 
 				time.Sleep(cadence * 2)
 
-				return []ocr2keepers.TransmitEvent{}, nil
+				return []common.TransmitEvent{}, nil
 			},
 		}
 
@@ -161,8 +163,8 @@ func TestNewCoordinator(t *testing.T) {
 func TestNewCoordinator_checkEvents(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
-		eventProvider    ocr2keepers.TransmitEventProvider
+		upkeepTypeGetter types.UpkeepTypeGetter
+		eventProvider    types.TransmitEventProvider
 		cacheInit        map[string]record
 		visitedInit      map[string]struct{}
 		wantCache        map[string]record
@@ -174,7 +176,7 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 		{
 			name: "if GetLatestEvents errors, the error is returned",
 			eventProvider: &mockEventProvider{
-				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+				GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
 					return nil, errors.New("get latest events boom")
 				},
 			},
@@ -184,8 +186,8 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 		{
 			name: "if a transmit event has fewer than the required minimum confirmations, a message is logged",
 			eventProvider: &mockEventProvider{
-				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
-					return []ocr2keepers.TransmitEvent{
+				GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
+					return []common.TransmitEvent{
 						{
 							Confirmations: 1,
 						},
@@ -198,12 +200,12 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 		{
 			name: "visited transmit events are skipped",
 			eventProvider: &mockEventProvider{
-				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
-					return []ocr2keepers.TransmitEvent{
+				GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
+					return []common.TransmitEvent{
 						{
 							Confirmations:   2,
 							TransactionHash: [32]byte{1, 1, 1, 1},
-							CheckBlock:      ocr2keepers.BlockNumber(99),
+							CheckBlock:      common.BlockNumber(99),
 							WorkID:          "workID1",
 						},
 					}, nil
@@ -218,11 +220,11 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 		{
 			name: "if a transmit event has a lower check block number than the corresponding record in the cache, a message is logged",
 			eventProvider: &mockEventProvider{
-				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
-					return []ocr2keepers.TransmitEvent{
+				GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
+					return []common.TransmitEvent{
 						{
 							Confirmations: 2,
-							CheckBlock:    ocr2keepers.BlockNumber(99),
+							CheckBlock:    common.BlockNumber(99),
 							WorkID:        "workID1",
 						},
 					}, nil
@@ -231,13 +233,13 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 			cacheInit: map[string]record{
 				"workID1": {
 					checkBlockNumber: 100,
-					transmitType:     ocr2keepers.PerformEvent,
+					transmitType:     common.PerformEvent,
 				},
 			},
 			wantCache: map[string]record{
 				"workID1": {
 					checkBlockNumber: 100,
-					transmitType:     ocr2keepers.PerformEvent,
+					transmitType:     common.PerformEvent,
 				},
 			},
 			visitedInit:    map[string]struct{}{},
@@ -246,65 +248,65 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 		{
 			name: "if a transmit event has a matching block number with the corresponding record in the cache, the record is updated",
 			eventProvider: &mockEventProvider{
-				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
-					return []ocr2keepers.TransmitEvent{
+				GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
+					return []common.TransmitEvent{
 						{
 							Confirmations: 2,
-							Type:          ocr2keepers.PerformEvent,
-							CheckBlock:    ocr2keepers.BlockNumber(100),
+							Type:          common.PerformEvent,
+							CheckBlock:    common.BlockNumber(100),
 							WorkID:        "workID1",
-							TransmitBlock: ocr2keepers.BlockNumber(99),
+							TransmitBlock: common.BlockNumber(99),
 						},
 					}, nil
 				},
 			},
 			cacheInit: map[string]record{
 				"workID1": {
-					checkBlockNumber:      ocr2keepers.BlockNumber(100),
-					transmitType:          ocr2keepers.PerformEvent,
+					checkBlockNumber:      common.BlockNumber(100),
+					transmitType:          common.PerformEvent,
 					isTransmissionPending: false,
-					transmitBlockNumber:   ocr2keepers.BlockNumber(99),
+					transmitBlockNumber:   common.BlockNumber(99),
 				},
 			},
 			wantCache: map[string]record{
 				"workID1": {
-					checkBlockNumber:      ocr2keepers.BlockNumber(100),
-					transmitType:          ocr2keepers.PerformEvent,
+					checkBlockNumber:      common.BlockNumber(100),
+					transmitType:          common.PerformEvent,
 					isTransmissionPending: false,
-					transmitBlockNumber:   ocr2keepers.BlockNumber(99),
+					transmitBlockNumber:   common.BlockNumber(99),
 				},
 			},
 		},
 		{
 			name: "if a transmit event has a higher block number than the corresponding record in the cache, the record is completely reset with the transmit event data",
 			eventProvider: &mockEventProvider{
-				GetLatestEventsFn: func(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
-					return []ocr2keepers.TransmitEvent{
+				GetLatestEventsFn: func(ctx context.Context) ([]common.TransmitEvent, error) {
+					return []common.TransmitEvent{
 						{
 							Confirmations:   2,
 							TransactionHash: [32]byte{1, 1, 1, 1},
-							Type:            ocr2keepers.PerformEvent,
-							CheckBlock:      ocr2keepers.BlockNumber(200),
+							Type:            common.PerformEvent,
+							CheckBlock:      common.BlockNumber(200),
 							WorkID:          "workID1",
-							TransmitBlock:   ocr2keepers.BlockNumber(99),
+							TransmitBlock:   common.BlockNumber(99),
 						},
 					}, nil
 				},
 			},
 			cacheInit: map[string]record{
 				"workID1": {
-					checkBlockNumber:      ocr2keepers.BlockNumber(100),
-					transmitType:          ocr2keepers.PerformEvent,
+					checkBlockNumber:      common.BlockNumber(100),
+					transmitType:          common.PerformEvent,
 					isTransmissionPending: false,
-					transmitBlockNumber:   ocr2keepers.BlockNumber(99),
+					transmitBlockNumber:   common.BlockNumber(99),
 				},
 			},
 			wantCache: map[string]record{
 				"workID1": {
-					checkBlockNumber:      ocr2keepers.BlockNumber(200),
-					transmitType:          ocr2keepers.PerformEvent,
+					checkBlockNumber:      common.BlockNumber(200),
+					transmitType:          common.PerformEvent,
 					isTransmissionPending: false,
-					transmitBlockNumber:   ocr2keepers.BlockNumber(99),
+					transmitBlockNumber:   common.BlockNumber(99),
 				},
 			},
 		},
@@ -349,15 +351,15 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
 		cacheInit      map[string]record
-		reportedUpkeep ocr2keepers.ReportedUpkeep
+		reportedUpkeep common.ReportedUpkeep
 		shouldAccept   bool
 		wantCache      map[string]record
 	}{
 		{
 			name: "if the given work ID does not exist in the cache, we should accept and update the cache",
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 200,
 				},
 			},
@@ -375,13 +377,13 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 				"workID1": {
 					checkBlockNumber:      100,
 					isTransmissionPending: true,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   99,
 				},
 			},
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 200,
 				},
 			},
@@ -399,13 +401,13 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 				"workID1": {
 					checkBlockNumber:      100,
 					isTransmissionPending: true,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   99,
 				},
 			},
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 99,
 				},
 			},
@@ -414,7 +416,7 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 				"workID1": {
 					checkBlockNumber:      100,
 					isTransmissionPending: true,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   99,
 				},
 			},
@@ -425,13 +427,13 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 				"workID1": {
 					checkBlockNumber:      100,
 					isTransmissionPending: true,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   99,
 				},
 			},
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 100,
 				},
 			},
@@ -440,7 +442,7 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 				"workID1": {
 					checkBlockNumber:      100,
 					isTransmissionPending: true,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   99,
 				},
 			},
@@ -472,14 +474,14 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
 		cacheInit      map[string]record
-		reportedUpkeep ocr2keepers.ReportedUpkeep
+		reportedUpkeep common.ReportedUpkeep
 		expectsMessage bool
 		wantMessage    string
 		shouldTransmit bool
 	}{
 		{
 			name: "if the given work ID does not exist in the cache, we should not transmit",
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
 			},
 			shouldTransmit: false,
@@ -491,9 +493,9 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 					checkBlockNumber: 200,
 				},
 			},
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 100,
 				},
 			},
@@ -507,9 +509,9 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 					isTransmissionPending: true,
 				},
 			},
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 200,
 				},
 			},
@@ -523,9 +525,9 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 					isTransmissionPending: false,
 				},
 			},
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 200,
 				},
 			},
@@ -538,9 +540,9 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 					checkBlockNumber: 100,
 				},
 			},
-			reportedUpkeep: ocr2keepers.ReportedUpkeep{
+			reportedUpkeep: common.ReportedUpkeep{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 200,
 				},
 			},
@@ -569,21 +571,21 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 func TestCoordinator_ShouldProcess(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+		upkeepTypeGetter types.UpkeepTypeGetter
 		cacheInit        map[string]record
-		payload          ocr2keepers.UpkeepPayload
+		payload          common.UpkeepPayload
 		shouldProcess    bool
 	}{
 		{
 			name: "if the given work ID does not exist in the cache, we should process",
-			payload: ocr2keepers.UpkeepPayload{
+			payload: common.UpkeepPayload{
 				WorkID: "workID1",
 			},
 			shouldProcess: true,
 		},
 		{
 			name: "if the given work ID does exist in the cache, and is pending transmission, we should not process",
-			payload: ocr2keepers.UpkeepPayload{
+			payload: common.UpkeepPayload{
 				WorkID: "workID1",
 			},
 			cacheInit: map[string]record{
@@ -595,51 +597,51 @@ func TestCoordinator_ShouldProcess(t *testing.T) {
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, and upkeep is log trigger, we should not process",
-			payload: ocr2keepers.UpkeepPayload{
+			payload: common.UpkeepPayload{
 				WorkID: "workID1",
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 				},
 			},
 			shouldProcess: false,
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is log trigger, we should process",
-			payload: ocr2keepers.UpkeepPayload{
+			payload: common.UpkeepPayload{
 				WorkID: "workID1",
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.StaleReportEvent,
+					transmitType:          common.StaleReportEvent,
 				},
 			},
 			shouldProcess: true,
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is greater than the cache transmit block, and upkeep is conditional, we should process",
-			payload: ocr2keepers.UpkeepPayload{
+			payload: common.UpkeepPayload{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 200,
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   100,
 				},
 			},
@@ -647,19 +649,19 @@ func TestCoordinator_ShouldProcess(t *testing.T) {
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is less than the cache transmit block, and upkeep is conditional, we should not process",
-			payload: ocr2keepers.UpkeepPayload{
+			payload: common.UpkeepPayload{
 				WorkID: "workID1",
-				Trigger: ocr2keepers.Trigger{
+				Trigger: common.Trigger{
 					BlockNumber: 100,
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   200,
 				},
 			},
@@ -667,16 +669,16 @@ func TestCoordinator_ShouldProcess(t *testing.T) {
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is conditional, we should process",
-			payload: ocr2keepers.UpkeepPayload{
+			payload: common.UpkeepPayload{
 				WorkID: "workID1",
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.StaleReportEvent,
+					transmitType:          common.StaleReportEvent,
 				},
 			},
 			shouldProcess: true,
@@ -697,19 +699,19 @@ func TestCoordinator_ShouldProcess(t *testing.T) {
 func TestNewCoordinator_Preprocess(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+		upkeepTypeGetter types.UpkeepTypeGetter
 		cacheInit        map[string]record
-		payloads         []ocr2keepers.UpkeepPayload
-		wantPayloads     []ocr2keepers.UpkeepPayload
+		payloads         []common.UpkeepPayload
+		wantPayloads     []common.UpkeepPayload
 	}{
 		{
 			name: "if the given work ID does not exist in the cache, we should process",
-			payloads: []ocr2keepers.UpkeepPayload{
+			payloads: []common.UpkeepPayload{
 				{
 					WorkID: "workID1",
 				},
 			},
-			wantPayloads: []ocr2keepers.UpkeepPayload{
+			wantPayloads: []common.UpkeepPayload{
 				{
 					WorkID: "workID1",
 				},
@@ -717,12 +719,12 @@ func TestNewCoordinator_Preprocess(t *testing.T) {
 		},
 		{
 			name: "if the given work ID does exist in the cache, and is pending transmission, we should not process",
-			payloads: []ocr2keepers.UpkeepPayload{
+			payloads: []common.UpkeepPayload{
 				{
 					WorkID: "workID1",
 				},
 			},
-			wantPayloads: []ocr2keepers.UpkeepPayload{},
+			wantPayloads: []common.UpkeepPayload{},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: true,
@@ -731,62 +733,62 @@ func TestNewCoordinator_Preprocess(t *testing.T) {
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, and upkeep is log trigger, we should not process",
-			payloads: []ocr2keepers.UpkeepPayload{
+			payloads: []common.UpkeepPayload{
 				{WorkID: "workID1"},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 				},
 			},
-			wantPayloads: []ocr2keepers.UpkeepPayload{},
+			wantPayloads: []common.UpkeepPayload{},
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is log trigger, we should process",
-			payloads: []ocr2keepers.UpkeepPayload{
+			payloads: []common.UpkeepPayload{
 				{WorkID: "workID1"},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.StaleReportEvent,
+					transmitType:          common.StaleReportEvent,
 				},
 			},
-			wantPayloads: []ocr2keepers.UpkeepPayload{
+			wantPayloads: []common.UpkeepPayload{
 				{WorkID: "workID1"},
 			},
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is greater than the cache transmit block, and upkeep is conditional, we should process",
-			payloads: []ocr2keepers.UpkeepPayload{
+			payloads: []common.UpkeepPayload{
 				{
 					WorkID: "workID1",
-					Trigger: ocr2keepers.Trigger{
+					Trigger: common.Trigger{
 						BlockNumber: 200,
 					},
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   100,
 				},
 			},
-			wantPayloads: []ocr2keepers.UpkeepPayload{
+			wantPayloads: []common.UpkeepPayload{
 				{
 					WorkID: "workID1",
-					Trigger: ocr2keepers.Trigger{
+					Trigger: common.Trigger{
 						BlockNumber: 200,
 					},
 				},
@@ -794,42 +796,42 @@ func TestNewCoordinator_Preprocess(t *testing.T) {
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is less than the cache transmit block, and upkeep is conditional, we should not process",
-			payloads: []ocr2keepers.UpkeepPayload{
+			payloads: []common.UpkeepPayload{
 				{
 					WorkID: "workID1",
-					Trigger: ocr2keepers.Trigger{
+					Trigger: common.Trigger{
 						BlockNumber: 100,
 					},
 				},
 			},
 
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   200,
 				},
 			},
-			wantPayloads: []ocr2keepers.UpkeepPayload{},
+			wantPayloads: []common.UpkeepPayload{},
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is conditional, we should process",
-			payloads: []ocr2keepers.UpkeepPayload{
+			payloads: []common.UpkeepPayload{
 				{WorkID: "workID1"},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.StaleReportEvent,
+					transmitType:          common.StaleReportEvent,
 				},
 			},
-			wantPayloads: []ocr2keepers.UpkeepPayload{
+			wantPayloads: []common.UpkeepPayload{
 				{WorkID: "workID1"},
 			},
 		},
@@ -851,20 +853,20 @@ func TestNewCoordinator_Preprocess(t *testing.T) {
 func TestCoordinator_FilterResults(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+		upkeepTypeGetter types.UpkeepTypeGetter
 		cacheInit        map[string]record
-		results          []ocr2keepers.CheckResult
-		wantResults      []ocr2keepers.CheckResult
+		results          []common.CheckResult
+		wantResults      []common.CheckResult
 		shouldProcess    bool
 	}{
 		{
 			name: "if the given work ID does not exist in the cache, results are included",
-			results: []ocr2keepers.CheckResult{
+			results: []common.CheckResult{
 				{
 					WorkID: "workID1",
 				},
 			},
-			wantResults: []ocr2keepers.CheckResult{
+			wantResults: []common.CheckResult{
 				{
 					WorkID: "workID1",
 				},
@@ -872,7 +874,7 @@ func TestCoordinator_FilterResults(t *testing.T) {
 		},
 		{
 			name: "if the given work ID does exist in the cache, and is pending transmission, results are not included",
-			results: []ocr2keepers.CheckResult{
+			results: []common.CheckResult{
 				{
 					WorkID: "workID1",
 				},
@@ -882,41 +884,41 @@ func TestCoordinator_FilterResults(t *testing.T) {
 					isTransmissionPending: true,
 				},
 			},
-			wantResults: []ocr2keepers.CheckResult{},
+			wantResults: []common.CheckResult{},
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, and upkeep is log trigger, results are not included",
-			results: []ocr2keepers.CheckResult{
+			results: []common.CheckResult{
 				{WorkID: "workID1"},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CheckResult{},
+			wantResults: []common.CheckResult{},
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is log trigger, results are included",
-			results: []ocr2keepers.CheckResult{
+			results: []common.CheckResult{
 				{
 					WorkID: "workID1",
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.StaleReportEvent,
+					transmitType:          common.StaleReportEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CheckResult{
+			wantResults: []common.CheckResult{
 				{
 					WorkID: "workID1",
 				},
@@ -924,28 +926,28 @@ func TestCoordinator_FilterResults(t *testing.T) {
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is greater than the cache transmit block, and upkeep is conditional, results are included",
-			results: []ocr2keepers.CheckResult{
+			results: []common.CheckResult{
 				{
 					WorkID: "workID1",
-					Trigger: ocr2keepers.Trigger{
+					Trigger: common.Trigger{
 						BlockNumber: 200,
 					},
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   100,
 				},
 			},
-			wantResults: []ocr2keepers.CheckResult{
+			wantResults: []common.CheckResult{
 				{
 					WorkID: "workID1",
-					Trigger: ocr2keepers.Trigger{
+					Trigger: common.Trigger{
 						BlockNumber: 200,
 					},
 				},
@@ -953,43 +955,43 @@ func TestCoordinator_FilterResults(t *testing.T) {
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is perform, payload check block is less than the cache transmit block, and upkeep is conditional, results are not included",
-			results: []ocr2keepers.CheckResult{
+			results: []common.CheckResult{
 				{
 					WorkID: "workID1",
-					Trigger: ocr2keepers.Trigger{
+					Trigger: common.Trigger{
 						BlockNumber: 100,
 					},
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 					transmitBlockNumber:   200,
 				},
 			},
-			wantResults: []ocr2keepers.CheckResult{},
+			wantResults: []common.CheckResult{},
 		},
 		{
 			name: "work ID exists, is not pending transmission, transmit type is stale, and upkeep is conditional, results are included",
-			results: []ocr2keepers.CheckResult{
+			results: []common.CheckResult{
 				{
 					WorkID: "workID1",
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID1": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.StaleReportEvent,
+					transmitType:          common.StaleReportEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CheckResult{
+			wantResults: []common.CheckResult{
 				{
 					WorkID: "workID1",
 				},
@@ -1012,20 +1014,20 @@ func TestCoordinator_FilterResults(t *testing.T) {
 func TestCoordinator_FilterProposals(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+		upkeepTypeGetter types.UpkeepTypeGetter
 		cacheInit        map[string]record
-		results          []ocr2keepers.CoordinatedBlockProposal
-		wantResults      []ocr2keepers.CoordinatedBlockProposal
+		results          []common.CoordinatedBlockProposal
+		wantResults      []common.CoordinatedBlockProposal
 		shouldProcess    bool
 	}{
 		{
 			name: "all proposals are included",
-			results: []ocr2keepers.CoordinatedBlockProposal{
+			results: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedBlockProposal{
+			wantResults: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1033,7 +1035,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "proposals with pending transmission are excluded",
-			results: []ocr2keepers.CoordinatedBlockProposal{
+			results: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1046,7 +1048,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					isTransmissionPending: true,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedBlockProposal{
+			wantResults: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1054,7 +1056,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "log proposals with a non pending transmission with a perform transmit type are excluded",
-			results: []ocr2keepers.CoordinatedBlockProposal{
+			results: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1062,16 +1064,16 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					WorkID: "workID2",
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID2": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedBlockProposal{
+			wantResults: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1079,7 +1081,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "condition trigger proposals with a non pending transmission with a perform transmit type are included",
-			results: []ocr2keepers.CoordinatedBlockProposal{
+			results: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1087,16 +1089,16 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					WorkID: "workID2",
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.ConditionTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.ConditionTrigger
 			},
 			cacheInit: map[string]record{
 				"workID2": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.PerformEvent,
+					transmitType:          common.PerformEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedBlockProposal{
+			wantResults: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1107,7 +1109,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 		},
 		{
 			name: "log proposals with a non pending transmission with a stale report transmit type are included",
-			results: []ocr2keepers.CoordinatedBlockProposal{
+			results: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1115,16 +1117,16 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 					WorkID: "workID2",
 				},
 			},
-			upkeepTypeGetter: func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.LogTrigger
+			upkeepTypeGetter: func(uid common.UpkeepIdentifier) types.UpkeepType {
+				return types.LogTrigger
 			},
 			cacheInit: map[string]record{
 				"workID2": {
 					isTransmissionPending: false,
-					transmitType:          ocr2keepers.StaleReportEvent,
+					transmitType:          common.StaleReportEvent,
 				},
 			},
-			wantResults: []ocr2keepers.CoordinatedBlockProposal{
+			wantResults: []common.CoordinatedBlockProposal{
 				{
 					WorkID: "workID1",
 				},
@@ -1148,9 +1150,9 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 }
 
 type mockEventProvider struct {
-	GetLatestEventsFn func(context.Context) ([]ocr2keepers.TransmitEvent, error)
+	GetLatestEventsFn func(context.Context) ([]common.TransmitEvent, error)
 }
 
-func (t *mockEventProvider) GetLatestEvents(ctx context.Context) ([]ocr2keepers.TransmitEvent, error) {
+func (t *mockEventProvider) GetLatestEvents(ctx context.Context) ([]common.TransmitEvent, error) {
 	return t.GetLatestEventsFn(ctx)
 }

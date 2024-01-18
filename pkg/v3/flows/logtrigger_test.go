@@ -14,8 +14,8 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestLogTriggerFlow(t *testing.T) {
@@ -30,34 +30,34 @@ func TestLogTriggerFlow(t *testing.T) {
 	upkeepStateUpdater := new(mocks.MockUpkeepStateUpdater)
 	lp := new(mocks.MockLogEventProvider)
 
-	lp.On("GetLatestPayloads", mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	lp.On("GetLatestPayloads", mock.Anything).Return([]common.UpkeepPayload{
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			UpkeepID: common.UpkeepIdentifier([32]byte{1}),
 			WorkID:   "0x1",
 		},
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			UpkeepID: common.UpkeepIdentifier([32]byte{2}),
 			WorkID:   "0x2",
 		},
 	}, nil).Times(times)
-	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]ocr2keepers.UpkeepPayload{
+	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]common.UpkeepPayload{
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			UpkeepID: common.UpkeepIdentifier([32]byte{1}),
 			WorkID:   "0x1",
 		},
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			UpkeepID: common.UpkeepIdentifier([32]byte{2}),
 			WorkID:   "0x2",
 		},
 	}, nil).Times(times)
-	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]ocr2keepers.CheckResult{
+	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]common.CheckResult{
 		{
-			UpkeepID: ocr2keepers.UpkeepIdentifier([32]byte{1}),
+			UpkeepID: common.UpkeepIdentifier([32]byte{1}),
 			WorkID:   "0x1",
 			Eligible: true,
 		},
 		{
-			UpkeepID:  ocr2keepers.UpkeepIdentifier([32]byte{2}),
+			UpkeepID:  common.UpkeepIdentifier([32]byte{2}),
 			WorkID:    "0x2",
 			Retryable: true,
 		},
@@ -68,7 +68,7 @@ func TestLogTriggerFlow(t *testing.T) {
 	// set the ticker time lower to reduce the test time
 	logInterval := 50 * time.Millisecond
 
-	svc := newLogTriggerFlow([]ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload]{coord},
+	svc := newLogTriggerFlow([]ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord},
 		rStore, runner, lp, logInterval, retryQ, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup

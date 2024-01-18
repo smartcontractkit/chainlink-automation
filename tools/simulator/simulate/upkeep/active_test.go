@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/config"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/upkeep"
@@ -30,13 +30,13 @@ func TestActiveTracker(t *testing.T) {
 
 	upkeep1 := chain.SimulatedUpkeep{
 		ID:       big.NewInt(8),
-		UpkeepID: util.NewUpkeepID(big.NewInt(8).Bytes(), uint8(ocr2keepers.ConditionTrigger)),
+		UpkeepID: util.NewUpkeepID(big.NewInt(8).Bytes(), uint8(types.ConditionTrigger)),
 		Type:     chain.ConditionalType,
 	}
 
 	upkeep2 := chain.SimulatedUpkeep{
 		ID:       big.NewInt(10),
-		UpkeepID: util.NewUpkeepID(big.NewInt(10).Bytes(), uint8(ocr2keepers.LogTrigger)),
+		UpkeepID: util.NewUpkeepID(big.NewInt(10).Bytes(), uint8(types.LogTrigger)),
 		Type:     chain.LogTriggerType,
 	}
 

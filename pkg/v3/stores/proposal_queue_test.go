@@ -3,10 +3,12 @@ package stores
 import (
 	"testing"
 
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestProposalQueue_Enqueue(t *testing.T) {
@@ -21,7 +23,7 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 			[]ocr2keepers.CoordinatedBlockProposal{},
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 			},
@@ -31,13 +33,13 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 			"add to non-empty queue",
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 			},
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x2}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x2}),
 					WorkID:   "0x2",
 				},
 			},
@@ -47,13 +49,13 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 			"add existing",
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 			},
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 			},
@@ -63,8 +65,8 @@ func TestProposalQueue_Enqueue(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			q := NewProposalQueue(func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.UpkeepType(uid[15])
+			q := NewProposalQueue(func(uid ocr2keepers.UpkeepIdentifier) types.UpkeepType {
+				return types.UpkeepType(uid[15])
 			})
 
 			require.NoError(t, q.Enqueue(tc.initials...))
@@ -78,14 +80,14 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 	tests := []struct {
 		name         string
 		toEnqueue    []ocr2keepers.CoordinatedBlockProposal
-		dequeueType  ocr2keepers.UpkeepType
+		dequeueType  types.UpkeepType
 		dequeueCount int
 		expected     []ocr2keepers.CoordinatedBlockProposal
 	}{
 		{
 			"empty queue",
 			[]ocr2keepers.CoordinatedBlockProposal{},
-			ocr2keepers.LogTrigger,
+			types.LogTrigger,
 			1,
 			[]ocr2keepers.CoordinatedBlockProposal{},
 		},
@@ -93,19 +95,19 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 			"happy path log trigger",
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 				{
-					UpkeepID: upkeepId(ocr2keepers.ConditionTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.ConditionTrigger, []byte{0x1}),
 					WorkID:   "0x2",
 				},
 			},
-			ocr2keepers.LogTrigger,
+			types.LogTrigger,
 			2,
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 			},
@@ -114,19 +116,19 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 			"happy path log trigger",
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.LogTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.LogTrigger, []byte{0x1}),
 					WorkID:   "0x1",
 				},
 				{
-					UpkeepID: upkeepId(ocr2keepers.ConditionTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.ConditionTrigger, []byte{0x1}),
 					WorkID:   "0x2",
 				},
 			},
-			ocr2keepers.ConditionTrigger,
+			types.ConditionTrigger,
 			2,
 			[]ocr2keepers.CoordinatedBlockProposal{
 				{
-					UpkeepID: upkeepId(ocr2keepers.ConditionTrigger, []byte{0x1}),
+					UpkeepID: upkeepId(types.ConditionTrigger, []byte{0x1}),
 					WorkID:   "0x2",
 				},
 			},
@@ -135,8 +137,8 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			q := NewProposalQueue(func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-				return ocr2keepers.UpkeepType(uid[15])
+			q := NewProposalQueue(func(uid ocr2keepers.UpkeepIdentifier) types.UpkeepType {
+				return types.UpkeepType(uid[15])
 			})
 			for _, p := range tc.toEnqueue {
 				err := q.Enqueue(p)
@@ -153,7 +155,7 @@ func TestProposalQueue_Dequeue(t *testing.T) {
 	}
 }
 
-func upkeepId(utype ocr2keepers.UpkeepType, rand []byte) ocr2keepers.UpkeepIdentifier {
+func upkeepId(utype types.UpkeepType, rand []byte) ocr2keepers.UpkeepIdentifier {
 	id := [32]byte{}
 	id[15] = byte(utype)
 	copy(id[16:], rand)

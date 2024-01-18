@@ -7,13 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestMetadataAddSamples(t *testing.T) {
 	ch := make(chan ocr2keepers.BlockHistory)
-	ms, err := stores.NewMetadataStore(&mockBlockSubscriber{ch: ch}, func(uid ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
-		return ocr2keepers.ConditionTrigger
+	ms, err := stores.NewMetadataStore(&mockBlockSubscriber{ch: ch}, func(uid ocr2keepers.UpkeepIdentifier) types.UpkeepType {
+		return types.ConditionTrigger
 	})
 	assert.NoError(t, err)
 
@@ -53,11 +54,13 @@ func TestMetadataAddSamples(t *testing.T) {
 
 	assert.NoError(t, err, "no error expected from post processor")
 
-	assert.Equal(t, 2, len(ms.ViewProposals(ocr2keepers.ConditionTrigger)))
+	assert.Equal(t, 2, len(ms.ViewProposals(types.ConditionTrigger)))
 }
 
 type mockBlockSubscriber struct {
-	ch chan ocr2keepers.BlockHistory
+	ch      chan ocr2keepers.BlockHistory
+	StartFn func(ctx context.Context) error
+	CloseFn func() error
 }
 
 func (_m *mockBlockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, error) {
@@ -66,4 +69,12 @@ func (_m *mockBlockSubscriber) Subscribe() (int, chan ocr2keepers.BlockHistory, 
 
 func (_m *mockBlockSubscriber) Unsubscribe(int) error {
 	return nil
+}
+
+func (_m *mockBlockSubscriber) Start(ctx context.Context) error {
+	return _m.StartFn(ctx)
+}
+
+func (_m *mockBlockSubscriber) Close() error {
+	return _m.CloseFn()
 }

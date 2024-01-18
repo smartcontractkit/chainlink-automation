@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,7 +13,7 @@ type MockEncoder struct {
 }
 
 // Encode provides a mock function with given fields: _a0
-func (_m *MockEncoder) Encode(_a0 ...types.CheckResult) ([]byte, error) {
+func (_m *MockEncoder) Encode(_a0 ...automation.CheckResult) ([]byte, error) {
 	_va := make([]interface{}, len(_a0))
 	for _i := range _a0 {
 		_va[_i] = _a0[_i]
@@ -24,10 +24,10 @@ func (_m *MockEncoder) Encode(_a0 ...types.CheckResult) ([]byte, error) {
 
 	var r0 []byte
 	var r1 error
-	if rf, ok := ret.Get(0).(func(...types.CheckResult) ([]byte, error)); ok {
+	if rf, ok := ret.Get(0).(func(...automation.CheckResult) ([]byte, error)); ok {
 		return rf(_a0...)
 	}
-	if rf, ok := ret.Get(0).(func(...types.CheckResult) []byte); ok {
+	if rf, ok := ret.Get(0).(func(...automation.CheckResult) []byte); ok {
 		r0 = rf(_a0...)
 	} else {
 		if ret.Get(0) != nil {
@@ -35,7 +35,7 @@ func (_m *MockEncoder) Encode(_a0 ...types.CheckResult) ([]byte, error) {
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(...types.CheckResult) error); ok {
+	if rf, ok := ret.Get(1).(func(...automation.CheckResult) error); ok {
 		r1 = rf(_a0...)
 	} else {
 		r1 = ret.Error(1)
@@ -45,19 +45,19 @@ func (_m *MockEncoder) Encode(_a0 ...types.CheckResult) ([]byte, error) {
 }
 
 // Extract provides a mock function with given fields: _a0
-func (_m *MockEncoder) Extract(_a0 []byte) ([]types.ReportedUpkeep, error) {
+func (_m *MockEncoder) Extract(_a0 []byte) ([]automation.ReportedUpkeep, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []types.ReportedUpkeep
+	var r0 []automation.ReportedUpkeep
 	var r1 error
-	if rf, ok := ret.Get(0).(func([]byte) ([]types.ReportedUpkeep, error)); ok {
+	if rf, ok := ret.Get(0).(func([]byte) ([]automation.ReportedUpkeep, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func([]byte) []types.ReportedUpkeep); ok {
+	if rf, ok := ret.Get(0).(func([]byte) []automation.ReportedUpkeep); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.ReportedUpkeep)
+			r0 = ret.Get(0).([]automation.ReportedUpkeep)
 		}
 	}
 

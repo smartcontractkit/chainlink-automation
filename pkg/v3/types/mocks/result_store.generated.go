@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	types "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	automation "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,7 +13,7 @@ type MockResultStore struct {
 }
 
 // Add provides a mock function with given fields: _a0
-func (_m *MockResultStore) Add(_a0 ...types.CheckResult) {
+func (_m *MockResultStore) Add(_a0 ...automation.CheckResult) {
 	_va := make([]interface{}, len(_a0))
 	for _i := range _a0 {
 		_va[_i] = _a0[_i]
@@ -35,19 +35,19 @@ func (_m *MockResultStore) Remove(_a0 ...string) {
 }
 
 // View provides a mock function with given fields:
-func (_m *MockResultStore) View() ([]types.CheckResult, error) {
+func (_m *MockResultStore) View() ([]automation.CheckResult, error) {
 	ret := _m.Called()
 
-	var r0 []types.CheckResult
+	var r0 []automation.CheckResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]types.CheckResult, error)); ok {
+	if rf, ok := ret.Get(0).(func() ([]automation.CheckResult, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() []types.CheckResult); ok {
+	if rf, ok := ret.Get(0).(func() []automation.CheckResult); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]types.CheckResult)
+			r0 = ret.Get(0).([]automation.CheckResult)
 		}
 	}
 

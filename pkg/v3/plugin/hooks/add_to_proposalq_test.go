@@ -10,6 +10,7 @@ import (
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestAddToProposalQHook_RunHook(t *testing.T) {
@@ -22,7 +23,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 		{
 			name: "Happy path add proposals to queue",
 			automationOutcome: ocr2keepersv3.AutomationOutcome{
-				SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				SurfacedProposals: [][]commontypes.CoordinatedBlockProposal{
 					{{WorkID: "1"}, {WorkID: "2"}},
 					{{WorkID: "3"}},
 				},
@@ -33,7 +34,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 		{
 			name: "Empty automation outcome",
 			automationOutcome: ocr2keepersv3.AutomationOutcome{
-				SurfacedProposals: [][]types.CoordinatedBlockProposal{},
+				SurfacedProposals: [][]commontypes.CoordinatedBlockProposal{},
 			},
 			expectedQueueSize: 0,
 			expectedLog:       "Added 0 proposals from outcome",
@@ -41,7 +42,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 		{
 			name: "Multiple rounds with proposals",
 			automationOutcome: ocr2keepersv3.AutomationOutcome{
-				SurfacedProposals: [][]types.CoordinatedBlockProposal{
+				SurfacedProposals: [][]commontypes.CoordinatedBlockProposal{
 					{{WorkID: "1"}, {WorkID: "2"}},
 					{{WorkID: "3"}},
 					{{WorkID: "4"}, {WorkID: "5"}, {WorkID: "6"}},
@@ -54,7 +55,7 @@ func TestAddToProposalQHook_RunHook(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			upkeepTypeGetter := func(uid types.UpkeepIdentifier) types.UpkeepType {
+			upkeepTypeGetter := func(uid commontypes.UpkeepIdentifier) types.UpkeepType {
 				return types.UpkeepType(uid[15])
 			}
 			proposalQ := stores.NewProposalQueue(upkeepTypeGetter)

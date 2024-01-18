@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"sync"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/simulate/chain"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
 )
@@ -101,7 +101,7 @@ func (pt *PerformTracker) registerTransmitted(transmits ...chain.TransmitEvent) 
 
 			pt.performed[result.WorkID] = true
 
-			if util.GetUpkeepType(result.UpkeepID) == ocr2keepers.ConditionTrigger {
+			if util.GetUpkeepType(result.UpkeepID) == types.ConditionTrigger {
 				performs, ok := pt.conditionals[key]
 				if !ok {
 					performs = []*big.Int{}

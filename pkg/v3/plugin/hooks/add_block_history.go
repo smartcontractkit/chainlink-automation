@@ -6,15 +6,15 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type AddBlockHistoryHook struct {
-	metadata ocr2keepers.MetadataStore
+	metadata types.MetadataStore
 	logger   *log.Logger
 }
 
-func NewAddBlockHistoryHook(ms ocr2keepers.MetadataStore, logger *log.Logger) AddBlockHistoryHook {
+func NewAddBlockHistoryHook(ms types.MetadataStore, logger *log.Logger) AddBlockHistoryHook {
 	return AddBlockHistoryHook{
 		metadata: ms,
 		logger:   log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-block-history]", telemetry.ServiceName), telemetry.LogPkgStdFlags)}

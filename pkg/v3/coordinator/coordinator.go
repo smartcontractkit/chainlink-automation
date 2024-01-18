@@ -7,10 +7,12 @@ import (
 	"log"
 	"time"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 const (
@@ -22,8 +24,8 @@ type coordinator struct {
 	closer internalutil.Closer
 	logger *log.Logger
 
-	eventsProvider   ocr2keepers.TransmitEventProvider
-	upkeepTypeGetter ocr2keepers.UpkeepTypeGetter
+	eventsProvider   types.TransmitEventProvider
+	upkeepTypeGetter types.UpkeepTypeGetter
 
 	cache   *util.Cache[record]
 	visited *util.Cache[bool]
@@ -32,16 +34,16 @@ type coordinator struct {
 	performLockoutWindow time.Duration
 }
 
-var _ ocr2keepers.Coordinator = (*coordinator)(nil)
+var _ types.Coordinator = (*coordinator)(nil)
 
 type record struct {
-	checkBlockNumber      ocr2keepers.BlockNumber
+	checkBlockNumber      common.BlockNumber
 	isTransmissionPending bool // false = transmitted
-	transmitType          ocr2keepers.TransmitEventType
-	transmitBlockNumber   ocr2keepers.BlockNumber
+	transmitType          common.TransmitEventType
+	transmitBlockNumber   common.BlockNumber
 }
 
-func NewCoordinator(transmitEventProvider ocr2keepers.TransmitEventProvider, upkeepTypeGetter ocr2keepers.UpkeepTypeGetter, conf config.OffchainConfig, logger *log.Logger) *coordinator {
+func NewCoordinator(transmitEventProvider types.TransmitEventProvider, upkeepTypeGetter types.UpkeepTypeGetter, conf config.OffchainConfig, logger *log.Logger) *coordinator {
 	performLockoutWindow := time.Duration(conf.PerformLockoutWindow) * time.Millisecond
 	return &coordinator{
 		logger:               logger,
@@ -54,7 +56,7 @@ func NewCoordinator(transmitEventProvider ocr2keepers.TransmitEventProvider, upk
 	}
 }
 
-func (c *coordinator) Accept(reportedUpkeep ocr2keepers.ReportedUpkeep) bool {
+func (c *coordinator) Accept(reportedUpkeep common.ReportedUpkeep) bool {
 	if v, ok := c.cache.Get(reportedUpkeep.WorkID); !ok {
 		c.cache.Set(reportedUpkeep.WorkID, record{
 			checkBlockNumber:      reportedUpkeep.Trigger.BlockNumber,
@@ -72,7 +74,7 @@ func (c *coordinator) Accept(reportedUpkeep ocr2keepers.ReportedUpkeep) bool {
 	return false
 }
 
-func (c *coordinator) ShouldTransmit(reportedUpkeep ocr2keepers.ReportedUpkeep) bool {
+func (c *coordinator) ShouldTransmit(reportedUpkeep common.ReportedUpkeep) bool {
 	if v, ok := c.cache.Get(reportedUpkeep.WorkID); !ok {
 		// We never saw this report, so don't try to transmit
 		// Can happen in edge cases when plugin restarts after shouldAccept was called
@@ -89,8 +91,8 @@ func (c *coordinator) ShouldTransmit(reportedUpkeep ocr2keepers.ReportedUpkeep) 
 	}
 }
 
-func (c *coordinator) PreProcess(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
-	res := make([]ocr2keepers.UpkeepPayload, 0)
+func (c *coordinator) PreProcess(_ context.Context, payloads []common.UpkeepPayload) ([]common.UpkeepPayload, error) {
+	res := make([]common.UpkeepPayload, 0)
 	for _, payload := range payloads {
 		if c.ShouldProcess(payload.WorkID, payload.UpkeepID, payload.Trigger) {
 			res = append(res, payload)
@@ -99,8 +101,8 @@ func (c *coordinator) PreProcess(_ context.Context, payloads []ocr2keepers.Upkee
 	return res, nil
 }
 
-func (c *coordinator) FilterResults(results []ocr2keepers.CheckResult) ([]ocr2keepers.CheckResult, error) {
-	res := make([]ocr2keepers.CheckResult, 0)
+func (c *coordinator) FilterResults(results []common.CheckResult) ([]common.CheckResult, error) {
+	res := make([]common.CheckResult, 0)
 	for _, result := range results {
 		if c.ShouldProcess(result.WorkID, result.UpkeepID, result.Trigger) {
 			res = append(res, result)
@@ -109,14 +111,14 @@ func (c *coordinator) FilterResults(results []ocr2keepers.CheckResult) ([]ocr2ke
 	return res, nil
 }
 
-func (c *coordinator) FilterProposals(proposals []ocr2keepers.CoordinatedBlockProposal) ([]ocr2keepers.CoordinatedBlockProposal, error) {
-	res := make([]ocr2keepers.CoordinatedBlockProposal, 0)
+func (c *coordinator) FilterProposals(proposals []common.CoordinatedBlockProposal) ([]common.CoordinatedBlockProposal, error) {
+	res := make([]common.CoordinatedBlockProposal, 0)
 	for _, proposal := range proposals {
 		if v, ok := c.cache.Get(proposal.WorkID); ok {
 			if v.isTransmissionPending {
 				// This workID has a pending transmit, should not process it
 				continue
-			} else if c.upkeepTypeGetter(proposal.UpkeepID) == ocr2keepers.LogTrigger && v.transmitType == ocr2keepers.PerformEvent {
+			} else if c.upkeepTypeGetter(proposal.UpkeepID) == types.LogTrigger && v.transmitType == common.PerformEvent {
 				// For log triggers if workID was performed then skip
 				// However for conditional triggers, allow proposals to be made for newer check block numbers
 				continue
@@ -127,25 +129,25 @@ func (c *coordinator) FilterProposals(proposals []ocr2keepers.CoordinatedBlockPr
 	return res, nil
 }
 
-func (c *coordinator) ShouldProcess(workID string, upkeepID ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) bool {
+func (c *coordinator) ShouldProcess(workID string, upkeepID common.UpkeepIdentifier, trigger common.Trigger) bool {
 	if v, ok := c.cache.Get(workID); ok {
 		if v.isTransmissionPending {
 			// This workID has a pending transmit, should not process it
 			return false
 		} else {
 			switch c.upkeepTypeGetter(upkeepID) {
-			case ocr2keepers.LogTrigger:
+			case types.LogTrigger:
 				switch v.transmitType {
-				case ocr2keepers.PerformEvent:
+				case common.PerformEvent:
 					// For log triggers, a particular workID should only ever be performed once
 					return false
 				default:
 					// There was an attempt to perform this workID, but it failed, so should be processed again
 					return true
 				}
-			case ocr2keepers.ConditionTrigger:
+			case types.ConditionTrigger:
 				switch v.transmitType {
-				case ocr2keepers.PerformEvent:
+				case common.PerformEvent:
 					// For conditionals, a particular workID should only be checked after or on its last perform block
 					return trigger.BlockNumber >= v.transmitBlockNumber
 				default:
@@ -265,6 +267,6 @@ func (c *coordinator) Close() error {
 	return nil
 }
 
-func (c *coordinator) visitedID(e ocr2keepers.TransmitEvent) string {
+func (c *coordinator) visitedID(e common.TransmitEvent) string {
 	return fmt.Sprintf("%s_%x_%d", e.WorkID, e.TransactionHash, e.TransmitBlock)
 }

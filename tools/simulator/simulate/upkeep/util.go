@@ -3,8 +3,9 @@ package upkeep
 import (
 	"fmt"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/tools/simulator/util"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 var (
@@ -38,7 +39,7 @@ func (u Util) Extract(b []byte) ([]ocr2keepers.ReportedUpkeep, error) {
 }
 
 // GetType returns the upkeep type from an identifier.
-func (u Util) GetType(id ocr2keepers.UpkeepIdentifier) ocr2keepers.UpkeepType {
+func (u Util) GetType(id ocr2keepers.UpkeepIdentifier) types.UpkeepType {
 	return util.GetUpkeepType(id)
 }
 

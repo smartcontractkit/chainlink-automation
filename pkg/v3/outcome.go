@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 // NOTE: Any change to these values should keep backwards compatibility in mind
@@ -51,7 +52,7 @@ type AutomationOutcome struct {
 }
 
 // ValidateAutomationOutcome validates individual values in an AutomationOutcome
-func validateAutomationOutcome(o AutomationOutcome, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) error {
+func validateAutomationOutcome(o AutomationOutcome, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) error {
 	// Validate AgreedPerformables
 	if (len(o.AgreedPerformables)) > OutcomeAgreedPerformablesLimit {
 		return fmt.Errorf("outcome performable length cannot be greater than %d", OutcomeAgreedPerformablesLimit)
@@ -98,7 +99,7 @@ func (outcome AutomationOutcome) Encode() ([]byte, error) {
 
 // DecodeAutomationOutcome decodes an AutomationOutcome from an encoded array
 // of bytes. Possible errors come from the encoding/json package
-func DecodeAutomationOutcome(data []byte, utg ocr2keepers.UpkeepTypeGetter, wg ocr2keepers.WorkIDGenerator) (AutomationOutcome, error) {
+func DecodeAutomationOutcome(data []byte, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) (AutomationOutcome, error) {
 	ao := AutomationOutcome{}
 	err := json.Unmarshal(data, &ao)
 	if err != nil {
