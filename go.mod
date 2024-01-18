@@ -15,7 +15,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
-	github.com/smartcontractkit/chainlink-common v0.1.7-0.20240112182818-306f99b807df
+	github.com/smartcontractkit/chainlink-common v0.1.7-0.20240118012339-4864e2306bb1
 	github.com/smartcontractkit/libocr v0.0.0-20230925165524-ffa38fe11ef8
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4

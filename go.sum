@@ -117,6 +117,8 @@ github.com/shopspring/decimal v1.3.1 h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5g
 github.com/shopspring/decimal v1.3.1/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/smartcontractkit/chainlink-common v0.1.7-0.20240112182818-306f99b807df h1:J5e8CK13znCyjn+en9TbN/2d1rLrYS9CA+jFspEgWmk=
 github.com/smartcontractkit/chainlink-common v0.1.7-0.20240112182818-306f99b807df/go.mod h1:f+0ei9N4PlTJHu7pbGzEjTnBUr45syPdGFu5+31lS5Q=
+github.com/smartcontractkit/chainlink-common v0.1.7-0.20240118012339-4864e2306bb1 h1:3cWO2/lFVDul5SVTgl4/RX/GXcT8Zq5NGMPeNEz09tY=
+github.com/smartcontractkit/chainlink-common v0.1.7-0.20240118012339-4864e2306bb1/go.mod h1:f+0ei9N4PlTJHu7pbGzEjTnBUr45syPdGFu5+31lS5Q=
 github.com/smartcontractkit/libocr v0.0.0-20230925165524-ffa38fe11ef8 h1:R9NkVN+1fooUJFsN9zj9gDY1B+zv54zNO785RQZRVfE=
 github.com/smartcontractkit/libocr v0.0.0-20230925165524-ffa38fe11ef8/go.mod h1:2lyRkw/qLQgUWlrWWmq5nj0y90rWeO6Y+v+fCakRgb0=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
