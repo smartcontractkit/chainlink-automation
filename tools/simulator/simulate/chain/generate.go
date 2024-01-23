@@ -75,6 +75,28 @@ func generateBasicSimulatedUpkeeps(event config.GenerateUpkeepEvent, alwaysEligi
 
 	for y := 1; y <= event.Count; y++ {
 		id := new(big.Int).Add(event.StartID, big.NewInt(int64(y)))
+		retryable := true
+		expected := event.Expected == config.AllExpected
+
+		states, err := NewCheckPipelineStateManager("")
+		if err != nil {
+			return nil, err
+		}
+
+		for _, override := range event.Overrides {
+			if id.Cmp(override.UpkeepID) == 0 {
+				states, err = NewCheckPipelineStateManager(override.FailurePattern)
+				if err != nil {
+					return nil, err
+				}
+
+				retryable = override.RetryableOnFailure
+				expected = override.Expected
+
+				break
+			}
+		}
+
 		simulated := SimulatedUpkeep{
 			ID:             id,
 			Type:           simulationType,
@@ -83,7 +105,9 @@ func generateBasicSimulatedUpkeeps(event config.GenerateUpkeepEvent, alwaysEligi
 			AlwaysEligible: alwaysEligible,
 			EligibleAt:     make([]*big.Int, 0),
 			TriggeredBy:    event.LogTriggeredBy,
-			Expected:       event.Expected == config.AllExpected,
+			Expected:       expected,
+			Retryable:      retryable,
+			States:         states,
 		}
 
 		generated = append(generated, simulated)
@@ -113,7 +137,6 @@ func generateEligibilityFuncSimulatedUpkeeps(event config.GenerateUpkeepEvent, s
 			AlwaysEligible: false,
 			EligibleAt:     make([]*big.Int, 0),
 			TriggeredBy:    event.LogTriggeredBy,
-			Expected:       event.Expected == config.AllExpected,
 		}
 
 		var genesis *big.Int
@@ -133,6 +156,32 @@ func generateEligibilityFuncSimulatedUpkeeps(event config.GenerateUpkeepEvent, s
 		if err := generateEligibles(&sym, genesis, limit, event.EligibilityFunc); err != nil {
 			return nil, err
 		}
+
+		retryable := true
+		expected := event.Expected == config.AllExpected
+
+		states, err := NewCheckPipelineStateManager("")
+		if err != nil {
+			return nil, err
+		}
+
+		for _, override := range event.Overrides {
+			if id.Cmp(override.UpkeepID) == 0 {
+				states, err = NewCheckPipelineStateManager(override.FailurePattern)
+				if err != nil {
+					return nil, err
+				}
+
+				retryable = override.RetryableOnFailure
+				expected = override.Expected
+
+				break
+			}
+		}
+
+		sym.Retryable = retryable
+		sym.States = states
+		sym.Expected = expected
 
 		generated = append(generated, sym)
 	}
