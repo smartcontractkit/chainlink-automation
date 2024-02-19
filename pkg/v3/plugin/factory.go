@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -90,6 +91,12 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 	if err != nil {
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
+
+	if err := factory.logProvider.SetConfig(context.Background(), conf.NumOfLogUpkeeps, conf.FastExecLogsHigh); err != nil {
+		return nil, info, fmt.Errorf("%w: failed to set log provider config", err)
+	}
+
+	factory.logger.Println("SET LOG PROVIDER CONFIG")
 
 	// create the plugin; all services start automatically
 	p, err := newPlugin(

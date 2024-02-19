@@ -63,6 +63,10 @@ type OffchainConfig struct {
 
 	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
 	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
+
+	NumOfLogUpkeeps uint32 `json:"numOfLogUpkeeps"`
+
+	FastExecLogsHigh uint32 `json:"fastExecLogsHigh"`
 }
 
 // DecodeOffchainConfig decodes bytes into an OffchainConfig
