@@ -92,11 +92,13 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
 
+	factory.logger.Println()
+
 	if err := factory.logProvider.SetConfig(context.Background(), conf.NumOfLogUpkeeps, conf.FastExecLogsHigh); err != nil {
 		return nil, info, fmt.Errorf("%w: failed to set log provider config", err)
 	}
 
-	factory.logger.Println("SET LOG PROVIDER CONFIG")
+	factory.logger.Printf("SET LOG PROVIDER CONFIG with NumOfLogUpkeeps %d and FastExecLogsHigh %d", conf.NumOfLogUpkeeps, conf.FastExecLogsHigh)
 
 	// create the plugin; all services start automatically
 	p, err := newPlugin(
