@@ -76,11 +76,15 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		},
 	}
 
+	factory.logger.Printf("Got raw plugin config: %s", string(c.OffchainConfig))
+
 	// decode the off-chain config
 	conf, err := config.DecodeOffchainConfig(c.OffchainConfig)
 	if err != nil {
 		return nil, info, err
 	}
+
+	factory.logger.Printf("Create new plugin with: NumOfLogUpkeeps %d, FastExecLogsHigh %d, GasLimitPerReport %d, PerformLockoutWindow %d, TargetProbability %d", conf.NumOfLogUpkeeps, conf.FastExecLogsHigh, conf.GasLimitPerReport, conf.PerformLockoutWindow, conf.TargetProbability)
 
 	parsed, err := strconv.ParseFloat(conf.TargetProbability, 32)
 	if err != nil {
