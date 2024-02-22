@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"log"
 
-	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+
+	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/prommetrics"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type AutomationReportInfo struct{}
@@ -97,6 +99,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
+			prommetrics.AutomationErrorInvalidOracleObservation.Inc()
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// at least f+1 valid observations
 			continue
@@ -115,6 +118,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 		// Decode the outcome to AutomationOutcome
 		ao, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
+			prommetrics.AutomationErrorPreviousOutcomeDecode.Inc()
 			return nil, err
 		}
 		prevOutcome = ao
