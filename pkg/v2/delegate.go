@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/smartcontractkit/libocr/commontypes"
 	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
@@ -36,6 +37,7 @@ type DelegateConfig struct {
 	OffchainKeyring              types.OffchainKeyring
 	OnchainKeyring               types.OnchainKeyring
 	LocalConfig                  types.LocalConfig
+	MetricsRegisterer            prometheus.Registerer
 
 	// ConditionalObserverFactory creates a new instance of a conditional
 	// observer during plugin startup
@@ -138,6 +140,7 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester:       c.OffchainConfigDigester,
 		OffchainKeyring:              c.OffchainKeyring,
 		OnchainKeyring:               c.OnchainKeyring,
+		MetricsRegisterer:            c.MetricsRegisterer,
 		ReportingPluginFactory: NewReportingPluginFactory(
 			c.Encoder,
 			c.Runner,
