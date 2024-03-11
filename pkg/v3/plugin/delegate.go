@@ -6,15 +6,17 @@ import (
 	"log"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/smartcontractkit/libocr/commontypes"
+	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/runner"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-	"github.com/smartcontractkit/libocr/commontypes"
-	offchainreporting "github.com/smartcontractkit/libocr/offchainreporting2plus"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 var (
@@ -40,6 +42,7 @@ type DelegateConfig struct {
 	OffchainKeyring              ocr2plustypes.OffchainKeyring
 	OnchainKeyring               ocr3types.OnchainKeyring[AutomationReportInfo]
 	LocalConfig                  ocr2plustypes.LocalConfig
+	MetricsRegisterer            prometheus.Registerer
 
 	// LogProvider allows reads on the latest log events ready to be processed
 	LogProvider ocr2keepers.LogEventProvider
@@ -159,6 +162,8 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 		OffchainConfigDigester:       c.OffchainConfigDigester,
 		OffchainKeyring:              c.OffchainKeyring,
 		OnchainKeyring:               c.OnchainKeyring,
+		MetricsRegisterer:            c.MetricsRegisterer,
+
 		ReportingPluginFactory: NewReportingPluginFactory(
 			c.LogProvider,
 			c.EventProvider,
