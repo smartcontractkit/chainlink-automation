@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// AutomationNamespace is the namespace for all Automation related metrics
+// NamespaceAutomation is the namespace for all Automation related metrics
 const NamespaceAutomation = "automation"
 
 // Plugin error types

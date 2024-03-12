@@ -60,7 +60,6 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		plugin.RemoveFromMetadataHook.RunHook(automationOutcome)
 		plugin.AddToProposalQHook.RunHook(automationOutcome)
 	}
-
 	// Create new AutomationObservation
 	observation := ocr2keepersv3.AutomationObservation{}
 
@@ -104,7 +103,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
-			prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginErrorTypeInvalidOracleObservation).Inc()
+			prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepOutcome, prommetrics.PluginErrorTypeInvalidOracleObservation).Inc()
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// at least f+1 valid observations
 			continue

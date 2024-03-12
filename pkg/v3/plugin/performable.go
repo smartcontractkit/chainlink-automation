@@ -54,8 +54,7 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 
 		p.resultCount[uid] = payloadCount
 	}
-	newResultCount := len(p.resultCount) - initialCount
-	p.logger.Printf("Added %d new results from %d performables", newResultCount, len(observation.Performable))
+	p.logger.Printf("Added %d new results from %d performables", len(p.resultCount)-initialCount, len(observation.Performable))
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
