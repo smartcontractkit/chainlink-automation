@@ -6,28 +6,38 @@ import (
 )
 
 // AutomationNamespace is the namespace for all Automation related metrics
-const AutomationNamespace = "automation"
+const NamespaceAutomation = "automation"
+
+// Plugin error types
+const (
+	PluginErrorTypeInvalidOracleObservation = "invalid_oracle_observation"
+	PluginErrorTypeDecodeOutcome            = "decode_outcome"
+	PluginErrorTypeEncodeReport             = "encode_report"
+)
+
+// Plugin steps
+const (
+	PluginStepResultStore = "result_store"
+	PluginStepObservation = "observation"
+	PluginStepOutcome     = "outcome"
+	PluginStepReports     = "reports"
+)
 
 // Automation metrics
 var (
-	AutomationNewResultsAddedFromPerformables = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: AutomationNamespace,
-		Name:      "new_results_added_from_performables",
-		Help:      "How many results were added from the peformables for a given observation",
+	AutomationPluginPerformables = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: NamespaceAutomation,
+		Name:      "plugin_performables",
+		Help:      "How many performables were present at a given step in the plugin flow",
+	}, []string{
+		"step",
 	})
-	AutomationTotalPerformablesInObservation = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: AutomationNamespace,
-		Name:      "total_performables_in_observation",
-		Help:      "How many total performables were in the observation",
-	})
-	AutomationErrorInvalidOracleObservation = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: AutomationNamespace,
-		Name:      "error_invalid_oracle_observation",
-		Help:      "Count of how many invalid oracle observations have been made",
-	})
-	AutomationErrorPreviousOutcomeDecode = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: AutomationNamespace,
-		Name:      "error_previous_outcome_decode",
-		Help:      "Count of how many errors were encountered when decoding previous outcome",
+	AutomationPluginError = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: NamespaceAutomation,
+		Name:      "plugin_error",
+		Help:      "Count of how many errors were encountered in the plugin by label",
+	}, []string{
+		"step",
+		"error",
 	})
 )

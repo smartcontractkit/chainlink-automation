@@ -7,7 +7,6 @@ import (
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/prommetrics"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 )
 
@@ -57,8 +56,6 @@ func (p *performables) add(observation ocr2keepersv3.AutomationObservation) {
 	}
 	newResultCount := len(p.resultCount) - initialCount
 	p.logger.Printf("Added %d new results from %d performables", newResultCount, len(observation.Performable))
-	prommetrics.AutomationNewResultsAddedFromPerformables.Set(float64(newResultCount))
-	prommetrics.AutomationTotalPerformablesInObservation.Set(float64(len(observation.Performable)))
 }
 
 func (p *performables) set(outcome *ocr2keepersv3.AutomationOutcome) {
