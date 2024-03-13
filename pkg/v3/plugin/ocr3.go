@@ -154,11 +154,11 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		return nil, err
 	}
 	plugin.Logger.Printf("creating report from outcome with %d agreed performables; max batch size: %d; report gas limit %d", len(outcome.AgreedPerformables), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
-	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(float64(len(outcome.AgreedPerformables)))
 
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
 	seenUpkeepIDs := make(map[string]bool)
+	performablesAdded := 0
 
 	for i, result := range outcome.AgreedPerformables {
 		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
@@ -173,6 +173,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 			}
 			// append to reports and reset collection
 			reports = append(reports, report)
+			performablesAdded += len(toPerform)
 			toPerform = []ocr2keepers.CheckResult{}
 			gasUsed = 0
 			seenUpkeepIDs = make(map[string]bool)
@@ -192,9 +193,11 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 			return reports, fmt.Errorf("error encountered while encoding: %w", err)
 		}
 		reports = append(reports, report)
+		performablesAdded += len(toPerform)
 	}
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
+	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(float64(performablesAdded))
 	return reports, nil
 }
 
