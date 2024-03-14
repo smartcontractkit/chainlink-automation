@@ -149,6 +149,9 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		outcome ocr2keepersv3.AutomationOutcome
 		err     error
 	)
+	performablesAdded := 0
+	defer prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(float64(performablesAdded))
+
 	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
 		prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepReports, prommetrics.PluginErrorTypeDecodeOutcome).Inc()
 		return nil, err
@@ -158,7 +161,6 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	toPerform := []ocr2keepers.CheckResult{}
 	var gasUsed uint64
 	seenUpkeepIDs := make(map[string]bool)
-	performablesAdded := 0
 
 	for i, result := range outcome.AgreedPerformables {
 		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
@@ -169,6 +171,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 			report, err := plugin.getReportFromPerformables(toPerform)
 			if err != nil {
 				prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepReports, prommetrics.PluginErrorTypeEncodeReport).Inc()
+				performablesAdded = 0
 				return reports, fmt.Errorf("error encountered while encoding: %w", err)
 			}
 			// append to reports and reset collection
@@ -190,6 +193,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		report, err := plugin.getReportFromPerformables(toPerform)
 		if err != nil {
 			prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepReports, prommetrics.PluginErrorTypeEncodeReport).Inc()
+			performablesAdded = 0
 			return reports, fmt.Errorf("error encountered while encoding: %w", err)
 		}
 		reports = append(reports, report)
@@ -197,7 +201,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	}
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
-	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(float64(performablesAdded))
+
 	return reports, nil
 }
 
