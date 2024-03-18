@@ -4,9 +4,10 @@ import (
 	"log"
 	"sort"
 
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 type resultAndCount struct {

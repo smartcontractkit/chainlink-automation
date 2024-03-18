@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"log"
 
-	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+
+	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/prommetrics"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type AutomationReportInfo struct{}
@@ -49,6 +51,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		// Decode the outcome to AutomationOutcome
 		automationOutcome, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
+			prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepObservation, prommetrics.PluginErrorTypeDecodeOutcome).Inc()
 			return nil, err
 		}
 
@@ -65,6 +68,8 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	if err := plugin.AddFromStagingHook.RunHook(&observation, ocr2keepersv3.ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}
+	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepResultStore).Set(float64(len(observation.Performable)))
+
 	if err := plugin.AddLogProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}
@@ -73,6 +78,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	}
 
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
+	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepObservation).Set(float64(len(observation.Performable)))
 
 	// Encode the observation to bytes
 	return observation.Encode()
@@ -97,6 +103,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 		observation, err := ocr2keepersv3.DecodeAutomationObservation(attributedObservation.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
 			plugin.Logger.Printf("invalid observation from oracle %d in seqNr %d err %v", attributedObservation.Observer, outctx.SeqNr, err)
+			prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepOutcome, prommetrics.PluginErrorTypeInvalidOracleObservation).Inc()
 			// Ignore this observation and continue with further observations. It is expected we will get
 			// at least f+1 valid observations
 			continue
@@ -115,6 +122,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 		// Decode the outcome to AutomationOutcome
 		ao, err := ocr2keepersv3.DecodeAutomationOutcome(outctx.PreviousOutcome, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 		if err != nil {
+			prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepOutcome, prommetrics.PluginErrorTypeDecodeOutcome).Inc()
 			return nil, err
 		}
 		prevOutcome = ao
@@ -129,6 +137,7 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 		newProposals = len(outcome.SurfacedProposals[0])
 	}
 	plugin.Logger.Printf("returning outcome with %d performables and %d new proposals in seqNr %d", len(outcome.AgreedPerformables), newProposals, outctx.SeqNr)
+	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepOutcome).Set(float64(len(outcome.AgreedPerformables)))
 
 	return outcome.Encode()
 }
@@ -140,7 +149,9 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 		outcome ocr2keepersv3.AutomationOutcome
 		err     error
 	)
+
 	if outcome, err = ocr2keepersv3.DecodeAutomationOutcome(raw, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator); err != nil {
+		prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepReports, prommetrics.PluginErrorTypeDecodeOutcome).Inc()
 		return nil, err
 	}
 	plugin.Logger.Printf("creating report from outcome with %d agreed performables; max batch size: %d; report gas limit %d", len(outcome.AgreedPerformables), plugin.Config.MaxUpkeepBatchSize, plugin.Config.GasLimitPerReport)
@@ -149,6 +160,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	var gasUsed uint64
 	seenUpkeepIDs := make(map[string]bool)
 
+	performablesAdded := 0
 	for i, result := range outcome.AgreedPerformables {
 		if len(toPerform) >= plugin.Config.MaxUpkeepBatchSize ||
 			gasUsed+result.GasAllocated+uint64(plugin.Config.GasOverheadPerUpkeep) > uint64(plugin.Config.GasLimitPerReport) ||
@@ -157,10 +169,13 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 			// If report has reached capacity or has existing upkeepID, encode and append this report
 			report, err := plugin.getReportFromPerformables(toPerform)
 			if err != nil {
+				prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepReports, prommetrics.PluginErrorTypeEncodeReport).Inc()
+				prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(0)
 				return reports, fmt.Errorf("error encountered while encoding: %w", err)
 			}
 			// append to reports and reset collection
 			reports = append(reports, report)
+			performablesAdded += len(toPerform)
 			toPerform = []ocr2keepers.CheckResult{}
 			gasUsed = 0
 			seenUpkeepIDs = make(map[string]bool)
@@ -176,12 +191,16 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 	if len(toPerform) > 0 {
 		report, err := plugin.getReportFromPerformables(toPerform)
 		if err != nil {
+			prommetrics.AutomationPluginError.WithLabelValues(prommetrics.PluginStepReports, prommetrics.PluginErrorTypeEncodeReport).Inc()
+			prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(0)
 			return reports, fmt.Errorf("error encountered while encoding: %w", err)
 		}
 		reports = append(reports, report)
+		performablesAdded += len(toPerform)
 	}
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
+	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(float64(performablesAdded))
 	return reports, nil
 }
 
