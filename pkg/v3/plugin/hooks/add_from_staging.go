@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"sync"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
@@ -11,11 +12,16 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
+var (
+	maxCacheSize = 20_000
+)
+
 func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
 	return AddFromStagingHook{
-		store:  store,
-		coord:  coord,
-		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		store:            store,
+		coord:            coord,
+		logger:           log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		shuffledIDsCache: make(map[string]string),
 	}
 }
 
@@ -23,6 +29,9 @@ type AddFromStagingHook struct {
 	store  types.ResultStore
 	logger *log.Logger
 	coord  types.Coordinator
+
+	shuffledIDsCache map[string]string
+	suffledIDsLock   sync.Mutex
 }
 
 // RunHook adds results from the store to the observation.
@@ -40,20 +49,20 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 		return err
 	}
 	n := len(results)
-	maxResults := limit * 10
-	if len(results) > maxResults {
-		hook.logger.Printf("too many results in staging (%d) ignoring %d results", n, len(results)-maxResults)
-		results = results[:maxResults]
-	}
-	// creating a map to hold the shuffled workIDs
-	shuffledIDs := make(map[string]string, len(results))
+	hook.suffledIDsLock.Lock()
 	for _, result := range results {
-		shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
+		if _, ok := hook.shuffledIDsCache[result.WorkID]; !ok {
+			hook.shuffledIDsCache[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
+		}
 	}
 	// sort by the shuffled workID
 	sort.Slice(results, func(i, j int) bool {
-		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
+		return hook.shuffledIDsCache[results[i].WorkID] < hook.shuffledIDsCache[results[j].WorkID]
 	})
+	if len(hook.shuffledIDsCache) > maxCacheSize {
+		// TODO: find a better way to clean the cache
+		hook.shuffledIDsCache = make(map[string]string)
+	}
 	if len(results) > limit {
 		results = results[:limit]
 	}
