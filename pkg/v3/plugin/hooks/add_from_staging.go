@@ -30,6 +30,7 @@ type AddFromStagingHook struct {
 	logger *log.Logger
 	coord  types.Coordinator
 
+	// TODO: use another cache
 	shuffledIDsCache map[string]string
 	suffledIDsLock   sync.Mutex
 }
