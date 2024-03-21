@@ -14,7 +14,7 @@ import (
 // as different nodes would upgrade at different times and would need to
 // adhere to each others' limits
 const (
-	ObservationPerformablesLimit          = 50
+	ObservationPerformablesLimit          = 100
 	ObservationLogRecoveryProposalsLimit  = 5
 	ObservationConditionalsProposalsLimit = 5
 	ObservationBlockHistoryLimit          = 256
