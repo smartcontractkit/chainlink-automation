@@ -42,7 +42,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	n := len(results)
 	maxResults := limit * 10
 	if len(results) > maxResults {
-		hook.logger.Printf("too many results in staging (%d) ignoring %d results", n, len(results)-maxResults)
+		hook.logger.Printf("too many results in staging (%d), ignoring %d results", n, len(results)-maxResults)
 		results = results[:maxResults]
 	}
 	// creating a map to hold the shuffled workIDs
