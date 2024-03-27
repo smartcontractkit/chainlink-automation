@@ -26,7 +26,11 @@ func TestDecodeOffchainConfig(t *testing.T) {
 					"gasOverheadPerUpkeep": 100,
 					"maxUpkeepBatchSize": 100,
 					"reportBlockLag": 100,
-					"mercuryLookup": true
+					"mercuryLookup": true,
+					"logProviderConfig": {
+						"blockRate": 32,
+						"logLimit": 50
+					}
 				}
 			`),
 			ExpectedErrString: "",
@@ -38,6 +42,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				GasLimitPerReport:    10,
 				GasOverheadPerUpkeep: 100,
 				MaxUpkeepBatchSize:   100,
+				LogProviderConfig: LogProviderConfig{
+					BlockRate: 32,
+					LogLimit:  50,
+				},
 			},
 		},
 		{
@@ -52,7 +60,12 @@ func TestDecodeOffchainConfig(t *testing.T) {
 					"minConfirmations": 10,
 					"gasLimitPerReport": 10,
 					"gasOverheadPerUpkeep": 100,
-					"maxUpkeepBatchSize": 100
+					"maxUpkeepBatchSize": 100,
+					"logProviderConfig": {
+						"blockRate": 10,
+						"logLimit": 20,
+						"additionalField": 30
+					}
 				}
 			`),
 			ExpectedErrString: "",
@@ -64,6 +77,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				GasLimitPerReport:    10,
 				GasOverheadPerUpkeep: 100,
 				MaxUpkeepBatchSize:   100,
+				LogProviderConfig: LogProviderConfig{
+					BlockRate: 10,
+					LogLimit:  20,
+				},
 			},
 		},
 		{
@@ -78,6 +95,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				GasLimitPerReport:    5_300_000,
 				GasOverheadPerUpkeep: 300_000,
 				MaxUpkeepBatchSize:   1,
+				LogProviderConfig: LogProviderConfig{
+					BlockRate: 0,
+					LogLimit:  0,
+				},
 			},
 		},
 		{
@@ -92,7 +113,11 @@ func TestDecodeOffchainConfig(t *testing.T) {
 					"gasLimitPerReport": 0,
 					"gasOverheadPerUpkeep": 0,
 					"maxUpkeepBatchSize": -100,
-					"reportBlockLag": -100
+					"reportBlockLag": -100,
+					"logProviderConfig": {
+						"blockRate": 0,
+						"logLimit": 0
+					}
 				}
 			`),
 			ExpectedErrString: "",
@@ -104,6 +129,10 @@ func TestDecodeOffchainConfig(t *testing.T) {
 				GasLimitPerReport:    5_300_000,
 				GasOverheadPerUpkeep: 300_000,
 				MaxUpkeepBatchSize:   1,
+				LogProviderConfig: LogProviderConfig{
+					BlockRate: 0,
+					LogLimit:  0,
+				},
 			},
 		},
 		{
@@ -117,7 +146,11 @@ func TestDecodeOffchainConfig(t *testing.T) {
 					"minConfirmations": -10,
 					"gasLimitPerReport": 0,
 					"gasOverheadPerUpkeep": 0,
-					"maxUpkeepBatchSize": -100
+					"maxUpkeepBatchSize": -100,
+					"logProviderConfig": {
+						"numOfLogUpkeeps": false,
+						"logLimitHigh": true
+					}
 				}
 			`),
 			ExpectedErrString: "json: cannot unmarshal string",

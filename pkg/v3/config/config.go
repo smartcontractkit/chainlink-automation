@@ -63,6 +63,17 @@ type OffchainConfig struct {
 
 	// MaxUpkeepBatchSize is the max upkeep batch size of the OCR2 report.
 	MaxUpkeepBatchSize int `json:"maxUpkeepBatchSize"`
+
+	// LogProviderConfig holds configuration for the log provider
+	LogProviderConfig LogProviderConfig `json:"logProviderConfig"`
+}
+
+type LogProviderConfig struct {
+	// BlockRate is the amount of blocks used together with LogLimitHigh to define the rate limit for each upkeep in the registry.
+	BlockRate uint32 `json:"blockRate"`
+
+	// LogLimit is the lower bound / minimum number of logs that CLA is committed to process for each upkeep per BlockRate.
+	LogLimit uint32 `json:"logLimit"`
 }
 
 // DecodeOffchainConfig decodes bytes into an OffchainConfig

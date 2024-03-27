@@ -55,6 +55,11 @@ func (_m *MockLogEventProvider) GetLatestPayloads(_a0 context.Context) ([]automa
 	return r0, r1
 }
 
+// SetConfig provides a mock function with given fields: _a0
+func (_m *MockLogEventProvider) SetConfig(_a0 automation.LogEventProviderConfig) {
+	_m.Called(_a0)
+}
+
 // Start provides a mock function with given fields: _a0
 func (_m *MockLogEventProvider) Start(_a0 context.Context) error {
 	ret := _m.Called(_a0)

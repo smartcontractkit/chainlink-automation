@@ -91,6 +91,11 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		return nil, info, fmt.Errorf("%w: failed to create plugin", err)
 	}
 
+	factory.logProvider.SetConfig(commontypes.LogEventProviderConfig{
+		BlockRate: conf.LogProviderConfig.BlockRate,
+		LogLimit:  conf.LogProviderConfig.LogLimit,
+	})
+
 	// create the plugin; all services start automatically
 	p, err := newPlugin(
 		c.ConfigDigest,
