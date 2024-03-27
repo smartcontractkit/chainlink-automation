@@ -47,6 +47,8 @@ func (src *Source) Start(_ context.Context) error {
 	return nil
 }
 
+func (src *Source) SetConfig(_ ocr2keepers.LogEventProviderConfig) {}
+
 // GetActiveUpkeeps delivers all active conditional upkeep payloads. Payloads
 // returned should be at least once and only when active.
 func (src *Source) GetActiveUpkeeps(_ context.Context) ([]ocr2keepers.UpkeepPayload, error) {
