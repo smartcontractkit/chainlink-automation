@@ -16,8 +16,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/shopspring/decimal v1.3.1
-	github.com/smartcontractkit/chainlink-common v0.1.7-0.20240327003736-b5f6f5e99c70
-	github.com/smartcontractkit/libocr v0.0.0-20240229181116-bfb2432a7a66
+	github.com/smartcontractkit/chainlink-common v0.1.7-0.20240328181140-b17c24ff9ebe
+	github.com/smartcontractkit/libocr v0.0.0-20240326191951-2bbe9382d052
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.18.0
