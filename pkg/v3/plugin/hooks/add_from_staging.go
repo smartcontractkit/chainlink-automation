@@ -50,10 +50,9 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 		results = results[:maxResults]
 	}
 	// creating a map to hold the shuffled workIDs
-	shuffler := random.NewStringShuffler(rSrc)
 	shuffledIDs := make(map[string]string, len(results))
 	for _, result := range results {
-		shuffledIDs[result.WorkID] = shuffler(result.WorkID)
+		shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
 	}
 	// sort by the shuffled workID
 	sort.Slice(results, func(i, j int) bool {
