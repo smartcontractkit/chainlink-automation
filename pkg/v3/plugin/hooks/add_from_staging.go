@@ -1,26 +1,23 @@
 package hooks
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"sort"
-	"sync"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
 	return AddFromStagingHook{
-		store:       store,
-		coord:       coord,
-		logger:      log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		shuffledIDs: make(map[string]string),
+		store:  store,
+		coord:  coord,
+		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		// shuffledIDs: make(map[string]string),
 	}
 }
 
@@ -29,9 +26,9 @@ type AddFromStagingHook struct {
 	logger *log.Logger
 	coord  types.Coordinator
 
-	lastRandSrc [16]byte
-	shuffledIDs map[string]string
-	lock        sync.Mutex
+	// lastRandSrc [16]byte
+	// shuffledIDs map[string]string
+	// lock        sync.Mutex
 }
 
 // RunHook adds results from the store to the observation.
@@ -49,7 +46,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 		return err
 	}
 
-	results = hook.orderResults(results, rSrc)
+	results = hook.orderResults(results)
 	n := len(results)
 	if n > limit {
 		results = results[:limit]
@@ -60,25 +57,29 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	return nil
 }
 
-func (hook *AddFromStagingHook) orderResults(results []automation.CheckResult, rSrc [16]byte) []automation.CheckResult {
-	hook.lock.Lock()
-	defer hook.lock.Unlock()
+func (hook *AddFromStagingHook) orderResults(results []automation.CheckResult /*, rSrc [16]byte*/) []automation.CheckResult {
+	// hook.lock.Lock()
+	// defer hook.lock.Unlock()
 
-	// once the random source changes, the workIDs needs to be shuffled again with the new source
-	if !bytes.Equal(hook.lastRandSrc[:], rSrc[:]) {
-		hook.lastRandSrc = rSrc
-		hook.shuffledIDs = make(map[string]string)
-	}
-	// creating a map to hold the shuffled workIDs
-	for _, result := range results {
-		if _, ok := hook.shuffledIDs[result.WorkID]; !ok {
-			hook.shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
-		}
-	}
-	shuffledIDs := hook.shuffledIDs
-	// sort by the shuffled workID
+	// // once the random source changes, the workIDs needs to be shuffled again with the new source
+	// if !bytes.Equal(hook.lastRandSrc[:], rSrc[:]) {
+	// 	hook.lastRandSrc = rSrc
+	// 	hook.shuffledIDs = make(map[string]string)
+	// }
+	// // creating a map to hold the shuffled workIDs
+	// for _, result := range results {
+	// 	if _, ok := hook.shuffledIDs[result.WorkID]; !ok {
+	// 		hook.shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
+	// 	}
+	// }
+	// shuffledIDs := hook.shuffledIDs
+	// // sort by the shuffled workID
+	// sort.Slice(results, func(i, j int) bool {
+	// 	return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
+	// })
+
 	sort.Slice(results, func(i, j int) bool {
-		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
+		return results[i].WorkID > results[j].WorkID
 	})
 
 	return results
