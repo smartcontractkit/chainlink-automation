@@ -2,7 +2,7 @@ package plugin
 
 import (
 	"fmt"
-	log2 "github.com/smartcontractkit/chainlink-automation/pkg/v3/flows/log"
+	log3 "github.com/smartcontractkit/chainlink-automation/pkg/v4/workflows/log"
 	"log"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
@@ -60,8 +60,8 @@ func newPlugin(
 
 	retryQ := stores.NewRetryQueue(logger)
 
-	retrySvc := log2.NewRetryFlow(coord, resultStore, runner, retryQ, log2.RetryCheckInterval, upkeepStateUpdater, logger)
-
+	retrySvc := log3.NewRetryFlow(retryQ, coord, resultStore, upkeepStateUpdater, runner, logger)
+	
 	proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 
 	// initialize the log trigger eligibility flow
