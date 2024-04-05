@@ -121,24 +121,24 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			observationWorkIDs: []string{"30a"},
 			expectedLogMsg:     "adding 1 results to observation",
 		},
-		// {
-		// 	name:               "limits applied in different order with different rSrc",
-		// 	initialObservation: ocr2keepersv3.AutomationObservation{},
-		// 	resultStoreResults: []types.CheckResult{
-		// 		{UpkeepID: [32]byte{1}, WorkID: "10c"},
-		// 		{UpkeepID: [32]byte{2}, WorkID: "20b"},
-		// 		{UpkeepID: [32]byte{3}, WorkID: "30a"},
-		// 	},
-		// 	rSrc:  [16]byte{1},
-		// 	limit: 2,
-		// 	coordinatorFilterResults: []types.CheckResult{
-		// 		{UpkeepID: [32]byte{1}, WorkID: "10c"},
-		// 		{UpkeepID: [32]byte{2}, WorkID: "20b"},
-		// 		{UpkeepID: [32]byte{3}, WorkID: "30a"},
-		// 	},
-		// 	observationWorkIDs: []string{"10c", "20b"},
-		// 	expectedLogMsg:     "adding 2 results to observation",
-		// },
+		{
+			name:               "limits applied in different order with different rSrc",
+			initialObservation: ocr2keepersv3.AutomationObservation{},
+			resultStoreResults: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			rSrc:  [16]byte{1},
+			limit: 2,
+			coordinatorFilterResults: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			observationWorkIDs: []string{"10c", "20b"},
+			expectedLogMsg:     "adding 2 results to observation",
+		},
 	}
 
 	for _, tt := range tests {
