@@ -83,7 +83,7 @@ func TestConditionalFinalization(t *testing.T) {
 	// set the ticker time lower to reduce the test time
 	interval := 50 * time.Millisecond
 	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
-	svc := newFinalConditionalFlow(pre, rStore, runner, interval, proposalQ, payloadBuilder, retryQ, upkeepStateUpdater, logger)
+	svc := newFinalConditionalFlow(pre, rStore, runner, interval, proposalQ, payloadBuilder, retryQ, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -206,5 +206,4 @@ func TestSamplingProposal(t *testing.T) {
 	upkeepProvider.AssertExpectations(t)
 	coord.AssertExpectations(t)
 	runner.AssertExpectations(t)
-	// ratio.AssertExpectations(t)
 }

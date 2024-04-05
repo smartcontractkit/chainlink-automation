@@ -81,25 +81,25 @@ func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error
 	defer cancel()
 
 	// Get upkeeps from tick
-	value, err := tick.Value(pCtx)
+	upkeepPayloads, err := tick.Value(pCtx)
 	if err != nil {
 		return err
 	}
 
-	o.lggr.Printf("got %d payloads from ticker", len(value))
+	o.lggr.Printf("got %d payloads from ticker", len(upkeepPayloads))
 
 	// Run pre-processors
 	for _, preprocessor := range o.Preprocessors {
-		value, err = preprocessor.PreProcess(pCtx, value)
+		upkeepPayloads, err = preprocessor.PreProcess(pCtx, upkeepPayloads)
 		if err != nil {
 			return err
 		}
 	}
 
-	o.lggr.Printf("processing %d payloads", len(value))
+	o.lggr.Printf("processing %d payloads", len(upkeepPayloads))
 
 	// Run check pipeline
-	results, err := o.processFunc(pCtx, value...)
+	results, err := o.processFunc(pCtx, upkeepPayloads...)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error
 	o.lggr.Printf("post-processing %d results", len(results))
 
 	// Run post-processor
-	if err := o.Postprocessor.PostProcess(pCtx, results, value); err != nil {
+	if err := o.Postprocessor.PostProcess(pCtx, results, upkeepPayloads); err != nil {
 		return err
 	}
 

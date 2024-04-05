@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	storeTTL   = time.Minute * 5
+	storeTTL   = 5 * time.Minute
 	gcInterval = 30 * time.Second
 )
 

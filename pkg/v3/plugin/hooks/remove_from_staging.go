@@ -9,6 +9,7 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
+// staging is the result store for certain upkeeps
 func NewRemoveFromStagingHook(store types.ResultStore, logger *log.Logger) RemoveFromStagingHook {
 	return RemoveFromStagingHook{
 		store:  store,

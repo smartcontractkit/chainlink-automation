@@ -3,8 +3,9 @@ package postprocessors
 import (
 	"context"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 type addProposalToMetadataStore struct {
@@ -15,6 +16,7 @@ func NewAddProposalToMetadataStorePostprocessor(store types.MetadataStore) *addP
 	return &addProposalToMetadataStore{metadataStore: store}
 }
 
+// PostProcess adds eligible upkeeps to proposals in metadata store
 func (a *addProposalToMetadataStore) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	// should only add values and not remove them
 	for _, r := range results {

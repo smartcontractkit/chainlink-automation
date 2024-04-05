@@ -3,9 +3,10 @@ package preprocessors
 import (
 	"context"
 
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func NewProposalFilterer(metadata types.MetadataStore, upkeepType types.UpkeepType) ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] {
@@ -22,9 +23,11 @@ type proposalFilterer struct {
 
 var _ ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] = (*proposalFilterer)(nil)
 
-func (p *proposalFilterer) PreProcess(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
+// PreProcess returns all the payloads which don't currently exist in matadata store.
+func (p *proposalFilterer) PreProcess(_ context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
 	all := p.metadata.ViewProposals(p.upkeepType)
 	flatten := map[string]bool{}
+	// can we make this more efficient? wonder if it's worth the effort
 	for _, proposal := range all {
 		flatten[proposal.WorkID] = true
 	}

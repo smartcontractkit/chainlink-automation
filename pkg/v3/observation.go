@@ -17,7 +17,8 @@ const (
 	ObservationPerformablesLimit          = 50
 	ObservationLogRecoveryProposalsLimit  = 5
 	ObservationConditionalsProposalsLimit = 5
-	ObservationBlockHistoryLimit          = 256
+	// ObservationBlockHistoryLimit is the amount of past blocks required from block history source
+	ObservationBlockHistoryLimit = 256
 
 	// MaxObservationLength applies a limit to the total length of bytes in an
 	// observation. NOTE: This is derived from a limit of 10000 on performData
@@ -60,6 +61,7 @@ func DecodeAutomationObservation(data []byte, utg types.UpkeepTypeGetter, wg typ
 	return ao, nil
 }
 
+// validateAutomationObservation validates the automation observation, including block history, performables, proposals, etc
 func validateAutomationObservation(o AutomationObservation, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) error {
 	// Validate Block History
 	if len(o.BlockHistory) > ObservationBlockHistoryLimit {
@@ -121,7 +123,7 @@ func validateAutomationObservation(o AutomationObservation, utg types.UpkeepType
 	return nil
 }
 
-// Validates the check result fields sent within an observation
+// validateCheckResult validates the check result fields sent within an observation
 func validateCheckResult(r ocr2keepers.CheckResult, utg types.UpkeepTypeGetter, wg types.WorkIDGenerator) error {
 	if r.PipelineExecutionState != 0 || r.Retryable {
 		return fmt.Errorf("check result cannot have failed execution state")
@@ -169,7 +171,7 @@ func validateUpkeepProposal(p ocr2keepers.CoordinatedBlockProposal, utg types.Up
 	return nil
 }
 
-// Validate validates the trigger fields, and any extensions if present.
+// validateTriggerExtensionType validates the trigger fields, and any extensions if present.
 func validateTriggerExtensionType(t ocr2keepers.Trigger, ut types.UpkeepType) error {
 	switch ut {
 	case types.ConditionTrigger:

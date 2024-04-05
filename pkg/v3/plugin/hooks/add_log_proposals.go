@@ -45,6 +45,7 @@ func (h *AddLogProposalsHook) RunHook(obs *ocr2keepersv3.AutomationObservation, 
 		proposals = proposals[:limit]
 	}
 
+	// should this be log recovery??
 	h.logger.Printf("adding %d log recovery proposals to observation", len(proposals))
 	obs.UpkeepProposals = append(obs.UpkeepProposals, proposals...)
 	return nil

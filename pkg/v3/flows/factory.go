@@ -4,30 +4,29 @@ import (
 	"log"
 	"time"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func ConditionalTriggerFlows(
 	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
 	ratio types.Ratio,
 	getter common.ConditionalUpkeepProvider,
-	subscriber common.BlockSubscriber,
 	builder common.PayloadBuilder,
 	resultStore types.ResultStore,
 	metadataStore types.MetadataStore,
 	runner ocr2keepersv3.Runner,
 	proposalQ types.ProposalQueue,
 	retryQ types.RetryQueue,
-	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) []service.Recoverable {
 	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
-	conditionalFinal := newFinalConditionalFlow(preprocessors, resultStore, runner, FinalConditionalInterval, proposalQ, builder, retryQ, stateUpdater, logger)
+	conditionalFinal := newFinalConditionalFlow(preprocessors, resultStore, runner, FinalConditionalInterval, proposalQ, builder, retryQ, logger)
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
