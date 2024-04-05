@@ -119,8 +119,8 @@ func (o *Runner) Close() error {
 }
 
 // parallelCheck should be satisfied by the Runner
-func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) (*result[ocr2keepers.CheckResult], error) {
-	result := newResult[ocr2keepers.CheckResult]()
+func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) (*result, error) {
+	result := newResult()
 
 	if len(payloads) == 0 {
 		return result, nil
@@ -192,7 +192,7 @@ func (o *Runner) wrapWorkerFunc() func(context.Context, []ocr2keepers.UpkeepPayl
 	}
 }
 
-func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2keepers.CheckResult, error) {
+func (o *Runner) wrapAggregate(r *result) func([]ocr2keepers.CheckResult, error) {
 	return func(results []ocr2keepers.CheckResult, err error) {
 		if err == nil {
 			r.AddSuccesses(1)
