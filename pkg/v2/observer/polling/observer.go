@@ -7,11 +7,11 @@ package polling
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-automation/internal/util/v2"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v2/observer"
 )
@@ -87,7 +87,7 @@ func NewPollingObserver(
 		cancel:           cancel,
 		logger:           logger,
 		samplingDuration: maxSamplingDuration,
-		shuffler:         util.Shuffler[ocr2keepers.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
+		shuffler:         v2.Shuffler[ocr2keepers.UpkeepKey]{Source: v2.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
 		ratio:            ratio,
 		stager:           &stager{},
 		coordinator:      coord,
@@ -101,7 +101,7 @@ func NewPollingObserver(
 	// make all go-routines started by this entity automatically recoverable
 	// on panics
 	ob.services = []Service{
-		util.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: cancel}, logger),
+		v2.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: cancel}, logger),
 	}
 
 	return ob

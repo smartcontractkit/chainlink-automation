@@ -26,11 +26,11 @@ package coordinator
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
 	"log"
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 )
 
@@ -64,10 +64,10 @@ type reportCoordinator struct {
 	encoder Encoder
 
 	// initialised by the constructor
-	idBlocks       *util.Cache[idBlocker] // should clear out when the next perform with this id occurs
-	activeKeys     *util.Cache[bool]
-	cacheCleaner   *util.IntervalCacheCleaner[bool]
-	idCacheCleaner *util.IntervalCacheCleaner[idBlocker]
+	idBlocks       *v2.Cache[idBlocker] // should clear out when the next perform with this id occurs
+	activeKeys     *v2.Cache[bool]
+	cacheCleaner   *v2.IntervalCacheCleaner[bool]
+	idCacheCleaner *v2.IntervalCacheCleaner[idBlocker]
 
 	// configurations
 	minConfs int
@@ -99,10 +99,10 @@ func NewReportCoordinator(
 		logger:         logger,
 		logs:           logs,
 		minConfs:       minConfs,
-		idBlocks:       util.NewCache[idBlocker](lockoutWindow),
-		activeKeys:     util.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
-		idCacheCleaner: util.NewIntervalCacheCleaner[idBlocker](cacheClean),
-		cacheCleaner:   util.NewIntervalCacheCleaner[bool](cacheClean),
+		idBlocks:       v2.NewCache[idBlocker](lockoutWindow),
+		activeKeys:     v2.NewCache[bool](time.Hour), // 1 hour allows the cleanup routine to clear stale data
+		idCacheCleaner: v2.NewIntervalCacheCleaner[idBlocker](cacheClean),
+		cacheCleaner:   v2.NewIntervalCacheCleaner[bool](cacheClean),
 		chStop:         make(chan struct{}, 1),
 		encoder:        encoder,
 	}
@@ -142,7 +142,7 @@ func (rc *reportCoordinator) Accept(key ocr2keepers.UpkeepKey) error {
 	// there might be other keys in the same report which can get accepted
 	if _, ok := rc.activeKeys.Get(string(key)); !ok {
 		// Set the key as accepted within activeKeys
-		rc.activeKeys.Set(string(key), false, util.DefaultCacheExpiration)
+		rc.activeKeys.Set(string(key), false, v2.DefaultCacheExpiration)
 
 		// Set idBlocks with the key as checkBlockNumber and IndefiniteBlockingKey as TransmitBlockNumber
 		rc.updateIdBlock(string(id), idBlocker{
@@ -202,7 +202,7 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 				rc.logger.Printf("Perform log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 
 				// set state of key to indicate that the report was transmitted
-				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
+				rc.activeKeys.Set(string(l.Key), true, v2.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
 					CheckBlockNumber:    logCheckBlockKey,
@@ -262,7 +262,7 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 				// Process log if the key hasn't been confirmed yet
 				rc.logger.Printf("Stale report log found for key %s in transaction %s at block %s, with confirmations %d", l.Key, l.TransactionHash, l.TransmitBlock, l.Confirmations)
 				// set state of key to indicate that the report was transmitted
-				rc.activeKeys.Set(string(l.Key), true, util.DefaultCacheExpiration)
+				rc.activeKeys.Set(string(l.Key), true, v2.DefaultCacheExpiration)
 
 				rc.updateIdBlock(string(id), idBlocker{
 					CheckBlockNumber:    logCheckBlockKey,
@@ -357,7 +357,7 @@ func (rc *reportCoordinator) updateIdBlock(key string, val idBlocker) {
 	}
 
 	rc.logger.Printf("updateIdBlock for key %s: value updated to %+v", key, val)
-	rc.idBlocks.Set(key, val, util.DefaultCacheExpiration)
+	rc.idBlocks.Set(key, val, v2.DefaultCacheExpiration)
 }
 
 // Start starts all subprocesses

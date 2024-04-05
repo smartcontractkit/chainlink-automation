@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	v22 "github.com/smartcontractkit/chainlink-automation/internal/util/v2"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
 	"log"
 	"strings"
 	"sync/atomic"
@@ -12,8 +14,6 @@ import (
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
-	"github.com/smartcontractkit/chainlink-automation/internal/util"
-	pkgutil "github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 )
 
@@ -38,8 +38,8 @@ type Runner struct {
 	logger   *log.Logger
 	runnable types.Runnable
 	// initialized by the constructor
-	workers *pkgutil.WorkerGroup[[]ocr2keepers.CheckResult] // parallelizer
-	cache   *pkgutil.Cache[ocr2keepers.CheckResult]         // result cache
+	workers *v2.WorkerGroup[[]ocr2keepers.CheckResult] // parallelizer
+	cache   *v2.Cache[ocr2keepers.CheckResult]         // result cache
 	// configurations
 	workerBatchLimit int // the maximum number of items in RPC batch call
 	cacheGcInterval  time.Duration
@@ -66,8 +66,8 @@ func NewRunner(
 	return &Runner{
 		logger:           log.New(logger.Writer(), fmt.Sprintf("[%s | check-pipeline-runner]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		runnable:         runnable,
-		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.CheckResult](conf.Workers, conf.WorkerQueueLength),
-		cache:            pkgutil.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
+		workers:          v2.NewWorkerGroup[[]ocr2keepers.CheckResult](conf.Workers, conf.WorkerQueueLength),
+		cache:            v2.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
 		cacheGcInterval:  conf.CacheClean,
 		workerBatchLimit: WorkerBatchLimit,
 		chClose:          make(chan struct{}, 1),
@@ -147,10 +147,10 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 
 	// Create batches from the given keys.
 	// Max keyBatchSize items in the batch.
-	pkgutil.RunJobs(
+	v2.RunJobs(
 		ctx,
 		o.workers,
-		util.Unflatten(toRun, o.workerBatchLimit),
+		v22.Unflatten(toRun, o.workerBatchLimit),
 		o.wrapWorkerFunc(),
 		o.wrapAggregate(result),
 	)
@@ -203,7 +203,7 @@ func (o *Runner) wrapAggregate(r *result) func([]ocr2keepers.CheckResult, error)
 					c, ok := o.cache.Get(result.WorkID)
 					if !ok || result.Trigger.BlockNumber > c.Trigger.BlockNumber {
 						// Add to cache if the workID didn't exist before or if we got a result on a higher checkBlockNumber
-						o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
+						o.cache.Set(result.WorkID, result, v2.DefaultCacheExpiration)
 					}
 				}
 

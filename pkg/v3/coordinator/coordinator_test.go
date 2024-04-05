@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
 	"io"
 	"log"
 	"reflect"
@@ -16,7 +17,6 @@ import (
 
 	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
@@ -319,10 +319,10 @@ func TestNewCoordinator_checkEvents(t *testing.T) {
 			c := NewCoordinator(tc.eventProvider, tc.upkeepTypeGetter, config.OffchainConfig{PerformLockoutWindow: 3600 * 1000, MinConfirmations: 2}, logger)
 			// initialise the cache if needed
 			for k, v := range tc.cacheInit {
-				c.cache.Set(k, v, util.DefaultCacheExpiration)
+				c.cache.Set(k, v, v2.DefaultCacheExpiration)
 			}
 			for k := range tc.visitedInit {
-				c.visited.Set(k, true, util.DefaultCacheExpiration)
+				c.visited.Set(k, true, v2.DefaultCacheExpiration)
 			}
 
 			err := c.checkEvents(context.Background())
@@ -452,7 +452,7 @@ func TestCoordinator_ShouldAccept(t *testing.T) {
 			c := NewCoordinator(nil, nil, config.OffchainConfig{}, nil)
 			// initialise the cache
 			for k, v := range tc.cacheInit {
-				c.cache.Set(k, v, util.DefaultCacheExpiration)
+				c.cache.Set(k, v, v2.DefaultCacheExpiration)
 			}
 
 			shouldAccept := c.Accept(tc.reportedUpkeep)
@@ -557,7 +557,7 @@ func TestCoordinator_ShouldTransmit(t *testing.T) {
 			c := NewCoordinator(nil, nil, config.OffchainConfig{}, logger)
 			// initialise the cache
 			for k, v := range tc.cacheInit {
-				c.cache.Set(k, v, util.DefaultCacheExpiration)
+				c.cache.Set(k, v, v2.DefaultCacheExpiration)
 			}
 			shouldTransmit := c.ShouldTransmit(tc.reportedUpkeep)
 			assert.Equal(t, tc.shouldTransmit, shouldTransmit)
@@ -688,7 +688,7 @@ func TestCoordinator_ShouldProcess(t *testing.T) {
 			c := NewCoordinator(nil, tc.upkeepTypeGetter, config.OffchainConfig{}, nil)
 			// initialise the cache
 			for k, v := range tc.cacheInit {
-				c.cache.Set(k, v, util.DefaultCacheExpiration)
+				c.cache.Set(k, v, v2.DefaultCacheExpiration)
 			}
 			shouldProcess := c.ShouldProcess(tc.payload.WorkID, tc.payload.UpkeepID, tc.payload.Trigger)
 			assert.Equal(t, tc.shouldProcess, shouldProcess)
@@ -840,7 +840,7 @@ func TestNewCoordinator_Preprocess(t *testing.T) {
 			c := NewCoordinator(nil, tc.upkeepTypeGetter, config.OffchainConfig{}, nil)
 			// initialise the cache
 			for k, v := range tc.cacheInit {
-				c.cache.Set(k, v, util.DefaultCacheExpiration)
+				c.cache.Set(k, v, v2.DefaultCacheExpiration)
 			}
 			payloads, err := c.PreProcess(context.Background(), tc.payloads)
 			assert.NoError(t, err)
@@ -1002,7 +1002,7 @@ func TestCoordinator_FilterResults(t *testing.T) {
 			c := NewCoordinator(nil, tc.upkeepTypeGetter, config.OffchainConfig{}, nil)
 			// initialise the cache
 			for k, v := range tc.cacheInit {
-				c.cache.Set(k, v, util.DefaultCacheExpiration)
+				c.cache.Set(k, v, v2.DefaultCacheExpiration)
 			}
 			results, err := c.FilterResults(tc.results)
 			assert.NoError(t, err)
@@ -1140,7 +1140,7 @@ func TestCoordinator_FilterProposals(t *testing.T) {
 			c := NewCoordinator(nil, tc.upkeepTypeGetter, config.OffchainConfig{}, nil)
 			// initialise the cache
 			for k, v := range tc.cacheInit {
-				c.cache.Set(k, v, util.DefaultCacheExpiration)
+				c.cache.Set(k, v, v2.DefaultCacheExpiration)
 			}
 			results, err := c.FilterProposals(tc.results)
 			assert.NoError(t, err)

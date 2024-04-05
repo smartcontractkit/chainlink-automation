@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util/v2"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
 	"log"
 	"time"
 
 	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
-	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
-	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
@@ -27,8 +27,8 @@ type coordinator struct {
 	eventsProvider   types.TransmitEventProvider
 	upkeepTypeGetter types.UpkeepTypeGetter
 
-	cache   *util.Cache[record]
-	visited *util.Cache[bool]
+	cache   *v2.Cache[record]
+	visited *v2.Cache[bool]
 
 	minimumConfirmations int
 	performLockoutWindow time.Duration
@@ -49,8 +49,8 @@ func NewCoordinator(transmitEventProvider types.TransmitEventProvider, upkeepTyp
 		logger:               logger,
 		eventsProvider:       transmitEventProvider,
 		upkeepTypeGetter:     upkeepTypeGetter,
-		cache:                util.NewCache[record](performLockoutWindow),
-		visited:              util.NewCache[bool](performLockoutWindow),
+		cache:                v2.NewCache[record](performLockoutWindow),
+		visited:              v2.NewCache[bool](performLockoutWindow),
 		minimumConfirmations: conf.MinConfirmations,
 		performLockoutWindow: performLockoutWindow,
 	}
@@ -61,13 +61,13 @@ func (c *coordinator) Accept(reportedUpkeep common.ReportedUpkeep) bool {
 		c.cache.Set(reportedUpkeep.WorkID, record{
 			checkBlockNumber:      reportedUpkeep.Trigger.BlockNumber,
 			isTransmissionPending: true,
-		}, util.DefaultCacheExpiration)
+		}, v2.DefaultCacheExpiration)
 		return true
 	} else if v.checkBlockNumber < reportedUpkeep.Trigger.BlockNumber {
 		c.cache.Set(reportedUpkeep.WorkID, record{
 			checkBlockNumber:      reportedUpkeep.Trigger.BlockNumber,
 			isTransmissionPending: true,
-		}, util.DefaultCacheExpiration)
+		}, v2.DefaultCacheExpiration)
 		return true
 	}
 	// We are already waiting on a higher checkBlockNumber so no need to accept this report
@@ -195,11 +195,11 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 		if event.CheckBlock == v.checkBlockNumber {
 			c.logger.Printf("Got event in transaction %s of type %d for upkeepID %s, workID %s and check block %v", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID, event.CheckBlock)
 			r.checkBlockNumber = v.checkBlockNumber
-			c.cache.Set(event.WorkID, r, util.DefaultCacheExpiration)
+			c.cache.Set(event.WorkID, r, v2.DefaultCacheExpiration)
 		} else if event.CheckBlock > v.checkBlockNumber {
 			c.logger.Printf("Got event in transaction %s of type %d for upkeepID %s, workID %s from newer report (block %v) while waiting for (block %v)", hex.EncodeToString(event.TransactionHash[:]), event.Type, event.UpkeepID.String(), event.WorkID, event.CheckBlock, v.checkBlockNumber)
 			r.checkBlockNumber = event.CheckBlock
-			c.cache.Set(event.WorkID, r, util.DefaultCacheExpiration)
+			c.cache.Set(event.WorkID, r, v2.DefaultCacheExpiration)
 		}
 		// otherwise this is an old event, ignore it
 	}
