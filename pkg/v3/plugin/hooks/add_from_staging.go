@@ -58,8 +58,9 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	n := len(results)
 	if n > limit {
 		results = results[:limit]
+		hook.logger.Printf("skipped %d available results in staging", n-limit)
 	}
-	hook.logger.Printf("adding %d results to observation, out of %d available results", len(results), n)
+	hook.logger.Printf("adding %d results to observation", len(results))
 	obs.Performable = append(obs.Performable, results...)
 
 	return nil
