@@ -11,7 +11,7 @@ import (
 )
 
 func ConditionalTriggerFlows(
-	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	coord ocr2keepersv3.PreProcessor,
 	ratio types.Ratio,
 	getter common.ConditionalUpkeepProvider,
 	subscriber common.BlockSubscriber,
@@ -24,7 +24,7 @@ func ConditionalTriggerFlows(
 	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) []service.Recoverable {
-	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor{coord}
 
 	// runs full check pipeline on a coordinated block with coordinated upkeeps
 	conditionalFinal := newFinalConditionalFlow(preprocessors, resultStore, runner, FinalConditionalInterval, proposalQ, builder, retryQ, stateUpdater, logger)
@@ -37,7 +37,7 @@ func ConditionalTriggerFlows(
 }
 
 func LogTriggerFlows(
-	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	coord ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	metadataStore types.MetadataStore,
 	runner ocr2keepersv3.Runner,
@@ -54,7 +54,7 @@ func LogTriggerFlows(
 ) []service.Recoverable {
 	// all flows use the same preprocessor based on the coordinator
 	// each flow can add preprocessors to this provided slice
-	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor{coord}
 
 	// the recovery proposal flow is for nodes to surface payloads that should
 	// be recovered. these values are passed to the network and the network

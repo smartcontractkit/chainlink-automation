@@ -28,7 +28,7 @@ const (
 )
 
 func newFinalRecoveryFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preprocessors []ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	retryQ types.RetryQueue,
@@ -105,7 +105,7 @@ func (t coordinatedProposalsTick) Value(ctx context.Context) ([]common.UpkeepPay
 }
 
 func newRecoveryProposalFlow(
-	preProcessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preProcessors []ocr2keepersv3.PreProcessor,
 	runner ocr2keepersv3.Runner,
 	metadataStore types.MetadataStore,
 	recoverableProvider common.RecoverableProvider,

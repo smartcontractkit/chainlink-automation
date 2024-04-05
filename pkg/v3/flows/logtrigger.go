@@ -30,7 +30,7 @@ const (
 
 // log trigger flow is the happy path entry point for log triggered upkeeps
 func newLogTriggerFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preprocessors []ocr2keepersv3.PreProcessor,
 	rs types.ResultStore,
 	rn ocr2keepersv3.Runner,
 	logProvider common.LogEventProvider,

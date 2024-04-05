@@ -82,7 +82,7 @@ func TestConditionalFinalization(t *testing.T) {
 	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	// set the ticker time lower to reduce the test time
 	interval := 50 * time.Millisecond
-	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	pre := []ocr2keepersv3.PreProcessor{coord}
 	svc := newFinalConditionalFlow(pre, rStore, runner, interval, proposalQ, payloadBuilder, retryQ, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
@@ -184,7 +184,7 @@ func TestSamplingProposal(t *testing.T) {
 	}, nil).Times(2)
 	upkeepProvider.On("GetActiveUpkeeps", mock.Anything).Return([]common.UpkeepPayload{}, nil)
 	// set the ticker time lower to reduce the test time
-	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	pre := []ocr2keepersv3.PreProcessor{coord}
 	svc := newSampleProposalFlow(pre, ratio, upkeepProvider, mStore, runner, time.Millisecond*100, logger)
 
 	var wg sync.WaitGroup

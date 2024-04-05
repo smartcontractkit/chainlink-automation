@@ -23,7 +23,7 @@ const (
 )
 
 func NewRetryFlow(
-	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	coord ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	retryQ types.RetryQueue,
@@ -31,7 +31,7 @@ func NewRetryFlow(
 	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
-	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor{coord}
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "retry-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),

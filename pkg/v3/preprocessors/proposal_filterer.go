@@ -8,7 +8,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
-func NewProposalFilterer(metadata types.MetadataStore, upkeepType types.UpkeepType) ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] {
+func NewProposalFilterer(metadata types.MetadataStore, upkeepType types.UpkeepType) ocr2keepersv3.PreProcessor {
 	return &proposalFilterer{
 		upkeepType: upkeepType,
 		metadata:   metadata,
@@ -20,7 +20,7 @@ type proposalFilterer struct {
 	upkeepType types.UpkeepType
 }
 
-var _ ocr2keepersv3.PreProcessor[ocr2keepers.UpkeepPayload] = (*proposalFilterer)(nil)
+var _ ocr2keepersv3.PreProcessor = (*proposalFilterer)(nil)
 
 func (p *proposalFilterer) PreProcess(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.UpkeepPayload, error) {
 	all := p.metadata.ViewProposals(p.upkeepType)

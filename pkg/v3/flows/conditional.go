@@ -31,7 +31,7 @@ const (
 )
 
 func newSampleProposalFlow(
-	pre []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	pre []ocr2keepersv3.PreProcessor,
 	ratio types.Ratio,
 	getter common.ConditionalUpkeepProvider,
 	ms types.MetadataStore,
@@ -107,7 +107,7 @@ func (s *sampler) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
 }
 
 func newFinalConditionalFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preprocessors []ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	interval time.Duration,
