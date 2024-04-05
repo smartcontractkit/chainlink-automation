@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	log2 "github.com/smartcontractkit/chainlink-automation/pkg/v3/flows/log"
 	"log"
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
@@ -59,12 +60,12 @@ func newPlugin(
 
 	retryQ := stores.NewRetryQueue(logger)
 
-	retrySvc := flows.NewRetryFlow(coord, resultStore, runner, retryQ, flows.RetryCheckInterval, upkeepStateUpdater, logger)
+	retrySvc := log2.NewRetryFlow(coord, resultStore, runner, retryQ, log2.RetryCheckInterval, upkeepStateUpdater, logger)
 
 	proposalQ := stores.NewProposalQueue(upkeepTypeGetter)
 
 	// initialize the log trigger eligibility flow
-	logTriggerFlows := flows.LogTriggerFlows(
+	logTriggerFlows := flows.NewLogTriggerFlows(
 		coord,
 		resultStore,
 		metadataStore,
@@ -72,9 +73,6 @@ func newPlugin(
 		logProvider,
 		recoverablesProvider,
 		builder,
-		flows.LogCheckInterval,
-		flows.RecoveryProposalInterval,
-		flows.RecoveryFinalInterval,
 		retryQ,
 		proposalQ,
 		upkeepStateUpdater,
@@ -84,7 +82,7 @@ func newPlugin(
 	// create service recoverers to provide panic recovery on dependent services
 	allSvcs := append(logTriggerFlows, []service.Recoverable{retrySvc, resultStore, metadataStore, coord, runner}...)
 
-	contionalFlows := flows.ConditionalTriggerFlows(
+	contionalFlows := flows.NewConditionalTriggerFlows(
 		coord,
 		ratio,
 		getter,

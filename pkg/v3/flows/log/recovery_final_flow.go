@@ -1,4 +1,4 @@
-package flows
+package log
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
@@ -19,20 +18,17 @@ import (
 
 const (
 	// This is the ticker interval for recovery final flow
-	RecoveryFinalInterval = 1 * time.Second
+	recoveryFinalInterval = 1 * time.Second
 	// These are the maximum number of log upkeeps dequeued on every tick from proposal queue in FinalRecoveryFlow
 	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
-	FinalRecoveryBatchSize = 50
-	// This is the ticker interval for recovery proposal flow
-	RecoveryProposalInterval = 1 * time.Second
+	finalRecoveryBatchSize = 50
 )
 
-func newFinalRecoveryFlow(
+func NewFinalRecoveryFlow(
 	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
 	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	retryQ types.RetryQueue,
-	recoveryFinalizationInterval time.Duration,
 	proposalQ types.ProposalQueue,
 	builder common.PayloadBuilder,
 	stateUpdater common.UpkeepStateUpdater,
@@ -43,6 +39,10 @@ func newFinalRecoveryFlow(
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "recovery-final-retryable-postprocessor")),
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
+
+	observerLggrPrefix := fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName)
+	observerLggr := log.New(logger.Writer(), observerLggrPrefix, telemetry.LogPkgStdFlags)
+
 	// create observer that only pushes results to result stores. everything at
 	// this point can be dropped. this process is only responsible for running
 	// recovery proposals that originate from network agreements
@@ -50,19 +50,24 @@ func newFinalRecoveryFlow(
 		preprocessors,
 		post,
 		runner,
-		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		observationProcessLimit,
+		observerLggr,
 	)
 
-	ticker := tickers.NewTimeTicker[[]common.UpkeepPayload](recoveryFinalizationInterval, recoveryObserver, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
 		return coordinatedProposalsTick{
 			logger:    logger,
 			builder:   builder,
 			q:         proposalQ,
 			utype:     types.LogTrigger,
-			batchSize: FinalRecoveryBatchSize,
+			batchSize: finalRecoveryBatchSize,
 		}, nil
-	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+	}
+
+	lggrPrefix := fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName)
+	lggr := log.New(logger.Writer(), lggrPrefix, telemetry.LogPkgStdFlags)
+
+	ticker := tickers.NewTimeTicker[[]common.UpkeepPayload](recoveryFinalInterval, recoveryObserver, getterFn, lggr)
 
 	return ticker
 }
@@ -102,49 +107,4 @@ func (t coordinatedProposalsTick) Value(ctx context.Context) ([]common.UpkeepPay
 	}
 	t.logger.Printf("%d payloads built from %d proposals, %d filtered", len(payloads), len(proposals), filtered)
 	return payloads, nil
-}
-
-func newRecoveryProposalFlow(
-	preProcessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
-	runner ocr2keepersv3.Runner,
-	metadataStore types.MetadataStore,
-	recoverableProvider common.RecoverableProvider,
-	recoveryInterval time.Duration,
-	stateUpdater common.UpkeepStateUpdater,
-	logger *log.Logger,
-) service.Recoverable {
-	preProcessors = append(preProcessors, preprocessors.NewProposalFilterer(metadataStore, types.LogTrigger))
-	postprocessors := postprocessors.NewCombinedPostprocessor(
-		postprocessors.NewIneligiblePostProcessor(stateUpdater, logger),
-		postprocessors.NewAddProposalToMetadataStorePostprocessor(metadataStore),
-	)
-
-	observer := ocr2keepersv3.NewRunnableObserver(
-		preProcessors,
-		postprocessors,
-		runner,
-		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-	)
-
-	return tickers.NewTimeTicker[[]common.UpkeepPayload](recoveryInterval, observer, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
-		return logRecoveryTick{logger: logger, logRecoverer: recoverableProvider}, nil
-	}, log.New(logger.Writer(), fmt.Sprintf("[%s | recovery-proposal-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
-}
-
-type logRecoveryTick struct {
-	logRecoverer common.RecoverableProvider
-	logger       *log.Logger
-}
-
-func (et logRecoveryTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
-	if et.logRecoverer == nil {
-		return nil, nil
-	}
-
-	logs, err := et.logRecoverer.GetRecoveryProposals(ctx)
-
-	et.logger.Printf("%d logs returned by log recoverer", len(logs))
-
-	return logs, err
 }
