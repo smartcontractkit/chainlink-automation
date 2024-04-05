@@ -1,6 +1,7 @@
 package random
 
 import (
+	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"math/rand"
 	"testing"
 
@@ -8,21 +9,58 @@ import (
 )
 
 func TestShuffler_Shuffle(t *testing.T) {
-	shuffler := Shuffler[int]{Source: rand.NewSource(0)}
-	arr := []int{1, 2, 3, 4, 5}
+	shuffler := Shuffler{Source: rand.NewSource(0)}
+	arr := []automation.UpkeepPayload{
+		{WorkID: "1"},
+		{WorkID: "2"},
+		{WorkID: "3"},
+		{WorkID: "4"},
+		{WorkID: "5"},
+	}
 	arr = shuffler.Shuffle(arr)
-	assert.Equal(t, arr, []int{3, 4, 2, 1, 5})
+	assert.Equal(t, arr, []automation.UpkeepPayload{
+		{WorkID: "3"},
+		{WorkID: "4"},
+		{WorkID: "2"},
+		{WorkID: "1"},
+		{WorkID: "5"}},
+	)
 
 	// Sorting again using a used shuffler should yield a different result
-	arr = []int{1, 2, 3, 4, 5}
+	arr = []automation.UpkeepPayload{
+		{WorkID: "1"},
+		{WorkID: "2"},
+		{WorkID: "3"},
+		{WorkID: "4"},
+		{WorkID: "5"},
+	}
 	arr = shuffler.Shuffle(arr)
-	assert.Equal(t, arr, []int{3, 4, 1, 5, 2})
+	assert.Equal(t, arr, []automation.UpkeepPayload{
+		{WorkID: "3"},
+		{WorkID: "4"},
+		{WorkID: "1"},
+		{WorkID: "5"},
+		{WorkID: "2"}},
+	)
 
 	// Sorting again using a new shuffler with the same pseudo-random source should yield the same result
-	shuffler2 := Shuffler[int]{Source: rand.NewSource(0)}
-	arr2 := []int{1, 2, 3, 4, 5}
+	shuffler2 := Shuffler{Source: rand.NewSource(0)}
+	arr2 := []automation.UpkeepPayload{
+		{WorkID: "1"},
+		{WorkID: "2"},
+		{WorkID: "3"},
+		{WorkID: "4"},
+		{WorkID: "5"},
+	}
+
 	arr2 = shuffler2.Shuffle(arr2)
-	assert.Equal(t, arr2, []int{3, 4, 2, 1, 5})
+	assert.Equal(t, arr2, []automation.UpkeepPayload{
+		{WorkID: "3"},
+		{WorkID: "4"},
+		{WorkID: "2"},
+		{WorkID: "1"},
+		{WorkID: "5"}},
+	)
 }
 
 func TestShuffler_ShuffleString(t *testing.T) {

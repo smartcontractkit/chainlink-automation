@@ -64,12 +64,12 @@ func NewSampler(
 		logger:   logger,
 		getter:   getter,
 		ratio:    ratio,
-		shuffler: random.Shuffler[common.UpkeepPayload]{Source: random.NewCryptoRandSource()},
+		shuffler: random.Shuffler{Source: random.NewCryptoRandSource()},
 	}
 }
 
-type shuffler[T any] interface {
-	Shuffle([]T) []T
+type shuffler interface {
+	Shuffle([]common.UpkeepPayload) []common.UpkeepPayload
 }
 
 type sampler struct {
@@ -77,7 +77,7 @@ type sampler struct {
 
 	ratio    types.Ratio
 	getter   common.ConditionalUpkeepProvider
-	shuffler shuffler[common.UpkeepPayload]
+	shuffler shuffler
 }
 
 func (s *sampler) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
