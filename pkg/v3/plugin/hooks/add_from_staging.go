@@ -15,23 +15,28 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
-	return AddFromStagingHook{
-		store:       store,
-		coord:       coord,
-		logger:      log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		shuffledIDs: make(map[string]string),
-	}
+type stagingHookState struct {
+	lastRandSrc [16]byte
+	shuffledIDs map[string]string
 }
 
 type AddFromStagingHook struct {
 	store  types.ResultStore
 	logger *log.Logger
 	coord  types.Coordinator
+	state  stagingHookState
+	lock   sync.Mutex
+}
 
-	lastRandSrc [16]byte
-	shuffledIDs map[string]string
-	lock        sync.Mutex
+func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
+	return AddFromStagingHook{
+		store:  store,
+		coord:  coord,
+		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		state: stagingHookState{
+			shuffledIDs: make(map[string]string),
+		},
+	}
 }
 
 // RunHook adds results from the store to the observation.
@@ -64,22 +69,27 @@ func (hook *AddFromStagingHook) orderResults(results []automation.CheckResult, r
 	hook.lock.Lock()
 	defer hook.lock.Unlock()
 
-	// once the random source changes, the workIDs needs to be shuffled again with the new source
-	if !bytes.Equal(hook.lastRandSrc[:], rSrc[:]) {
-		hook.lastRandSrc = rSrc
-		hook.shuffledIDs = make(map[string]string)
-	}
-	// creating a map to hold the shuffled workIDs
-	for _, result := range results {
-		if _, ok := hook.shuffledIDs[result.WorkID]; !ok {
-			hook.shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
-		}
-	}
-	shuffledIDs := hook.shuffledIDs
+	shuffledIDs := hook.updateShuffledIDs(results, rSrc)
 	// sort by the shuffled workID
 	sort.Slice(results, func(i, j int) bool {
 		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
 	})
 
 	return results
+}
+
+func (hook *AddFromStagingHook) updateShuffledIDs(results []automation.CheckResult, rSrc [16]byte) map[string]string {
+	// once the random source changes, the workIDs needs to be shuffled again with the new source
+	if !bytes.Equal(hook.state.lastRandSrc[:], rSrc[:]) {
+		hook.state.lastRandSrc = rSrc
+		hook.state.shuffledIDs = make(map[string]string)
+	}
+
+	for _, result := range results {
+		if _, ok := hook.state.shuffledIDs[result.WorkID]; !ok {
+			hook.state.shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
+		}
+	}
+
+	return hook.state.shuffledIDs
 }
