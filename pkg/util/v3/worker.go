@@ -1,9 +1,9 @@
-package v2
+package v3
 
 import (
 	"context"
 	"fmt"
-	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
+	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -17,12 +17,12 @@ var (
 
 type WorkItemResult struct {
 	Worker string
-	Data   []ocr2keepers.UpkeepResult
+	Data   []automation.CheckResult
 	Err    error
 	Time   time.Duration
 }
 
-type WorkItem func(context.Context) ([]ocr2keepers.UpkeepResult, error)
+type WorkItem func(context.Context) ([]automation.CheckResult, error)
 
 type worker struct {
 	Name  string
@@ -32,7 +32,7 @@ type worker struct {
 func (w *worker) Do(ctx context.Context, r func(WorkItemResult), wrk WorkItem) {
 	start := time.Now()
 
-	var data []ocr2keepers.UpkeepResult
+	var data []automation.CheckResult
 	var err error
 
 	if ctx.Err() != nil {
@@ -304,10 +304,10 @@ func (wg *WorkerGroup) storeResult(group int) func(result WorkItemResult) {
 	}
 }
 
-type JobFunc func(context.Context, []ocr2keepers.UpkeepKey) ([]ocr2keepers.UpkeepResult, error)
-type JobResultFunc func([]ocr2keepers.UpkeepResult, error)
+type JobFunc func(context.Context, []automation.UpkeepPayload) ([]automation.CheckResult, error)
+type JobResultFunc func([]automation.CheckResult, error)
 
-func RunJobs(ctx context.Context, wg *WorkerGroup, jobs [][]ocr2keepers.UpkeepKey, jobFunc JobFunc, resFunc JobResultFunc) {
+func RunJobs(ctx context.Context, wg *WorkerGroup, jobs [][]automation.UpkeepPayload, jobFunc JobFunc, resFunc JobResultFunc) {
 	var wait sync.WaitGroup
 	end := make(chan struct{}, 1)
 
@@ -349,8 +349,8 @@ func RunJobs(ctx context.Context, wg *WorkerGroup, jobs [][]ocr2keepers.UpkeepKe
 	close(end)
 }
 
-func makeJobFunc(jobCtx context.Context, value []ocr2keepers.UpkeepKey, jobFunc JobFunc) WorkItem {
-	return func(svcCtx context.Context) ([]ocr2keepers.UpkeepResult, error) {
+func makeJobFunc(jobCtx context.Context, value []automation.UpkeepPayload, jobFunc JobFunc) WorkItem {
+	return func(svcCtx context.Context) ([]automation.CheckResult, error) {
 		// the jobFunc should exit in the case that either the job context
 		// cancels or the worker service context cancels. To ensure we don't end
 		// up with memory leaks, cancel the merged context to release resources.

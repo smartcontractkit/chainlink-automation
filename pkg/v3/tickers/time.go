@@ -3,7 +3,7 @@ package tickers
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-automation/internal/util/v2"
+	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	"log"
 	"time"
 )
@@ -15,7 +15,7 @@ type observer[T any] interface {
 type getterFunc[T any] func(context.Context, time.Time) (Tick[T], error)
 
 type timeTicker[T any] struct {
-	closer v2.Closer
+	closer util.Closer
 
 	interval time.Duration
 	observer observer[T]

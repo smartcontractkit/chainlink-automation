@@ -1,7 +1,7 @@
 package ocr2keepers
 
 import (
-	"github.com/smartcontractkit/chainlink-automation/internal/util/v2"
+	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	"math/rand"
 )
 
@@ -11,7 +11,7 @@ func filterDedupeShuffleObservations(upkeepKeys [][]UpkeepKey, keyRandSource [16
 		return nil, err
 	}
 
-	rand.New(v2.NewKeyedCryptoRandSource(keyRandSource)).Shuffle(len(uniqueKeys), func(i, j int) {
+	rand.New(util.NewKeyedCryptoRandSource(keyRandSource)).Shuffle(len(uniqueKeys), func(i, j int) {
 		uniqueKeys[i], uniqueKeys[j] = uniqueKeys[j], uniqueKeys[i]
 	})
 
@@ -49,7 +49,7 @@ func filterAndDedupe(inputs [][]UpkeepKey, filters ...func(UpkeepKey) (bool, err
 }
 
 func shuffleObservations(upkeepIdentifiers []UpkeepIdentifier, source [16]byte) []UpkeepIdentifier {
-	rand.New(v2.NewKeyedCryptoRandSource(source)).Shuffle(len(upkeepIdentifiers), func(i, j int) {
+	rand.New(util.NewKeyedCryptoRandSource(source)).Shuffle(len(upkeepIdentifiers), func(i, j int) {
 		upkeepIdentifiers[i], upkeepIdentifiers[j] = upkeepIdentifiers[j], upkeepIdentifiers[i]
 	})
 

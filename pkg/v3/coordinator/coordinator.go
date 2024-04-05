@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util/v2"
+	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
 	"log"
 	"time"

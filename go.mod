@@ -11,6 +11,7 @@ require (
 	github.com/Maldris/mathparse v0.0.0-20170508133428-f0d009a7a773
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/go-echarts/go-echarts/v2 v2.2.6
+	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.3.1
 	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/pkg/errors v0.9.1

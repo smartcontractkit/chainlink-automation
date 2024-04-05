@@ -3,7 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
-	v22 "github.com/smartcontractkit/chainlink-automation/internal/util/v2"
+	v22 "github.com/smartcontractkit/chainlink-automation/internal/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
 	"log"
 	"sync/atomic"
@@ -38,7 +38,7 @@ type Runner struct {
 	encoder  Encoder
 
 	// initialized by the constructor
-	workers      *v2.WorkerGroup[[]ocr2keepers.UpkeepResult] // parallelizer for RPC calls
+	workers      *v2.WorkerGroup // parallelizer for RPC calls
 	cache        *v2.Cache[ocr2keepers.UpkeepResult]
 	cacheCleaner *v2.IntervalCacheCleaner[ocr2keepers.UpkeepResult]
 
@@ -63,7 +63,7 @@ func NewRunner(
 		logger:           logger,
 		registry:         registry,
 		encoder:          encoder,
-		workers:          v2.NewWorkerGroup[[]ocr2keepers.UpkeepResult](workers, workerQueueLength),
+		workers:          v2.NewWorkerGroup(workers, workerQueueLength),
 		cache:            v2.NewCache[ocr2keepers.UpkeepResult](cacheExpire),
 		cacheCleaner:     v2.NewIntervalCacheCleaner[ocr2keepers.UpkeepResult](cacheClean),
 		workerBatchLimit: 10,
