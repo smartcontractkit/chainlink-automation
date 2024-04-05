@@ -25,7 +25,7 @@ const (
 )
 
 func NewFinalRecoveryFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preprocessors []ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	retryQ types.RetryQueue,
@@ -54,7 +54,7 @@ func NewFinalRecoveryFlow(
 		observerLggr,
 	)
 
-	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return coordinatedProposalsTick{
 			logger:    logger,
 			builder:   builder,
@@ -67,7 +67,7 @@ func NewFinalRecoveryFlow(
 	lggrPrefix := fmt.Sprintf("[%s | recovery-final-ticker]", telemetry.ServiceName)
 	lggr := log.New(logger.Writer(), lggrPrefix, telemetry.LogPkgStdFlags)
 
-	ticker := tickers.NewTimeTicker[[]common.UpkeepPayload](recoveryFinalInterval, recoveryObserver, getterFn, lggr)
+	ticker := tickers.NewTimeTicker(recoveryFinalInterval, recoveryObserver, getterFn, lggr)
 
 	return ticker
 }

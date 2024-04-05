@@ -37,7 +37,7 @@ type sampler struct {
 }
 
 func NewSampleProposalFlow(
-	pre []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	pre []ocr2keepersv3.PreProcessor,
 	ratio types.Ratio,
 	getter common.ConditionalUpkeepProvider,
 	metadataStore types.MetadataStore,
@@ -55,7 +55,7 @@ func NewSampleProposalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return &sampler{
 			logger:   logger,
 			getter:   getter,
@@ -67,7 +67,7 @@ func NewSampleProposalFlow(
 	lggrPrefix := fmt.Sprintf("[%s | sample-proposal-ticker]", telemetry.ServiceName)
 	lggr := log.New(logger.Writer(), lggrPrefix, telemetry.LogPkgStdFlags)
 
-	return tickers.NewTimeTicker[[]common.UpkeepPayload](samplingConditionInterval, observer, getterFn, lggr)
+	return tickers.NewTimeTicker(samplingConditionInterval, observer, getterFn, lggr)
 }
 
 func (s *sampler) Value(ctx context.Context) ([]common.UpkeepPayload, error) {

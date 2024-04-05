@@ -12,7 +12,7 @@ import (
 )
 
 func NewConditionalTriggerFlows(
-	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	coord ocr2keepersv3.PreProcessor,
 	ratio types.Ratio,
 	getter common.ConditionalUpkeepProvider,
 	subscriber common.BlockSubscriber,
@@ -25,7 +25,7 @@ func NewConditionalTriggerFlows(
 	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) []service.Recoverable {
-	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor{coord}
 
 	// the sampling proposal flow takes random samples of active upkeeps, checks
 	// them and surfaces the ids if the items are eligible
@@ -38,7 +38,7 @@ func NewConditionalTriggerFlows(
 }
 
 func NewLogTriggerFlows(
-	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	coord ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	metadataStore types.MetadataStore,
 	runner ocr2keepersv3.Runner,
@@ -52,7 +52,7 @@ func NewLogTriggerFlows(
 ) []service.Recoverable {
 	// all flows use the same preprocessor based on the coordinator
 	// each flow can add preprocessors to this provided slice
-	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor{coord}
 
 	// the log trigger flow is the happy path for log trigger payloads. all
 	// retryables that are encountered in this flow are elevated to the retry

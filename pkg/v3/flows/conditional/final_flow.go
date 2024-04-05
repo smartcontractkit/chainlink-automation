@@ -26,7 +26,7 @@ const (
 )
 
 func NewFinalConditionalFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preprocessors []ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	proposalQ types.ProposalQueue,
@@ -50,7 +50,7 @@ func NewFinalConditionalFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return coordinatedProposalsTick{
 			logger:    logger,
 			builder:   builder,
@@ -60,7 +60,7 @@ func NewFinalConditionalFlow(
 		}, nil
 	}
 
-	ticker := tickers.NewTimeTicker[[]common.UpkeepPayload](finalConditionalInterval, observer, getterFn, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+	ticker := tickers.NewTimeTicker(finalConditionalInterval, observer, getterFn, log.New(logger.Writer(), fmt.Sprintf("[%s | conditional-final-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
 
 	return ticker
 }

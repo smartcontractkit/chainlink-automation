@@ -23,7 +23,7 @@ const (
 )
 
 func NewRecoveryProposalFlow(
-	preProcessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preProcessors []ocr2keepersv3.PreProcessor,
 	runner ocr2keepersv3.Runner,
 	metadataStore types.MetadataStore,
 	recoverableProvider common.RecoverableProvider,
@@ -47,14 +47,14 @@ func NewRecoveryProposalFlow(
 		observerLggr,
 	)
 
-	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return logRecoveryTick{logger: logger, logRecoverer: recoverableProvider}, nil
 	}
 
 	lggrPrefix := fmt.Sprintf("[%s | recovery-proposal-ticker]", telemetry.ServiceName)
 	lggr := log.New(logger.Writer(), lggrPrefix, telemetry.LogPkgStdFlags)
 
-	return tickers.NewTimeTicker[[]common.UpkeepPayload](recoveryProposalInterval, observer, getterFn, lggr)
+	return tickers.NewTimeTicker(recoveryProposalInterval, observer, getterFn, lggr)
 }
 
 type logRecoveryTick struct {

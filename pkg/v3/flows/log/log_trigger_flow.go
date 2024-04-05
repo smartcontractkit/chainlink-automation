@@ -30,7 +30,7 @@ const (
 
 // log trigger flow is the happy path entry point for log triggered upkeeps
 func NewLogTriggerFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	preprocessors []ocr2keepersv3.PreProcessor,
 	rs types.ResultStore,
 	rn ocr2keepersv3.Runner,
 	logProvider common.LogEventProvider,
@@ -52,14 +52,14 @@ func NewLogTriggerFlow(
 		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
 	}
 
 	lgrPrefix := fmt.Sprintf("[%s | log-trigger-ticker]", telemetry.ServiceName)
 	lggr := log.New(logger.Writer(), lgrPrefix, telemetry.LogPkgStdFlags)
 
-	timeTick := tickers.NewTimeTicker[[]common.UpkeepPayload](logCheckInterval, observer, getterFn, lggr)
+	timeTick := tickers.NewTimeTicker(logCheckInterval, observer, getterFn, lggr)
 
 	return timeTick
 }
