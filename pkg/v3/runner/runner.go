@@ -38,8 +38,7 @@ type Runner struct {
 	logger   *log.Logger
 	runnable types.Runnable
 	// initialized by the constructor
-	workers *v3.WorkerGroup                    // parallelizer
-	cache   *v3.Cache[ocr2keepers.CheckResult] // result cache
+	cache *v3.Cache[ocr2keepers.CheckResult] // result cache
 	// configurations
 	cacheGcInterval time.Duration
 	// run state data
@@ -63,7 +62,6 @@ func NewRunner(
 	return &Runner{
 		logger:          log.New(logger.Writer(), fmt.Sprintf("[%s | check-pipeline-runner]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		runnable:        runnable,
-		workers:         v3.NewWorkerGroup(conf.Workers),
 		cache:           v3.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
 		cacheGcInterval: conf.CacheClean,
 		chClose:         make(chan struct{}, 1),
@@ -106,7 +104,6 @@ func (o *Runner) Close() error {
 	}
 
 	o.cache.Stop()
-	o.workers.Stop()
 	o.running.Swap(false)
 
 	o.chClose <- struct{}{}
