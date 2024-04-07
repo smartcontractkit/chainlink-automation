@@ -24,8 +24,7 @@ type AddFromStagingHook struct {
 	store  types.ResultStore
 	logger *log.Logger
 	coord  types.Coordinator
-	state  stagingHookState
-	lock   sync.Mutex
+	sorter stagedResultSorter
 }
 
 func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, logger *log.Logger) AddFromStagingHook {
@@ -33,7 +32,7 @@ func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, log
 		store:  store,
 		coord:  coord,
 		logger: log.New(logger.Writer(), fmt.Sprintf("[%s | build hook:add-from-staging]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		state: stagingHookState{
+		sorter: stagedResultSorter{
 			shuffledIDs: make(map[string]string),
 		},
 	}
@@ -54,7 +53,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 		return err
 	}
 
-	results = hook.orderResults(results, rSrc)
+	results = hook.sorter.orderResults(results, rSrc)
 	n := len(results)
 	if n > limit {
 		results = results[:limit]
@@ -66,11 +65,18 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	return nil
 }
 
-func (hook *AddFromStagingHook) orderResults(results []automation.CheckResult, rSrc [16]byte) []automation.CheckResult {
-	hook.lock.Lock()
-	defer hook.lock.Unlock()
+type stagedResultSorter struct {
+	lastRandSrc [16]byte
+	shuffledIDs map[string]string
+	lock        sync.Mutex
+}
 
-	shuffledIDs := hook.updateShuffledIDs(results, rSrc)
+// orderResults orders the results by the shuffled workID
+func (sorter *stagedResultSorter) orderResults(results []automation.CheckResult, rSrc [16]byte) []automation.CheckResult {
+	sorter.lock.Lock()
+	defer sorter.lock.Unlock()
+
+	shuffledIDs := sorter.updateShuffledIDs(results, rSrc)
 	// sort by the shuffled workID
 	sort.Slice(results, func(i, j int) bool {
 		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
@@ -79,18 +85,20 @@ func (hook *AddFromStagingHook) orderResults(results []automation.CheckResult, r
 	return results
 }
 
-func (hook *AddFromStagingHook) updateShuffledIDs(results []automation.CheckResult, rSrc [16]byte) map[string]string {
+// updateShuffledIDs updates the shuffledIDs cache with the new random source or items.
+// NOTE: This function is not thread-safe and should be called with a lock
+func (sorter *stagedResultSorter) updateShuffledIDs(results []automation.CheckResult, rSrc [16]byte) map[string]string {
 	// once the random source changes, the workIDs needs to be shuffled again with the new source
-	if !bytes.Equal(hook.state.lastRandSrc[:], rSrc[:]) {
-		hook.state.lastRandSrc = rSrc
-		hook.state.shuffledIDs = make(map[string]string)
+	if !bytes.Equal(sorter.lastRandSrc[:], rSrc[:]) {
+		sorter.lastRandSrc = rSrc
+		sorter.shuffledIDs = make(map[string]string)
 	}
 
 	for _, result := range results {
-		if _, ok := hook.state.shuffledIDs[result.WorkID]; !ok {
-			hook.state.shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
+		if _, ok := sorter.shuffledIDs[result.WorkID]; !ok {
+			sorter.shuffledIDs[result.WorkID] = random.ShuffleString(result.WorkID, rSrc)
 		}
 	}
 
-	return hook.state.shuffledIDs
+	return sorter.shuffledIDs
 }
