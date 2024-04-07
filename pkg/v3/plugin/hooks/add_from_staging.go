@@ -15,11 +15,6 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-type stagingHookState struct {
-	lastRandSrc [16]byte
-	shuffledIDs map[string]string
-}
-
 type AddFromStagingHook struct {
 	store  types.ResultStore
 	logger *log.Logger
