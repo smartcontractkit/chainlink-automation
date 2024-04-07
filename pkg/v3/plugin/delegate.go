@@ -173,10 +173,9 @@ func NewDelegate(c DelegateConfig) (*Delegate, error) {
 			c.UpkeepProvider,
 			c.Runnable,
 			runner.RunnerConfig{
-				Workers:           conf.MaxServiceWorkers,
-				WorkerQueueLength: conf.ServiceQueueLength,
-				CacheExpire:       conf.CacheExpiration,
-				CacheClean:        conf.CacheEvictionInterval,
+				Workers:     conf.MaxServiceWorkers,
+				CacheExpire: conf.CacheExpiration,
+				CacheClean:  conf.CacheEvictionInterval,
 			},
 			c.Encoder,
 			c.UpkeepTypeGetter,

@@ -83,7 +83,7 @@ type WorkerGroup struct {
 	once      sync.Once
 }
 
-func NewWorkerGroup(workers int, queue int) *WorkerGroup {
+func NewWorkerGroup(workers int) *WorkerGroup {
 	svcCtx, svcCancel := context.WithCancel(context.Background())
 	wg := &WorkerGroup{
 		maxWorkers:       workers,
@@ -307,7 +307,7 @@ func (wg *WorkerGroup) storeResult(group int) func(result WorkItemResult) {
 type JobFunc func(context.Context, []automation.UpkeepPayload) ([]automation.CheckResult, error)
 type JobResultFunc func([]automation.CheckResult, error)
 
-func RunJobs(ctx context.Context, wg *WorkerGroup, jobs [][]automation.UpkeepPayload, jobFunc JobFunc, resFunc JobResultFunc) {
+func RunJobs(ctx context.Context, wg *WorkerGroup, jobs [][]automation.UpkeepPayload, wrapWorkerFunc JobFunc, resFunc JobResultFunc) {
 	var wait sync.WaitGroup
 	end := make(chan struct{}, 1)
 
@@ -331,7 +331,8 @@ func RunJobs(ctx context.Context, wg *WorkerGroup, jobs [][]automation.UpkeepPay
 	for _, job := range jobs {
 		wait.Add(1)
 
-		if err := wg.Do(ctx, makeJobFunc(ctx, job, jobFunc), group); err != nil {
+		// make job func seems to merge the context, returns the wrapWorkerFunc as a WorkItem
+		if err := wg.Do(ctx, makeJobFunc(ctx, job, wrapWorkerFunc), group); err != nil {
 			// the makeJobFunc will exit early if the context passed to it has
 			// already completed or if the worker process has been stopped
 			wait.Done()

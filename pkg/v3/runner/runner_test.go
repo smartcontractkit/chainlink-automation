@@ -71,10 +71,9 @@ func TestRunnerCache(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
 
 	conf := RunnerConfig{
-		Workers:           2,
-		WorkerQueueLength: 1000,
-		CacheExpire:       500 * time.Millisecond,
-		CacheClean:        1 * time.Second,
+		Workers:     2,
+		CacheExpire: 500 * time.Millisecond,
+		CacheClean:  1 * time.Second,
 	}
 
 	payloads := []ocr2keepers.UpkeepPayload{
@@ -141,10 +140,9 @@ func TestRunnerCacheDifferentTriggerBlock(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
 
 	conf := RunnerConfig{
-		Workers:           2,
-		WorkerQueueLength: 1000,
-		CacheExpire:       5 * time.Second,
-		CacheClean:        5 * time.Second,
+		Workers:     2,
+		CacheExpire: 5 * time.Second,
+		CacheClean:  5 * time.Second,
 	}
 
 	payloads := []ocr2keepers.UpkeepPayload{
@@ -226,10 +224,9 @@ func TestRunnerBatching(t *testing.T) {
 	mr := new(mocks.MockRunnable)
 
 	conf := RunnerConfig{
-		Workers:           2,
-		WorkerQueueLength: 1000,
-		CacheExpire:       500 * time.Millisecond,
-		CacheClean:        1 * time.Second,
+		Workers:     2,
+		CacheExpire: 500 * time.Millisecond,
+		CacheClean:  1 * time.Second,
 	}
 
 	runner, err := NewRunner(logger, mr, conf)
@@ -278,10 +275,9 @@ func TestRunnerConcurrent(t *testing.T) {
 	mr := new(mocks.MockRunnable)
 
 	conf := RunnerConfig{
-		Workers:           2,
-		WorkerQueueLength: 1000,
-		CacheExpire:       500 * time.Millisecond,
-		CacheClean:        1 * time.Second,
+		Workers:     2,
+		CacheExpire: 500 * time.Millisecond,
+		CacheClean:  1 * time.Second,
 	}
 
 	runner, err := NewRunner(logger, mr, conf)
@@ -338,10 +334,9 @@ func TestRunnerStartStop(t *testing.T) {
 	mr := new(mocks.MockRunnable)
 
 	conf := RunnerConfig{
-		Workers:           2,
-		WorkerQueueLength: 1000,
-		CacheExpire:       500 * time.Millisecond,
-		CacheClean:        1 * time.Second,
+		Workers:     2,
+		CacheExpire: 500 * time.Millisecond,
+		CacheClean:  1 * time.Second,
 	}
 
 	runner, err := NewRunner(logger, mr, conf)
@@ -374,10 +369,9 @@ func TestRunnerErr(t *testing.T) {
 		mr := new(mocks.MockRunnable)
 
 		conf := RunnerConfig{
-			Workers:           2,
-			WorkerQueueLength: 1000,
-			CacheExpire:       500 * time.Millisecond,
-			CacheClean:        1 * time.Second,
+			Workers:     2,
+			CacheExpire: 500 * time.Millisecond,
+			CacheClean:  1 * time.Second,
 		}
 
 		runner, err := NewRunner(logger, mr, conf)
@@ -402,10 +396,9 @@ func TestRunnerErr(t *testing.T) {
 		}
 
 		conf := RunnerConfig{
-			Workers:           2,
-			WorkerQueueLength: 1000,
-			CacheExpire:       500 * time.Millisecond,
-			CacheClean:        1 * time.Second,
+			Workers:     2,
+			CacheExpire: 500 * time.Millisecond,
+			CacheClean:  1 * time.Second,
 		}
 
 		runner, err := NewRunner(logger, mr, conf)
