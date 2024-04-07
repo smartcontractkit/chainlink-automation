@@ -6,7 +6,6 @@ import (
 	v22 "github.com/smartcontractkit/chainlink-automation/internal/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/util/v3"
 	"log"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -217,50 +216,4 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 	}
 
 	return result, nil
-}
-
-func (o *Runner) wrapWorkerFunc() func(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-	return func(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-		start := time.Now()
-
-		allPayloadKeys := make([]string, len(payloads))
-		for i := range payloads {
-			allPayloadKeys[i] = payloads[i].WorkID
-		}
-
-		// perform check and update cache with result
-		checkResults, err := o.runnable.CheckUpkeeps(ctx, payloads...)
-		if err != nil {
-			err = fmt.Errorf("%w: failed to check upkeep payloads for ids '%s'", err, strings.Join(allPayloadKeys, ", "))
-		} else {
-			o.logger.Printf("check %d upkeeps took %dms to perform", len(payloads), time.Since(start)/time.Millisecond)
-		}
-
-		return checkResults, err
-	}
-}
-
-func (o *Runner) wrapAggregate(r *result) func([]ocr2keepers.CheckResult, error) {
-	return func(results []ocr2keepers.CheckResult, err error) {
-		if err == nil {
-			r.AddSuccesses(1)
-
-			for _, result := range results {
-				// only add to the cache if pipeline was successful
-				if result.PipelineExecutionState == 0 {
-					c, ok := o.cache.Get(result.WorkID)
-					if !ok || result.Trigger.BlockNumber > c.Trigger.BlockNumber {
-						// Add to cache if the workID didn't exist before or if we got a result on a higher checkBlockNumber
-						o.cache.Set(result.WorkID, result, v3.DefaultCacheExpiration)
-					}
-				}
-
-				r.Add(result)
-			}
-		} else {
-			r.SetErr(err)
-			o.logger.Printf("error received from worker result: %s", err)
-			r.AddFailures(1)
-		}
-	}
 }
