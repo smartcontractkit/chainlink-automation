@@ -49,8 +49,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	}
 
 	results = hook.sorter.orderResults(results, rSrc)
-	n := len(results)
-	if n > limit {
+	if n := len(results); n > limit {
 		results = results[:limit]
 		hook.logger.Printf("skipped %d available results in staging", n-limit)
 	}
