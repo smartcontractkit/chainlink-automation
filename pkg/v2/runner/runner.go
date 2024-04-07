@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	v22 "github.com/smartcontractkit/chainlink-automation/internal/util"
-	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"log"
 	"sync/atomic"
 	"time"
@@ -38,9 +38,9 @@ type Runner struct {
 	encoder  Encoder
 
 	// initialized by the constructor
-	workers      *v2.WorkerGroup // parallelizer for RPC calls
-	cache        *v2.Cache[ocr2keepers.UpkeepResult]
-	cacheCleaner *v2.IntervalCacheCleaner[ocr2keepers.UpkeepResult]
+	workers      *util.WorkerGroup // parallelizer for RPC calls
+	cache        *util.Cache[ocr2keepers.UpkeepResult]
+	cacheCleaner *util.IntervalCacheCleaner[ocr2keepers.UpkeepResult]
 
 	// configurations
 	workerBatchLimit int // the maximum number of items in RPC batch call
@@ -63,9 +63,9 @@ func NewRunner(
 		logger:           logger,
 		registry:         registry,
 		encoder:          encoder,
-		workers:          v2.NewWorkerGroup(workers, workerQueueLength),
-		cache:            v2.NewCache[ocr2keepers.UpkeepResult](cacheExpire),
-		cacheCleaner:     v2.NewIntervalCacheCleaner[ocr2keepers.UpkeepResult](cacheClean),
+		workers:          util.NewWorkerGroup(workers, workerQueueLength),
+		cache:            util.NewCache[ocr2keepers.UpkeepResult](cacheExpire),
+		cacheCleaner:     util.NewIntervalCacheCleaner[ocr2keepers.UpkeepResult](cacheClean),
 		workerBatchLimit: 10,
 	}, nil
 }
@@ -126,7 +126,7 @@ func (o *Runner) parallelCheck(ctx context.Context, mercuryEnabled bool, keys []
 
 	// Create batches from the given keys.
 	// Max keyBatchSize items in the batch.
-	v2.RunJobs(
+	util.RunJobs(
 		ctx,
 		o.workers,
 		v22.Unflatten(toRun, o.workerBatchLimit),
@@ -188,7 +188,7 @@ func (o *Runner) wrapAggregate(r *Result) func([]ocr2keepers.UpkeepResult, error
 
 			for _, res := range result {
 				key, _, _ := o.encoder.Detail(res)
-				o.cache.Set(string(key), res, v2.DefaultCacheExpiration)
+				o.cache.Set(string(key), res, util.DefaultCacheExpiration)
 				r.Add(res)
 			}
 		} else {

@@ -3,7 +3,7 @@ package coordinator
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-automation/pkg/util/v2"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"io"
 	"log"
 	"testing"
@@ -25,8 +25,8 @@ func TestReportCoordinator(t *testing.T) {
 			logger:     l,
 			logs:       mLogs,
 			encoder:    mEnc,
-			idBlocks:   v2.NewCache[idBlocker](time.Second),
-			activeKeys: v2.NewCache[bool](time.Minute),
+			idBlocks:   util.NewCache[idBlocker](time.Second),
+			activeKeys: util.NewCache[bool](time.Minute),
 			minConfs:   1,
 			chStop:     make(chan struct{}),
 		}, mEnc, mLogs
@@ -875,7 +875,7 @@ func TestReportCoordinator(t *testing.T) {
 
 			rc.idBlocks.Set(string(id1), idBlocker{
 				TransmitBlockNumber: bk15,
-			}, v2.DefaultCacheExpiration)
+			}, util.DefaultCacheExpiration)
 
 			mr.On("SplitUpkeepKey", mock.Anything).Return(bk4, id1, nil).Once()
 			mr.On("After", bk4, bk15).Return(false, nil).Once()
@@ -892,7 +892,7 @@ func TestReportCoordinator(t *testing.T) {
 
 			rc.idBlocks.Set(string(id1), idBlocker{
 				TransmitBlockNumber: bk15,
-			}, v2.DefaultCacheExpiration)
+			}, util.DefaultCacheExpiration)
 
 			key := ocr2keepers.UpkeepKey("invalid")
 			expected := fmt.Errorf("test")
@@ -916,7 +916,7 @@ func TestReportCoordinator(t *testing.T) {
 
 			rc.idBlocks.Set("1234", idBlocker{
 				TransmitBlockNumber: invalid,
-			}, v2.DefaultCacheExpiration)
+			}, util.DefaultCacheExpiration)
 
 			mr.On("SplitUpkeepKey", key).Return(bk1, id, nil).Once()
 			mr.On("After", bk1, invalid).Return(false, expected).Once()

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	v22 "github.com/smartcontractkit/chainlink-automation/internal/util"
-	"github.com/smartcontractkit/chainlink-automation/pkg/util/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -38,7 +38,7 @@ type Runner struct {
 	logger   *log.Logger
 	runnable types.Runnable
 	// initialized by the constructor
-	cache *v3.Cache[ocr2keepers.CheckResult] // result cache
+	cache *util.Cache[ocr2keepers.CheckResult] // result cache
 	// configurations
 	cacheGcInterval time.Duration
 	// run state data
@@ -62,7 +62,7 @@ func NewRunner(
 	return &Runner{
 		logger:          log.New(logger.Writer(), fmt.Sprintf("[%s | check-pipeline-runner]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 		runnable:        runnable,
-		cache:           v3.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
+		cache:           util.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
 		cacheGcInterval: conf.CacheClean,
 		chClose:         make(chan struct{}, 1),
 	}, nil
@@ -124,7 +124,7 @@ func (o *Runner) worker(ctx context.Context, jobs <-chan []ocr2keepers.UpkeepPay
 					c, ok := o.cache.Get(res.WorkID)
 					if !ok || res.Trigger.BlockNumber > c.Trigger.BlockNumber {
 						// Add to cache if the workID didn't exist before or if we got a result on a higher checkBlockNumber
-						o.cache.Set(res.WorkID, res, v3.DefaultCacheExpiration)
+						o.cache.Set(res.WorkID, res, util.DefaultCacheExpiration)
 					}
 				}
 
@@ -167,7 +167,7 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 
 	//// Create batches from the given keys.
 	//// Max keyBatchSize items in the batch.
-	//v3.RunJobs(
+	//v2.RunJobs(
 	//	ctx,
 	//	o.workers,
 	//	v22.Unflatten(toRun, WorkerBatchLimit),
