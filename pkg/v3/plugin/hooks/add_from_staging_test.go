@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
 	types "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
@@ -231,6 +232,122 @@ func TestAddFromStagingHook_RunHook_Limits(t *testing.T) {
 			assert.NoError(t, err2)
 			assert.Len(t, obs.Performable, tt.expected)
 			assert.Equal(t, obs.Performable, obs2.Performable)
+		})
+	}
+}
+
+func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
+	tests := []struct {
+		name                string
+		cached              []types.CheckResult
+		lastRandSrc         [16]byte
+		input               []types.CheckResult
+		rSrc                [16]byte
+		expected            []types.CheckResult
+		expectedCache       map[string]string
+		expectedLastRandSrc [16]byte
+	}{
+		{
+			name:                "empty results",
+			cached:              []types.CheckResult{},
+			input:               []types.CheckResult{},
+			rSrc:                [16]byte{1},
+			expected:            []types.CheckResult{},
+			expectedLastRandSrc: [16]byte{1},
+		},
+		{
+			name: "happy path",
+			input: []types.CheckResult{
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+			},
+			rSrc: [16]byte{1},
+			expected: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			expectedCache: map[string]string{
+				"10c": "1c0",
+				"20b": "2b0",
+				"30a": "3a0",
+			},
+			expectedLastRandSrc: [16]byte{1},
+		},
+		{
+			name: "with cached results",
+			cached: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+			},
+			lastRandSrc: [16]byte{1},
+			input: []types.CheckResult{
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+			},
+			rSrc: [16]byte{1},
+			expected: []types.CheckResult{
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			expectedCache: map[string]string{
+				"10c": "1c0",
+				"20b": "2b0",
+				"30a": "3a0",
+			},
+			expectedLastRandSrc: [16]byte{1},
+		},
+		{
+			name: "with cached results of different rand src",
+			cached: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+			},
+			lastRandSrc: [16]byte{1},
+			input: []types.CheckResult{
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+			},
+			rSrc: [16]byte{2},
+			expected: []types.CheckResult{
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			expectedCache: map[string]string{
+				"20b": "02b",
+				"30a": "03a",
+			},
+			expectedLastRandSrc: [16]byte{2},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sorter := stagedResultSorter{
+				shuffledIDs: make(map[string]string),
+			}
+
+			if len(tc.cached) > 0 {
+				sorter.shuffledIDs = make(map[string]string)
+				for _, r := range tc.cached {
+					sorter.shuffledIDs[r.WorkID] = random.ShuffleString(r.WorkID, tc.lastRandSrc)
+				}
+				sorter.lastRandSrc = tc.lastRandSrc
+			}
+
+			results := sorter.orderResults(tc.input, tc.rSrc)
+			assert.Equal(t, len(tc.expected), len(results))
+			for i := range results {
+				assert.Equal(t, tc.expected[i].WorkID, results[i].WorkID)
+			}
+			sorter.lock.Lock()
+			defer sorter.lock.Unlock()
+			assert.Equal(t, tc.expectedLastRandSrc, sorter.lastRandSrc)
+			assert.Equal(t, len(tc.expectedCache), len(sorter.shuffledIDs))
+			for k, v := range tc.expectedCache {
+				assert.Equal(t, v, sorter.shuffledIDs[k])
+			}
 		})
 	}
 }

@@ -65,7 +65,11 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 
 	plugin.AddBlockHistoryHook.RunHook(&observation, ocr2keepersv3.ObservationBlockHistoryLimit)
 
-	if err := plugin.AddFromStagingHook.RunHook(&observation, ocr2keepersv3.ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+	// using the OCR seq number for randomness of the performables ordering.
+	// high randomness results in expesive ordering, therefore we reduce
+	// the range of the randomness by dividing the seq number by 10
+	randSrcSeq := outctx.SeqNr / 10
+	if err := plugin.AddFromStagingHook.RunHook(&observation, ocr2keepersv3.ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, randSrcSeq)); err != nil {
 		return nil, err
 	}
 	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepResultStore).Set(float64(len(observation.Performable)))
