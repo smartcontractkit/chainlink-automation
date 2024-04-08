@@ -1,10 +1,11 @@
 package runner
 
 import (
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"sync"
 )
 
-type result[T any] struct {
+type result struct {
 	// this struct type isn't expressly defined to run in a single thread or
 	// multiple threads so internally a mutex provides the thread safety
 	// guarantees in the case it is used in a multi-threaded way
@@ -12,69 +13,69 @@ type result[T any] struct {
 	successes int
 	failures  int
 	err       error
-	values    []T
+	values    []ocr2keepers.CheckResult
 }
 
-func newResult[T any]() *result[T] {
-	return &result[T]{
-		values: make([]T, 0),
+func newResult() *result {
+	return &result{
+		values: make([]ocr2keepers.CheckResult, 0),
 	}
 }
 
-func (r *result[T]) Successes() int {
+func (r *result) Successes() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	return r.successes
 }
 
-func (r *result[T]) AddSuccesses(v int) {
+func (r *result) AddSuccesses(v int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.successes += v
 }
 
-func (r *result[T]) Failures() int {
+func (r *result) Failures() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	return r.failures
 }
 
-func (r *result[T]) AddFailures(v int) {
+func (r *result) AddFailures(v int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.failures += v
 }
 
-func (r *result[T]) Err() error {
+func (r *result) Err() error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	return r.err
 }
 
-func (r *result[T]) SetErr(err error) {
+func (r *result) SetErr(err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.err = err
 }
 
-func (r *result[T]) Total() int {
+func (r *result) Total() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	return r.successes + r.failures
 }
 
-func (r *result[T]) unsafeTotal() int {
+func (r *result) unsafeTotal() int {
 	return r.successes + r.failures
 }
 
-func (r *result[T]) SuccessRate() float64 {
+func (r *result) SuccessRate() float64 {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -85,7 +86,7 @@ func (r *result[T]) SuccessRate() float64 {
 	return float64(r.successes) / float64(r.unsafeTotal())
 }
 
-func (r *result[T]) FailureRate() float64 {
+func (r *result) FailureRate() float64 {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -96,14 +97,14 @@ func (r *result[T]) FailureRate() float64 {
 	return float64(r.failures) / float64(r.unsafeTotal())
 }
 
-func (r *result[T]) Add(res T) {
+func (r *result) Add(res ocr2keepers.CheckResult) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.values = append(r.values, res)
 }
 
-func (r *result[T]) Values() []T {
+func (r *result) Values() []ocr2keepers.CheckResult {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

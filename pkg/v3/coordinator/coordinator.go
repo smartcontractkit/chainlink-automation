@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"log"
 	"time"
 
 	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
-	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
-	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )

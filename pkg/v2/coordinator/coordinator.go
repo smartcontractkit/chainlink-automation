@@ -26,11 +26,11 @@ package coordinator
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"log"
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 )
 

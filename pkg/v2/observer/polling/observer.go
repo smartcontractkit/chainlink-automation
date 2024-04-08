@@ -7,11 +7,11 @@ package polling
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v2/observer"
 )

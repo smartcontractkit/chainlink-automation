@@ -1,12 +1,16 @@
 package random
 
-import "math/rand"
+import (
+	"math/rand"
 
-type Shuffler[T any] struct {
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+)
+
+type Shuffler struct {
 	Source rand.Source
 }
 
-func (s Shuffler[T]) Shuffle(a []T) []T {
+func (s Shuffler) Shuffle(a []common.UpkeepPayload) []common.UpkeepPayload {
 	r := rand.New(s.Source)
 	r.Shuffle(len(a), func(i, j int) {
 		a[i], a[j] = a[j], a[i]

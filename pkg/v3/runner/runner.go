@@ -3,8 +3,10 @@ package runner
 import (
 	"context"
 	"fmt"
+	v22 "github.com/smartcontractkit/chainlink-automation/internal/util"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"log"
-	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -12,8 +14,6 @@ import (
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
-	"github.com/smartcontractkit/chainlink-automation/internal/util"
-	pkgutil "github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 )
 
@@ -38,11 +38,9 @@ type Runner struct {
 	logger   *log.Logger
 	runnable types.Runnable
 	// initialized by the constructor
-	workers *pkgutil.WorkerGroup[[]ocr2keepers.CheckResult] // parallelizer
-	cache   *pkgutil.Cache[ocr2keepers.CheckResult]         // result cache
+	cache *util.Cache[ocr2keepers.CheckResult] // result cache
 	// configurations
-	workerBatchLimit int // the maximum number of items in RPC batch call
-	cacheGcInterval  time.Duration
+	cacheGcInterval time.Duration
 	// run state data
 	running atomic.Bool
 	chClose chan struct{}
@@ -50,11 +48,9 @@ type Runner struct {
 
 type RunnerConfig struct {
 	// Workers is the maximum number of workers in worker group
-	Workers int
-	// WorkerQueueLength is size of worker queue; set to approximately the number of items expected in workload
-	WorkerQueueLength int
-	CacheExpire       time.Duration
-	CacheClean        time.Duration
+	Workers     int
+	CacheExpire time.Duration
+	CacheClean  time.Duration
 }
 
 // NewRunner provides a new configured runner
@@ -64,13 +60,11 @@ func NewRunner(
 	conf RunnerConfig,
 ) (*Runner, error) {
 	return &Runner{
-		logger:           log.New(logger.Writer(), fmt.Sprintf("[%s | check-pipeline-runner]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
-		runnable:         runnable,
-		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.CheckResult](conf.Workers, conf.WorkerQueueLength),
-		cache:            pkgutil.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
-		cacheGcInterval:  conf.CacheClean,
-		workerBatchLimit: WorkerBatchLimit,
-		chClose:          make(chan struct{}, 1),
+		logger:          log.New(logger.Writer(), fmt.Sprintf("[%s | check-pipeline-runner]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		runnable:        runnable,
+		cache:           util.NewCache[ocr2keepers.CheckResult](conf.CacheExpire),
+		cacheGcInterval: conf.CacheClean,
+		chClose:         make(chan struct{}, 1),
 	}, nil
 }
 
@@ -110,7 +104,6 @@ func (o *Runner) Close() error {
 	}
 
 	o.cache.Stop()
-	o.workers.Stop()
 	o.running.Swap(false)
 
 	o.chClose <- struct{}{}
@@ -118,9 +111,36 @@ func (o *Runner) Close() error {
 	return nil
 }
 
+func (o *Runner) worker(ctx context.Context, jobs <-chan []ocr2keepers.UpkeepPayload, result *result) {
+	for job := range jobs {
+		// process the slice
+		results, err := o.runnable.CheckUpkeeps(ctx, job...)
+		if err == nil {
+			result.AddSuccesses(1)
+
+			for _, res := range results {
+				// only add to the cache if pipeline was successful
+				if res.PipelineExecutionState == 0 {
+					c, ok := o.cache.Get(res.WorkID)
+					if !ok || res.Trigger.BlockNumber > c.Trigger.BlockNumber {
+						// Add to cache if the workID didn't exist before or if we got a result on a higher checkBlockNumber
+						o.cache.Set(res.WorkID, res, util.DefaultCacheExpiration)
+					}
+				}
+
+				result.Add(res)
+			}
+		} else {
+			result.SetErr(err)
+			o.logger.Printf("error received from worker result: %s", err)
+			result.AddFailures(1)
+		}
+	}
+}
+
 // parallelCheck should be satisfied by the Runner
-func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) (*result[ocr2keepers.CheckResult], error) {
-	result := newResult[ocr2keepers.CheckResult]()
+func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) (*result, error) {
+	result := newResult()
 
 	if len(payloads) == 0 {
 		return result, nil
@@ -145,15 +165,39 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 		return result, nil
 	}
 
-	// Create batches from the given keys.
-	// Max keyBatchSize items in the batch.
-	pkgutil.RunJobs(
-		ctx,
-		o.workers,
-		util.Unflatten(toRun, o.workerBatchLimit),
-		o.wrapWorkerFunc(),
-		o.wrapAggregate(result),
-	)
+	//// Create batches from the given keys.
+	//// Max keyBatchSize items in the batch.
+	//v2.RunJobs(
+	//	ctx,
+	//	o.workers,
+	//	v22.Unflatten(toRun, WorkerBatchLimit),
+	//	o.wrapWorkerFunc(),
+	//	o.wrapAggregate(result),
+	//)
+
+	jobBatches := v22.Unflatten(toRun, WorkerBatchLimit)
+
+	jobsToDo := make(chan []ocr2keepers.UpkeepPayload, len(jobBatches))
+	//results := make(chan []ocr2keepers.CheckResult, len(jobBatches))
+
+	// Start worker pool
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ { // assuming 10 workers
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			o.worker(ctx, jobsToDo, result)
+		}(i)
+	}
+
+	go func() {
+		for _, job := range jobBatches {
+			jobsToDo <- job
+		}
+		close(jobsToDo)
+	}()
+
+	wg.Wait()
 
 	if result.Total() == 0 {
 		o.logger.Printf("no network calls were made for this sampling set")
@@ -169,50 +213,4 @@ func (o *Runner) parallelCheck(ctx context.Context, payloads []ocr2keepers.Upkee
 	}
 
 	return result, nil
-}
-
-func (o *Runner) wrapWorkerFunc() func(context.Context, []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-	return func(ctx context.Context, payloads []ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-		start := time.Now()
-
-		allPayloadKeys := make([]string, len(payloads))
-		for i := range payloads {
-			allPayloadKeys[i] = payloads[i].WorkID
-		}
-
-		// perform check and update cache with result
-		checkResults, err := o.runnable.CheckUpkeeps(ctx, payloads...)
-		if err != nil {
-			err = fmt.Errorf("%w: failed to check upkeep payloads for ids '%s'", err, strings.Join(allPayloadKeys, ", "))
-		} else {
-			o.logger.Printf("check %d upkeeps took %dms to perform", len(payloads), time.Since(start)/time.Millisecond)
-		}
-
-		return checkResults, err
-	}
-}
-
-func (o *Runner) wrapAggregate(r *result[ocr2keepers.CheckResult]) func([]ocr2keepers.CheckResult, error) {
-	return func(results []ocr2keepers.CheckResult, err error) {
-		if err == nil {
-			r.AddSuccesses(1)
-
-			for _, result := range results {
-				// only add to the cache if pipeline was successful
-				if result.PipelineExecutionState == 0 {
-					c, ok := o.cache.Get(result.WorkID)
-					if !ok || result.Trigger.BlockNumber > c.Trigger.BlockNumber {
-						// Add to cache if the workID didn't exist before or if we got a result on a higher checkBlockNumber
-						o.cache.Set(result.WorkID, result, pkgutil.DefaultCacheExpiration)
-					}
-				}
-
-				r.Add(result)
-			}
-		} else {
-			r.SetErr(err)
-			o.logger.Printf("error received from worker result: %s", err)
-			r.AddFailures(1)
-		}
-	}
 }

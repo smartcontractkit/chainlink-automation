@@ -68,7 +68,7 @@ func TestLogTriggerFlow(t *testing.T) {
 	// set the ticker time lower to reduce the test time
 	logInterval := 50 * time.Millisecond
 
-	svc := newLogTriggerFlow([]ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord},
+	svc := newLogTriggerFlow([]ocr2keepersv3.PreProcessor{coord},
 		rStore, runner, lp, logInterval, retryQ, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup

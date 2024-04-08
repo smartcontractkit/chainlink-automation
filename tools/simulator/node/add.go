@@ -104,10 +104,9 @@ func (g *Group) Add(conf config.Node) {
 		gLogger,
 		dConfig.Runnable,
 		runner.RunnerConfig{
-			Workers:           conf.MaxServiceWorkers,
-			WorkerQueueLength: conf.MaxQueueSize,
-			CacheExpire:       pluginconfig.DefaultCacheExpiration,
-			CacheClean:        pluginconfig.DefaultCacheClearInterval,
+			Workers:     conf.MaxServiceWorkers,
+			CacheExpire: pluginconfig.DefaultCacheExpiration,
+			CacheClean:  pluginconfig.DefaultCacheClearInterval,
 		},
 	)
 

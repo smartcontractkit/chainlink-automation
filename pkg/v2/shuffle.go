@@ -1,9 +1,8 @@
 package ocr2keepers
 
 import (
-	"math/rand"
-
 	"github.com/smartcontractkit/chainlink-automation/internal/util"
+	"math/rand"
 )
 
 func filterDedupeShuffleObservations(upkeepKeys [][]UpkeepKey, keyRandSource [16]byte, filters ...func(UpkeepKey) (bool, error)) ([]UpkeepKey, error) {

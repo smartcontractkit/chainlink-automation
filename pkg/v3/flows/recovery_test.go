@@ -80,7 +80,7 @@ func TestRecoveryFinalization(t *testing.T) {
 	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	// set the ticker time lower to reduce the test time
 	recFinalInterval := 50 * time.Millisecond
-	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	pre := []ocr2keepersv3.PreProcessor{coord}
 	svc := newFinalRecoveryFlow(pre, rStore, runner, retryQ, recFinalInterval, proposalQ, payloadBuilder, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
@@ -181,7 +181,7 @@ func TestRecoveryProposal(t *testing.T) {
 	}, nil).Times(1)
 	// set the ticker time lower to reduce the test time
 	interval := 50 * time.Millisecond
-	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	pre := []ocr2keepersv3.PreProcessor{coord}
 	stateUpdater := &mockStateUpdater{}
 	svc := newRecoveryProposalFlow(pre, runner, mStore, recoverer, interval, stateUpdater, logger)
 

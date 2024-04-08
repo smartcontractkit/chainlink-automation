@@ -3,10 +3,9 @@ package tickers
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	"log"
 	"time"
-
-	"github.com/smartcontractkit/chainlink-automation/internal/util"
 )
 
 type observer[T any] interface {

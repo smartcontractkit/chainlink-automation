@@ -2,6 +2,7 @@ package runner
 
 import (
 	"fmt"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"sync"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ import (
 
 func TestResultAdder(t *testing.T) {
 	t.Run("Successes", func(t *testing.T) {
-		resultStruct := newResult[int]()
+		resultStruct := newResult()
 		expected := 100
 
 		for x := 0; x < expected; x++ {
@@ -22,7 +23,7 @@ func TestResultAdder(t *testing.T) {
 	})
 
 	t.Run("Failures", func(t *testing.T) {
-		resultStruct := newResult[int]()
+		resultStruct := newResult()
 		expected := 100
 
 		for x := 0; x < expected; x++ {
@@ -33,7 +34,7 @@ func TestResultAdder(t *testing.T) {
 	})
 
 	t.Run("Errors", func(t *testing.T) {
-		resultStruct := newResult[int]()
+		resultStruct := newResult()
 		expected := fmt.Errorf("expected error")
 
 		resultStruct.SetErr(fmt.Errorf("initial error"))
@@ -43,7 +44,7 @@ func TestResultAdder(t *testing.T) {
 	})
 
 	t.Run("Rates", func(t *testing.T) {
-		resultStruct := newResult[int]()
+		resultStruct := newResult()
 
 		for x := 1; x <= 100; x++ {
 			resultStruct.AddSuccesses(1)
@@ -63,10 +64,13 @@ func TestResultAdder(t *testing.T) {
 	})
 
 	t.Run("AddResults", func(t *testing.T) {
-		resultStruct := newResult[int]()
+		resultStruct := newResult()
 
-		expected := []int{}
+		expected := []ocr2keepers.CheckResult{}
 		for x := 0; x <= 100; x++ {
+			x := ocr2keepers.CheckResult{
+				WorkID: fmt.Sprintf("%d", x),
+			}
 			resultStruct.Add(x)
 			expected = append(expected, x)
 		}
@@ -78,11 +82,11 @@ func TestResultAdder(t *testing.T) {
 func TestConcurrentResult(t *testing.T) {
 	var wg sync.WaitGroup
 
-	resultStruct := newResult[int]()
+	resultStruct := newResult()
 
 	// add successes and failures in one thread
 	wg.Add(1)
-	go func(r *result[int]) {
+	go func(r *result) {
 		<-time.After(time.Second)
 		for x := 1; x <= 10000; x++ {
 			resultStruct.AddSuccesses(1)
@@ -96,17 +100,19 @@ func TestConcurrentResult(t *testing.T) {
 
 	// add values in another
 	wg.Add(1)
-	go func(r *result[int]) {
+	go func(r *result) {
 		<-time.After(time.Second)
 		for x := 1; x <= 12000; x++ {
-			resultStruct.Add(x)
+			resultStruct.Add(ocr2keepers.CheckResult{
+				WorkID: fmt.Sprintf("%d", x),
+			})
 		}
 		wg.Done()
 	}(resultStruct)
 
 	// repeatedly ask for the stats in another
 	wg.Add(1)
-	go func(r *result[int]) {
+	go func(r *result) {
 		<-time.After(time.Second)
 		for x := 0; x <= 12000; x++ {
 			_ = resultStruct.Failures()

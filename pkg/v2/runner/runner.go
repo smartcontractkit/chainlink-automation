@@ -3,12 +3,12 @@ package runner
 import (
 	"context"
 	"fmt"
+	v22 "github.com/smartcontractkit/chainlink-automation/internal/util"
+	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"log"
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/internal/util"
-	pkgutil "github.com/smartcontractkit/chainlink-automation/pkg/util"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 )
 
@@ -38,9 +38,9 @@ type Runner struct {
 	encoder  Encoder
 
 	// initialized by the constructor
-	workers      *pkgutil.WorkerGroup[[]ocr2keepers.UpkeepResult] // parallelizer for RPC calls
-	cache        *pkgutil.Cache[ocr2keepers.UpkeepResult]
-	cacheCleaner *pkgutil.IntervalCacheCleaner[ocr2keepers.UpkeepResult]
+	workers      *util.WorkerGroup // parallelizer for RPC calls
+	cache        *util.Cache[ocr2keepers.UpkeepResult]
+	cacheCleaner *util.IntervalCacheCleaner[ocr2keepers.UpkeepResult]
 
 	// configurations
 	workerBatchLimit int // the maximum number of items in RPC batch call
@@ -63,9 +63,9 @@ func NewRunner(
 		logger:           logger,
 		registry:         registry,
 		encoder:          encoder,
-		workers:          pkgutil.NewWorkerGroup[[]ocr2keepers.UpkeepResult](workers, workerQueueLength),
-		cache:            pkgutil.NewCache[ocr2keepers.UpkeepResult](cacheExpire),
-		cacheCleaner:     pkgutil.NewIntervalCacheCleaner[ocr2keepers.UpkeepResult](cacheClean),
+		workers:          util.NewWorkerGroup(workers, workerQueueLength),
+		cache:            util.NewCache[ocr2keepers.UpkeepResult](cacheExpire),
+		cacheCleaner:     util.NewIntervalCacheCleaner[ocr2keepers.UpkeepResult](cacheClean),
 		workerBatchLimit: 10,
 	}, nil
 }
@@ -126,10 +126,10 @@ func (o *Runner) parallelCheck(ctx context.Context, mercuryEnabled bool, keys []
 
 	// Create batches from the given keys.
 	// Max keyBatchSize items in the batch.
-	pkgutil.RunJobs(
+	util.RunJobs(
 		ctx,
 		o.workers,
-		util.Unflatten(toRun, o.workerBatchLimit),
+		v22.Unflatten(toRun, o.workerBatchLimit),
 		o.wrapWorkerFunc(mercuryEnabled),
 		o.wrapAggregate(result),
 	)
@@ -188,7 +188,7 @@ func (o *Runner) wrapAggregate(r *Result) func([]ocr2keepers.UpkeepResult, error
 
 			for _, res := range result {
 				key, _, _ := o.encoder.Detail(res)
-				o.cache.Set(string(key), res, pkgutil.DefaultCacheExpiration)
+				o.cache.Set(string(key), res, util.DefaultCacheExpiration)
 				r.Add(res)
 			}
 		} else {
