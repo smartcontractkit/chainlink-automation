@@ -1,12 +1,11 @@
 package ocr2keepers
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
 
+	"github.com/goccy/go-json"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 

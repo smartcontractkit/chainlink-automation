@@ -1,9 +1,10 @@
 package config
 
 import (
-	"encoding/json"
 	"runtime"
 	"time"
+
+	"github.com/goccy/go-json"
 )
 
 const (

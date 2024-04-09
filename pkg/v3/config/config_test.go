@@ -153,7 +153,7 @@ func TestDecodeOffchainConfig(t *testing.T) {
 					}
 				}
 			`),
-			ExpectedErrString: "json: cannot unmarshal string",
+			ExpectedErrString: "json: cannot unmarshal number \" into Go struct field OffchainConfig.PerformLockoutWindow of type int64",
 			ExpectedConfig:    OffchainConfig{},
 		},
 	} {
