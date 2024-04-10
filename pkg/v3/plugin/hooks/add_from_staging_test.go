@@ -242,6 +242,7 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 		cached              []types.CheckResult
 		lastRandSrc         [16]byte
 		input               []types.CheckResult
+		limit               int
 		rSrc                [16]byte
 		expected            []types.CheckResult
 		expectedCache       map[string]string
@@ -251,6 +252,7 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 			name:                "empty results",
 			cached:              []types.CheckResult{},
 			input:               []types.CheckResult{},
+			limit:               10,
 			rSrc:                [16]byte{1},
 			expected:            []types.CheckResult{},
 			expectedLastRandSrc: [16]byte{1},
@@ -262,11 +264,31 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
-			rSrc: [16]byte{1},
+			limit: 10,
+			rSrc:  [16]byte{1},
 			expected: []types.CheckResult{
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+			},
+			expectedCache: map[string]string{
+				"10c": "1c0",
+				"20b": "2b0",
+				"30a": "3a0",
+			},
+			expectedLastRandSrc: [16]byte{1},
+		},
+		{
+			name: "with limits",
+			input: []types.CheckResult{
+				{UpkeepID: [32]byte{3}, WorkID: "30a"},
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
+				{UpkeepID: [32]byte{2}, WorkID: "20b"},
+			},
+			limit: 1,
+			rSrc:  [16]byte{1},
+			expected: []types.CheckResult{
+				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 			},
 			expectedCache: map[string]string{
 				"10c": "1c0",
@@ -286,7 +308,8 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
-			rSrc: [16]byte{1},
+			limit: 10,
+			rSrc:  [16]byte{1},
 			expected: []types.CheckResult{
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
@@ -309,7 +332,8 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
-			rSrc: [16]byte{2},
+			rSrc:  [16]byte{2},
+			limit: 10,
 			expected: []types.CheckResult{
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 				{UpkeepID: [32]byte{3}, WorkID: "30a"},
@@ -336,7 +360,7 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 				sorter.lastRandSrc = tc.lastRandSrc
 			}
 
-			results := sorter.orderResults(tc.input, tc.rSrc)
+			results := sorter.orderResults(tc.input, tc.limit, tc.rSrc)
 			assert.Equal(t, len(tc.expected), len(results))
 			for i := range results {
 				assert.Equal(t, tc.expected[i].WorkID, results[i].WorkID)

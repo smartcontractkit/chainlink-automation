@@ -48,10 +48,10 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 		return err
 	}
 
-	results = hook.sorter.orderResults(results, rSrc)
-	if n := len(results); n > limit {
-		results = results[:limit]
-		hook.logger.Printf("skipped %d available results in staging", n-limit)
+	n := len(results)
+	results = hook.sorter.orderResults(results, limit, rSrc)
+	if n > limit {
+		hook.logger.Printf("skipped %d staged results", n-limit)
 	}
 	hook.logger.Printf("adding %d results to observation", len(results))
 	obs.Performable = append(obs.Performable, results...)
@@ -65,18 +65,36 @@ type stagedResultSorter struct {
 	lock        sync.Mutex
 }
 
-// orderResults orders the results by the shuffled workID
-func (sorter *stagedResultSorter) orderResults(results []automation.CheckResult, rSrc [16]byte) []automation.CheckResult {
+// orderResults orders the results by the shuffled workID and returns the first (limit) elements.
+func (sorter *stagedResultSorter) orderResults(results []automation.CheckResult, limit int, rSrc [16]byte) []automation.CheckResult {
 	sorter.lock.Lock()
 	defer sorter.lock.Unlock()
 
 	shuffledIDs := sorter.updateShuffledIDs(results, rSrc)
 	// sort by the shuffled workID
-	sort.Slice(results, func(i, j int) bool {
-		return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
-	})
+	// if the limit is greater than the number of results, sort the whole slice
+	if limit >= len(results) {
+		sort.Slice(results, func(i, j int) bool {
+			return shuffledIDs[results[i].WorkID] < shuffledIDs[results[j].WorkID]
+		})
+		return results
+	}
+	// otherwise, sort only the first limit elements to be more efficient than sorting the whole slice
+	return sorter.partialSort(results, shuffledIDs, limit)
+}
 
-	return results
+// partialSort sorts the first limit elements of the results slice.
+// using bubble sort as it allows for early termination when the slice is sorted up to the limit.
+// NOTE: this function assumes len(results) > limit and that the shuffledIDs are already populated.
+func (sorter *stagedResultSorter) partialSort(results []automation.CheckResult, shuffledIDs map[string]string, limit int) []automation.CheckResult {
+	for i := 0; i < limit; i++ {
+		for j := i + 1; j < len(results); j++ {
+			if shuffledIDs[results[i].WorkID] > shuffledIDs[results[j].WorkID] {
+				results[i], results[j] = results[j], results[i]
+			}
+		}
+	}
+	return results[:limit]
 }
 
 // updateShuffledIDs updates the shuffledIDs cache with the new random source or items.
