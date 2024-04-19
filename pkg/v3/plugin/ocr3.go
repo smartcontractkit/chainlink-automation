@@ -205,9 +205,11 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
 	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(float64(performablesAdded))
+	// is there a consensus about upkeeps to pause
 	return reports, nil
 }
 
+// ShouldAcceptAttestedReport needs updates if report struct changes
 func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	plugin.Logger.Printf("inside ShouldAcceptAttestedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
@@ -231,6 +233,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 	return accept, nil
 }
 
+// ShouldTransmitAcceptedReport needs updates if report struct changes
 func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	plugin.Logger.Printf("inside ShouldTransmitAcceptedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)

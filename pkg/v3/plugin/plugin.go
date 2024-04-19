@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"log"
 
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/coordinator"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/flows"
@@ -13,9 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
 
 func newPlugin(
@@ -27,6 +28,7 @@ func newPlugin(
 	builder ocr2keepers.PayloadBuilder,
 	ratio types.Ratio,
 	getter ocr2keepers.ConditionalUpkeepProvider,
+	mup ocr2keepers.MaliciousUpkeepProvider,
 	encoder ocr2keepers.Encoder,
 	upkeepTypeGetter types.UpkeepTypeGetter,
 	workIDGenerator types.WorkIDGenerator,

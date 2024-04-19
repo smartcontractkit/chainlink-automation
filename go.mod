@@ -4,6 +4,7 @@ go 1.21
 
 replace (
 	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
+	github.com/smartcontractkit/chainlink-common => /Users/felix/Development/chainlink-common
 	golang/github.com/gogo/protobuf => golang/github.com/gogo/protobuf v1.3.3
 )
 

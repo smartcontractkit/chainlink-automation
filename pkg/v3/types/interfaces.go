@@ -10,6 +10,8 @@ import (
 
 //go:generate mockery --name LogEventProvider --structname MockLogEventProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename logeventprovider.generated.go
 
+//go:generate mockery --name MaliciousUpkeepProvider --structname MockMaliciousUpkeepProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename maliciousupkeepprovider.generated.go
+
 //go:generate mockery --name RecoverableProvider --structname MockRecoverableProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename recoverableprovider.generated.go
 
 //go:generate mockery --name ConditionalUpkeepProvider --structname MockConditionalUpkeepProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename conditionalupkeepprovider.generated.go

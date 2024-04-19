@@ -7,12 +7,13 @@ import (
 	"math/cmplx"
 	"strconv"
 
+	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/runner"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 )
 
 type pluginFactory struct {
@@ -22,6 +23,7 @@ type pluginFactory struct {
 	rp                 commontypes.RecoverableProvider
 	builder            commontypes.PayloadBuilder
 	getter             commontypes.ConditionalUpkeepProvider
+	mup                commontypes.MaliciousUpkeepProvider
 	runnable           types.Runnable
 	runnerConf         runner.RunnerConfig
 	encoder            commontypes.Encoder
@@ -38,6 +40,7 @@ func NewReportingPluginFactory(
 	rp commontypes.RecoverableProvider,
 	builder commontypes.PayloadBuilder,
 	getter commontypes.ConditionalUpkeepProvider,
+	mup commontypes.MaliciousUpkeepProvider,
 	runnable types.Runnable,
 	runnerConf runner.RunnerConfig,
 	encoder commontypes.Encoder,
@@ -53,6 +56,7 @@ func NewReportingPluginFactory(
 		rp:                 rp,
 		builder:            builder,
 		getter:             getter,
+		mup:                mup,
 		runnable:           runnable,
 		runnerConf:         runnerConf,
 		encoder:            encoder,
@@ -106,6 +110,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		factory.builder,
 		sample,
 		factory.getter,
+		factory.mup,
 		factory.encoder,
 		factory.upkeepTypeGetter,
 		factory.workIDGenerator,
