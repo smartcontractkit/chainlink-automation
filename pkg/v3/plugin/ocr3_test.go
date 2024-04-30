@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -13,8 +12,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
-
+	"github.com/goccy/go-json"
 	ocr2keepers2 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
@@ -22,6 +20,7 @@ import (
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOcr3Plugin_Query(t *testing.T) {
@@ -942,7 +941,7 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 			name:        "validating an empty observation returns an error",
 			observation: ocr2plustypes.AttributedObservation{},
 			expectsErr:  true,
-			wantErr:     errors.New("unexpected end of JSON input"),
+			wantErr:     errors.New("invalid character '\x00' looking for beginning of value"),
 		},
 		{
 			name: "successfully validates a well formed observation",
@@ -1126,7 +1125,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 			sequenceNumber: 5,
 			outcome:        ocr3types.Outcome([]byte{}),
 			expectsErr:     true,
-			wantErr:        errors.New("unexpected end of JSON input"),
+			wantErr:        errors.New("invalid character '\x00' looking for beginning of value"),
 		},
 		{
 			name:                "an empty json object generates a nil report",
