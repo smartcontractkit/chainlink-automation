@@ -3,11 +3,11 @@ package hooks
 import (
 	"bytes"
 	"fmt"
-	"log"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"log"
+	"math/big"
+	"testing"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
@@ -163,7 +163,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			addFromStagingHook := NewAddFromStagingHook(mockResultStore, mockCoordinator, logger)
 
 			// Run the hook
-			err := addFromStagingHook.RunHook(obs, tt.limit, tt.rSrc)
+			err := addFromStagingHook.RunHook(obs, tt.rSrc)
 
 			if tt.expectedErr != nil {
 				// Assert that the hook function returns the expected error
@@ -218,7 +218,7 @@ func TestAddFromStagingHook_RunHook_Limits(t *testing.T) {
 			rSrc := [16]byte{1, 1, 2, 2, 3, 3, 4, 4}
 			obs := &ocr2keepersv3.AutomationObservation{}
 
-			err := addFromStagingHook.RunHook(obs, tt.limit, rSrc)
+			err := addFromStagingHook.RunHook(obs, rSrc)
 			assert.NoError(t, err)
 			assert.Len(t, obs.Performable, tt.expected)
 
@@ -228,7 +228,7 @@ func TestAddFromStagingHook_RunHook_Limits(t *testing.T) {
 			addFromStagingHook2 := NewAddFromStagingHook(mockResultStore2, mockCoordinator2, logger)
 
 			obs2 := &ocr2keepersv3.AutomationObservation{}
-			err2 := addFromStagingHook2.RunHook(obs2, tt.limit, rSrc)
+			err2 := addFromStagingHook2.RunHook(obs2, rSrc)
 			assert.NoError(t, err2)
 			assert.Len(t, obs.Performable, tt.expected)
 			assert.Equal(t, obs.Performable, obs2.Performable)
@@ -363,4 +363,131 @@ func getMocks(n int) (*mocks.MockResultStore, *mocks.MockCoordinator) {
 	mockCoordinator.On("FilterResults", mock.Anything).Return(mockResults, nil)
 
 	return mockResultStore, mockCoordinator
+}
+
+func BenchmarkAddByJSON(b *testing.B) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	for i := 0; i < b.N; i++ {
+		hook.addByJSON(observation, results)
+	}
+
+	// ~2073702875 ns/op
+	// ~1509738375 ns/op
+	// ~1503371541 ns/op
+}
+
+func BenchmarkAddByEstimate(b *testing.B) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	for i := 0; i < b.N; i++ {
+		hook.addByEstimates(observation, results)
+	}
+
+	// ~1352813 ns/op
+	// ~1354153 ns/op
+	// ~902008 ns/op
+}
+
+func TestAddByJSON(t *testing.T) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	added := hook.addByJSON(observation, results)
+	assert.Equal(t, 552, added)
+
+	b, err := observation.Encode()
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+	assert.Equal(t, len(b), 998500)
+}
+
+func TestAddByEstimate(t *testing.T) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	added := hook.addByEstimates(observation, results)
+	assert.Equal(t, 449, added)
+
+	b, err := observation.Encode()
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+	assert.Equal(t, len(b), 812164)
+}
+
+func buildResults(num int) []types.CheckResult {
+	var res []types.CheckResult
+
+	for i := 0; i < num; i++ {
+		seed := uint32(i)
+		rng := NewDRNG(seed)
+
+		ui := rng.Next()
+
+		retryable, eligible := false, false
+		if ui%1 == 0 {
+			retryable = true
+		}
+		if ui%2 == 0 {
+			eligible = true
+		}
+
+		length := int(rng.Next())%9501 + 500
+		byteArray := make([]byte, length)
+		for i := 0; i < length; i++ {
+			byteArray[i] = rng.Next()
+		}
+
+		bigNumber := big.NewInt(1844674407370955161)
+
+		res = append(res, types.CheckResult{
+			PipelineExecutionState: 255,
+			Retryable:              retryable,
+			Eligible:               eligible,
+			IneligibilityReason:    255,
+			UpkeepID:               [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+			Trigger: types.Trigger{
+				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+				LogTriggerExtension: &types.LogTriggerExtension{
+					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					Index:       4294967295,
+					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				},
+			},
+			WorkID:       "acd4ff368edb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c86",
+			GasAllocated: bigNumber.Uint64(),
+			PerformData:  byteArray,
+			FastGasWei:   bigNumber,
+			LinkNative:   bigNumber,
+		})
+	}
+
+	return res
+}
+
+// Constants for the LCG algorithm
+const (
+	a uint32 = 1664525
+	c uint32 = 1013904223
+	m uint32 = 4294967295 // 2^32
+)
+
+// DRNG represents the deterministic random number generator
+type DRNG struct {
+	seed uint32
+}
+
+// NewDRNG creates a new DRNG instance with the given seed
+func NewDRNG(seed uint32) *DRNG {
+	return &DRNG{seed}
+}
+
+// Next returns the next random uint8 value from the DRNG
+func (d *DRNG) Next() uint8 {
+	d.seed = (a*d.seed + c) % m
+	return uint8(d.seed & 0xFF)
 }

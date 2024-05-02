@@ -50,19 +50,7 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 
 	results = hook.sorter.orderResults(results, rSrc)
 
-	oldObs := obs
-	count := 0
-	for _, result := range results {
-		obs.Performable = append(obs.Performable, result)
-
-		if obs.Length() < ocr2keepersv3.MaxObservationLength {
-			count++
-			oldObs = obs
-		} else {
-			obs = oldObs
-			break
-		}
-	}
+	count := hook.addByEstimates(obs, results)
 
 	hook.logger.Printf("adding %d results to observation", count)
 
@@ -71,6 +59,39 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	}
 
 	return nil
+}
+
+func (hook *AddFromStagingHook) addByEstimates(obs *ocr2keepersv3.AutomationObservation, results []automation.CheckResult) int {
+	added := 0
+	for _, result := range results {
+		obs.Performable = append(obs.Performable, result)
+		added++
+
+		if obs.Length() > ocr2keepersv3.MaxObservationLength {
+			obs.Performable = obs.Performable[:len(obs.Performable)-1]
+			added--
+			break
+		}
+	}
+
+	return added
+}
+
+func (hook *AddFromStagingHook) addByJSON(obs *ocr2keepersv3.AutomationObservation, results []automation.CheckResult) int {
+	added := 0
+
+	for _, result := range results {
+		obs.Performable = append(obs.Performable, result)
+		added++
+
+		if b, _ := obs.Encode(); len(b) > ocr2keepersv3.MaxObservationLength {
+			obs.Performable = obs.Performable[:len(obs.Performable)-1]
+			added--
+			break
+		}
+	}
+
+	return added
 }
 
 type stagedResultSorter struct {
