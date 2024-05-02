@@ -369,6 +369,9 @@ func BenchmarkAddByJSON(b *testing.B) {
 	results := buildResults(1000)
 	var hook AddFromStagingHook
 	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		hook.addByJSON(observation, results)
 	}
@@ -376,12 +379,19 @@ func BenchmarkAddByJSON(b *testing.B) {
 	// ~2073702875 ns/op
 	// ~1509738375 ns/op
 	// ~1503371541 ns/op
+	// ~1781547625 ns/op
+	// ~1520777792 ns/op
+	// ~1504579084 ns/op
+	// ~1503110916 ns/op
 }
 
 func BenchmarkAddByEstimate(b *testing.B) {
 	results := buildResults(1000)
 	var hook AddFromStagingHook
 	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		hook.addByEstimates(observation, results)
 	}
@@ -389,6 +399,28 @@ func BenchmarkAddByEstimate(b *testing.B) {
 	// ~1352813 ns/op
 	// ~1354153 ns/op
 	// ~902008 ns/op
+	// ~708801 ns/op
+	// ~702047 ns/op
+	// ~699450 ns/op
+	// ~698151 ns/op
+}
+
+func BenchmarkAddByEstimateAggressive(b *testing.B) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByEstimatesAggressive(observation, results)
+	}
+
+	// ~883453 ns/op
+	// ~878189 ns/op
+	// ~876328 ns/op
+	// ~889295 ns/op
+	// ~927411 ns/op
 }
 
 func TestAddByJSON(t *testing.T) {
@@ -417,6 +449,116 @@ func TestAddByEstimate(t *testing.T) {
 	assert.Equal(t, len(b), 812164)
 }
 
+func TestAddByEstimateAggressive(t *testing.T) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	added := hook.addByEstimatesAggressive(observation, results)
+	assert.Equal(t, 552, added)
+
+	b, err := observation.Encode()
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+	assert.Equal(t, len(b), 998500)
+}
+
+func BenchmarkAddByJSON_MaxPerformData(b *testing.B) {
+	results := buildResultsMaxPerformData(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByJSON(observation, results)
+	}
+
+	// ~2073702875 ns/op
+	// ~1509738375 ns/op
+	// ~1503371541 ns/op
+	// ~1781547625 ns/op
+	// ~1520777792 ns/op
+	// ~4130123 ns/op
+	// ~4104388 ns/op
+}
+
+func BenchmarkAddByEstimate_MaxPerformData(b *testing.B) {
+	results := buildResultsMaxPerformData(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByEstimates(observation, results)
+	}
+
+	// ~1352813 ns/op
+	// ~1354153 ns/op
+	// ~902008 ns/op
+	// ~708801 ns/op
+	// ~702047 ns/op
+	// ~560784 ns/op
+	// ~573300 ns/op
+}
+
+func BenchmarkAddByEstimateAggressive_MaxPerformData(b *testing.B) {
+	results := buildResultsMaxPerformData(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByEstimatesAggressive(observation, results)
+	}
+
+	// ~883453 ns/op
+	// ~878189 ns/op
+	// ~876328 ns/op
+	// ~816474 ns/op
+	// ~831004 ns/op
+}
+
+func TestAddByJSON_MaxPerformData(t *testing.T) {
+	results := buildResultsMaxPerformData(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	added := hook.addByJSON(observation, results)
+	assert.Equal(t, 69, added)
+
+	b, err := observation.Encode()
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+	assert.Equal(t, len(b), 987278)
+}
+
+func TestAddByEstimate_MaxPerformData(t *testing.T) {
+	results := buildResultsMaxPerformData(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	added := hook.addByEstimates(observation, results)
+	assert.Equal(t, 47, added)
+
+	b, err := observation.Encode()
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+	assert.Equal(t, len(b), 672513)
+}
+
+func TestAddByEstimateAggressive_MaxPerformData(t *testing.T) {
+	results := buildResultsMaxPerformData(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+	added := hook.addByEstimatesAggressive(observation, results)
+	assert.Equal(t, 69, added)
+
+	b, err := observation.Encode()
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+	assert.Equal(t, len(b), 987278)
+}
+
 func buildResults(num int) []types.CheckResult {
 	var res []types.CheckResult
 
@@ -434,10 +576,10 @@ func buildResults(num int) []types.CheckResult {
 			eligible = true
 		}
 
-		length := int(rng.Next())%9501 + 500
-		byteArray := make([]byte, length)
+		length := int(rng.Next())%9501 + 500 // generate random perform data between 500 and 10000 bytes
+		performData := make([]byte, length)
 		for i := 0; i < length; i++ {
-			byteArray[i] = rng.Next()
+			performData[i] = rng.Next()
 		}
 
 		bigNumber := big.NewInt(1844674407370955161)
@@ -460,7 +602,58 @@ func buildResults(num int) []types.CheckResult {
 			},
 			WorkID:       "acd4ff368edb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c86",
 			GasAllocated: bigNumber.Uint64(),
-			PerformData:  byteArray,
+			PerformData:  performData,
+			FastGasWei:   bigNumber,
+			LinkNative:   bigNumber,
+		})
+	}
+
+	return res
+}
+
+func buildResultsMaxPerformData(num int) []types.CheckResult {
+	var res []types.CheckResult
+
+	for i := 0; i < num; i++ {
+		seed := uint32(i)
+		rng := NewDRNG(seed)
+
+		ui := rng.Next()
+
+		retryable, eligible := false, false
+		if ui%1 == 0 {
+			retryable = true
+		}
+		if ui%2 == 0 {
+			eligible = true
+		}
+
+		performData := make([]byte, 10000)
+		for i := 0; i < 10000; i++ {
+			performData[i] = 255
+		}
+
+		bigNumber := big.NewInt(1844674407370955161)
+
+		res = append(res, types.CheckResult{
+			PipelineExecutionState: 255,
+			Retryable:              retryable,
+			Eligible:               eligible,
+			IneligibilityReason:    255,
+			UpkeepID:               [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+			Trigger: types.Trigger{
+				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+				LogTriggerExtension: &types.LogTriggerExtension{
+					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					Index:       4294967295,
+					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				},
+			},
+			WorkID:       "acd4ff368edb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c86",
+			GasAllocated: bigNumber.Uint64(),
+			PerformData:  performData,
 			FastGasWei:   bigNumber,
 			LinkNative:   bigNumber,
 		})
