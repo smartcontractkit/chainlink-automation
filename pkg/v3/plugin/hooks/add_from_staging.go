@@ -38,7 +38,7 @@ func NewAddFromStagingHook(store types.ResultStore, coord types.Coordinator, log
 // that is the same across all nodes for a given round. This ensures that all nodes try to
 // send the same subset of workIDs if they are available, while giving different priority
 // to workIDs in different rounds.
-func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation, limit int, rSrc [16]byte) error {
+func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation, rSrc [16]byte) error {
 	results, err := hook.store.View()
 	if err != nil {
 		return err
@@ -49,12 +49,26 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	}
 
 	results = hook.sorter.orderResults(results, rSrc)
-	if n := len(results); n > limit {
-		results = results[:limit]
-		hook.logger.Printf("skipped %d available results in staging", n-limit)
+
+	oldObs := obs
+	count := 0
+	for _, result := range results {
+		obs.Performable = append(obs.Performable, result)
+
+		if obs.Length() < ocr2keepersv3.MaxObservationLength {
+			count++
+			oldObs = obs
+		} else {
+			obs = oldObs
+			break
+		}
 	}
-	hook.logger.Printf("adding %d results to observation", len(results))
-	obs.Performable = append(obs.Performable, results...)
+
+	hook.logger.Printf("adding %d results to observation", count)
+
+	if count < len(results) {
+		hook.logger.Printf("skipped %d available results in staging", len(results)-count)
+	}
 
 	return nil
 }
