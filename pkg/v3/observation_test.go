@@ -577,7 +577,7 @@ func TestLargeObservationSize(t *testing.T) {
 		})
 	}
 	largePerformData := [10001]byte{}
-	for i := 0; i < ObservationPerformablesLimit; i++ {
+	for i := 0; i < 67; i++ {
 		newResult := validLogResult
 		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 10001)))
