@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sort"
@@ -66,6 +67,77 @@ func (hook *AddFromStagingHook) addByEstimates(obs *ocr2keepersv3.AutomationObse
 		added++
 
 		if estimates.ObservationLength(obs) > ocr2keepersv3.MaxObservationLength {
+			obs.Performable = obs.Performable[:len(obs.Performable)-1]
+			added--
+			break
+		}
+	}
+
+	return added
+}
+
+func (hook *AddFromStagingHook) addByEstimatesAggressive(obs *ocr2keepersv3.AutomationObservation, results []automation.CheckResult) int {
+	added := 0
+	i := 0
+	for ; i < len(results); i++ {
+		result := results[i]
+		obs.Performable = append(obs.Performable, result)
+		added++
+
+		if estimates.ObservationLength(obs) > ocr2keepersv3.MaxObservationLength {
+			obs.Performable = obs.Performable[:len(obs.Performable)-1]
+			added--
+			break
+		}
+	}
+
+	// At this point, we've only compared raw json with the max observation length.
+	// We want to try and squeeze as much space as we can out of the observation length limit,
+	// so we try to estimate how many more performables we can add, and after adding all the
+	// additional performables, we marshal the observation and compare the observation
+	// length in bytes with the max observation length. If the serialized observation is above the limit,
+	// we repeatedely remove performables one at a time, and marshal the observation, until the length
+	// of the observation is under the limit.
+	if added > 0 {
+		b, _ := json.Marshal(obs)
+
+		// determine how much space we have left within the max observation length
+		bytesRemaining := ocr2keepersv3.MaxObservationLength - len(b)
+
+		// determine roughly how many bytes each performable has taken up so far
+		bytesPerPerformable := len(b) / added
+
+		// based on the average performable byte size, and the remaining space within the observation
+		// length limit, calculate the number of records we think we can add
+		recordsToAdd := bytesRemaining / bytesPerPerformable
+
+		// add more performables to the observation, continuing where the original add operation left off
+		for recordsAdded := 0; recordsAdded < recordsToAdd && i < len(results); recordsAdded++ {
+			obs.Performable = append(obs.Performable, results[i])
+			added++
+			i++
+		}
+
+		// now, marshal the observation again, check if we've exceeded the observation length, and if we have,
+		// remove one performable from the observation, and repeat until the serialized observation is under the
+		// max observation length
+		for b, _ := json.Marshal(obs); len(b) > ocr2keepersv3.MaxObservationLength; b, _ = json.Marshal(obs) {
+			obs.Performable = obs.Performable[:len(obs.Performable)-1]
+			added--
+		}
+	}
+
+	return added
+}
+
+func (hook *AddFromStagingHook) addByJSON(obs *ocr2keepersv3.AutomationObservation, results []automation.CheckResult) int {
+	added := 0
+
+	for _, result := range results {
+		obs.Performable = append(obs.Performable, result)
+		added++
+
+		if b, _ := obs.Encode(); len(b) > ocr2keepersv3.MaxObservationLength {
 			obs.Performable = obs.Performable[:len(obs.Performable)-1]
 			added--
 			break

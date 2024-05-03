@@ -415,6 +415,72 @@ func TestAddByEstimate(t *testing.T) {
 		assert.Equal(t, len(b), 690346)
 	})
 
+	t.Run("Add as many randomly populated performables until we run out of capacity", func(t *testing.T) {
+		results := buildResults(1000)
+
+		added := hook.addByEstimatesAggressive(observation, results)
+		assert.Equal(t, 521, added)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 989272)
+	})
+
+	t.Run("Add as many heavily populated performables until we run out of capacity", func(t *testing.T) {
+		results := buildResultsMaxPerformData(1000)
+
+		added := hook.addByEstimatesAggressive(observation, results)
+		assert.Equal(t, 65, added)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 976496)
+	})
+
+}
+
+func BenchmarkAddByJSON(b *testing.B) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByJSON(observation, results)
+	}
+
+	// ~1315313291 ns/op
+}
+
+func BenchmarkAddByEstimate(b *testing.B) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByEstimates(observation, 100, results)
+	}
+
+	// ~768741 ns/op
+}
+
+func BenchmarkAddByEstimateAggressive(b *testing.B) {
+	results := buildResults(1000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByEstimatesAggressive(observation, results)
+	}
+
+	// ~876293 ns/op
 }
 
 func buildResults(num int) []types.CheckResult {
