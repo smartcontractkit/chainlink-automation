@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -350,6 +351,196 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAddByEstimate(t *testing.T) {
+	var hook AddFromStagingHook
+
+	var blockHistory types.BlockHistory
+	for i := 0; i < ocr2keepersv3.ObservationBlockHistoryLimit; i++ {
+		blockHistory = append(blockHistory, types.BlockKey{
+			Number: types.BlockNumber(i + 1),
+			Hash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+		})
+	}
+
+	bigNumber := big.NewInt(1844674407370955161)
+
+	var proposals []types.CoordinatedBlockProposal
+
+	proposalsToAdd := ocr2keepersv3.ObservationLogRecoveryProposalsLimit + ocr2keepersv3.ObservationConditionalsProposalsLimit
+	for i := 0; i < proposalsToAdd; i++ {
+		proposals = append(proposals, types.CoordinatedBlockProposal{
+			UpkeepID: [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+			Trigger: types.Trigger{
+				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+				LogTriggerExtension: &types.LogTriggerExtension{
+					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					Index:       4294967295,
+					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				},
+			},
+			WorkID: "abc123fffedb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c99",
+		})
+	}
+
+	observation := &ocr2keepersv3.AutomationObservation{
+		UpkeepProposals: proposals,
+		BlockHistory:    blockHistory,
+	}
+
+	t.Run("Add up to 100 randomly populated performables if we have capacity", func(t *testing.T) {
+		results := buildResults(1000)
+
+		added := hook.addByEstimates(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
+		assert.Equal(t, ocr2keepersv3.ObservationPerformablesLimit, added)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 227290)
+	})
+
+	t.Run("Add up to 100 heavily populated performables if we have capacity", func(t *testing.T) {
+		results := buildResultsMaxPerformData(1000)
+
+		added := hook.addByEstimates(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
+		assert.Equal(t, 45, added)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 690346)
+	})
+
+}
+
+func buildResults(num int) []types.CheckResult {
+	var res []types.CheckResult
+
+	for i := 0; i < num; i++ {
+		seed := uint32(i)
+		rng := NewDRNG(seed)
+
+		ui := rng.Next()
+
+		retryable, eligible := false, false
+		if ui%1 == 0 {
+			retryable = true
+		}
+		if ui%2 == 0 {
+			eligible = true
+		}
+
+		length := int(rng.Next())%9501 + 500 // generate random perform data between 500 and 10000 bytes
+		performData := make([]byte, length)
+		for i := 0; i < length; i++ {
+			performData[i] = rng.Next()
+		}
+
+		bigNumber := big.NewInt(1844674407370955161)
+
+		res = append(res, types.CheckResult{
+			PipelineExecutionState: 255,
+			Retryable:              retryable,
+			Eligible:               eligible,
+			IneligibilityReason:    255,
+			UpkeepID:               [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+			Trigger: types.Trigger{
+				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+				LogTriggerExtension: &types.LogTriggerExtension{
+					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					Index:       4294967295,
+					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				},
+			},
+			WorkID:       "acd4ff368edb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c86",
+			GasAllocated: bigNumber.Uint64(),
+			PerformData:  performData,
+			FastGasWei:   bigNumber,
+			LinkNative:   bigNumber,
+		})
+	}
+
+	return res
+}
+
+func buildResultsMaxPerformData(num int) []types.CheckResult {
+	var res []types.CheckResult
+
+	for i := 0; i < num; i++ {
+		seed := uint32(i)
+		rng := NewDRNG(seed)
+
+		ui := rng.Next()
+
+		retryable, eligible := false, false
+		if ui%1 == 0 {
+			retryable = true
+		}
+		if ui%2 == 0 {
+			eligible = true
+		}
+
+		performData := make([]byte, 10000)
+		for i := 0; i < 10000; i++ {
+			performData[i] = 255
+		}
+
+		bigNumber := big.NewInt(1844674407370955161)
+
+		res = append(res, types.CheckResult{
+			PipelineExecutionState: 255,
+			Retryable:              retryable,
+			Eligible:               eligible,
+			IneligibilityReason:    255,
+			UpkeepID:               [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+			Trigger: types.Trigger{
+				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+				LogTriggerExtension: &types.LogTriggerExtension{
+					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					Index:       4294967295,
+					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				},
+			},
+			WorkID:       "acd4ff368edb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c86",
+			GasAllocated: bigNumber.Uint64(),
+			PerformData:  performData,
+			FastGasWei:   bigNumber,
+			LinkNative:   bigNumber,
+		})
+	}
+
+	return res
+}
+
+// Constants for the LCG algorithm
+const (
+	a uint32 = 1664525
+	c uint32 = 1013904223
+	m uint32 = 4294967295 // 2^32
+)
+
+// DRNG represents the deterministic random number generator
+type DRNG struct {
+	seed uint32
+}
+
+// NewDRNG creates a new DRNG instance with the given seed
+func NewDRNG(seed uint32) *DRNG {
+	return &DRNG{seed}
+}
+
+// Next returns the next random uint8 value from the DRNG
+func (d *DRNG) Next() uint8 {
+	d.seed = (a*d.seed + c) % m
+	return uint8(d.seed & 0xFF)
 }
 
 func getMocks(n int) (*mocks.MockResultStore, *mocks.MockCoordinator) {

@@ -71,7 +71,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	if err := plugin.AddConditionalProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
 		return nil, err
 	}
-	
+
 	// using the OCR seq number for randomness of the performables ordering.
 	// high randomness results in expesive ordering, therefore we reduce
 	// the range of the randomness by dividing the seq number by 10

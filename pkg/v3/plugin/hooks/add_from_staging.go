@@ -7,12 +7,12 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks/estimates"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/random"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
+	"github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 type AddFromStagingHook struct {
@@ -49,14 +49,30 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	}
 
 	results = hook.sorter.orderResults(results, rSrc)
-	if n := len(results); n > limit {
-		results = results[:limit]
-		hook.logger.Printf("skipped %d available results in staging", n-limit)
-	}
-	hook.logger.Printf("adding %d results to observation", len(results))
-	obs.Performable = append(obs.Performable, results...)
+
+	added := hook.addByEstimates(obs, limit, results)
+
+	hook.logger.Printf("skipped %d available results in staging", len(results)-added)
+
+	hook.logger.Printf("adding %d results to observation", len(obs.Performable))
 
 	return nil
+}
+
+func (hook *AddFromStagingHook) addByEstimates(obs *ocr2keepersv3.AutomationObservation, limit int, results []automation.CheckResult) int {
+	added := 0
+	for i := 0; i < len(results) && added < limit; i++ {
+		obs.Performable = append(obs.Performable, results[i])
+		added++
+
+		if estimates.ObservationLength(obs) > ocr2keepersv3.MaxObservationLength {
+			obs.Performable = obs.Performable[:len(obs.Performable)-1]
+			added--
+			break
+		}
+	}
+
+	return added
 }
 
 type stagedResultSorter struct {
