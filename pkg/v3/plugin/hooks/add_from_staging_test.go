@@ -87,7 +87,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
 			observationWorkIDs: []string{"30a", "20b", "10c"},
-			expectedLogMsg:     "adding 2 results to observation",
+			expectedLogMsg:     "adding 3 results to observation",
 		},
 		{
 			name:               "limits applied",
@@ -386,13 +386,13 @@ func TestAddByEstimate(t *testing.T) {
 		})
 	}
 
-	observation := &ocr2keepersv3.AutomationObservation{
-		UpkeepProposals: proposals,
-		BlockHistory:    blockHistory,
-	}
+	t.Run("Add up to 100 lightly populated performables if we have capacity", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
 
-	t.Run("Add up to 100 randomly populated performables if we have capacity", func(t *testing.T) {
-		results := buildResults(1000)
+		results := buildResults(1000, 500)
 
 		added := hook.addByEstimates(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
 		assert.Equal(t, ocr2keepersv3.ObservationPerformablesLimit, added)
@@ -400,11 +400,16 @@ func TestAddByEstimate(t *testing.T) {
 		b, err := observation.Encode()
 		assert.NoError(t, err)
 		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
-		assert.Equal(t, len(b), 227290)
+		assert.Equal(t, len(b), 210508)
 	})
 
 	t.Run("Add up to 100 heavily populated performables if we have capacity", func(t *testing.T) {
-		results := buildResultsMaxPerformData(1000)
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		results := buildResults(1000, 10000)
 
 		added := hook.addByEstimates(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
 		assert.Equal(t, 45, added)
@@ -412,23 +417,33 @@ func TestAddByEstimate(t *testing.T) {
 		b, err := observation.Encode()
 		assert.NoError(t, err)
 		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
-		assert.Equal(t, len(b), 690346)
+		assert.Equal(t, len(b), 690368)
 	})
 
-	t.Run("Add as many randomly populated performables until we run out of capacity", func(t *testing.T) {
-		results := buildResults(1000)
+	t.Run("Add as many lightly populated performables until we run out of capacity", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		results := buildResults(1000, 500)
 
 		added := hook.addByEstimatesAggressive(observation, results)
-		assert.Equal(t, 521, added)
+		assert.Equal(t, 575, added)
 
 		b, err := observation.Encode()
 		assert.NoError(t, err)
 		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
-		assert.Equal(t, len(b), 989272)
+		assert.Equal(t, len(b), 989508)
 	})
 
 	t.Run("Add as many heavily populated performables until we run out of capacity", func(t *testing.T) {
-		results := buildResultsMaxPerformData(1000)
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		results := buildResults(1000, 10000)
 
 		added := hook.addByEstimatesAggressive(observation, results)
 		assert.Equal(t, 65, added)
@@ -436,13 +451,12 @@ func TestAddByEstimate(t *testing.T) {
 		b, err := observation.Encode()
 		assert.NoError(t, err)
 		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
-		assert.Equal(t, len(b), 976496)
+		assert.Equal(t, len(b), 976528)
 	})
-
 }
 
 func BenchmarkAddByJSON(b *testing.B) {
-	results := buildResults(1000)
+	results := buildResults(1000, 10000)
 	var hook AddFromStagingHook
 	observation := &ocr2keepersv3.AutomationObservation{}
 
@@ -456,7 +470,7 @@ func BenchmarkAddByJSON(b *testing.B) {
 }
 
 func BenchmarkAddByEstimate(b *testing.B) {
-	results := buildResults(1000)
+	results := buildResults(1000, 10000)
 	var hook AddFromStagingHook
 	observation := &ocr2keepersv3.AutomationObservation{}
 
@@ -470,7 +484,7 @@ func BenchmarkAddByEstimate(b *testing.B) {
 }
 
 func BenchmarkAddByEstimateAggressive(b *testing.B) {
-	results := buildResults(1000)
+	results := buildResults(1000, 10000)
 	var hook AddFromStagingHook
 	observation := &ocr2keepersv3.AutomationObservation{}
 
@@ -483,58 +497,12 @@ func BenchmarkAddByEstimateAggressive(b *testing.B) {
 	// ~876293 ns/op
 }
 
-func buildResults(num int) []types.CheckResult {
+func buildResults(num, performDataSize int) []types.CheckResult {
 	var res []types.CheckResult
 
 	for i := 0; i < num; i++ {
-		seed := uint32(i)
-		rng := NewDRNG(seed)
-
-		retryable, eligible := false, true
-
-		length := int(rng.Next())%9501 + 500 // generate random perform data between 500 and 10000 bytes
-		performData := make([]byte, length)
-		for i := 0; i < length; i++ {
-			performData[i] = rng.Next()
-		}
-
-		bigNumber := big.NewInt(1844674407370955161)
-
-		res = append(res, types.CheckResult{
-			PipelineExecutionState: 255,
-			Retryable:              retryable,
-			Eligible:               eligible,
-			IneligibilityReason:    255,
-			UpkeepID:               [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
-			Trigger: types.Trigger{
-				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
-				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
-				LogTriggerExtension: &types.LogTriggerExtension{
-					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
-					Index:       4294967295,
-					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
-					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
-				},
-			},
-			WorkID:       "acd4ff368edb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c86",
-			GasAllocated: bigNumber.Uint64(),
-			PerformData:  performData,
-			FastGasWei:   bigNumber,
-			LinkNative:   bigNumber,
-		})
-	}
-
-	return res
-}
-
-func buildResultsMaxPerformData(num int) []types.CheckResult {
-	var res []types.CheckResult
-
-	for i := 0; i < num; i++ {
-		retryable, eligible := true, false
-
-		performData := make([]byte, 10000)
-		for i := 0; i < 10000; i++ {
+		performData := make([]byte, performDataSize)
+		for i := 0; i < performDataSize; i++ {
 			performData[i] = 255
 		}
 
@@ -542,8 +510,8 @@ func buildResultsMaxPerformData(num int) []types.CheckResult {
 
 		res = append(res, types.CheckResult{
 			PipelineExecutionState: 255,
-			Retryable:              retryable,
-			Eligible:               eligible,
+			Retryable:              false,
+			Eligible:               true,
 			IneligibilityReason:    255,
 			UpkeepID:               [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
 			Trigger: types.Trigger{
@@ -565,29 +533,6 @@ func buildResultsMaxPerformData(num int) []types.CheckResult {
 	}
 
 	return res
-}
-
-// Constants for the LCG algorithm
-const (
-	a uint32 = 1664525
-	c uint32 = 1013904223
-	m uint32 = 4294967295 // 2^32
-)
-
-// DRNG represents the deterministic random number generator
-type DRNG struct {
-	seed uint32
-}
-
-// NewDRNG creates a new DRNG instance with the given seed
-func NewDRNG(seed uint32) *DRNG {
-	return &DRNG{seed}
-}
-
-// Next returns the next random uint8 value from the DRNG
-func (d *DRNG) Next() uint8 {
-	d.seed = (a*d.seed + c) % m
-	return uint8(d.seed & 0xFF)
 }
 
 func getMocks(n int) (*mocks.MockResultStore, *mocks.MockCoordinator) {
