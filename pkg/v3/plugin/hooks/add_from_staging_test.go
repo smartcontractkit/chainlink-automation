@@ -490,15 +490,7 @@ func buildResults(num int) []types.CheckResult {
 		seed := uint32(i)
 		rng := NewDRNG(seed)
 
-		ui := rng.Next()
-
-		retryable, eligible := false, false
-		if ui%1 == 0 {
-			retryable = true
-		}
-		if ui%2 == 0 {
-			eligible = true
-		}
+		retryable, eligible := false, true
 
 		length := int(rng.Next())%9501 + 500 // generate random perform data between 500 and 10000 bytes
 		performData := make([]byte, length)
@@ -539,18 +531,7 @@ func buildResultsMaxPerformData(num int) []types.CheckResult {
 	var res []types.CheckResult
 
 	for i := 0; i < num; i++ {
-		seed := uint32(i)
-		rng := NewDRNG(seed)
-
-		ui := rng.Next()
-
-		retryable, eligible := false, false
-		if ui%1 == 0 {
-			retryable = true
-		}
-		if ui%2 == 0 {
-			eligible = true
-		}
+		retryable, eligible := true, false
 
 		performData := make([]byte, 10000)
 		for i := 0; i < 10000; i++ {
