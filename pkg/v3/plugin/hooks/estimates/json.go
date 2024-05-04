@@ -7,171 +7,216 @@ import (
 	"strconv"
 )
 
+const (
+	nullFieldLength   = 4
+	emptyObjectLength = 2
+)
+
 func ObservationLength(observation *ocr2keepers.AutomationObservation) int {
-	numberOfFields := 3 // should not be counted, used to coordinate values
-	nullFieldChars := 4 // should not be counted, used to coordinate values
+	objectBraces, numberOfColons, fieldSeparators := countDelimitersForFields(3)
 
-	objectBraces := 2
-	numberOfColons := numberOfFields
-	fieldSeparators := numberOfFields - 1
-
-	performablesNameAndQuotes := 13
-	upkeepProposalsNameAndQuotes := 17
-	blockHistoryNameAndQuotes := 14
+	performablesWithQuotes := 13
+	upkeepProposalsWithQuotes := 17
+	blockHistoryWithQuotes := 14
 
 	fieldValues := 0
 	if observation.Performable == nil {
-		fieldValues += nullFieldChars
+		fieldValues += nullFieldLength
 	} else {
-		fieldValues += performablesLength(observation.Performable)
+		fieldValues += checkResultsLength(observation.Performable)
 	}
 
 	if observation.UpkeepProposals == nil {
-		fieldValues += nullFieldChars
+		fieldValues += nullFieldLength
 	} else {
-		fieldValues += upkeepProposalsLength(observation.UpkeepProposals)
+		fieldValues += coordinatedBlockProposalsLength(observation.UpkeepProposals)
 	}
 
 	if observation.BlockHistory == nil {
-		fieldValues += nullFieldChars
+		fieldValues += nullFieldLength
 	} else {
 		fieldValues += blockHistoryLength(observation.BlockHistory)
 	}
 
-	return objectBraces + fieldSeparators + numberOfColons + performablesNameAndQuotes + upkeepProposalsNameAndQuotes + blockHistoryNameAndQuotes + fieldValues
+	return objectBraces + fieldSeparators + numberOfColons + performablesWithQuotes +
+		upkeepProposalsWithQuotes + blockHistoryWithQuotes + fieldValues
 }
 
-func performablesLength(results []automation.CheckResult) int {
+func checkResultsLength(results []automation.CheckResult) int {
 	if len(results) == 0 {
-		return 2
+		return emptyObjectLength
 	} else {
+		objectBraces, _, fieldSeparators := countDelimitersForFields(len(results))
+
 		performablesLength := 0
 
-		numberOfFields := len(results) // should not be counted, used to coordinate values, we don't include retry interval
-
-		objectBraces := 2
-		fieldSeparators := numberOfFields - 1
-
 		for _, result := range results {
-			performablesLength += performableLength(result)
+			performablesLength += checkResultLength(result)
 		}
 
 		return objectBraces + fieldSeparators + performablesLength
 	}
 }
 
-func performableLength(result automation.CheckResult) int {
-	numberOfFields := 11 // should not be counted, used to coordinate values, we don't include retry interval
-	nullFieldChars := 4  // should not be counted, used to coordinate values
+func checkResultLength(result automation.CheckResult) int {
+	objectBraces, numberOfColons, fieldSeparators := countDelimitersForFields(11)
 
-	objectBraces := 2
-	numberOfColons := numberOfFields
-	fieldSeparators := numberOfFields - 1
-
-	pipelineExecutionStateNameAndQuotes := 24
-	retryablenameAndQuotes := 11
-	eligibleNameAndQuotes := 10
-	ineligibilityReasonNameAndQuotes := 21
-	upkeepIDNameAndQuotes := 10
-	triggerNameAndQuotes := 9
-	workIDNameAndQuotes := 8
-	gasAllocatedNameAndQuotes := 14
-	performDataNameAndQuotes := 13
-	fastGasWeiNameAndQuotes := 12
-	linkNativeNameAndQuotes := 12
+	pipelineExecutionStateWithQuotes := 24
+	retryableWithQuotes := 11
+	eligibleWithQuotes := 10
+	ineligibilityReasonWithQuotes := 21
+	upkeepIDWithQuotes := 10
+	triggerWithQuotes := 9
+	workIDWithQuotes := 8
+	gasAllocatedWithQuotes := 14
+	performDataWithQuotes := 13
+	fastGasWeiWithQuotes := 12
+	linkNativeWithQuotes := 12
 
 	valueSizes := 0
 	valueSizes += uint8Length(result.PipelineExecutionState)
 	valueSizes += boolLength(result.Retryable)
 	valueSizes += boolLength(result.Eligible)
 	valueSizes += uint8Length(result.IneligibilityReason)
-	valueSizes += 2 + byte32Length(result.UpkeepID) + len(result.UpkeepID) - 1 // 2 for brackets, length of bytes, length-1 for commas
-
+	valueSizes += byte32Length(result.UpkeepID)
 	valueSizes += triggerLength(result.Trigger)
-
-	valueSizes += 2 + len(result.WorkID)
+	valueSizes += stringLength(result.WorkID)
 	valueSizes += uint64Length(result.GasAllocated)
 
 	if result.PerformData == nil {
-		valueSizes += nullFieldChars
+		valueSizes += nullFieldLength
 	} else {
-		valueSizes += 2 + len(hex.EncodeToString(result.PerformData))
+		valueSizes += stringLength(hex.EncodeToString(result.PerformData))
 	}
 
 	if result.FastGasWei == nil {
-		valueSizes += nullFieldChars
+		valueSizes += nullFieldLength
 	} else {
 		valueSizes += len(result.FastGasWei.String()) // quotes aren't included in big int json
 	}
 
 	if result.LinkNative == nil {
-		valueSizes += nullFieldChars
+		valueSizes += nullFieldLength
 	} else {
 		valueSizes += len(result.LinkNative.String()) // quotes aren't included in big int json
 	}
 
-	return objectBraces + numberOfColons + fieldSeparators + pipelineExecutionStateNameAndQuotes + retryablenameAndQuotes +
-		eligibleNameAndQuotes + ineligibilityReasonNameAndQuotes + upkeepIDNameAndQuotes + triggerNameAndQuotes + workIDNameAndQuotes +
-		gasAllocatedNameAndQuotes + performDataNameAndQuotes + fastGasWeiNameAndQuotes + linkNativeNameAndQuotes + valueSizes
+	return objectBraces + numberOfColons + fieldSeparators + pipelineExecutionStateWithQuotes + retryableWithQuotes +
+		eligibleWithQuotes + ineligibilityReasonWithQuotes + upkeepIDWithQuotes + triggerWithQuotes + workIDWithQuotes +
+		gasAllocatedWithQuotes + performDataWithQuotes + fastGasWeiWithQuotes + linkNativeWithQuotes + valueSizes
+}
+
+func coordinatedBlockProposalsLength(proposals []automation.CoordinatedBlockProposal) int {
+	if len(proposals) == 0 {
+		return emptyObjectLength
+	} else {
+		objectBraces, _, fieldSeparators := countDelimitersForFields(len(proposals))
+
+		proposalsLength := 0
+
+		for _, proposal := range proposals {
+			proposalsLength += coordinatedBlockProposalLength(proposal)
+		}
+
+		return objectBraces + fieldSeparators + proposalsLength
+	}
+}
+
+func coordinatedBlockProposalLength(proposal automation.CoordinatedBlockProposal) int {
+	objectBraces, numberOfColons, fieldSeparators := countDelimitersForFields(3)
+
+	upkeepIDWithQuotes := 10
+	triggerWithQuotes := 9
+	workIDWithQuotes := 8
+
+	valueSizes := 0
+
+	valueSizes += byte32Length(proposal.UpkeepID)
+	valueSizes += triggerLength(proposal.Trigger)
+	valueSizes += stringLength(proposal.WorkID)
+
+	return objectBraces + numberOfColons + fieldSeparators + upkeepIDWithQuotes +
+		triggerWithQuotes + workIDWithQuotes + valueSizes
 }
 
 func triggerLength(t automation.Trigger) int {
-	numberOfFields := 3 // should not be counted, used to coordinate values
-	nullFieldChars := 4 // should not be counted, used to coordinate values
+	objectBraces, numberOfColons, fieldSeparators := countDelimitersForFields(3)
 
-	objectBraces := 2
-	numberOfColons := numberOfFields
-	fieldSeparators := numberOfFields - 1
-
-	blockNumberNameAndQuotes := 13
-	blockHashNameAndQuotes := 11
-	logTriggerExtensionNameAndQuotes := 21
+	blockNumberWithQuotes := 13
+	blockHashWithQuotes := 11
+	logTriggerExtensionWithQuotes := 21
 
 	valueSizes := 0
 
 	valueSizes += uint64Length(uint64(t.BlockNumber))
-	valueSizes += 2 + byte32Length(t.BlockHash) + len(t.BlockHash) - 1 // 2 for brackets, length of bytes, length-1 for commas
+	valueSizes += byte32Length(t.BlockHash)
 
 	if t.LogTriggerExtension == nil {
-		valueSizes += nullFieldChars
+		valueSizes += nullFieldLength
 	} else {
 		valueSizes += logTriggerExtensionLength(t.LogTriggerExtension)
 	}
 
-	return objectBraces + numberOfColons + fieldSeparators + blockNumberNameAndQuotes + blockHashNameAndQuotes + logTriggerExtensionNameAndQuotes + valueSizes
+	return objectBraces + numberOfColons + fieldSeparators + blockNumberWithQuotes +
+		blockHashWithQuotes + logTriggerExtensionWithQuotes + valueSizes
 }
 
 func logTriggerExtensionLength(extension *automation.LogTriggerExtension) int {
-	numberOfFields := 4 // should not be counted, used to coordinate values
+	objectBraces, numberOfColons, fieldSeparators := countDelimitersForFields(4)
 
-	objectBraces := 2
-	numberOfColons := numberOfFields
-	fieldSeparators := numberOfFields - 1
-
-	txHashNameAndQuotes := 8
-	indexNameAndQuotes := 7
-	blockHashNameAndQuotes := 11
-	blockNumberNameAndQuotes := 13
+	txHashWithQuotes := 8
+	indexWithQuotes := 7
+	blockHashWithQuotes := 11
+	blockNumberWithQuotes := 13
 
 	valueSizes := 0
 
-	valueSizes += 2 + byte32Length(extension.TxHash) + len(extension.TxHash) - 1 // 2 for brackets, length of bytes, length-1 for commas
+	valueSizes += byte32Length(extension.TxHash)
 	valueSizes += uint32Length(extension.Index)
 	valueSizes += uint64Length(uint64(extension.BlockNumber))
-	valueSizes += 2 + byte32Length(extension.BlockHash) + len(extension.BlockHash) - 1 /// 2 for brackets, length of bytes, length-1 for commas
+	valueSizes += byte32Length(extension.BlockHash)
 
-	return objectBraces + numberOfColons + fieldSeparators + txHashNameAndQuotes + indexNameAndQuotes + blockNumberNameAndQuotes + blockHashNameAndQuotes + valueSizes
+	return objectBraces + numberOfColons + fieldSeparators + txHashWithQuotes +
+		indexWithQuotes + blockNumberWithQuotes + blockHashWithQuotes + valueSizes
+}
 
+func blockHistoryLength(blockHistory automation.BlockHistory) int {
+	if len(blockHistory) == 0 {
+		return emptyObjectLength
+	} else {
+		objectBraces, _, fieldSeparators := countDelimitersForFields(len(blockHistory))
+
+		blockHistoryLength := 0
+		for _, block := range blockHistory {
+			blockHistoryLength += blockKeyLength(block)
+		}
+
+		return objectBraces + fieldSeparators + blockHistoryLength
+	}
+}
+
+func blockKeyLength(key automation.BlockKey) int {
+	objectBraces, numberOfColons, fieldSeparators := countDelimitersForFields(2)
+
+	numberWithQuotes := 8
+	hashWithQuotes := 6
+
+	valueSizes := 0
+
+	valueSizes += uint64Length(uint64(key.Number))
+	valueSizes += byte32Length(key.Hash)
+
+	return objectBraces + numberOfColons + fieldSeparators + numberWithQuotes + hashWithQuotes + valueSizes
 }
 
 func byteSliceLength(b []byte) int {
-	len := 0
+	length := emptyObjectLength
 
 	for _, x := range b {
-		len += uint8Length(x)
+		length += uint8Length(x)
 	}
 
-	return len
+	return length + len(b) - 1
 }
 
 func byte32Length(b [32]byte) int {
@@ -202,78 +247,13 @@ func boolLength(b bool) int {
 	return 5
 }
 
-func upkeepProposalsLength(proposals []automation.CoordinatedBlockProposal) int {
-	if len(proposals) == 0 {
-		return 2
-	} else {
-		proposalsLength := 0
-
-		numberOfFields := len(proposals) // should not be counted, used to coordinate values, we don't include retry interval
-
-		objectBraces := 2
-		fieldSeparators := numberOfFields - 1
-
-		for _, proposal := range proposals {
-			proposalsLength += proposalLength(proposal)
-		}
-
-		return objectBraces + fieldSeparators + proposalsLength
-	}
+func stringLength(s string) int {
+	return 2 + len(s)
 }
 
-func proposalLength(proposal automation.CoordinatedBlockProposal) int {
-	numberOfFields := 3 // should not be counted, used to coordinate values
-
+func countDelimitersForFields(numberOfFields int) (int, int, int) {
 	objectBraces := 2
 	numberOfColons := numberOfFields
 	fieldSeparators := numberOfFields - 1
-
-	upkeepIDNameAndQuotes := 10
-	triggerNameAndQuotes := 9
-	workIDNameAndQuotes := 8
-
-	valueSizes := 0
-
-	valueSizes += 2 + byte32Length(proposal.UpkeepID) + len(proposal.UpkeepID) - 1 // 2 for brackets, length of bytes, length-1 for commas
-	valueSizes += triggerLength(proposal.Trigger)
-	valueSizes += 2 + len(proposal.WorkID)
-
-	return objectBraces + numberOfColons + fieldSeparators + upkeepIDNameAndQuotes + triggerNameAndQuotes + workIDNameAndQuotes + valueSizes
-}
-
-func blockHistoryLength(blockHistory automation.BlockHistory) int {
-	if len(blockHistory) == 0 {
-		return 2
-	} else {
-		blockHistoryLength := 0
-
-		numberOfFields := len(blockHistory) // should not be counted, used to coordinate values, we don't include retry interval
-
-		objectBraces := 2
-		fieldSeparators := numberOfFields - 1
-
-		for _, block := range blockHistory {
-			blockHistoryLength += blockLength(block)
-		}
-
-		return objectBraces + fieldSeparators + blockHistoryLength
-	}
-}
-
-func blockLength(key automation.BlockKey) int {
-	numberOfFields := 2 // should not be counted, used to coordinate values
-
-	objectBraces := 2
-	numberOfColons := numberOfFields
-	fieldSeparators := numberOfFields - 1
-
-	numberNameAndQuotes := 8
-	hashNameAndQuotes := 6
-
-	valueSizes := 0
-
-	valueSizes += uint64Length(uint64(key.Number))
-	valueSizes += 2 + byte32Length(key.Hash) + len(key.Hash) - 1 // 2 for brackets, length of bytes, length-1 for commas
-
-	return objectBraces + numberOfColons + fieldSeparators + numberNameAndQuotes + hashNameAndQuotes + valueSizes
+	return objectBraces, numberOfColons, fieldSeparators
 }
