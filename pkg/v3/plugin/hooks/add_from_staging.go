@@ -60,6 +60,61 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	return nil
 }
 
+func (hook *AddFromStagingHook) addByBinaryCheck(obs *ocr2keepersv3.AutomationObservation, limit int, results []automation.CheckResult) (int, int) {
+	toAdd := limit
+	firstTry := true
+	tooBig := false
+	tooSmall := false
+	delta := toAdd / 2
+	encodings := 0
+	for {
+		if tooBig {
+			toAdd -= delta
+		} else if tooSmall {
+			toAdd += delta
+		}
+
+		obs.Performable = results[:toAdd]
+		b, _ := json.Marshal(obs)
+		encodings++
+
+		if len(b) > ocr2keepersv3.MaxObservationLength {
+			// if we were previously too small, and now we're too big, reduce the delta
+			if tooSmall {
+				if delta > 1 {
+					delta = delta / 2
+				} else {
+					// delta can't be reduced, pop one off and return
+					obs.Performable = obs.Performable[:len(obs.Performable)-1]
+					break
+				}
+			}
+
+			tooBig = true
+			tooSmall = false
+		} else if len(b) < ocr2keepersv3.MaxObservationLength {
+			if firstTry {
+				break
+			}
+
+			if tooBig {
+				if delta > 1 {
+					delta = delta / 2
+				} else {
+					// delta can't be reduced, return as-is
+					break
+				}
+			}
+
+			tooBig = false
+			tooSmall = true
+		}
+		firstTry = false
+	}
+
+	return len(obs.Performable), encodings
+}
+
 func (hook *AddFromStagingHook) addByEstimates(obs *ocr2keepersv3.AutomationObservation, limit int, results []automation.CheckResult) int {
 	added := 0
 	for i := 0; i < len(results) && added < limit; i++ {

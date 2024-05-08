@@ -453,6 +453,42 @@ func TestAddByEstimate(t *testing.T) {
 		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
 		assert.Equal(t, len(b), 976528)
 	})
+
+	t.Run("Add up to 100 lightly populated performables if we have capacity", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		results := buildResults(1000, 500)
+
+		added, encodings := hook.addByBinaryCheck(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
+		assert.Equal(t, ocr2keepersv3.ObservationPerformablesLimit, added)
+		assert.Equal(t, 1, encodings)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 210508)
+	})
+
+	t.Run("Add up to 100 heavily populated performables if we have capacity with binary check", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		results := buildResults(1000, 10000)
+
+		added, encodings := hook.addByBinaryCheck(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
+		assert.Equal(t, 66, added)
+		assert.Equal(t, 7, encodings)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 990836)
+	})
 }
 
 func BenchmarkAddByJSON(b *testing.B) {
@@ -495,6 +531,21 @@ func BenchmarkAddByEstimateAggressive(b *testing.B) {
 	}
 
 	// ~876293 ns/op
+}
+
+func BenchmarkAddByEstimateBinaryCheck(b *testing.B) {
+	results := buildResults(1000, 10000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, encodings := hook.addByBinaryCheck(observation, 100, results)
+		b.Log(encodings)
+	}
+
+	// ~33783998 ns/op
 }
 
 func buildResults(num, performDataSize int) []types.CheckResult {
