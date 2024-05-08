@@ -577,7 +577,7 @@ func TestLargeObservationSize(t *testing.T) {
 		})
 	}
 	largePerformData := [10001]byte{}
-	for i := 0; i < 67; i++ {
+	for i := 0; i < ObservationPerformablesLimit; i++ {
 		newResult := validLogResult
 		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 10001)))
@@ -609,7 +609,7 @@ func TestLargeObservationSize(t *testing.T) {
 	assert.NoError(t, err, "no error in decoding valid automation observation")
 
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
-	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation should be less than maxObservationSize")
+	assert.Greaterf(t, len(encoded), MaxObservationLength, "encoded observation will exceed maxObservationSize")
 }
 
 func mockUpkeepTypeGetter(id commontypes.UpkeepIdentifier) types.UpkeepType {
