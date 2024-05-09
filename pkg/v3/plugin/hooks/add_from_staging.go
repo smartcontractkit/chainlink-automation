@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"sync"
 
@@ -110,6 +111,33 @@ func (hook *AddFromStagingHook) addByBinaryCheck(obs *ocr2keepersv3.AutomationOb
 			tooSmall = true
 		}
 		firstTry = false
+	}
+
+	return len(obs.Performable), encodings
+}
+
+func (hook *AddFromStagingHook) addByPercentage(obs *ocr2keepersv3.AutomationObservation, limit int, results []automation.CheckResult) (int, int) {
+	encodings := 1
+	baseEncoding, _ := json.Marshal(obs)
+	baseSize := len(baseEncoding) // calculate the base size of the observation before we add performables
+	added, performEnc := hook.addPerformablesByPercentage(obs, limit, results, baseSize)
+	return added, performEnc + encodings
+}
+
+func (hook *AddFromStagingHook) addPerformablesByPercentage(obs *ocr2keepersv3.AutomationObservation, limit int, results []automation.CheckResult, baseSize int) (int, int) {
+	obs.Performable = results[:limit]
+
+	encodings := 1
+	b, _ := json.Marshal(obs)
+
+	if observationSize := len(b); observationSize > ocr2keepersv3.MaxObservationLength {
+		performablesSize := observationSize - baseSize
+		avgPerformableSize := performablesSize / limit
+		exceededBy := observationSize - ocr2keepersv3.MaxObservationLength
+		avgPerformablesExceeded := int(math.Ceil(float64(exceededBy / avgPerformableSize)))
+		limit -= avgPerformablesExceeded + 1 // ensure we always remove at least one performable on the next call
+		added, numEncodings := hook.addPerformablesByPercentage(obs, limit, results, baseSize)
+		return added, numEncodings + encodings
 	}
 
 	return len(obs.Performable), encodings

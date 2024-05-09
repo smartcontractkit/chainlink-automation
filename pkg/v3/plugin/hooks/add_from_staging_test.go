@@ -489,6 +489,42 @@ func TestAddByEstimate(t *testing.T) {
 		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
 		assert.Equal(t, len(b), 990836)
 	})
+
+	t.Run("Add up to 100 lightly populated performables if we have capacity", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		results := buildResults(1000, 500)
+
+		added, encodings := hook.addByPercentage(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
+		assert.Equal(t, ocr2keepersv3.ObservationPerformablesLimit, added)
+		assert.Equal(t, 2, encodings)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 210508)
+	})
+
+	t.Run("Add up to 100 heavily populated performables if we have capacity with binary check", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		results := buildResults(1000, 10000)
+
+		added, encodings := hook.addByPercentage(observation, ocr2keepersv3.ObservationPerformablesLimit, results)
+		assert.Equal(t, 66, added)
+		assert.Equal(t, 3, encodings)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 990836)
+	})
 }
 
 func BenchmarkAddByJSON(b *testing.B) {
@@ -546,6 +582,20 @@ func BenchmarkAddByEstimateBinaryCheck(b *testing.B) {
 	}
 
 	// ~33783998 ns/op
+}
+
+func BenchmarkAddByPercentage(b *testing.B) {
+	results := buildResults(1000, 10000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByPercentage(observation, 100, results)
+	}
+
+	// ~8918480 ns/op
 }
 
 func buildResults(num, performDataSize int) []types.CheckResult {
