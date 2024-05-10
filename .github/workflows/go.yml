@@ -124,7 +124,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
       with:
-        name: go-test-results
+        name: go-race-test-results
         path: ./race_coverage.txt
 
   fuzz-test:
