@@ -8,10 +8,10 @@ jobs:
   dependency-check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
       with:
         go-version-file: "go.mod"
     
@@ -19,4 +19,4 @@ jobs:
       run: go list -json -m all > go.list
     
     - name: Nancy Scan
-      uses: sonatype-nexus-community/nancy-github-action@main
+      uses: sonatype-nexus-community/nancy-github-action@726e338312e68ecdd4b4195765f174d3b3ce1533 # v1.0.3
