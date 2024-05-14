@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/smartcontractkit/chainlink-common/pkg/services"
 )
 
 var (
@@ -77,13 +79,11 @@ type WorkerGroup[T any] struct {
 	queueClosed      atomic.Bool
 
 	// service state management
-	svcCtx    context.Context
-	svcCancel context.CancelFunc
+	svcChStop services.StopChan
 	once      sync.Once
 }
 
 func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
-	svcCtx, svcCancel := context.WithCancel(context.Background())
 	wg := &WorkerGroup[T]{
 		maxWorkers:       workers,
 		workers:          make(chan *worker[T], workers),
@@ -94,8 +94,7 @@ func NewWorkerGroup[T any](workers int, queue int) *WorkerGroup[T] {
 		resultNotify:     map[int]chan struct{}{},
 		chStopInputs:     make(chan struct{}),
 		chStopProcessing: make(chan struct{}),
-		svcCtx:           svcCtx,
-		svcCancel:        svcCancel,
+		svcChStop:        make(chan struct{}),
 	}
 
 	go wg.run()
@@ -135,7 +134,7 @@ func (wg *WorkerGroup[T]) Do(ctx context.Context, w WorkItem[T], group int) erro
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("%w; work not added to queue", ErrContextCancelled)
-	case <-wg.svcCtx.Done():
+	case <-wg.svcChStop:
 		return fmt.Errorf("%w; work not added to queue", ErrProcessStopped)
 	}
 }
@@ -189,7 +188,7 @@ func (wg *WorkerGroup[T]) RemoveGroup(group int) {
 
 func (wg *WorkerGroup[T]) Stop() {
 	wg.once.Do(func() {
-		wg.svcCancel()
+		close(wg.svcChStop)
 		wg.queueClosed.Store(true)
 		wg.chStopInputs <- struct{}{}
 	})
@@ -276,7 +275,11 @@ func (wg *WorkerGroup[T]) doJob(item GroupedItem[T]) {
 	}
 
 	// have worker do the work
-	go wkr.Do(wg.svcCtx, wg.storeResult(item.Group), item.Item)
+	go func() {
+		ctx, cancel := wg.svcChStop.NewCtx()
+		defer cancel()
+		wkr.Do(ctx, wg.storeResult(item.Group), item.Item)
+	}()
 }
 
 func (wg *WorkerGroup[T]) storeResult(group int) func(result WorkItemResult[T]) {
@@ -351,10 +354,11 @@ func RunJobs[T, K any](ctx context.Context, wg *WorkerGroup[T], jobs []K, jobFun
 func makeJobFunc[T, K any](jobCtx context.Context, value T, jobFunc JobFunc[T, K]) WorkItem[K] {
 	return func(svcCtx context.Context) (K, error) {
 		// the jobFunc should exit in the case that either the job context
-		// cancels or the worker service context cancels. To ensure we don't end
-		// up with memory leaks, cancel the merged context to release resources.
-		ctx, cancel := MergeContextsWithCancel(svcCtx, jobCtx)
+		// cancels or the worker service context cancels.
+		ctx, cancel := context.WithCancel(jobCtx)
 		defer cancel()
+		stop := context.AfterFunc(svcCtx, cancel)
+		defer stop()
 		return jobFunc(ctx, value)
 	}
 }

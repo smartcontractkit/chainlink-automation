@@ -159,10 +159,8 @@ func TestWorkerGroup(t *testing.T) {
 	})
 
 	t.Run("Error on Cancel and Full Queue", func(t *testing.T) {
-		svcCtx, svcCancel := context.WithCancel(context.Background())
 		wg := &WorkerGroup[int]{
-			svcCtx:           svcCtx,
-			svcCancel:        svcCancel,
+			svcChStop:        make(chan struct{}),
 			input:            make(chan GroupedItem[int]), // unbuffered to block
 			resultData:       map[int][]WorkItemResult[int]{},
 			resultNotify:     map[int]chan struct{}{},
@@ -199,10 +197,8 @@ func TestWorkerGroup(t *testing.T) {
 	})
 
 	t.Run("Error on Stop and Full Queue", func(t *testing.T) {
-		svcCtx, svcCancel := context.WithCancel(context.Background())
 		wg := &WorkerGroup[int]{
-			svcCtx:           svcCtx,
-			svcCancel:        svcCancel,
+			svcChStop:        make(chan struct{}),
 			input:            make(chan GroupedItem[int]), // unbuffered to block
 			resultData:       map[int][]WorkItemResult[int]{},
 			resultNotify:     map[int]chan struct{}{},
@@ -238,10 +234,8 @@ func TestWorkerGroup(t *testing.T) {
 	})
 
 	t.Run("Error on Context Already Cancelled", func(t *testing.T) {
-		svcCtx, svcCancel := context.WithCancel(context.Background())
 		wg := &WorkerGroup[int]{
-			svcCtx:           svcCtx,
-			svcCancel:        svcCancel,
+			svcChStop:        make(chan struct{}),
 			input:            make(chan GroupedItem[int]), // unbuffered to block
 			resultData:       map[int][]WorkItemResult[int]{},
 			resultNotify:     map[int]chan struct{}{},

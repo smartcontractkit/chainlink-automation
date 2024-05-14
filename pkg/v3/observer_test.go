@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+	"github.com/smartcontractkit/chainlink-common/pkg/utils/tests"
 )
 
 type mockTick struct {
@@ -123,7 +123,6 @@ func TestObserve_Process(t *testing.T) {
 	}
 
 	type args struct {
-		ctx  context.Context
 		tick tickers.Tick[[]int]
 	}
 
@@ -139,7 +138,7 @@ func TestObserve_Process(t *testing.T) {
 
 	expectedPayload := []int{}
 	expectedCheckResults := []ocr2keepers.CheckResult{}
-	tests := []struct {
+	tts := []struct {
 		name         string
 		fields       fields
 		args         args
@@ -154,7 +153,6 @@ func TestObserve_Process(t *testing.T) {
 				Processor:     new(mockProcessFunc),
 			},
 			args: args{
-				ctx:  context.Background(),
 				tick: new(mockTick),
 			},
 			expectations: expectations{
@@ -176,7 +174,6 @@ func TestObserve_Process(t *testing.T) {
 				Processor:     new(mockProcessFunc),
 			},
 			args: args{
-				ctx:  context.Background(),
 				tick: new(mockTick),
 			},
 			expectations: expectations{
@@ -198,7 +195,6 @@ func TestObserve_Process(t *testing.T) {
 				Processor:     new(mockProcessFunc),
 			},
 			args: args{
-				ctx:  context.Background(),
 				tick: new(mockTick),
 			},
 			expectations: expectations{
@@ -220,7 +216,6 @@ func TestObserve_Process(t *testing.T) {
 				Processor:     new(mockProcessFunc),
 			},
 			args: args{
-				ctx:  context.Background(),
 				tick: new(mockTick),
 			},
 			expectations: expectations{
@@ -242,7 +237,6 @@ func TestObserve_Process(t *testing.T) {
 				Processor:     new(mockProcessFunc),
 			},
 			args: args{
-				ctx:  context.Background(),
 				tick: new(mockTick),
 			},
 			expectations: expectations{
@@ -258,7 +252,7 @@ func TestObserve_Process(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tts {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Observer[int]{
 				lggr:             log.New(io.Discard, "", 0),
@@ -283,7 +277,8 @@ func TestObserve_Process(t *testing.T) {
 			tt.fields.Processor.On("Process", vals...).Return(expectedCheckResults, tt.expectations.runnerErr)
 			tt.fields.Postprocessor.(*mockPostprocessor).On("PostProcess", mock.AnythingOfType("*context.timerCtx"), expectedCheckResults).Return(tt.expectations.postprocessorErr)
 
-			tt.wantErr(t, o.Process(tt.args.ctx, tt.args.tick), fmt.Sprintf("Process(%v, %v)", tt.args.ctx, tt.args.tick))
+			ctx := tests.Context(t)
+			tt.wantErr(t, o.Process(ctx, tt.args.tick), fmt.Sprintf("Process(%v, %v)", ctx, tt.args.tick))
 		})
 	}
 }

@@ -31,3 +31,6 @@ bin/
 reports/
 simulation_plan_logs/
 simulation_plans/
+
+# Linter output
+golangci-lint/

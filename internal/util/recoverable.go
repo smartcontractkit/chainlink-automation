@@ -1,13 +1,14 @@
 package util
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
 	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/smartcontractkit/chainlink-common/pkg/services"
 )
 
 var (
@@ -21,13 +22,11 @@ type Doable interface {
 }
 
 func NewRecoverableService(svc Doable, logger *log.Logger) *RecoverableService {
-	ctx, cancel := context.WithCancel(context.Background())
 	return &RecoverableService{
 		service: svc,
 		stopped: make(chan error, 1),
 		log:     logger,
-		ctx:     ctx,
-		cancel:  cancel,
+		stopCh:  make(chan struct{}),
 	}
 }
 
@@ -37,8 +36,7 @@ type RecoverableService struct {
 	service Doable
 	stopped chan error
 	log     *log.Logger
-	ctx     context.Context
-	cancel  context.CancelFunc
+	stopCh  services.StopChan
 }
 
 func (m *RecoverableService) Start() {
@@ -63,7 +61,7 @@ func (m *RecoverableService) Stop() {
 	}
 
 	m.service.Stop()
-	m.cancel()
+	close(m.stopCh)
 	m.running = false
 }
 
@@ -76,14 +74,14 @@ func (m *RecoverableService) serviceStart() {
 				<-time.After(coolDown)
 				m.run()
 			}
-		case <-m.ctx.Done():
+		case <-m.stopCh:
 			return
 		}
 	}
 }
 
 func (m *RecoverableService) run() {
-	go func(s Doable, l *log.Logger, chStop chan error, ctx context.Context) {
+	go func(s Doable, l *log.Logger, chStop chan error) {
 		defer func() {
 			if err := recover(); err != nil {
 				if l != nil {
@@ -102,5 +100,5 @@ func (m *RecoverableService) run() {
 		}
 
 		chStop <- err
-	}(m.service, m.log, m.stopped, m.ctx)
+	}(m.service, m.log, m.stopped)
 }
