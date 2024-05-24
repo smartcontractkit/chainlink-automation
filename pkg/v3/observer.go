@@ -3,7 +3,6 @@ package ocr2keepers
 import (
 	"context"
 	"log"
-	"math/big"
 	"time"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
@@ -41,21 +40,10 @@ type Observer[T any] struct {
 	processTimeLimit time.Duration
 }
 
-func NewUpkeepIdsObserver(
-	preprocessors []PreProcessor[*big.Int],
-	postprocessor PostProcessor[*big.Int],
-	runner Runner,
-	processLimit time.Duration,
-	logger *log.Logger,
-) *Observer[*big.Int] {
-	return &Observer[ocr2keepers.UpkeepPayload]{
-		lggr:             logger,
-		Preprocessors:    preprocessors,
-		Postprocessor:    postprocessor,
-		processFunc:      runner.CheckUpkeeps,
-		processTimeLimit: processLimit,
-	}
-}
+//// NewUpkeepIdsObserver needs implementations
+//func NewUpkeepIdsObserver() *Observer[*big.Int] {
+//	return &Observer[*big.Int]{}
+//}
 
 // NewRunnableObserver creates a new Observer with the given pre-processors, post-processor, and runner
 func NewRunnableObserver(
@@ -74,6 +62,7 @@ func NewRunnableObserver(
 	}
 }
 
+// check this and implement Process
 // NewGenericObserver creates a new Observer with the given pre-processors, post-processor, and runner
 func NewGenericObserver[T any](
 	preprocessors []PreProcessor[T],

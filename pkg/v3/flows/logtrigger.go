@@ -6,17 +6,14 @@ import (
 	"log"
 	"time"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-)
-
-var (
-	ErrNotRetryable = fmt.Errorf("payload is not retryable")
 )
 
 const (
