@@ -20,6 +20,7 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
+// run node upgrade test on Github to verify
 type AutomationReportInfo struct {
 	UpkeepIDs []*big.Int
 }

@@ -11,12 +11,13 @@ require (
 	github.com/Maldris/mathparse v0.0.0-20170508133428-f0d009a7a773
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/go-echarts/go-echarts/v2 v2.2.6
+	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.3.1
 	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/shopspring/decimal v1.3.1
-	github.com/smartcontractkit/chainlink-common v0.1.7-0.20240524150321-457f1af39029
+	github.com/smartcontractkit/chainlink-common v0.1.7-0.20240528182638-55b1360b3c46
 	github.com/smartcontractkit/libocr v0.0.0-20240419185742-fd3cab206b2c
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
@@ -39,7 +40,6 @@ require (
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
