@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -20,10 +19,7 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-// run node upgrade test on Github to verify
-type AutomationReportInfo struct {
-	UpkeepIDs []*big.Int
-}
+type AutomationReportInfo struct{}
 
 type ocr3Plugin struct {
 	ConfigDigest                ocr2plustypes.ConfigDigest
@@ -280,10 +276,9 @@ func (plugin *ocr3Plugin) startServices() {
 }
 
 func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
-	encoded, uids, err := plugin.ReportEncoder.Encode(toPerform...)
+	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
 	return ocr3types.ReportWithInfo[AutomationReportInfo]{
 		Report: encoded,
-		Info:   AutomationReportInfo{UpkeepIDs: uids},
 	}, err
 }
 
