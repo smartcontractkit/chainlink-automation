@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/internal/util"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v2/observer"
+	"github.com/smartcontractkit/chainlink-common/pkg/services"
 )
 
 var ErrTooManyErrors = fmt.Errorf("too many errors in parallel worker process")
@@ -80,11 +81,8 @@ func NewPollingObserver(
 	coord ocr2keepers.Coordinator,
 	mercuryLookup bool,
 ) *PollingObserver {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	ob := &PollingObserver{
-		ctx:              ctx,
-		cancel:           cancel,
+		stopCh:           make(chan struct{}),
 		logger:           logger,
 		samplingDuration: maxSamplingDuration,
 		shuffler:         util.Shuffler[ocr2keepers.UpkeepKey]{Source: util.NewCryptoRandSource()}, // use crypto/rand shuffling for true random
@@ -101,15 +99,14 @@ func NewPollingObserver(
 	// make all go-routines started by this entity automatically recoverable
 	// on panics
 	ob.services = []Service{
-		util.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: cancel}, logger),
+		util.NewRecoverableService(&observer.SimpleService{F: ob.runHeadTasks, C: func() { close(ob.stopCh) }}, logger),
 	}
 
 	return ob
 }
 
 type PollingObserver struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
+	stopCh    services.StopChan
 	startOnce sync.Once
 	stopOnce  sync.Once
 
@@ -185,29 +182,28 @@ func (o *PollingObserver) Close() error {
 }
 
 func (o *PollingObserver) runHeadTasks() error {
+	ctx, cancel := o.stopCh.NewCtx()
+	defer cancel()
 	ch := o.heads.HeadTicker()
 	for {
 		select {
 		case bl := <-ch:
-			// limit the context timeout to configured value
-			ctx, cancel := context.WithTimeout(o.ctx, o.samplingDuration)
-
 			// run sampling with latest head, the head ticker will drop heads
 			// if the following process blocks for an extended period of time
 			o.processLatestHead(ctx, bl)
-
-			// clean up resources by canceling the context after processing
-			cancel()
-		case <-o.ctx.Done():
+		case <-ctx.Done():
 			o.logger.Printf("PollingObserver.runHeadTasks ctx done")
 
-			return o.ctx.Err()
+			return ctx.Err()
 		}
 	}
 }
 
 // processLatestHead performs checking upkeep logic for all eligible keys of the given head
 func (o *PollingObserver) processLatestHead(ctx context.Context, blockKey ocr2keepers.BlockKey) {
+	// limit the context timeout to configured value
+	ctx, cancel := context.WithTimeout(ctx, o.samplingDuration)
+	defer cancel()
 	var (
 		keys []ocr2keepers.UpkeepKey
 		ids  []ocr2keepers.UpkeepIdentifier
