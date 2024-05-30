@@ -278,7 +278,7 @@ func (plugin *ocr3Plugin) startServices() {
 func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
 	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
 	return ocr3types.ReportWithInfo[AutomationReportInfo]{
-		Report: ocr2plustypes.Report(encoded),
+		Report: encoded,
 	}, err
 }
 
