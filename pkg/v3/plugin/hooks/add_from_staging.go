@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"sync"
 
@@ -49,14 +50,38 @@ func (hook *AddFromStagingHook) RunHook(obs *ocr2keepersv3.AutomationObservation
 	}
 
 	results = hook.sorter.orderResults(results, rSrc)
-	if n := len(results); n > limit {
-		results = results[:limit]
-		hook.logger.Printf("skipped %d available results in staging", n-limit)
-	}
-	hook.logger.Printf("adding %d results to observation", len(results))
-	obs.Performable = append(obs.Performable, results...)
+	added, _ := hook.addByPercentageExceeded(obs, limit, results, ocr2keepersv3.ObservationPerformablesLimit)
+
+	hook.logger.Printf("skipped %d available results in staging", len(results)-added)
+
+	hook.logger.Printf("adding %d results to observation", added)
 
 	return nil
+}
+
+func (hook *AddFromStagingHook) addByPercentageExceeded(obs *ocr2keepersv3.AutomationObservation, limit int, results []automation.CheckResult, baseSize int) (int, int) {
+	if limit > len(results) {
+		limit = len(results)
+	}
+	existingPerformables := obs.Performable
+
+	obs.Performable = append(obs.Performable, results[:limit]...)
+
+	encodings := 1
+	b, _ := obs.Encode()
+
+	if observationSize := len(b); observationSize > ocr2keepersv3.MaxObservationLength {
+		performablesSize := observationSize - baseSize
+		avgPerformableSize := performablesSize / limit
+		exceededBy := observationSize - ocr2keepersv3.MaxObservationLength
+		avgPerformablesExceeded := int(math.Ceil(float64(exceededBy) / float64(avgPerformableSize)))
+		limit -= avgPerformablesExceeded + 1 // ensure we always remove at least one performable on the next call
+		obs.Performable = existingPerformables
+		added, numEncodings := hook.addByPercentageExceeded(obs, limit, results, baseSize)
+		return added, numEncodings + encodings
+	}
+
+	return len(obs.Performable) - len(existingPerformables), encodings
 }
 
 type stagedResultSorter struct {

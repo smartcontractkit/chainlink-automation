@@ -65,6 +65,13 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 
 	plugin.AddBlockHistoryHook.RunHook(&observation, ocr2keepersv3.ObservationBlockHistoryLimit)
 
+	if err := plugin.AddLogProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+		return nil, err
+	}
+	if err := plugin.AddConditionalProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
+		return nil, err
+	}
+
 	// using the OCR seq number for randomness of the performables ordering.
 	// high randomness results in expesive ordering, therefore we reduce
 	// the range of the randomness by dividing the seq number by 10
@@ -73,13 +80,6 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 		return nil, err
 	}
 	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepResultStore).Set(float64(len(observation.Performable)))
-
-	if err := plugin.AddLogProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationLogRecoveryProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
-		return nil, err
-	}
-	if err := plugin.AddConditionalProposalsHook.RunHook(&observation, ocr2keepersv3.ObservationConditionalsProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr)); err != nil {
-		return nil, err
-	}
 
 	plugin.Logger.Printf("built an observation in sequence nr %d with %d performables, %d upkeep proposals and %d block history", outctx.SeqNr, len(observation.Performable), len(observation.UpkeepProposals), len(observation.BlockHistory))
 	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepObservation).Set(float64(len(observation.Performable)))

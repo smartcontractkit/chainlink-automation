@@ -609,7 +609,7 @@ func TestLargeObservationSize(t *testing.T) {
 	assert.NoError(t, err, "no error in decoding valid automation observation")
 
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
-	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation should be less than maxObservationSize")
+	assert.Greater(t, len(encoded), MaxObservationLength, "encoded observation will exceed maxObservationSize")
 }
 
 func mockUpkeepTypeGetter(id commontypes.UpkeepIdentifier) types.UpkeepType {

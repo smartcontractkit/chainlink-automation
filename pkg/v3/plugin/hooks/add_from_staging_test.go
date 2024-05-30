@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -350,6 +351,132 @@ func TestAddFromStagingHook_stagedResultSorter(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAddByEstimate(t *testing.T) {
+	var hook AddFromStagingHook
+
+	var blockHistory types.BlockHistory
+	for i := 0; i < ocr2keepersv3.ObservationBlockHistoryLimit; i++ {
+		blockHistory = append(blockHistory, types.BlockKey{
+			Number: types.BlockNumber(i + 1),
+			Hash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+		})
+	}
+
+	bigNumber := big.NewInt(1844674407370955161)
+
+	var proposals []types.CoordinatedBlockProposal
+
+	proposalsToAdd := ocr2keepersv3.ObservationLogRecoveryProposalsLimit + ocr2keepersv3.ObservationConditionalsProposalsLimit
+	for i := 0; i < proposalsToAdd; i++ {
+		proposals = append(proposals, types.CoordinatedBlockProposal{
+			UpkeepID: [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+			Trigger: types.Trigger{
+				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+				LogTriggerExtension: &types.LogTriggerExtension{
+					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					Index:       4294967295,
+					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				},
+			},
+			WorkID: "abc123fffedb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c99",
+		})
+	}
+
+	t.Run("Add up to 100 lightly populated performables if we have capacity", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		b, _ := observation.Encode()
+
+		results := buildResults(1000, 500)
+
+		added, encodings := hook.addByPercentageExceeded(observation, ocr2keepersv3.ObservationPerformablesLimit, results, len(b))
+		assert.Equal(t, ocr2keepersv3.ObservationPerformablesLimit, added)
+		assert.Equal(t, 1, encodings)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 210508)
+	})
+
+	t.Run("Add up to 100 heavily populated performables if we have capacity", func(t *testing.T) {
+		observation := &ocr2keepersv3.AutomationObservation{
+			UpkeepProposals: proposals,
+			BlockHistory:    blockHistory,
+		}
+
+		b, _ := observation.Encode()
+
+		results := buildResults(1000, 10000)
+
+		added, encodings := hook.addByPercentageExceeded(observation, ocr2keepersv3.ObservationPerformablesLimit, results, len(b))
+		assert.Equal(t, 65, added)
+		assert.Equal(t, 2, encodings)
+
+		b, err := observation.Encode()
+		assert.NoError(t, err)
+		assert.LessOrEqual(t, len(b), ocr2keepersv3.MaxObservationLength)
+		assert.Equal(t, len(b), 976528)
+	})
+}
+
+func BenchmarkAddByPercentageExceded(b *testing.B) {
+	results := buildResults(1000, 10000)
+	var hook AddFromStagingHook
+	observation := &ocr2keepersv3.AutomationObservation{}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		hook.addByPercentageExceeded(observation, 100, results, ocr2keepersv3.ObservationPerformablesLimit)
+	}
+
+	// ~5680891 ns/op
+}
+
+func buildResults(num, performDataSize int) []types.CheckResult {
+	var res []types.CheckResult
+
+	for i := 0; i < num; i++ {
+		performData := make([]byte, performDataSize)
+		for i := 0; i < performDataSize; i++ {
+			performData[i] = 255
+		}
+
+		bigNumber := big.NewInt(1844674407370955161)
+
+		res = append(res, types.CheckResult{
+			PipelineExecutionState: 255,
+			Retryable:              false,
+			Eligible:               true,
+			IneligibilityReason:    255,
+			UpkeepID:               [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+			Trigger: types.Trigger{
+				BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+				LogTriggerExtension: &types.LogTriggerExtension{
+					TxHash:      [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					Index:       4294967295,
+					BlockHash:   [32]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255},
+					BlockNumber: types.BlockNumber(bigNumber.Uint64()),
+				},
+			},
+			WorkID:       "acd4ff368edb8ab06d3c766b2ff1791ae277aa8efc5357729b640c432f706c86",
+			GasAllocated: bigNumber.Uint64(),
+			PerformData:  performData,
+			FastGasWei:   bigNumber,
+			LinkNative:   bigNumber,
+		})
+	}
+
+	return res
 }
 
 func getMocks(n int) (*mocks.MockResultStore, *mocks.MockCoordinator) {
