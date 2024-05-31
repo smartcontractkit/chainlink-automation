@@ -576,14 +576,14 @@ func TestLargeObservationSize(t *testing.T) {
 			Hash:   [32]byte{1},
 		})
 	}
-	largePerformData := [10001]byte{}
+	performData := [5001]byte{}
 	for i := 0; i < ObservationPerformablesLimit; i++ {
 		newResult := validLogResult
 		uid := commontypes.UpkeepIdentifier{}
 		uid.FromBigInt(big.NewInt(int64(i + 10001)))
 		newResult.UpkeepID = uid
 		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
-		newResult.PerformData = largePerformData[:]
+		newResult.PerformData = performData[:]
 		ao.Performable = append(ao.Performable, newResult)
 	}
 	for i := 0; i < ObservationConditionalsProposalsLimit; i++ {
@@ -609,7 +609,8 @@ func TestLargeObservationSize(t *testing.T) {
 	assert.NoError(t, err, "no error in decoding valid automation observation")
 
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
-	assert.Greater(t, len(encoded), MaxObservationLength, "encoded observation will exceed maxObservationSize")
+	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation won't exceed maxObservationSize when perform data is moderately sized")
+	assert.Equal(t, 208404, MaxObservationLength-len(encoded), "we still have 208404 bytes of free space with 100 moderately sized perfromables")
 }
 
 func mockUpkeepTypeGetter(id commontypes.UpkeepIdentifier) types.UpkeepType {
