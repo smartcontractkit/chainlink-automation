@@ -76,6 +76,8 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	// high randomness results in expesive ordering, therefore we reduce
 	// the range of the randomness by dividing the seq number by 10
 	randSrcSeq := outctx.SeqNr / 10
+
+	// The AddFromStagingHook should always be the last hook that is called as it ensures the size constraints of the observation are met
 	if err := plugin.AddFromStagingHook.RunHook(&observation, ocr2keepersv3.ObservationPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, randSrcSeq)); err != nil {
 		return nil, err
 	}
