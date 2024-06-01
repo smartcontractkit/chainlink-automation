@@ -23,7 +23,7 @@ func TestStart(t *testing.T) {
 			Logger: logger,
 		})
 
-		assert.Equal(t, err.Error(), "bad local config while creating new oracle: blockchain timeout must be between 1s and 20s, but is currently 0s; contract config tracker poll interval must be between 15s and 2m0s, but is currently 0s; contract transmitter transmit timeout must be between 1s and 1m0s, but is currently 0s; database timeout must be between 100ms and 10s, but is currently 0s; contract config block-depth confirmation threshold must be between 1 and 100, but is currently 0: failed to create new OCR oracle")
+		assert.Equal(t, err.Error(), "bad local config while creating new oracle: blockchain timeout must be between 1s and 20s, but is currently 0s; contract config tracker poll interval must be between 1s and 2m0s, but is currently 0s; contract transmitter transmit timeout must be between 1s and 1m0s, but is currently 0s; database timeout must be between 100ms and 10s, but is currently 0s; contract config block-depth confirmation threshold must be between 1 and 100, but is currently 0: failed to create new OCR oracle")
 	})
 
 	t.Run("creates the delegate with the provided config", func(t *testing.T) {

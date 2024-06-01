@@ -989,7 +989,7 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 				UpkeepTypeGetter: mockUpkeepTypeGetter,
 				WorkIDGenerator:  tc.wg,
 			}
-			err := plugin.ValidateObservation(ocr3types.OutcomeContext{}, nil, tc.observation)
+			err := plugin.ValidateObservation(context.Background(), ocr3types.OutcomeContext{}, nil, tc.observation)
 			if tc.expectsErr {
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), tc.wantErr.Error())
@@ -1092,7 +1092,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 				WorkIDGenerator:  tc.wg,
 				Logger:           logger,
 			}
-			outcome, err := plugin.Outcome(ocr3types.OutcomeContext{
+			outcome, err := plugin.Outcome(context.Background(), ocr3types.OutcomeContext{
 				PreviousOutcome: tc.prevOutcome,
 			}, nil, tc.observations)
 			if tc.expectsErr {
@@ -1273,7 +1273,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 				UpkeepTypeGetter: tc.utg,
 				WorkIDGenerator:  tc.wg,
 			}
-			reportsWithInfo, err := plugin.Reports(tc.sequenceNumber, tc.outcome)
+			reportsWithInfo, err := plugin.Reports(context.Background(), tc.sequenceNumber, tc.outcome)
 			if tc.expectsErr {
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), tc.wantErr.Error())
