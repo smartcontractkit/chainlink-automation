@@ -20,6 +20,8 @@ const (
 	defaultCacheClean = time.Duration(30) * time.Second
 )
 
+// prevent repeating transmission for the same upkeep (check in-flight upkeeps) by checking onchain events from event provider
+// transmit again bc check block changes etc.
 type coordinator struct {
 	closer internalutil.Closer
 	logger *log.Logger

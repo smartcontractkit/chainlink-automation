@@ -6,25 +6,21 @@ import (
 	"log"
 	"time"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-)
-
-var (
-	ErrNotRetryable = fmt.Errorf("payload is not retryable")
 )
 
 const (
-	// This is the ticker interval for log trigger flow
+	// LogCheckInterval is the ticker interval for log trigger flow
 	LogCheckInterval = 1 * time.Second
-	// Limit for processing a whole observer flow given a payload. The main component of this
-	// is the checkPipeline which involves some RPC, DB and Mercury calls, this is limited
-	// to 20 seconds for now
+	// ObservationProcessLimit is the limit for processing a whole observer flow given a payload. The main component of
+	// this is the checkPipeline which involves some RPC, DB and Mercury calls, this is limited to 20 seconds for now
 	ObservationProcessLimit = 20 * time.Second
 )
 

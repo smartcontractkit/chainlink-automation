@@ -35,6 +35,7 @@ func NewEligiblePostProcessor(resultsAdder checkResultAdder, logger *log.Logger)
 	}
 }
 
+// PostProcess adds eligible upkeeps to result store
 func (p *eligiblePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	eligible := 0
 	for _, res := range results {

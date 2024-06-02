@@ -23,6 +23,7 @@ func NewIneligiblePostProcessor(stateUpdater ocr2keepers.UpkeepStateUpdater, log
 	}
 }
 
+// PostProcess updates upkeep's states for ineligible upkeeps
 func (p *ineligiblePostProcessor) PostProcess(ctx context.Context, results []ocr2keepers.CheckResult, _ []ocr2keepers.UpkeepPayload) error {
 	var merr error
 	ineligible := 0

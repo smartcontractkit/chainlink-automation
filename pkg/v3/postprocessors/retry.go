@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"log"
 
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func NewRetryablePostProcessor(q types.RetryQueue, logger *log.Logger) *retryablePostProcessor {
@@ -25,6 +26,7 @@ type retryablePostProcessor struct {
 
 var _ PostProcessor = (*retryablePostProcessor)(nil)
 
+// PostProcess enqueues retryable upkeep payloads to retry queue
 func (p *retryablePostProcessor) PostProcess(_ context.Context, results []ocr2keepers.CheckResult, payloads []ocr2keepers.UpkeepPayload) error {
 	var err error
 	retryable := 0

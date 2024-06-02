@@ -11,11 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
-	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 func TestRetryFlow(t *testing.T) {
@@ -31,22 +32,22 @@ func TestRetryFlow(t *testing.T) {
 
 	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]common.UpkeepPayload{
 		{
-			UpkeepID: common.UpkeepIdentifier([32]byte{1}),
+			UpkeepID: [32]byte{1},
 			WorkID:   "0x1",
 		},
 		{
-			UpkeepID: common.UpkeepIdentifier([32]byte{2}),
+			UpkeepID: [32]byte{2},
 			WorkID:   "0x2",
 		},
 	}, nil).Times(times)
 	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]common.CheckResult{
 		{
-			UpkeepID: common.UpkeepIdentifier([32]byte{1}),
+			UpkeepID: [32]byte{1},
 			WorkID:   "0x1",
 			Eligible: true,
 		},
 		{
-			UpkeepID:  common.UpkeepIdentifier([32]byte{2}),
+			UpkeepID:  [32]byte{2},
 			WorkID:    "0x2",
 			Retryable: true,
 		},
@@ -64,12 +65,12 @@ func TestRetryFlow(t *testing.T) {
 
 	err := retryQ.Enqueue(types.RetryRecord{
 		Payload: common.UpkeepPayload{
-			UpkeepID: common.UpkeepIdentifier([32]byte{1}),
+			UpkeepID: [32]byte{1},
 			WorkID:   "0x1",
 		},
 	}, types.RetryRecord{
 		Payload: common.UpkeepPayload{
-			UpkeepID: common.UpkeepIdentifier([32]byte{2}),
+			UpkeepID: [32]byte{2},
 			WorkID:   "0x2",
 		},
 	})

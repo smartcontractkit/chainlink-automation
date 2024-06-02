@@ -19,14 +19,15 @@ import (
 )
 
 const (
-	// This is the ticker interval for sampling conditional flow
+	// SamplingConditionInterval is the ticker interval for sampling conditional flow
 	SamplingConditionInterval = 3 * time.Second
-	// Maximum number of upkeeps to be sampled in every round
+	// MaxSampledConditionals is the maximum number of upkeeps to be sampled in every round
 	MaxSampledConditionals = 300
-	// This is the ticker interval for final conditional flow
+	// FinalConditionalInterval is the ticker interval for final conditional flow
 	FinalConditionalInterval = 1 * time.Second
-	// These are the maximum number of conditional upkeeps dequeued on every tick from proposal queue in FinalConditionalFlow
-	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
+	// FinalConditionalBatchSize is the maximum number of conditional upkeeps dequeued on every tick from proposal queue
+	// in FinalConditionalFlow. This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by
+	// plugin in every round
 	FinalConditionalBatchSize = 50
 )
 
@@ -40,11 +41,11 @@ func newSampleProposalFlow(
 	logger *log.Logger,
 ) service.Recoverable {
 	pre = append(pre, preprocessors.NewProposalFilterer(ms, types.LogTrigger))
-	postprocessors := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
+	post := postprocessors.NewAddProposalToMetadataStorePostprocessor(ms)
 
 	observer := ocr2keepersv3.NewRunnableObserver(
 		pre,
-		postprocessors,
+		post,
 		runner,
 		ObservationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | sample-proposal-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
@@ -114,7 +115,6 @@ func newFinalConditionalFlow(
 	proposalQ types.ProposalQueue,
 	builder common.PayloadBuilder,
 	retryQ types.RetryQueue,
-	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
 	post := postprocessors.NewCombinedPostprocessor(

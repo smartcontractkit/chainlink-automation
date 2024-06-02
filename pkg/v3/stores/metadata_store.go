@@ -8,8 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 const (
@@ -30,6 +31,7 @@ func (r expiringRecord) expired(expr time.Duration) bool {
 	return time.Since(r.createdAt) > expr
 }
 
+// metadataStore has a block history source and maintains upkeep proposals
 type metadataStore struct {
 	chID                 int
 	ch                   chan commontypes.BlockHistory
@@ -46,6 +48,7 @@ type metadataStore struct {
 	typeGetter types.UpkeepTypeGetter
 }
 
+// NewMetadataStore creates a new metadata store
 func NewMetadataStore(subscriber commontypes.BlockSubscriber, typeGetter types.UpkeepTypeGetter) (*metadataStore, error) {
 	chID, ch, err := subscriber.Subscribe()
 	if err != nil {
@@ -157,6 +160,7 @@ func (m *metadataStore) addLogRecoveryProposal(proposals ...commontypes.Coordina
 	}
 }
 
+// viewLogRecoveryProposal iterates all log recovery proposals, deletes expired proposals, and return the rest
 func (m *metadataStore) viewLogRecoveryProposal() []commontypes.CoordinatedBlockProposal {
 	// We also remove expired items in this function, hence take Lock() instead of RLock()
 	m.logRecoveryMutex.Lock()
@@ -197,6 +201,7 @@ func (m *metadataStore) addConditionalProposal(proposals ...commontypes.Coordina
 	}
 }
 
+// viewConditionalProposal iterates all conditional proposals, deletes expired proposals, and return the rest
 func (m *metadataStore) viewConditionalProposal() []commontypes.CoordinatedBlockProposal {
 	// We also remove expired items in this function, hence take Lock() instead of RLock()
 	m.conditionalMutex.Lock()

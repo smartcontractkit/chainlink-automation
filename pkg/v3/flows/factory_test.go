@@ -17,11 +17,6 @@ func TestConditionalTriggerFlows(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		&mockSubscriber{
-			SubscribeFn: func() (int, chan common.BlockHistory, error) {
-				return 0, nil, nil
-			},
-		},
 		nil,
 		nil,
 		nil,
@@ -30,7 +25,6 @@ func TestConditionalTriggerFlows(t *testing.T) {
 				return nil, nil
 			},
 		},
-		nil,
 		nil,
 		nil,
 		log.New(io.Discard, "", 0),
@@ -68,24 +62,4 @@ type mockRunner struct {
 
 func (r *mockRunner) CheckUpkeeps(ctx context.Context, p ...common.UpkeepPayload) ([]common.CheckResult, error) {
 	return r.CheckUpkeepsFn(ctx, p...)
-}
-
-type mockSubscriber struct {
-	SubscribeFn   func() (int, chan common.BlockHistory, error)
-	UnsubscribeFn func(int) error
-	StartFn       func(ctx context.Context) error
-	CloseFn       func() error
-}
-
-func (r *mockSubscriber) Subscribe() (int, chan common.BlockHistory, error) {
-	return r.SubscribeFn()
-}
-func (r *mockSubscriber) Unsubscribe(i int) error {
-	return r.UnsubscribeFn(i)
-}
-func (r *mockSubscriber) Start(ctx context.Context) error {
-	return r.StartFn(ctx)
-}
-func (r *mockSubscriber) Close() error {
-	return r.CloseFn()
 }
