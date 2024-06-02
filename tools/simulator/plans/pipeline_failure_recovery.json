@@ -1,0 +1,111 @@
+{
+    "node": {
+        "totalNodeCount": 4,
+        "maxNodeServiceWorkers": 100,
+        "maxNodeServiceQueueSize": 1000
+    },
+    "p2pNetwork": {
+        "maxLatency": "100ms"
+    },
+    "rpc": {
+        "maxBlockDelay": 600,
+        "averageLatency": 300,
+        "errorRate": 0.02,
+        "rateLimitThreshold": 1000
+    },
+    "blocks": {
+        "genesisBlock": 128943862,
+        "blockCadence": "1s",
+        "durationInBlocks": 60,
+        "endPadding": 20
+    },
+    "events": [
+        {
+            "type": "ocr3config",
+            "eventBlockNumber": 128943863,
+            "comment": "initial ocr config (valid)",
+            "maxFaultyNodes": 1,
+            "encodedOffchainConfig": "{\"version\":\"v3\",\"performLockoutWindow\":100000,\"targetProbability\":\"0.999\",\"targetInRounds\":4,\"minConfirmations\":1,\"gasLimitPerReport\":1000000,\"gasOverheadPerUpkeep\":300000,\"maxUpkeepBatchSize\":10}",
+            "maxRoundsPerEpoch": 7,
+            "deltaProgress": "10s",
+            "deltaResend": "10s",
+            "deltaInitial": "300ms",
+            "deltaRound": "1100ms",
+            "deltaGrace": "300ms",
+            "deltaCertifiedCommitRequest": "200ms",
+            "deltaStage": "20s",
+            "maxQueryTime": "50ms",
+            "maxObservationTime": "100ms",
+            "maxShouldAcceptTime": "50ms",
+            "maxShouldTransmitTime": "50ms"
+        },
+        {
+            "type": "generateUpkeeps",
+            "eventBlockNumber": 128943862,
+            "comment": "single log triggered upkeep",
+            "count": 1,
+            "startID": 300,
+            "eligibilityFunc": "always",
+            "upkeepType": "logTrigger",
+            "logTriggeredBy": "test_trigger_event"
+        },
+        {
+            "type": "generateUpkeeps",
+            "eventBlockNumber": 128943864,
+            "comment": "5 log triggered upkeeps",
+            "count": 5,
+            "startID": 400,
+            "eligibilityFunc": "always",
+            "upkeepType": "logTrigger",
+            "logTriggeredBy": "test_trigger_event",
+            "overrides": [
+                {
+                    "id": 401,
+                    "pipelineFailurePattern": "111000000",
+                    "retryableOnFailure": true,
+                    "expected": true
+                },
+                {
+                    "id": 402,
+                    "pipelineFailurePattern": "1",
+                    "retryableOnFailure": true,
+                    "expected": false
+                },
+                {
+                    "id": 403,
+                    "pipelineFailurePattern": "1000100",
+                    "retryableOnFailure": true,
+                    "expected": true
+                }
+            ]
+        },
+        {
+            "type": "logTrigger",
+            "eventBlockNumber": 128943872,
+            "comment": "trigger 10 blocks after trigger upkeep created",
+            "triggerValue": "test_trigger_event"
+        },
+        {
+            "type": "generateUpkeeps",
+            "eventBlockNumber": 128943878,
+            "comment": "7 log triggered upkeeps",
+            "count": 7,
+            "startID": 500,
+            "eligibilityFunc": "always",
+            "upkeepType": "logTrigger",
+            "logTriggeredBy": "test_trigger_event"
+        },
+        {
+            "type": "logTrigger",
+            "eventBlockNumber": 128943882,
+            "comment": "trigger 10 blocks after trigger upkeep created",
+            "triggerValue": "test_trigger_event"
+        },
+        {
+            "type": "logTrigger",
+            "eventBlockNumber": 128943892,
+            "comment": "trigger 10 blocks after trigger upkeep created",
+            "triggerValue": "test_trigger_event"
+        }
+    ]
+}

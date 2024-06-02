@@ -79,7 +79,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plan: ["simplan_fast_check", "only_log_trigger"]
+        plan: ["simplan_fast_check", "only_log_trigger", "pipeline_failure_recovery"]
 
     name: Upkeep Simulation ${{ matrix.plan }}
 
