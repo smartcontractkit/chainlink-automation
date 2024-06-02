@@ -1,4 +1,4 @@
-package flows
+package log
 
 import (
 	"context"
@@ -11,16 +11,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/stores"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types/mocks"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
-func TestConditionalFinalization(t *testing.T) {
+func TestRecoveryFinalization(t *testing.T) {
 	upkeepIDs := []common.UpkeepIdentifier{
 		common.UpkeepIdentifier([32]byte{1}),
 		common.UpkeepIdentifier([32]byte{2}),
@@ -78,12 +77,11 @@ func TestConditionalFinalization(t *testing.T) {
 			WorkID:   workIDs[1],
 		},
 	}, nil).Times(times)
-
 	upkeepStateUpdater.On("SetUpkeepState", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	// set the ticker time lower to reduce the test time
-	interval := 50 * time.Millisecond
+	recFinalInterval := 50 * time.Millisecond
 	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
-	svc := newFinalConditionalFlow(pre, rStore, runner, interval, proposalQ, payloadBuilder, retryQ, upkeepStateUpdater, logger)
+	svc := NewFinalRecoveryFlow(pre, rStore, runner, retryQ, recFinalInterval, proposalQ, payloadBuilder, upkeepStateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -102,16 +100,19 @@ func TestConditionalFinalization(t *testing.T) {
 		assert.NoError(t, svc.Start(ctx))
 	}(svc, context.Background())
 
-	time.Sleep(interval*time.Duration(times) + interval/2)
+	time.Sleep(recFinalInterval*time.Duration(times) + recFinalInterval/2)
 
 	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
+	coord.AssertExpectations(t)
+	runner.AssertExpectations(t)
+	payloadBuilder.AssertExpectations(t)
 	rStore.AssertExpectations(t)
 
 	wg.Wait()
 }
 
-func TestSamplingProposal(t *testing.T) {
+func TestRecoveryProposal(t *testing.T) {
 	upkeepIDs := []common.UpkeepIdentifier{
 		common.UpkeepIdentifier([32]byte{1}),
 		common.UpkeepIdentifier([32]byte{2}),
@@ -127,13 +128,9 @@ func TestSamplingProposal(t *testing.T) {
 
 	runner := new(mocks.MockRunnable)
 	mStore := new(mocks.MockMetadataStore)
-	upkeepProvider := new(mocks.MockConditionalUpkeepProvider)
-	ratio := new(mocks.MockRatio)
+	recoverer := new(mocks.MockRecoverableProvider)
 	coord := new(mocks.MockCoordinator)
 
-	ratio.On("OfInt", mock.Anything).Return(0, nil).Times(1)
-	ratio.On("OfInt", mock.Anything).Return(1, nil).Times(1)
-
 	coord.On("PreProcess", mock.Anything, mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[0],
@@ -146,7 +143,6 @@ func TestSamplingProposal(t *testing.T) {
 			WorkID:   workIDs[1],
 		},
 	}, nil).Times(1)
-	coord.On("PreProcess", mock.Anything, mock.Anything).Return(nil, nil)
 
 	runner.On("CheckUpkeeps", mock.Anything, mock.Anything, mock.Anything).Return([]common.CheckResult{
 		{
@@ -162,49 +158,53 @@ func TestSamplingProposal(t *testing.T) {
 			Eligible: true,
 		},
 	}, nil).Times(1)
-	runner.On("CheckUpkeeps", mock.Anything).Return(nil, nil)
 
 	mStore.On("ViewProposals", mock.Anything).Return([]common.CoordinatedBlockProposal{
 		{
 			UpkeepID: upkeepIDs[2],
 			WorkID:   workIDs[2],
 		},
-	}, nil)
+	}, nil).Times(2)
 	mStore.On("AddProposals", mock.Anything).Return(nil).Times(2)
 
-	upkeepProvider.On("GetActiveUpkeeps", mock.Anything).Return([]common.UpkeepPayload{
+	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[0],
 			WorkID:   workIDs[0],
 		},
+	}, nil).Times(1)
+	recoverer.On("GetRecoveryProposals", mock.Anything).Return([]common.UpkeepPayload{
 		{
 			UpkeepID: upkeepIDs[1],
 			WorkID:   workIDs[1],
 		},
-	}, nil).Times(2)
-	upkeepProvider.On("GetActiveUpkeeps", mock.Anything).Return([]common.UpkeepPayload{}, nil)
+	}, nil).Times(1)
 	// set the ticker time lower to reduce the test time
+	interval := 50 * time.Millisecond
 	pre := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
-	svc := newSampleProposalFlow(pre, ratio, upkeepProvider, mStore, runner, time.Millisecond*100, logger)
+	stateUpdater := &mockStateUpdater{}
+	svc := NewRecoveryProposalFlow(pre, runner, mStore, recoverer, interval, stateUpdater, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
 	go func(svc service.Recoverable, ctx context.Context) {
 		defer wg.Done()
 		assert.NoError(t, svc.Start(ctx))
-	}(svc, ctx)
+	}(svc, context.Background())
+
+	time.Sleep(interval*time.Duration(2) + interval/2)
 
 	assert.NoError(t, svc.Close(), "no error expected on shut down")
 
-	wg.Wait()
-
 	mStore.AssertExpectations(t)
-	upkeepProvider.AssertExpectations(t)
-	coord.AssertExpectations(t)
+	recoverer.AssertExpectations(t)
 	runner.AssertExpectations(t)
-	// ratio.AssertExpectations(t)
+	coord.AssertExpectations(t)
+
+	wg.Wait()
+}
+
+type mockStateUpdater struct {
+	common.UpkeepStateUpdater
 }

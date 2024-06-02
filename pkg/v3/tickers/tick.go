@@ -2,10 +2,11 @@ package tickers
 
 import (
 	"context"
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 // Tick is the container for the individual tick
-type Tick[T any] interface {
+type Tick interface {
 	// Value provides data scoped to the tick
-	Value(ctx context.Context) (T, error)
+	Value(ctx context.Context) ([]common.UpkeepPayload, error)
 }

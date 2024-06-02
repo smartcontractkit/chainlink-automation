@@ -13,7 +13,7 @@ import (
 )
 
 func TestConditionalTriggerFlows(t *testing.T) {
-	flows := ConditionalTriggerFlows(
+	flows := NewConditionalTriggerFlows(
 		nil,
 		nil,
 		nil,
@@ -39,7 +39,7 @@ func TestConditionalTriggerFlows(t *testing.T) {
 }
 
 func TestLogTriggerFlows(t *testing.T) {
-	flows := LogTriggerFlows(
+	flows := NewLogTriggerFlows(
 		nil,
 		nil,
 		nil,
