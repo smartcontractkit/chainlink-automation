@@ -10,6 +10,8 @@ import (
 
 //go:generate mockery --name LogEventProvider --structname MockLogEventProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename logeventprovider.generated.go
 
+//go:generate mockery --name MaliciousUpkeepProvider --structname MockMaliciousUpkeepProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename maliciousupkeepprovider.generated.go
+
 //go:generate mockery --name RecoverableProvider --structname MockRecoverableProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename recoverableprovider.generated.go
 
 //go:generate mockery --name ConditionalUpkeepProvider --structname MockConditionalUpkeepProvider --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename conditionalupkeepprovider.generated.go
@@ -19,6 +21,8 @@ import (
 //go:generate mockery --name BlockSubscriber --structname MockBlockSubscriber --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename block_subscriber.generated.go
 
 //go:generate mockery --name UpkeepStateUpdater --structname MockUpkeepStateUpdater --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename upkeep_state_updater.generated.go
+
+//go:generate mockery --name TxStatusStore --structname MockTxStatusStore --srcpkg "github.com/smartcontractkit/chainlink-common/pkg/types/automation" --case underscore --filename tx_status_store.generated.go
 
 type UpkeepTypeGetter func(automation.UpkeepIdentifier) UpkeepType
 type WorkIDGenerator func(automation.UpkeepIdentifier, automation.Trigger) string
@@ -67,6 +71,7 @@ type Coordinator interface {
 
 //go:generate mockery --name MetadataStore --structname MockMetadataStore --srcpkg "github.com/smartcontractkit/chainlink-automation/pkg/v3/types" --case underscore --filename metadatastore.generated.go
 type MetadataStore interface {
+	//SetMaliciousUpkeeps(ids []*big.Int)
 	SetBlockHistory(automation.BlockHistory)
 	GetBlockHistory() automation.BlockHistory
 

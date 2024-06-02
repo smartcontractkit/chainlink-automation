@@ -3,13 +3,15 @@ package stores
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
+	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
 const (
@@ -35,6 +37,7 @@ type metadataStore struct {
 	ch                   chan commontypes.BlockHistory
 	subscriber           commontypes.BlockSubscriber
 	blockHistory         commontypes.BlockHistory
+	maliciousUpkeeps     map[string]bool // use a set? needs order? any other info besides upkeep ids?
 	blockHistoryMutex    sync.RWMutex
 	conditionalProposals orderedMap
 	conditionalMutex     sync.RWMutex
@@ -62,6 +65,13 @@ func NewMetadataStore(subscriber commontypes.BlockSubscriber, typeGetter types.U
 		stopCh:               make(chan struct{}, 1),
 		typeGetter:           typeGetter,
 	}, nil
+}
+
+func (m *metadataStore) SetMaliciousUpkeeps(ids []*big.Int) {
+	m.maliciousUpkeeps = make(map[string]bool)
+	for _, id := range ids {
+		m.maliciousUpkeeps[id.String()] = true
+	}
 }
 
 func (m *metadataStore) SetBlockHistory(blockHistory commontypes.BlockHistory) {
