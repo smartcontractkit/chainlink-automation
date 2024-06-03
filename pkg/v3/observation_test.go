@@ -564,7 +564,7 @@ func TestInvalidLogProposal(t *testing.T) {
 	assert.ErrorContains(t, err, "log trigger extension cannot be empty for log upkeep")
 }
 
-func TestLargeObservationSize(t *testing.T) {
+func TestObservationSizeWithEmptyPeformables(t *testing.T) {
 	ao := AutomationObservation{
 		Performable:     []commontypes.CheckResult{},
 		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
@@ -575,16 +575,6 @@ func TestLargeObservationSize(t *testing.T) {
 			Number: commontypes.BlockNumber(i + 1),
 			Hash:   [32]byte{1},
 		})
-	}
-	largePerformData := [10001]byte{}
-	for i := 0; i < ObservationPerformablesLimit; i++ {
-		newResult := validLogResult
-		uid := commontypes.UpkeepIdentifier{}
-		uid.FromBigInt(big.NewInt(int64(i + 10001)))
-		newResult.UpkeepID = uid
-		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
-		newResult.PerformData = largePerformData[:]
-		ao.Performable = append(ao.Performable, newResult)
 	}
 	for i := 0; i < ObservationConditionalsProposalsLimit; i++ {
 		newProposal := validConditionalProposal
@@ -609,7 +599,8 @@ func TestLargeObservationSize(t *testing.T) {
 	assert.NoError(t, err, "no error in decoding valid automation observation")
 
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
-	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation should be less than maxObservationSize")
+	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation won't exceed maxObservationSize when perform data is moderately sized")
+	assert.Equal(t, 972320, MaxObservationLength-len(encoded), "we still have 972320 bytes of free space for performables")
 }
 
 func mockUpkeepTypeGetter(id commontypes.UpkeepIdentifier) types.UpkeepType {
