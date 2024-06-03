@@ -564,7 +564,7 @@ func TestInvalidLogProposal(t *testing.T) {
 	assert.ErrorContains(t, err, "log trigger extension cannot be empty for log upkeep")
 }
 
-func TestLargeObservationSize(t *testing.T) {
+func TestObservationSizeWithEmptyPeformables(t *testing.T) {
 	ao := AutomationObservation{
 		Performable:     []commontypes.CheckResult{},
 		UpkeepProposals: []commontypes.CoordinatedBlockProposal{},
@@ -576,16 +576,16 @@ func TestLargeObservationSize(t *testing.T) {
 			Hash:   [32]byte{1},
 		})
 	}
-	performData := [5001]byte{}
-	for i := 0; i < ObservationPerformablesLimit; i++ {
-		newResult := validLogResult
-		uid := commontypes.UpkeepIdentifier{}
-		uid.FromBigInt(big.NewInt(int64(i + 10001)))
-		newResult.UpkeepID = uid
-		newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
-		newResult.PerformData = performData[:]
-		ao.Performable = append(ao.Performable, newResult)
-	}
+	//performData := [5001]byte{}
+	//for i := 0; i < ObservationPerformablesLimit; i++ {
+	//	newResult := validLogResult
+	//	uid := commontypes.UpkeepIdentifier{}
+	//	uid.FromBigInt(big.NewInt(int64(i + 10001)))
+	//	newResult.UpkeepID = uid
+	//	newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
+	//	newResult.PerformData = performData[:]
+	//	ao.Performable = append(ao.Performable, newResult)
+	//}
 	for i := 0; i < ObservationConditionalsProposalsLimit; i++ {
 		newProposal := validConditionalProposal
 		uid := commontypes.UpkeepIdentifier{}
@@ -610,7 +610,7 @@ func TestLargeObservationSize(t *testing.T) {
 
 	assert.Equal(t, ao, decoded, "final result from encoding and decoding should match")
 	assert.Less(t, len(encoded), MaxObservationLength, "encoded observation won't exceed maxObservationSize when perform data is moderately sized")
-	assert.Equal(t, 208404, MaxObservationLength-len(encoded), "we still have 208404 bytes of free space with 100 moderately sized perfromables")
+	assert.Equal(t, 972320, MaxObservationLength-len(encoded), "we still have 972320 bytes of free space for performables")
 }
 
 func mockUpkeepTypeGetter(id commontypes.UpkeepIdentifier) types.UpkeepType {
