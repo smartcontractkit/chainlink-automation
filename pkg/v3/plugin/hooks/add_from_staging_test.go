@@ -73,7 +73,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 			expectedLogMsg:     "adding 2 results to observation",
 		},
 		{
-			name: "Existing results in observation appended",
+			name: "Existing results in observation are overwritten",
 			initialObservation: ocr2keepersv3.AutomationObservation{
 				Performable: []types.CheckResult{{UpkeepID: [32]byte{3}, WorkID: "30a"}},
 			},
@@ -86,7 +86,7 @@ func TestAddFromStagingHook_RunHook(t *testing.T) {
 				{UpkeepID: [32]byte{1}, WorkID: "10c"},
 				{UpkeepID: [32]byte{2}, WorkID: "20b"},
 			},
-			observationWorkIDs: []string{"30a", "20b", "10c"},
+			observationWorkIDs: []string{"20b", "10c"},
 			expectedLogMsg:     "adding 2 results to observation",
 		},
 		{

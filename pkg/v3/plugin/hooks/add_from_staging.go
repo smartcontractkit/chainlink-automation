@@ -69,13 +69,11 @@ func (hook *AddFromStagingHook) addByPercentageExceeded(obs *ocr2keepersv3.Autom
 		limit = len(results)
 	}
 
-	existingPerformables := obs.Performable
-
 	if limit <= 0 {
-		return len(obs.Performable) - len(existingPerformables), 0
+		return len(obs.Performable), 0
 	}
 
-	obs.Performable = append(obs.Performable, results[:limit]...)
+	obs.Performable = results[:limit]
 
 	encodingCalls := 1
 	b, _ := obs.Encode()
@@ -87,14 +85,13 @@ func (hook *AddFromStagingHook) addByPercentageExceeded(obs *ocr2keepersv3.Autom
 		avgPerformablesExceeded := int(math.Ceil(float64(exceededBy) / float64(avgPerformableSize)))
 		limit -= avgPerformablesExceeded + 1 // ensure we always remove at least one performable on the next call
 		if limit <= 0 {
-			return len(obs.Performable) - len(existingPerformables), encodingCalls
+			return len(obs.Performable), encodingCalls
 		}
-		obs.Performable = existingPerformables
 		added, numEncodings := hook.addByPercentageExceeded(obs, limit, results, baseSize)
 		return added, numEncodings + encodingCalls
 	}
 
-	return len(obs.Performable) - len(existingPerformables), encodingCalls
+	return len(obs.Performable), encodingCalls
 }
 
 type stagedResultSorter struct {

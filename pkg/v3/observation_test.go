@@ -576,16 +576,6 @@ func TestObservationSizeWithEmptyPeformables(t *testing.T) {
 			Hash:   [32]byte{1},
 		})
 	}
-	//performData := [5001]byte{}
-	//for i := 0; i < ObservationPerformablesLimit; i++ {
-	//	newResult := validLogResult
-	//	uid := commontypes.UpkeepIdentifier{}
-	//	uid.FromBigInt(big.NewInt(int64(i + 10001)))
-	//	newResult.UpkeepID = uid
-	//	newResult.WorkID = mockWorkIDGenerator(newResult.UpkeepID, newResult.Trigger)
-	//	newResult.PerformData = performData[:]
-	//	ao.Performable = append(ao.Performable, newResult)
-	//}
 	for i := 0; i < ObservationConditionalsProposalsLimit; i++ {
 		newProposal := validConditionalProposal
 		uid := commontypes.UpkeepIdentifier{}
