@@ -142,9 +142,9 @@ func (et logRecoveryTick) Value(ctx context.Context) ([]common.UpkeepPayload, er
 		return nil, nil
 	}
 
-	logs, err := et.logRecoverer.GetRecoveryProposals(ctx)
+	//logs, err := et.logRecoverer.GetRecoveryProposals(ctx)
 
-	et.logger.Printf("%d logs returned by log recoverer", len(logs))
+	et.logger.Printf("recoverer disabled, returning 0 logs")
 
-	return logs, err
+	return nil, nil
 }
