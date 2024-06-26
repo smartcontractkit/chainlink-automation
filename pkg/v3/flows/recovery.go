@@ -19,12 +19,12 @@ import (
 
 const (
 	// This is the ticker interval for recovery final flow
-	RecoveryFinalInterval = 1 * time.Second
+	RecoveryFinalInterval = 5 * time.Second
 	// These are the maximum number of log upkeeps dequeued on every tick from proposal queue in FinalRecoveryFlow
 	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
-	FinalRecoveryBatchSize = 50
+	FinalRecoveryBatchSize = 25
 	// This is the ticker interval for recovery proposal flow
-	RecoveryProposalInterval = 1 * time.Second
+	RecoveryProposalInterval = 5 * time.Second
 )
 
 func newFinalRecoveryFlow(
