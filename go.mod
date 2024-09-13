@@ -2,11 +2,6 @@ module github.com/smartcontractkit/chainlink-automation
 
 go 1.21
 
-replace (
-	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.3
-	golang/github.com/gogo/protobuf => golang/github.com/gogo/protobuf v1.3.3
-)
-
 require (
 	github.com/Maldris/mathparse v0.0.0-20170508133428-f0d009a7a773
 	github.com/ethereum/go-ethereum v1.13.8
@@ -30,6 +25,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
@@ -69,5 +65,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
-
-exclude golang/github.com/influxdata/influxdb v1.8.3
