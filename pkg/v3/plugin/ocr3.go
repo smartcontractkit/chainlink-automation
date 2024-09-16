@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
@@ -19,7 +20,9 @@ import (
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 )
 
-type AutomationReportInfo struct{}
+type AutomationReportInfo struct {
+	UpkeepIDs []*big.Int
+}
 
 type ocr3Plugin struct {
 	ConfigDigest                ocr2plustypes.ConfigDigest
@@ -207,9 +210,11 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 
 	plugin.Logger.Printf("%d reports created for sequence number %d", len(reports), seqNr)
 	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(float64(performablesAdded))
+	// is there a consensus about upkeeps to pause
 	return reports, nil
 }
 
+// ShouldAcceptAttestedReport needs updates if report struct changes
 func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	plugin.Logger.Printf("inside ShouldAcceptAttestedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
@@ -233,6 +238,7 @@ func (plugin *ocr3Plugin) ShouldAcceptAttestedReport(_ context.Context, seqNr ui
 	return accept, nil
 }
 
+// ShouldTransmitAcceptedReport needs updates if report struct changes
 func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr uint64, report ocr3types.ReportWithInfo[AutomationReportInfo]) (bool, error) {
 	plugin.Logger.Printf("inside ShouldTransmitAcceptedReport for seqNr %d", seqNr)
 	upkeeps, err := plugin.ReportEncoder.Extract(report.Report)
@@ -278,9 +284,11 @@ func (plugin *ocr3Plugin) startServices() {
 }
 
 func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
-	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
+	encoded, uids, err := plugin.ReportEncoder.Encode(toPerform...)
+
 	return ocr3types.ReportWithInfo[AutomationReportInfo]{
-		Report: ocr2plustypes.Report(encoded),
+		Report: encoded,
+		Info:   AutomationReportInfo{UpkeepIDs: uids},
 	}, err
 }
 

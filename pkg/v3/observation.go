@@ -32,6 +32,7 @@ var uint256Max, _ = big.NewInt(0).SetString("11579208923731619542357098500868790
 // as different nodes would upgrade at different times and would need to understand
 // each others' observations meanwhile
 type AutomationObservation struct {
+	MaliciousUpkeepIds []*big.Int
 	// These are the upkeeps that are eligible and should be performed
 	Performable []ocr2keepers.CheckResult
 	// These are the proposals for upkeeps that need a coordinated block to be checked on

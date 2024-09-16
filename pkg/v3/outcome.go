@@ -2,10 +2,12 @@ package ocr2keepers
 
 import (
 	"fmt"
+	"math/big"
+
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
 	"github.com/goccy/go-json"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 // NOTE: Any change to these values should keep backwards compatibility in mind
@@ -39,6 +41,7 @@ const (
 // as different nodes would upgrade at different times and would need to understand
 // each others' outcome meanwhile
 type AutomationOutcome struct {
+	MaliciousUpkeepIds []*big.Int
 	// These are the upkeeps that achieved quorum, meaning should be performed on chain
 	// These require quorum of f+1 nodes
 	AgreedPerformables []ocr2keepers.CheckResult

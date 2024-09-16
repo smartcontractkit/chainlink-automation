@@ -40,6 +40,11 @@ type Observer[T any] struct {
 	processTimeLimit time.Duration
 }
 
+//// NewUpkeepIdsObserver needs implementations
+//func NewUpkeepIdsObserver() *Observer[*big.Int] {
+//	return &Observer[*big.Int]{}
+//}
+
 // NewRunnableObserver creates a new Observer with the given pre-processors, post-processor, and runner
 func NewRunnableObserver(
 	preprocessors []PreProcessor[ocr2keepers.UpkeepPayload],
@@ -57,6 +62,7 @@ func NewRunnableObserver(
 	}
 }
 
+// check this and implement Process
 // NewGenericObserver creates a new Observer with the given pre-processors, post-processor, and runner
 func NewGenericObserver[T any](
 	preprocessors []PreProcessor[T],
