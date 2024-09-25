@@ -1,4 +1,4 @@
-package flows
+package log
 
 import (
 	"context"
@@ -21,20 +21,19 @@ var (
 
 const (
 	// This is the ticker interval for log trigger flow
-	LogCheckInterval = 1 * time.Second
+	logCheckInterval = 1 * time.Second
 	// Limit for processing a whole observer flow given a payload. The main component of this
 	// is the checkPipeline which involves some RPC, DB and Mercury calls, this is limited
 	// to 20 seconds for now
-	ObservationProcessLimit = 20 * time.Second
+	observationProcessLimit = 20 * time.Second
 )
 
 // log trigger flow is the happy path entry point for log triggered upkeeps
-func newLogTriggerFlow(
-	preprocessors []ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+func NewLogTriggerFlow(
+	preprocessors []ocr2keepersv3.PreProcessor,
 	rs types.ResultStore,
 	rn ocr2keepersv3.Runner,
 	logProvider common.LogEventProvider,
-	logInterval time.Duration,
 	retryQ types.RetryQueue,
 	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
@@ -45,17 +44,22 @@ func newLogTriggerFlow(
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
 
-	obs := ocr2keepersv3.NewRunnableObserver(
+	observer := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
 		rn,
-		ObservationProcessLimit,
+		observationProcessLimit,
 		log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
 	)
 
-	timeTick := tickers.NewTimeTicker[[]common.UpkeepPayload](logInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
 		return logTick{logger: logger, logProvider: logProvider}, nil
-	}, log.New(logger.Writer(), fmt.Sprintf("[%s | log-trigger-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+	}
+
+	lgrPrefix := fmt.Sprintf("[%s | log-trigger-ticker]", telemetry.ServiceName)
+	lggr := log.New(logger.Writer(), lgrPrefix, telemetry.LogPkgStdFlags)
+
+	timeTick := tickers.NewTimeTicker(logCheckInterval, observer, getterFn, lggr)
 
 	return timeTick
 }
@@ -65,14 +69,14 @@ type logTick struct {
 	logger      *log.Logger
 }
 
-func (et logTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
-	if et.logProvider == nil {
+func (t logTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
+	if t.logProvider == nil {
 		return nil, nil
 	}
 
-	logs, err := et.logProvider.GetLatestPayloads(ctx)
+	logs, err := t.logProvider.GetLatestPayloads(ctx)
 
-	et.logger.Printf("%d logs returned by log provider", len(logs))
+	t.logger.Printf("%d logs returned by log provider", len(logs))
 
 	return logs, err
 }

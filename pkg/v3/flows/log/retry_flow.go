@@ -1,4 +1,4 @@
-package flows
+package log
 
 import (
 	"context"
@@ -17,13 +17,13 @@ import (
 
 const (
 	// These are the max number of payloads dequeued on every tick from the retry queue in the retry flow
-	RetryBatchSize = 10
+	retryBatchSize = 10
 	// This is the ticker interval for retry flow
 	RetryCheckInterval = 5 * time.Second
 )
 
 func NewRetryFlow(
-	coord ocr2keepersv3.PreProcessor[common.UpkeepPayload],
+	coord ocr2keepersv3.PreProcessor,
 	resultStore types.ResultStore,
 	runner ocr2keepersv3.Runner,
 	retryQ types.RetryQueue,
@@ -31,24 +31,32 @@ func NewRetryFlow(
 	stateUpdater common.UpkeepStateUpdater,
 	logger *log.Logger,
 ) service.Recoverable {
-	preprocessors := []ocr2keepersv3.PreProcessor[common.UpkeepPayload]{coord}
+	preprocessors := []ocr2keepersv3.PreProcessor{coord}
 	post := postprocessors.NewCombinedPostprocessor(
 		postprocessors.NewEligiblePostProcessor(resultStore, telemetry.WrapLogger(logger, "retry-eligible-postprocessor")),
 		postprocessors.NewRetryablePostProcessor(retryQ, telemetry.WrapLogger(logger, "retry-retryable-postprocessor")),
 		postprocessors.NewIneligiblePostProcessor(stateUpdater, telemetry.WrapLogger(logger, "retry-ineligible-postprocessor")),
 	)
 
+	observerLggrPrefix := fmt.Sprintf("[%s | retry-observer]", telemetry.ServiceName)
+	observerLggr := log.New(logger.Writer(), observerLggrPrefix, telemetry.LogPkgStdFlags)
+
 	obs := ocr2keepersv3.NewRunnableObserver(
 		preprocessors,
 		post,
 		runner,
-		ObservationProcessLimit,
-		log.New(logger.Writer(), fmt.Sprintf("[%s | retry-observer]", telemetry.ServiceName), telemetry.LogPkgStdFlags),
+		observationProcessLimit,
+		observerLggr,
 	)
 
-	timeTick := tickers.NewTimeTicker[[]common.UpkeepPayload](retryTickerInterval, obs, func(ctx context.Context, _ time.Time) (tickers.Tick[[]common.UpkeepPayload], error) {
-		return retryTick{logger: logger, q: retryQ, batchSize: RetryBatchSize}, nil
-	}, log.New(logger.Writer(), fmt.Sprintf("[%s | retry-ticker]", telemetry.ServiceName), telemetry.LogPkgStdFlags))
+	getterFn := func(ctx context.Context, _ time.Time) (tickers.Tick, error) {
+		return retryTick{logger: logger, q: retryQ, batchSize: retryBatchSize}, nil
+	}
+
+	lggrPrefix := fmt.Sprintf("[%s | retry-ticker]", telemetry.ServiceName)
+	lggr := log.New(logger.Writer(), lggrPrefix, telemetry.LogPkgStdFlags)
+
+	timeTick := tickers.NewTimeTicker(retryTickerInterval, obs, getterFn, lggr)
 
 	return timeTick
 }
