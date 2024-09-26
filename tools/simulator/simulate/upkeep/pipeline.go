@@ -51,48 +51,7 @@ func NewCheckPipeline(
 	}
 }
 
-// TODO: finish retry/error conditions in check pipeline
-// CheckUpkeeps simulates a check pipeline run and may return whether a result
-// is eligible or retryable based on pipeline return cases. Multiple assumptions
-// are made within this simulation and any changes to the production pipeline
-// should be reflected here.
-/*
-func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
-	results := make([]ocr2keepers.CheckResult, len(payloads))
-
-	for i, payload := range payloads {
-
-		// 1. verify check block and hash are valid
-		// 1a. check block too old: no failure reason, not retryable, not eligible,
-
-		// 1. upkeep active status
-		// _, ok := cp.active.GetByID(payload.UpkeepID.BigInt())
-		//if !ok {
-		results[i] = ocr2keepers.CheckResult{
-			PipelineExecutionState: 0,
-			Retryable:              false,
-			Eligible:               true,
-			IneligibilityReason:    0,
-			UpkeepID:               payload.UpkeepID,
-			Trigger:                payload.Trigger,
-			WorkID:                 payload.WorkID,
-			GasAllocated:           5_000_000, // TODO: update from config
-			PerformData:            []byte{},  // TODO: update from config
-			FastGasWei:             big.NewInt(1_000_000),
-			LinkNative:             big.NewInt(1_000_000),
-		}
-		//}
-
-		// 2. log triggered status; was the payload triggered by a log (if log trigger type)
-		// 3. eligibility status
-		// 4. performed status
-	}
-
-	return results, nil
-}
-*/
-
-func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
+func (p *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepers.UpkeepPayload) ([]ocr2keepers.CheckResult, error) {
 	var (
 		mErr    error
 		wg      sync.WaitGroup
@@ -104,36 +63,9 @@ func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepe
 		go func(resultIdx int, key ocr2keepers.UpkeepPayload) {
 			defer wg.Done()
 
-			block := new(big.Int).SetInt64(int64(key.Trigger.BlockNumber))
-			performs := cp.performs.PerformsForUpkeepID(key.UpkeepID.String())
+			p.checkTelemetry.CheckID(key.UpkeepID.String(), uint64(key.Trigger.BlockNumber), key.Trigger.BlockHash)
 
-			cp.checkTelemetry.CheckID(key.UpkeepID.String(), uint64(key.Trigger.BlockNumber), key.Trigger.BlockHash)
-
-			results[resultIdx] = ocr2keepers.CheckResult{
-				PipelineExecutionState: 0,
-				Retryable:              false,
-				Eligible:               false,
-				IneligibilityReason:    0,
-				UpkeepID:               key.UpkeepID,
-				Trigger:                key.Trigger,
-				WorkID:                 key.WorkID,
-				GasAllocated:           5_000_000, // TODO: make this configurable
-				PerformData:            []byte{},  // TODO: add perform data from configuration
-				FastGasWei:             big.NewInt(1_000_000),
-				LinkNative:             big.NewInt(1_000_000),
-			}
-
-			if simulated, ok := cp.active.GetByUpkeepID(key.UpkeepID); ok {
-				if simulated.AlwaysEligible {
-					results[resultIdx].Eligible = true
-				} else {
-					results[resultIdx].Eligible = isEligible(simulated.EligibleAt, performs, block)
-				}
-
-				cp.logger.Printf("%s eligibility %t at block %d", key.UpkeepID, results[resultIdx].Eligible, block)
-			} else {
-				cp.logger.Printf("%s is not active", key.UpkeepID)
-			}
+			results[resultIdx] = p.makeResult(key)
 		}(idx, payload)
 	}
 
@@ -144,13 +76,13 @@ func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepe
 	}
 
 	// call to CheckUpkeep
-	err := <-cp.rpc.Call(ctx, "checkUpkeep")
+	err := <-p.rpc.Call(ctx, "checkUpkeep")
 	if err != nil {
 		return nil, err
 	}
 
 	// call to SimulatePerform
-	err = <-cp.rpc.Call(ctx, "simulatePerform")
+	err = <-p.rpc.Call(ctx, "simulatePerform")
 	if err != nil {
 		return nil, err
 	}
@@ -159,6 +91,45 @@ func (cp *CheckPipeline) CheckUpkeeps(ctx context.Context, payloads ...ocr2keepe
 	copy(output, results)
 
 	return output, nil
+}
+
+func (p *CheckPipeline) makeResult(payload ocr2keepers.UpkeepPayload) ocr2keepers.CheckResult {
+	result := ocr2keepers.CheckResult{
+		PipelineExecutionState: 0,
+		Retryable:              false,
+		Eligible:               false,
+		IneligibilityReason:    0,
+		UpkeepID:               payload.UpkeepID,
+		Trigger:                payload.Trigger,
+		WorkID:                 payload.WorkID,
+		GasAllocated:           5_000_000, // TODO: make this configurable
+		PerformData:            []byte{},  // TODO: add perform data from configuration
+		FastGasWei:             big.NewInt(1_000_000),
+		LinkNative:             big.NewInt(1_000_000),
+	}
+
+	block := new(big.Int).SetInt64(int64(payload.Trigger.BlockNumber))
+	performs := p.performs.PerformsForUpkeepID(payload.UpkeepID.String())
+
+	if simulated, ok := p.active.GetByUpkeepID(payload.UpkeepID); ok {
+		if simulated.AlwaysEligible {
+			result.Eligible = true
+		} else {
+			result.Eligible = isEligible(simulated.EligibleAt, performs, block)
+		}
+
+		execState := uint8(simulated.States.GetNextState())
+		if execState != 0 {
+			result.PipelineExecutionState = execState
+			result.Retryable = simulated.Retryable
+		}
+
+		p.logger.Printf("%s eligibility %t at block %d", payload.UpkeepID, result.Eligible, block)
+	} else {
+		p.logger.Printf("%s is not active", payload.UpkeepID)
+	}
+
+	return result
 }
 
 func isEligible(eligibles, performs []*big.Int, block *big.Int) bool {

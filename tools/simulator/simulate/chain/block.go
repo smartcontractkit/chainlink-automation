@@ -1,7 +1,10 @@
 package chain
 
 import (
+	"fmt"
 	"math/big"
+	"strconv"
+	"sync"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/types"
 )
@@ -50,6 +53,54 @@ type SimulatedUpkeep struct {
 	TriggeredBy    string
 	CheckData      []byte
 	Expected       bool
+	Retryable      bool
+	States         *CheckPipelineStateManager
+}
+
+type CheckPipelineStateManager struct {
+	nextPosition int
+	states       []int
+	mu           sync.Mutex
+}
+
+func NewCheckPipelineStateManager(pattern string) (*CheckPipelineStateManager, error) {
+	states := make([]int, 0, len(pattern))
+
+	for _, rne := range pattern {
+		flag, err := strconv.Atoi(string(rne))
+		if err != nil {
+			return nil, err
+		}
+
+		if flag > 1 || flag < 0 {
+			return nil, fmt.Errorf("only 0 and 1 allowed")
+		}
+
+		states = append(states, flag)
+	}
+
+	return &CheckPipelineStateManager{
+		states: states,
+	}, nil
+}
+
+func (m *CheckPipelineStateManager) GetNextState() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if len(m.states) == 0 {
+		return 0
+	}
+
+	nextState := m.states[m.nextPosition]
+
+	m.nextPosition++
+
+	if m.nextPosition >= len(m.states) {
+		m.nextPosition = 0
+	}
+
+	return nextState
 }
 
 type SimulatedLog struct {

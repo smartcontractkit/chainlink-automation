@@ -92,6 +92,27 @@ type GenerateUpkeepEvent struct {
 	// not perform due to some other network concerns such as too high network
 	// delay or something that might disable the OCR3 protocol.
 	Expected string `json:"expected,omitempty"`
+	// Overrides provides customizations on upkeeps including check pipeline behavior.
+	// Only one configuration per upkeep is supported.
+	Overrides []UpkeepOverrides `json:"overrides,omitempty"`
+}
+
+type UpkeepOverrides struct {
+	// UpkeepID references the upkeep id generated from StartID + Count. This
+	// value is NOT the final upkeep id referenced by the plugin.
+	UpkeepID *big.Int `json:"id"`
+	// Pattern defines the pipeline return behavior. A '1' indicates a failure
+	// and a '0' indicates a non-failure. The pattern is structured like a count
+	// where each pipeline run on the defined upkeep increments the position in
+	// the pattern. At the end of the pattern, it repeats from the beginning.
+	FailurePattern string `json:"pipelineFailurePattern,omitempty"`
+	// Retryable indicates whether or not the retryable flag should be set on the
+	// pipeline result. Setting this will always set the retryable flag for the
+	// provided upkeep.
+	RetryableOnFailure bool `json:"retryableOnFailure"`
+	// Expected overrides the container expectation configuration in the case that
+	// specific upkeep configurations make the upkeep fail.
+	Expected bool `json:"expected"`
 }
 
 // LogTriggerEvent is a configuration for simulating logs emitted from a chain
