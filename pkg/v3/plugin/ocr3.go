@@ -87,6 +87,7 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepObservation).Set(float64(len(observation.Performable)))
 
 	// Encode the observation to bytes
+	// libocr receives observation bytes and compare observations to reach quorum
 	return observation.Encode()
 }
 
@@ -244,6 +245,8 @@ func (plugin *ocr3Plugin) ShouldTransmitAcceptedReport(_ context.Context, seqNr 
 
 	transmit := false
 	// If any upkeep should be transmitted, then transmit
+	// why? if one upkeep should not be transmitted (already in-flight or some other reasons), will that interfere with
+	// in-flight tx?
 	for _, upkeep := range upkeeps {
 		shouldTransmit := plugin.Coordinator.ShouldTransmit(upkeep)
 		plugin.Logger.Printf("checking transmit of upkeep '%s', trigger %s in sequence number %d returned %t", upkeep.UpkeepID, upkeep.Trigger, seqNr, shouldTransmit)
@@ -280,13 +283,12 @@ func (plugin *ocr3Plugin) startServices() {
 func (plugin *ocr3Plugin) getReportFromPerformables(toPerform []ocr2keepers.CheckResult) (ocr3types.ReportWithInfo[AutomationReportInfo], error) {
 	encoded, err := plugin.ReportEncoder.Encode(toPerform...)
 	return ocr3types.ReportWithInfo[AutomationReportInfo]{
-		Report: ocr2plustypes.Report(encoded),
+		Report: encoded,
 	}, err
 }
 
-// Generates a randomness source derived from the config and seq # so
-// that it's the same across the network for the same round.
-// similar key building as libocr transmit selector.
+// getRandomKeySource generates a randomness source derived from the config and seq # so that it's the same across the
+// network for the same round. this is similar key building as libocr transmit selector.
 func getRandomKeySource(cd ocr2plustypes.ConfigDigest, seqNr uint64) [16]byte {
 	return random.GetRandomKeySource(cd[:], seqNr)
 }

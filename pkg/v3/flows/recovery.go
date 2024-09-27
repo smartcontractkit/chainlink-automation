@@ -8,22 +8,24 @@ import (
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/preprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
-	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (
-	// This is the ticker interval for recovery final flow
+	// RecoveryFinalInterval is the ticker interval for recovery final flow
 	RecoveryFinalInterval = 1 * time.Second
-	// These are the maximum number of log upkeeps dequeued on every tick from proposal queue in FinalRecoveryFlow
-	// This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in every round
+	// FinalRecoveryBatchSize is the maximum number of log upkeeps dequeued on every tick from proposal queue in
+	// FinalRecoveryFlow. This is kept same as OutcomeSurfacedProposalsLimit as those many can get enqueued by plugin in
+	// every round
 	FinalRecoveryBatchSize = 50
-	// This is the ticker interval for recovery proposal flow
+	// RecoveryProposalInterval is the ticker interval for recovery proposal flow
 	RecoveryProposalInterval = 1 * time.Second
 )
 

@@ -6,19 +6,20 @@ import (
 	"log"
 	"time"
 
+	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
+
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/postprocessors"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/telemetry"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/tickers"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
-	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 )
 
 const (
-	// These are the max number of payloads dequeued on every tick from the retry queue in the retry flow
+	// RetryBatchSize is the max number of payloads dequeued on every tick from the retry queue in the retry flow
 	RetryBatchSize = 10
-	// This is the ticker interval for retry flow
+	// RetryCheckInterval is the ticker interval for retry flow
 	RetryCheckInterval = 5 * time.Second
 )
 
@@ -59,7 +60,7 @@ type retryTick struct {
 	batchSize int
 }
 
-func (t retryTick) Value(ctx context.Context) ([]common.UpkeepPayload, error) {
+func (t retryTick) Value(_ context.Context) ([]common.UpkeepPayload, error) {
 	if t.q == nil {
 		return nil, nil
 	}
