@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 
-	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+	"github.com/smartcontractkit/libocr/quorumhelper"
+
+	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
 	ocr2keepersv3 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
@@ -36,6 +38,7 @@ type ocr3Plugin struct {
 	AddLogProposalsHook         hooks.AddLogProposalsHook
 	Services                    []service.Recoverable
 	Config                      config.OffchainConfig
+	N                           int
 	F                           int
 	Logger                      *log.Logger
 }
@@ -90,17 +93,17 @@ func (plugin *ocr3Plugin) Observation(ctx context.Context, outctx ocr3types.Outc
 	return observation.Encode()
 }
 
-func (plugin *ocr3Plugin) ObservationQuorum(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query) (ocr3types.Quorum, error) {
-	return ocr3types.QuorumTwoFPlusOne, nil
+func (plugin *ocr3Plugin) ObservationQuorum(ctx context.Context, outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, aos []ocr2plustypes.AttributedObservation) (bool, error) {
+	return quorumhelper.ObservationCountReachesObservationQuorum(quorumhelper.QuorumTwoFPlusOne, plugin.N, plugin.F, aos), nil
 }
 
-func (plugin *ocr3Plugin) ValidateObservation(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, ao ocr2plustypes.AttributedObservation) error {
+func (plugin *ocr3Plugin) ValidateObservation(ctx context.Context, outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, ao ocr2plustypes.AttributedObservation) error {
 	plugin.Logger.Printf("inside ValidateObservation for seqNr %d", outctx.SeqNr)
 	_, err := ocr2keepersv3.DecodeAutomationObservation(ao.Observation, plugin.UpkeepTypeGetter, plugin.WorkIDGenerator)
 	return err
 }
 
-func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, attributedObservations []ocr2plustypes.AttributedObservation) (ocr3types.Outcome, error) {
+func (plugin *ocr3Plugin) Outcome(ctx context.Context, outctx ocr3types.OutcomeContext, query ocr2plustypes.Query, attributedObservations []ocr2plustypes.AttributedObservation) (ocr3types.Outcome, error) {
 	plugin.Logger.Printf("inside Outcome for seqNr %d", outctx.SeqNr)
 	p := newPerformables(plugin.F+1, ocr2keepersv3.OutcomeAgreedPerformablesLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
 	c := newCoordinatedBlockProposals(plugin.F+1, ocr2keepersv3.OutcomeSurfacedProposalsRoundHistoryLimit, ocr2keepersv3.OutcomeSurfacedProposalsLimit, getRandomKeySource(plugin.ConfigDigest, outctx.SeqNr), plugin.Logger)
@@ -148,10 +151,10 @@ func (plugin *ocr3Plugin) Outcome(outctx ocr3types.OutcomeContext, query ocr2plu
 	return outcome.Encode()
 }
 
-func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportWithInfo[AutomationReportInfo], error) {
+func (plugin *ocr3Plugin) Reports(ctx context.Context, seqNr uint64, raw ocr3types.Outcome) ([]ocr3types.ReportPlus[AutomationReportInfo], error) {
 	plugin.Logger.Printf("inside Reports for seqNr %d", seqNr)
 	var (
-		reports []ocr3types.ReportWithInfo[AutomationReportInfo]
+		reports []ocr3types.ReportPlus[AutomationReportInfo]
 		outcome ocr2keepersv3.AutomationOutcome
 		err     error
 	)
@@ -180,7 +183,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 				return reports, fmt.Errorf("error encountered while encoding: %w", err)
 			}
 			// append to reports and reset collection
-			reports = append(reports, report)
+			reports = append(reports, ocr3types.ReportPlus[AutomationReportInfo]{ReportWithInfo: report})
 			performablesAdded += len(toPerform)
 			toPerform = []ocr2keepers.CheckResult{}
 			gasUsed = 0
@@ -201,7 +204,7 @@ func (plugin *ocr3Plugin) Reports(seqNr uint64, raw ocr3types.Outcome) ([]ocr3ty
 			prommetrics.AutomationPluginPerformables.WithLabelValues(prommetrics.PluginStepReports).Set(0)
 			return reports, fmt.Errorf("error encountered while encoding: %w", err)
 		}
-		reports = append(reports, report)
+		reports = append(reports, ocr3types.ReportPlus[AutomationReportInfo]{ReportWithInfo: report})
 		performablesAdded += len(toPerform)
 	}
 

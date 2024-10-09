@@ -13,14 +13,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/goccy/go-json"
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
+	"github.com/stretchr/testify/assert"
+
 	ocr2keepers2 "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/plugin/hooks"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/service"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	ocr2keepers "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
-	ocr2plustypes "github.com/smartcontractkit/libocr/offchainreporting2plus/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestOcr3Plugin_Query(t *testing.T) {
@@ -991,7 +992,7 @@ func TestOcr3Plugin_ValidateObservation(t *testing.T) {
 				UpkeepTypeGetter: mockUpkeepTypeGetter,
 				WorkIDGenerator:  tc.wg,
 			}
-			err := plugin.ValidateObservation(ocr3types.OutcomeContext{}, nil, tc.observation)
+			err := plugin.ValidateObservation(context.Background(), ocr3types.OutcomeContext{}, nil, tc.observation)
 			if tc.expectsErr {
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), tc.wantErr.Error())
@@ -1094,7 +1095,7 @@ func TestOcr3Plugin_Outcome(t *testing.T) {
 				WorkIDGenerator:  tc.wg,
 				Logger:           logger,
 			}
-			outcome, err := plugin.Outcome(ocr3types.OutcomeContext{
+			outcome, err := plugin.Outcome(context.Background(), ocr3types.OutcomeContext{
 				PreviousOutcome: tc.prevOutcome,
 			}, nil, tc.observations)
 			if tc.expectsErr {
@@ -1115,7 +1116,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 		name                string
 		sequenceNumber      uint64
 		outcome             ocr3types.Outcome
-		wantReportsWithInfo []ocr3types.ReportWithInfo[AutomationReportInfo]
+		wantReportsWithInfo []ocr3types.ReportPlus[AutomationReportInfo]
 		encoder             ocr2keepers.Encoder
 		utg                 types.UpkeepTypeGetter
 		wg                  types.WorkIDGenerator
@@ -1133,7 +1134,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 			name:                "an empty json object generates a nil report",
 			sequenceNumber:      5,
 			outcome:             ocr3types.Outcome([]byte(`{}`)),
-			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo](nil),
+			wantReportsWithInfo: []ocr3types.ReportPlus[AutomationReportInfo](nil),
 		},
 		{
 			name:           "a well formed but invalid outcome returns an error",
@@ -1198,13 +1199,13 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 			wg: func(identifier ocr2keepers.UpkeepIdentifier, trigger ocr2keepers.Trigger) string {
 				return "workID1"
 			},
-			wantReportsWithInfo: []ocr3types.ReportWithInfo[AutomationReportInfo]{
-				{
+			wantReportsWithInfo: []ocr3types.ReportPlus[AutomationReportInfo]{
+				{ReportWithInfo: ocr3types.ReportWithInfo[AutomationReportInfo]{
 					Report: []byte(`[]`),
-				},
-				{
+				}},
+				{ReportWithInfo: ocr3types.ReportWithInfo[AutomationReportInfo]{
 					Report: []byte(`[{"PipelineExecutionState":0,"Retryable":false,"Eligible":true,"IneligibilityReason":0,"UpkeepID":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Trigger":{"BlockNumber":0,"BlockHash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"LogTriggerExtension":null},"WorkID":"workID1","GasAllocated":1,"PerformData":null,"FastGasWei":1,"LinkNative":2}]`),
-				},
+				}},
 			},
 		},
 		{
@@ -1275,7 +1276,7 @@ func TestOcr3Plugin_Reports(t *testing.T) {
 				UpkeepTypeGetter: tc.utg,
 				WorkIDGenerator:  tc.wg,
 			}
-			reportsWithInfo, err := plugin.Reports(tc.sequenceNumber, tc.outcome)
+			reportsWithInfo, err := plugin.Reports(context.Background(), tc.sequenceNumber, tc.outcome)
 			if tc.expectsErr {
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), tc.wantErr.Error())

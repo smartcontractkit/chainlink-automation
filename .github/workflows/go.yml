@@ -49,7 +49,7 @@ jobs:
         go-version-file: "go.mod"
 
     - name: Run Unit Tests
-      run: go test -v ./... -coverpkg=./... -coverprofile=coverage.txt
+      run: go test ./... -coverpkg=./... -coverprofile=coverage.txt
     
     - name: Upload Go test results
       if: always()

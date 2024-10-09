@@ -72,7 +72,9 @@ func (g *Group) Add(conf config.Node) {
 		BinaryNetworkEndpointFactory: simNet,
 		V2Bootstrappers:              []commontypes.BootstrapperLocator{},
 		LocalConfig: types.LocalConfig{
+			DefaultMaxDurationInitialization:   30 * time.Second,
 			BlockchainTimeout:                  time.Second,
+			ContractConfigLoadTimeout:          time.Second,
 			ContractConfigConfirmations:        1,
 			SkipContractConfigConfirmations:    false,
 			ContractConfigTrackerPollInterval:  15 * time.Second,

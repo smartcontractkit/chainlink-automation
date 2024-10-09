@@ -1,6 +1,7 @@
 package ocr2keepers
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -58,7 +59,7 @@ type pluginFactory struct {
 	logger              *log.Logger
 }
 
-func (f *pluginFactory) NewReportingPlugin(c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
+func (f *pluginFactory) NewReportingPlugin(ctx context.Context, c types.ReportingPluginConfig) (types.ReportingPlugin, types.ReportingPluginInfo, error) {
 	f.logger.Printf("creating new reporting plugin instance")
 
 	offChainCfg, err := config.DecodeOffchainConfig(c.OffchainConfig)

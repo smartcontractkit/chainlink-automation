@@ -1,18 +1,20 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
 	"math/cmplx"
 	"strconv"
 
+	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
+
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v3"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/runner"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
 	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/ocr3types"
 )
 
 type pluginFactory struct {
@@ -63,7 +65,7 @@ func NewReportingPluginFactory(
 	}
 }
 
-func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConfig) (ocr3types.ReportingPlugin[AutomationReportInfo], ocr3types.ReportingPluginInfo, error) {
+func (factory *pluginFactory) NewReportingPlugin(ctx context.Context, c ocr3types.ReportingPluginConfig) (ocr3types.ReportingPlugin[AutomationReportInfo], ocr3types.ReportingPluginInfo, error) {
 	info := ocr3types.ReportingPluginInfo{
 		Name: fmt.Sprintf("Oracle: %d: Automation Plugin Instance w/ Digest '%s'", c.OracleID, c.ConfigDigest),
 		Limits: ocr3types.ReportingPluginLimits{
@@ -113,6 +115,7 @@ func (factory *pluginFactory) NewReportingPlugin(c ocr3types.ReportingPluginConf
 		factory.runnable,
 		factory.runnerConf,
 		conf,
+		c.N,
 		c.F,
 		factory.logger,
 	)
