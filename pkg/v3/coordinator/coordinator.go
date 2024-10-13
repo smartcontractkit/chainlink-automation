@@ -7,9 +7,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-common/pkg/services"
 	common "github.com/smartcontractkit/chainlink-common/pkg/types/automation"
 
-	internalutil "github.com/smartcontractkit/chainlink-automation/internal/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/config"
 	"github.com/smartcontractkit/chainlink-automation/pkg/v3/types"
@@ -21,7 +21,9 @@ const (
 )
 
 type coordinator struct {
-	closer internalutil.Closer
+	services.StateMachine
+	stopCh services.StopChan
+	done   chan struct{}
 	logger *log.Logger
 
 	eventsProvider   types.TransmitEventProvider
@@ -46,6 +48,8 @@ type record struct {
 func NewCoordinator(transmitEventProvider types.TransmitEventProvider, upkeepTypeGetter types.UpkeepTypeGetter, conf config.OffchainConfig, logger *log.Logger) *coordinator {
 	performLockoutWindow := time.Duration(conf.PerformLockoutWindow) * time.Millisecond
 	return &coordinator{
+		stopCh:               make(chan struct{}),
+		done:                 make(chan struct{}),
 		logger:               logger,
 		eventsProvider:       transmitEventProvider,
 		upkeepTypeGetter:     upkeepTypeGetter,
@@ -208,16 +212,24 @@ func (c *coordinator) checkEvents(ctx context.Context) error {
 	return nil
 }
 
-func (c *coordinator) run(ctx context.Context) {
+func (c *coordinator) run() {
+	defer close(c.done)
+
 	timer := time.NewTimer(cadence)
 	defer timer.Stop()
+
+	ctx, cancel := c.stopCh.NewCtx()
+	defer cancel()
 
 	for {
 		select {
 		case <-timer.C:
 			startTime := time.Now()
 
-			if err := c.checkEvents(context.Background()); err != nil {
+			if err := c.checkEvents(ctx); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
 				c.logger.Printf("failed to check for transmit events: %s", err)
 			}
 
@@ -239,32 +251,29 @@ func (c *coordinator) run(ctx context.Context) {
 }
 
 // Start starts all subprocesses
-func (c *coordinator) Start(pctx context.Context) error {
-	ctx, cancel := context.WithCancel(pctx)
-	defer cancel()
-
-	if !c.closer.Store(cancel) {
-		return fmt.Errorf("process already running")
+func (c *coordinator) Start(_ context.Context) error {
+	if err := c.StateMachine.StartOnce("Coordinator", func() error { return nil }); err != nil {
+		return err
 	}
 
 	go c.cache.Start(defaultCacheClean)
 	go c.visited.Start(defaultCacheClean)
 
-	c.run(ctx)
-
+	c.run()
 	return nil
 }
 
 // Close terminates all subprocesses
 func (c *coordinator) Close() error {
-	if !c.closer.Close() {
-		return fmt.Errorf("process not running")
-	}
+	return c.StateMachine.StopOnce("Coordinator", func() error {
+		close(c.stopCh)
+		<-c.done
 
-	c.cache.Stop()
-	c.visited.Stop()
+		c.cache.Stop()
+		c.visited.Stop()
 
-	return nil
+		return nil
+	})
 }
 
 func (c *coordinator) visitedID(e common.TransmitEvent) string {
