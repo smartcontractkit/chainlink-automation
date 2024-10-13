@@ -2,11 +2,10 @@ package tickers
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-automation/internal/util"
+	"github.com/smartcontractkit/chainlink-common/pkg/services"
 )
 
 type observer[T any] interface {
@@ -16,12 +15,13 @@ type observer[T any] interface {
 type getterFunc[T any] func(context.Context, time.Time) (Tick[T], error)
 
 type timeTicker[T any] struct {
-	closer util.Closer
-
+	services.StateMachine
 	interval time.Duration
 	observer observer[T]
 	getterFn getterFunc[T]
 	logger   *log.Logger
+	done     chan struct{}
+	stopCh   services.StopChan
 }
 
 func NewTimeTicker[T any](interval time.Duration, observer observer[T], getterFn getterFunc[T], logger *log.Logger) *timeTicker[T] {
@@ -30,6 +30,8 @@ func NewTimeTicker[T any](interval time.Duration, observer observer[T], getterFn
 		observer: observer,
 		getterFn: getterFn,
 		logger:   logger,
+		done:     make(chan struct{}),
+		stopCh:   make(chan struct{}),
 	}
 
 	return t
@@ -38,13 +40,13 @@ func NewTimeTicker[T any](interval time.Duration, observer observer[T], getterFn
 // Start uses the provided context for each call to the getter function with the
 // configured interval as a timeout. This function blocks until Close is called
 // or the parent context is cancelled.
-func (t *timeTicker[T]) Start(pctx context.Context) error {
-	ctx, cancel := context.WithCancel(pctx)
-	defer cancel()
-
-	if !t.closer.Store(cancel) {
-		return fmt.Errorf("already running")
+func (t *timeTicker[T]) Start(ctx context.Context) error {
+	if err := t.StartOnce("timeTicker", func() error { return nil }); err != nil {
+		return err
 	}
+	defer close(t.done)
+	ctx, cancel := t.stopCh.Ctx(ctx)
+	defer cancel()
 
 	t.logger.Printf("starting ticker service")
 	defer t.logger.Printf("ticker service stopped")
@@ -77,6 +79,9 @@ func (t *timeTicker[T]) Start(pctx context.Context) error {
 }
 
 func (t *timeTicker[T]) Close() error {
-	_ = t.closer.Close()
-	return nil
+	return t.StopOnce("timeTicker", func() error {
+		close(t.stopCh)
+		<-t.done
+		return nil
+	})
 }
