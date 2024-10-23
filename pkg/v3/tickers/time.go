@@ -56,6 +56,8 @@ func (t *timeTicker[T]) Start(ctx context.Context) error {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return nil
 		case tm := <-ticker.C:
 			if t.getterFn == nil {
 				continue
@@ -63,6 +65,7 @@ func (t *timeTicker[T]) Start(ctx context.Context) error {
 			tick, err := t.getterFn(ctx, tm)
 			if err != nil {
 				t.logger.Printf("error fetching tick: %s", err.Error())
+				continue
 			}
 			// observer.Process can be a heavy call taking upto ObservationProcessLimit seconds
 			// so it is run in a separate goroutine to not block further ticks
@@ -72,8 +75,6 @@ func (t *timeTicker[T]) Start(ctx context.Context) error {
 					l.Printf("error processing observer: %s", err.Error())
 				}
 			}(ctx, tick, t.observer, t.logger)
-		case <-ctx.Done():
-			return nil
 		}
 	}
 }
