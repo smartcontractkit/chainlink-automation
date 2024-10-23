@@ -32,6 +32,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-automation/pkg/util"
 	ocr2keepers "github.com/smartcontractkit/chainlink-automation/pkg/v2"
+	"github.com/smartcontractkit/chainlink-common/pkg/services"
 )
 
 var (
@@ -74,7 +75,7 @@ type reportCoordinator struct {
 
 	// run state data
 	running atomic.Bool
-	chStop  chan struct{}
+	chStop  services.StopChan
 }
 
 // NewReportCoordinator provides a new report coordinator. The coordinator
@@ -228,7 +229,7 @@ func (rc *reportCoordinator) checkLogs(ctx context.Context) error {
 		}
 	}
 
-	staleReportLogs, err = rc.logs.StaleReportLogs(context.Background())
+	staleReportLogs, err = rc.logs.StaleReportLogs(ctx)
 	// It can happen that in between the time the report is generated and it gets
 	// confirmed on chain something changes and it becomes stale. Current scenarios are:
 	//    - Another report for the upkeep is transmitted making this report stale
@@ -386,13 +387,20 @@ func (rc *reportCoordinator) Close() error {
 func (rc *reportCoordinator) run() {
 	cadence := time.Second
 	timer := time.NewTimer(cadence)
+	defer timer.Stop()
+
+	ctx, cancel := rc.chStop.NewCtx()
+	defer cancel()
 
 	for {
 		select {
 		case <-timer.C:
 			startTime := time.Now()
 
-			if err := rc.checkLogs(context.Background()); err != nil {
+			if err := rc.checkLogs(ctx); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
 				rc.logger.Printf("failed to check perform and stale report logs: %s", err)
 			}
 
@@ -407,8 +415,7 @@ func (rc *reportCoordinator) run() {
 				// wait the difference between the cadence and the time taken
 				timer.Reset(cadence - diff)
 			}
-		case <-rc.chStop:
-			timer.Stop()
+		case <-ctx.Done():
 			return
 		}
 	}

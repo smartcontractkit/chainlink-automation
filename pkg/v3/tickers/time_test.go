@@ -131,7 +131,7 @@ func TestNewTimeTicker(t *testing.T) {
 		}
 
 		getFn := func(ctx context.Context, t time.Time) (Tick[[]int], error) {
-			return nil, errors.New("error fetching tick")
+			return nil, errors.New("test error")
 		}
 
 		ticker := NewTimeTicker[[]int](100*time.Millisecond, observr, getFn, log.New(msg, "", log.LstdFlags))
@@ -150,7 +150,7 @@ func TestNewTimeTicker(t *testing.T) {
 
 		wg.Wait()
 
-		assert.Contains(t, msg.String(), "error processing observer: boom")
+		assert.Contains(t, msg.String(), "error fetching tick: test error")
 	})
 
 	t.Run("creates a ticker with an observer that errors on processing", func(t *testing.T) {
