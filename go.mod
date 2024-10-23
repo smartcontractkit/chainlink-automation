@@ -73,4 +73,4 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-retract [v1.0.0, v1.0.5] // reverting to v0
+retract [v1.0.0-0, v1.0.5] // reverting to v0
