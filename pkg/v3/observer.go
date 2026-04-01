@@ -111,7 +111,10 @@ func (o *Observer[T]) Process(ctx context.Context, tick tickers.Tick[[]T]) error
 		return err
 	}
 
-	o.lggr.Printf("finished processing of %d results: %+v", len(results), results)
+	o.lggr.Printf("finished processing of %d results", len(results))
+	for i, result := range results {
+		o.lggr.Printf("result %d: %+v", i+1, result)
+	}
 
 	return nil
 }
